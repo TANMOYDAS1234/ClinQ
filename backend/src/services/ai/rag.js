@@ -1,0 +1,139 @@
+import { KnowledgeChunk } from '../../models/KnowledgeChunk.js';
+import { embed } from './gemini.js';
+import { env } from '../../config/env.js';
+import { logger } from '../../config/logger.js';
+
+/**
+ * Retrieval over the doctor-approved knowledge base.
+ *
+ * Two backends: Atlas `$vectorSearch` when the deployment supports it, and
+ * in-process cosine similarity otherwise. A single clinic's corpus is a few
+ * thousand chunks at most, so brute-force scoring is well within budget and
+ * keeps local development working against a plain mongod.
+ *
+ * Invariant: only `status: 'approved'` chunks are ever retrievable.
+ */
+
+function cosineSimilarity(a, b) {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  if (normA === 0 || normB === 0) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+async function vectorSearchAtlas(queryVector, { limit, languages, categories }) {
+  const filter = { status: 'approved' };
+  if (languages?.length) filter.language = { $in: languages };
+  if (categories?.length) filter.category = { $in: categories };
+
+  return KnowledgeChunk.aggregate([
+    {
+      $vectorSearch: {
+        index: env.VECTOR_INDEX_NAME,
+        path: 'embedding',
+        queryVector,
+        numCandidates: Math.max(limit * 15, 150),
+        limit,
+        filter,
+      },
+    },
+    {
+      $project: {
+        title: 1, section: 1, content: 1, category: 1, language: 1,
+        sourceCitation: 1, docId: 1,
+        score: { $meta: 'vectorSearchScore' },
+      },
+    },
+  ]);
+}
+
+async function vectorSearchInProcess(queryVector, { limit, languages, categories }) {
+  const filter = { status: 'approved' };
+  if (languages?.length) filter.language = { $in: languages };
+  if (categories?.length) filter.category = { $in: categories };
+
+  const chunks = await KnowledgeChunk.find(filter)
+    .select('+embedding title section content category language sourceCitation docId')
+    .lean();
+
+  return chunks
+    .filter((c) => Array.isArray(c.embedding) && c.embedding.length === queryVector.length)
+    .map((c) => {
+      const { embedding, ...rest } = c;
+      return { ...rest, score: cosineSimilarity(queryVector, embedding) };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+/** Lexical fallback for when embeddings are unavailable entirely. */
+async function textSearch(query, { limit, language }) {
+  const filter = { status: 'approved', $text: { $search: query } };
+  if (language) filter.language = language;
+  const results = await KnowledgeChunk.find(filter, { score: { $meta: 'textScore' } })
+    .sort({ score: { $meta: 'textScore' } })
+    .limit(limit)
+    .lean();
+  return results.map((r) => ({ ...r, score: r.score ?? 0 }));
+}
+
+/**
+ * @param {string} query
+ * @param {object} opts
+ * @param {number} [opts.limit=6]
+ * @param {string} [opts.language] restrict to one language; falls back to English
+ * @param {string[]} [opts.categories] bias retrieval toward specific topics
+ * @param {number} [opts.minScore=0.4] drop weak matches rather than grounding on noise
+ */
+export async function retrieve(query, { limit = 6, language, categories, minScore = 0.4 } = {}) {
+  // Search the patient's language AND English in one pool, ranked together.
+  //
+  // Restricting to a single language crippled non-English questions: the
+  // corpus is mostly English (the clinic authors in English), so a Bengali
+  // question could only ever see the handful of Bengali chunks and never the
+  // thyroid, gout, kidney or PCOS material that would actually answer it.
+  //
+  // Mixing is safe because the reply language is set by the system prompt, not
+  // by the language of the grounding — the model is told to answer only in the
+  // patient's language whatever it reads.
+  const languages = language && language !== 'en' ? [language, 'en'] : ['en', language].filter(Boolean);
+  const searchLanguages = [...new Set(languages)];
+
+  try {
+    const queryVector = await embed(query, { taskType: 'RETRIEVAL_QUERY' });
+    const results = env.USE_ATLAS_VECTOR_SEARCH
+      ? await vectorSearchAtlas(queryVector, { limit, languages: searchLanguages, categories })
+      : await vectorSearchInProcess(queryVector, { limit, languages: searchLanguages, categories });
+
+    const scored = results.filter((r) => r.score >= minScore);
+    if (scored.length > 0) return scored;
+
+    // Nothing cleared the bar. Rather than answer ungrounded, offer the best
+    // near-misses — a weakly-matched but relevant chunk is far more useful to
+    // a patient than "I have no guidance on that", and the model is still
+    // instructed to decline if the context does not actually cover the
+    // question.
+    return results.slice(0, Math.min(3, results.length));
+  } catch (err) {
+    logger.warn({ err: err?.message }, 'vector retrieval failed, falling back to text search');
+    // Text scores are on a different scale, so minScore does not apply.
+    return textSearch(query, { limit, language });
+  }
+}
+
+/** Renders retrieved chunks into the grounding block for the prompt. */
+export function formatContext(chunks) {
+  if (!chunks?.length) return null;
+  return chunks
+    .map((c, i) => {
+      const cite = c.sourceCitation ? ` (source: ${c.sourceCitation})` : '';
+      return `[${i + 1}] ${c.title}${c.section ? ` — ${c.section}` : ''}${cite}\n${c.content}`;
+    })
+    .join('\n\n---\n\n');
+}

@@ -1,0 +1,70 @@
+import { ZodError } from 'zod';
+import mongoose from 'mongoose';
+import { logger } from '../config/logger.js';
+import { isProd } from '../config/env.js';
+
+export class AppError extends Error {
+  constructor(status, code, message, details) {
+    super(message);
+    this.status = status;
+    this.code = code;
+    this.details = details;
+    this.expected = true;
+  }
+}
+
+export const badRequest = (msg, details) => new AppError(400, 'BAD_REQUEST', msg, details);
+export const unauthorized = (msg = 'Authentication required') => new AppError(401, 'UNAUTHORIZED', msg);
+export const forbidden = (msg = 'You do not have access to this resource') => new AppError(403, 'FORBIDDEN', msg);
+export const notFound = (msg = 'Resource not found') => new AppError(404, 'NOT_FOUND', msg);
+export const conflict = (msg, details) => new AppError(409, 'CONFLICT', msg, details);
+export const tooMany = (msg = 'Too many requests') => new AppError(429, 'RATE_LIMITED', msg);
+
+/** Wraps async route handlers so rejected promises reach the error middleware. */
+export const asyncHandler = (fn) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next);
+
+export function notFoundHandler(req, res, next) {
+  next(new AppError(404, 'NOT_FOUND', `No route for ${req.method} ${req.originalUrl}`));
+}
+
+// eslint-disable-next-line no-unused-vars -- Express identifies error middleware by arity
+export function errorHandler(err, req, res, next) {
+  let status = err.status ?? 500;
+  let code = err.code ?? 'INTERNAL_ERROR';
+  let message = err.message ?? 'Something went wrong';
+  let details;
+
+  if (err instanceof ZodError) {
+    status = 400;
+    code = 'VALIDATION_ERROR';
+    message = 'Request validation failed';
+    details = err.issues.map((i) => ({ path: i.path.join('.'), message: i.message }));
+  } else if (err instanceof mongoose.Error.ValidationError) {
+    status = 400;
+    code = 'VALIDATION_ERROR';
+    message = 'Request validation failed';
+    details = Object.values(err.errors).map((e) => ({ path: e.path, message: e.message }));
+  } else if (err instanceof mongoose.Error.CastError) {
+    status = 400;
+    code = 'INVALID_ID';
+    message = `Invalid value for ${err.path}`;
+  } else if (err.code === 11000) {
+    status = 409;
+    code = 'DUPLICATE';
+    const field = Object.keys(err.keyPattern ?? {})[0] ?? 'field';
+    message = `An account with that ${field} already exists`;
+  }
+
+  if (status >= 500) {
+    logger.error({ err, path: req.originalUrl, method: req.method }, 'unhandled error');
+    // Never leak internal details to a patient's device in production.
+    if (isProd) message = 'Something went wrong. Please try again.';
+  } else {
+    logger.debug({ code, path: req.originalUrl }, message);
+  }
+
+  res.status(status).json({
+    error: { code, message, ...(details ? { details } : {}) },
+  });
+}

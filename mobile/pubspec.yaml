@@ -1,0 +1,63 @@
+name: akd_care
+description: "ClinQ — patient app for Dr. Amit Kumar Dey, Consultant Physician & Diabetologist."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_riverpod: ^2.6.1
+
+  # Routing
+  go_router: ^14.8.1
+
+  # HTTP
+  dio: ^5.7.0
+
+  # MediaType for multipart uploads. A transitive dep of dio, declared
+  # explicitly because we import it directly — the server rejects anything
+  # not in its ALLOWED_MIME set, so the content type must be set by hand.
+  http_parser: ^4.1.0
+
+  # Secure token storage
+  flutter_secure_storage: ^9.2.2
+
+  # Charts
+  fl_chart: ^0.69.2
+
+  # i18n
+  # Must track the intl version flutter_localizations pins for the installed
+  # Flutter SDK, otherwise version solving fails outright.
+  intl: ^0.20.2
+
+  # On-device speech recognition. Deliberately transcribes to text before
+  # sending: the triage engine matches text patterns, so audio that never
+  # becomes text would bypass emergency detection entirely.
+  speech_to_text: ^7.0.0
+
+  # Misc
+  image_picker: ^1.1.2
+  shared_preferences: ^2.3.4
+  url_launcher: ^6.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/brand/

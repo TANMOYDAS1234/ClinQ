@@ -1,0 +1,76 @@
+import mongoose from 'mongoose';
+
+/**
+ * Clinical profile, kept separate from the auth `User` so that doctor/staff
+ * accounts never carry empty clinical fields and patient data can be scoped
+ * and exported independently.
+ */
+const patientProfileSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true, index: true },
+
+    diabetesType: {
+      type: String,
+      enum: ['type1', 'type2', 'gestational', 'prediabetes', 'none'],
+      default: 'type2',
+    },
+    diagnosedOn: Date,
+
+    heightCm: { type: Number, min: 50, max: 250 },
+    baselineWeightKg: { type: Number, min: 10, max: 400 },
+
+    // Personalised targets; the triage engine falls back to clinic defaults
+    // when these are unset.
+    targets: {
+      fastingMin: { type: Number, default: 80 },
+      fastingMax: { type: Number, default: 130 },
+      postPrandialMax: { type: Number, default: 180 },
+      hba1cMax: { type: Number, default: 7.0 },
+      systolicMax: { type: Number, default: 140 },
+      diastolicMax: { type: Number, default: 90 },
+      dailyWaterMl: { type: Number, default: 2500 },
+      dailyStepsGoal: { type: Number, default: 6000 },
+    },
+
+    comorbidities: [
+      {
+        type: String,
+        enum: [
+          'hypertension',
+          'dyslipidaemia',
+          'ckd',
+          'retinopathy',
+          'neuropathy',
+          'cad',
+          'thyroid',
+          'obesity',
+          'other',
+        ],
+      },
+    ],
+    allergies: [{ type: String, trim: true, maxlength: 120 }],
+
+    // Drives the diabetic-foot module's screening cadence.
+    footRiskCategory: { type: String, enum: ['low', 'moderate', 'high', 'urgent'], default: 'low' },
+    lastFootScreeningAt: Date,
+    lastEyeScreeningAt: Date,
+
+    emergencyContact: {
+      name: { type: String, trim: true },
+      phone: { type: String, trim: true },
+      relation: { type: String, trim: true },
+    },
+
+    // Denormalised for fast doctor-dashboard segmentation; recomputed by the
+    // analytics service rather than trusted as a source of truth.
+    riskScore: { type: Number, min: 0, max: 100, default: 0, index: true },
+    riskBand: { type: String, enum: ['low', 'moderate', 'high', 'critical'], default: 'low', index: true },
+    lastRiskComputedAt: Date,
+
+    assignedDoctor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+    notes: { type: String, maxlength: 4000 },
+  },
+  { timestamps: true },
+);
+
+export const PatientProfile = mongoose.model('PatientProfile', patientProfileSchema);

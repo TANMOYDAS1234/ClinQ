@@ -1,0 +1,186 @@
+/// `Medication` object from API_CONTRACT.md §4.
+class Medication {
+  const Medication({
+    required this.id,
+    required this.name,
+    required this.form,
+    required this.strength,
+    required this.dose,
+    required this.schedule,
+    required this.daysOfWeek,
+    required this.isActive,
+    this.genericName,
+    this.startDate,
+    this.endDate,
+    this.instructions,
+  });
+
+  final String id;
+  final String name;
+  final String? genericName;
+  final String form;
+  final String strength;
+  final String dose;
+  final List<MedicationScheduleEntry> schedule;
+  final List<String> daysOfWeek;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final bool isActive;
+  final String? instructions;
+
+  factory Medication.fromJson(Map<String, dynamic> json) {
+    return Medication(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      genericName: json['genericName'] as String?,
+      form: json['form']?.toString() ?? '',
+      strength: json['strength']?.toString() ?? '',
+      dose: json['dose']?.toString() ?? '',
+      schedule: (json['schedule'] as List<dynamic>? ?? const [])
+          .map((e) => MedicationScheduleEntry.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      daysOfWeek: (json['daysOfWeek'] as List<dynamic>? ?? const [])
+          .map((e) => e.toString())
+          .toList(),
+      startDate: json['startDate'] == null ? null : DateTime.tryParse(json['startDate'].toString()),
+      endDate: json['endDate'] == null ? null : DateTime.tryParse(json['endDate'].toString()),
+      isActive: json['isActive'] as bool? ?? true,
+      instructions: json['instructions'] as String?,
+    );
+  }
+}
+
+class MedicationScheduleEntry {
+  const MedicationScheduleEntry({required this.time, required this.relationToMeal});
+
+  /// "HH:mm".
+  final String time;
+
+  /// before_meal | after_meal | with_meal | anytime.
+  final String relationToMeal;
+
+  factory MedicationScheduleEntry.fromJson(Map<String, dynamic> json) {
+    return MedicationScheduleEntry(
+      time: json['time']?.toString() ?? '',
+      relationToMeal: json['relationToMeal']?.toString() ?? 'anytime',
+    );
+  }
+}
+
+/// One row of `GET /medications/schedule/today`.
+class MedicationScheduleSlot {
+  const MedicationScheduleSlot({
+    required this.medicationId,
+    required this.name,
+    required this.dose,
+    required this.time,
+    required this.relationToMeal,
+    required this.status,
+    this.logId,
+  });
+
+  final String medicationId;
+  final String name;
+  final String dose;
+  final String time;
+  final String relationToMeal;
+
+  /// pending | taken | skipped | missed.
+  final String status;
+  final String? logId;
+
+  factory MedicationScheduleSlot.fromJson(Map<String, dynamic> json) {
+    return MedicationScheduleSlot(
+      medicationId: json['medicationId']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      dose: json['dose']?.toString() ?? '',
+      time: json['time']?.toString() ?? '',
+      relationToMeal: json['relationToMeal']?.toString() ?? 'anytime',
+      status: json['status']?.toString() ?? 'pending',
+      logId: json['logId']?.toString(),
+    );
+  }
+
+  MedicationScheduleSlot copyWith({String? status, String? logId}) {
+    return MedicationScheduleSlot(
+      medicationId: medicationId,
+      name: name,
+      dose: dose,
+      time: time,
+      relationToMeal: relationToMeal,
+      status: status ?? this.status,
+      logId: logId ?? this.logId,
+    );
+  }
+}
+
+class TodaySchedule {
+  const TodaySchedule({required this.date, required this.slots});
+
+  final String date;
+  final List<MedicationScheduleSlot> slots;
+
+  factory TodaySchedule.fromJson(Map<String, dynamic> json) {
+    return TodaySchedule(
+      date: json['date']?.toString() ?? '',
+      slots: (json['slots'] as List<dynamic>? ?? const [])
+          .map((e) => MedicationScheduleSlot.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+/// `GET /medications/adherence?days=30`.
+class MedicationAdherence {
+  const MedicationAdherence({
+    required this.expected,
+    required this.taken,
+    required this.missed,
+    required this.percentage,
+    required this.perMedication,
+  });
+
+  final int expected;
+  final int taken;
+  final int missed;
+  final num percentage;
+  final List<PerMedicationAdherence> perMedication;
+
+  factory MedicationAdherence.fromJson(Map<String, dynamic> json) {
+    return MedicationAdherence(
+      expected: (json['expected'] as num?)?.toInt() ?? 0,
+      taken: (json['taken'] as num?)?.toInt() ?? 0,
+      missed: (json['missed'] as num?)?.toInt() ?? 0,
+      percentage: json['percentage'] as num? ?? 0,
+      perMedication: (json['perMedication'] as List<dynamic>? ?? const [])
+          .map((e) => PerMedicationAdherence.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class PerMedicationAdherence {
+  const PerMedicationAdherence({
+    required this.medicationId,
+    required this.name,
+    required this.expected,
+    required this.taken,
+    required this.percentage,
+  });
+
+  final String medicationId;
+  final String name;
+  final int expected;
+  final int taken;
+  final num percentage;
+
+  factory PerMedicationAdherence.fromJson(Map<String, dynamic> json) {
+    return PerMedicationAdherence(
+      medicationId: json['medicationId']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      expected: (json['expected'] as num?)?.toInt() ?? 0,
+      taken: (json['taken'] as num?)?.toInt() ?? 0,
+      percentage: json['percentage'] as num? ?? 0,
+    );
+  }
+}

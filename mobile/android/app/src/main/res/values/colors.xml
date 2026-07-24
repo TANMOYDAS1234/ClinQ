@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Backing plate for the adaptive launcher icon. White, because the
+         ClinQ emblem is a multi-tone teal mark drawn for a light ground —
+         reversing it out would lose the gradient detail in the head and hand. -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>

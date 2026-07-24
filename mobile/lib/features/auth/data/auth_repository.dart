@@ -1,0 +1,108 @@
+import '../../../core/network/api_client.dart';
+import '../../../core/storage/secure_store.dart';
+import '../domain/user.dart';
+
+/// Result of a successful login/register call.
+class AuthResult {
+  const AuthResult({required this.user, required this.accessToken, required this.refreshToken});
+
+  final AppUser user;
+  final String accessToken;
+  final String refreshToken;
+}
+
+/// Talks to `/auth/*`. Never touches Riverpod or UI state directly — see
+/// `AuthController` for the state machine built on top of this.
+class AuthRepository {
+  AuthRepository(this._client, this._secureStore);
+
+  final ApiClient _client;
+  final SecureStore _secureStore;
+
+  Future<AuthResult> register({
+    required String name,
+    required String phone,
+    required String password,
+    String? email,
+    required String language,
+    String? dateOfBirth,
+    String? gender,
+    String? diabetesType,
+  }) async {
+    final json = await _client.postJson(
+      '/auth/register',
+      body: {
+        'name': name,
+        'phone': phone,
+        'password': password,
+        if (email != null && email.isNotEmpty) 'email': email,
+        'language': language,
+        if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
+        if (gender != null) 'gender': gender,
+        if (diabetesType != null) 'diabetesType': diabetesType,
+      },
+    );
+    return _resultFromJson(json);
+  }
+
+  Future<AuthResult> login({required String phone, required String password}) async {
+    final json = await _client.postJson(
+      '/auth/login',
+      body: {'phone': phone, 'password': password},
+    );
+    return _resultFromJson(json);
+  }
+
+  Future<void> logout() async {
+    try {
+      await _client.postJson('/auth/logout');
+    } finally {
+      await _secureStore.clear();
+    }
+  }
+
+  /// `GET /auth/me` returns `{ user, profile }`. The profile carries clinical
+  /// fields that do not live on the user record — diabetes type among them.
+  Future<({AppUser user, String? diabetesType})> getMe() async {
+    final json = await _client.getJson('/auth/me');
+    final profile = json['profile'];
+    return (
+      user: AppUser.fromJson(json['user'] as Map<String, dynamic>),
+      diabetesType: profile is Map<String, dynamic> ? profile['diabetesType']?.toString() : null,
+    );
+  }
+
+  /// Diabetes type lives on `PatientProfile`, not `User`, so it has its own
+  /// endpoint — `PATCH /auth/me` would silently ignore it.
+  Future<void> updateDiabetesType(String diabetesType) async {
+    await _client.patchJson('/auth/me/profile', body: {'diabetesType': diabetesType});
+  }
+
+  Future<AppUser> updateMe({
+    String? name,
+    String? email,
+    String? language,
+    String? dateOfBirth,
+    String? gender,
+  }) async {
+    final json = await _client.patchJson(
+      '/auth/me',
+      body: {
+        if (name != null) 'name': name,
+        if (email != null) 'email': email,
+        if (language != null) 'language': language,
+        if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
+        if (gender != null) 'gender': gender,
+      },
+    );
+    return AppUser.fromJson(json['user'] as Map<String, dynamic>);
+  }
+
+  Future<AuthResult> _resultFromJson(Map<String, dynamic> json) async {
+    final user = AppUser.fromJson(json['user'] as Map<String, dynamic>);
+    final accessToken = json['accessToken'] as String;
+    final refreshToken = json['refreshToken'] as String;
+    await _secureStore.saveTokens(accessToken: accessToken, refreshToken: refreshToken);
+    return AuthResult(user: user, accessToken: accessToken, refreshToken: refreshToken);
+  }
+}

@@ -1,0 +1,797 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for English (`en`).
+class AppLocalizationsEn extends AppLocalizations {
+  AppLocalizationsEn([String locale = 'en']) : super(locale);
+
+  @override
+  String get appName => 'ClinQ';
+
+  @override
+  String get appTagline => 'Diabetes care with Dr. Amit Kumar Dey';
+
+  @override
+  String get commonRetry => 'Retry';
+
+  @override
+  String get commonCancel => 'Cancel';
+
+  @override
+  String get commonSave => 'Save';
+
+  @override
+  String get commonSubmit => 'Submit';
+
+  @override
+  String get commonLoading => 'Loading…';
+
+  @override
+  String get commonOk => 'OK';
+
+  @override
+  String get commonClose => 'Close';
+
+  @override
+  String get commonDelete => 'Delete';
+
+  @override
+  String get commonEdit => 'Edit';
+
+  @override
+  String get commonYes => 'Yes';
+
+  @override
+  String get commonNo => 'No';
+
+  @override
+  String get commonSomethingWentWrong => 'Something went wrong';
+
+  @override
+  String get commonNoInternet =>
+      'No internet connection. Please check your network.';
+
+  @override
+  String get commonTryAgain => 'Try again';
+
+  @override
+  String get commonComingSoon => 'Coming next';
+
+  @override
+  String get commonComingSoonBody =>
+      'This section is being built and will be available in a future update.';
+
+  @override
+  String get commonRequiredField => 'This field is required';
+
+  @override
+  String get commonUnknownError => 'An unexpected error occurred';
+
+  @override
+  String get languagePickerTitle => 'Choose your language';
+
+  @override
+  String get languagePickerSubtitle =>
+      'You can change this anytime from your profile.';
+
+  @override
+  String get languageEnglish => 'English';
+
+  @override
+  String get languageBengali => 'বাংলা';
+
+  @override
+  String get languageHindi => 'हिन्दी';
+
+  @override
+  String get continueButton => 'Continue';
+
+  @override
+  String get authLoginTitle => 'Welcome back';
+
+  @override
+  String get authLoginSubtitle => 'Log in to manage your diabetes care.';
+
+  @override
+  String get authRegisterTitle => 'Create your account';
+
+  @override
+  String get authRegisterSubtitle =>
+      'Tell us a little about yourself to get started.';
+
+  @override
+  String get authPhoneLabel => 'Phone number';
+
+  @override
+  String get authPhoneHint => '98300 12345';
+
+  @override
+  String get authPasswordLabel => 'Password';
+
+  @override
+  String get authNameLabel => 'Full name';
+
+  @override
+  String get authEmailLabel => 'Email (optional)';
+
+  @override
+  String get authDateOfBirthLabel => 'Date of birth';
+
+  @override
+  String get authGenderLabel => 'Gender';
+
+  @override
+  String get authGenderMale => 'Male';
+
+  @override
+  String get authGenderFemale => 'Female';
+
+  @override
+  String get authGenderOther => 'Other';
+
+  @override
+  String get authDiabetesTypeLabel => 'Diabetes type';
+
+  @override
+  String get authDiabetesType1 => 'Type 1';
+
+  @override
+  String get authDiabetesType2 => 'Type 2';
+
+  @override
+  String get authDiabetesTypeGestational => 'Gestational';
+
+  @override
+  String get authDiabetesTypePrediabetes => 'Prediabetes';
+
+  @override
+  String get authLoginButton => 'Log in';
+
+  @override
+  String get authRegisterButton => 'Create account';
+
+  @override
+  String get authNoAccount => 'Don\'t have an account?';
+
+  @override
+  String get authHaveAccount => 'Already have an account?';
+
+  @override
+  String get authGoToRegister => 'Register';
+
+  @override
+  String get authGoToLogin => 'Log in';
+
+  @override
+  String get authInvalidCredentials => 'Incorrect phone number or password';
+
+  @override
+  String get authPasswordTooShort => 'Password must be at least 8 characters';
+
+  @override
+  String get authPasswordHelper => 'At least 8 characters';
+
+  @override
+  String get authNameTooShort => 'Please enter your full name';
+
+  @override
+  String get authInvalidPhone => 'Enter a valid 10-digit mobile number';
+
+  @override
+  String get authInvalidEmail =>
+      'Enter a valid email address, or leave it blank';
+
+  @override
+  String get authPasswordRequired => 'Please enter your password';
+
+  @override
+  String get authPasswordTooLong => 'Password must be 128 characters or fewer';
+
+  @override
+  String get authConfirmPasswordLabel => 'Confirm password';
+
+  @override
+  String get authPasswordMismatch => 'Passwords do not match';
+
+  @override
+  String get authNameTooLong => 'Name must be 120 characters or fewer';
+
+  @override
+  String get authDateOfBirthRequired => 'Please select your date of birth';
+
+  @override
+  String get authDateOfBirthTooYoung =>
+      'Date of birth must be at least 1 year ago';
+
+  @override
+  String get authGenderRequired => 'Please select an option';
+
+  @override
+  String get authDiabetesTypeRequired => 'Please select your diabetes type';
+
+  @override
+  String get authDiabetesTypeNone => 'None / not diabetic';
+
+  @override
+  String get authDiabetesTypeHelper => 'Ask your doctor if you are not sure';
+
+  @override
+  String get authLogoutConfirmTitle => 'Log out?';
+
+  @override
+  String get authLogoutConfirmBody =>
+      'You will need to log in again to access your care details.';
+
+  @override
+  String get navHome => 'Home';
+
+  @override
+  String get navChat => 'Chat';
+
+  @override
+  String get navTrack => 'Track';
+
+  @override
+  String get navCare => 'Care';
+
+  @override
+  String get navProfile => 'Profile';
+
+  @override
+  String dashboardGreetingMorning(String name) {
+    return 'Good morning, $name';
+  }
+
+  @override
+  String dashboardGreetingAfternoon(String name) {
+    return 'Good afternoon, $name';
+  }
+
+  @override
+  String dashboardGreetingEvening(String name) {
+    return 'Good evening, $name';
+  }
+
+  @override
+  String get dashboardHealthScore => 'Health score';
+
+  @override
+  String dashboardHealthScoreBand(String band) {
+    return '$band';
+  }
+
+  @override
+  String get dashboardGlucoseLatest => 'Latest glucose';
+
+  @override
+  String get dashboardGlucoseAverage => '7-day average';
+
+  @override
+  String get dashboardTimeInRange => 'Time in range';
+
+  @override
+  String get dashboardAdherence => 'Medicine adherence';
+
+  @override
+  String dashboardTodayPending(int count) {
+    return '$count due today';
+  }
+
+  @override
+  String get dashboardNextAppointment => 'Next appointment';
+
+  @override
+  String get dashboardNoAppointment => 'No upcoming appointment';
+
+  @override
+  String get dashboardOpenAlerts => 'Open alerts';
+
+  @override
+  String get dashboardNoAlerts => 'No open alerts';
+
+  @override
+  String get dashboardRecommendations => 'Recommendations for you';
+
+  @override
+  String get dashboardNoRecommendations => 'You\'re all caught up';
+
+  @override
+  String get dashboardFootScreeningDue => 'Foot screening due';
+
+  @override
+  String get dashboardEyeScreeningDue => 'Eye screening due';
+
+  @override
+  String get dashboardHba1cDue => 'HbA1c test due';
+
+  @override
+  String get dashboardEmptyTitle => 'No dashboard data yet';
+
+  @override
+  String get dashboardEmptyBody =>
+      'Start logging your glucose and medicines to see your health summary here.';
+
+  @override
+  String get dashboardErrorTitle => 'Couldn\'t load your dashboard';
+
+  @override
+  String get chatTitle => 'AI Assistant';
+
+  @override
+  String get chatComposerHint => 'Ask about your health…';
+
+  @override
+  String get chatSend => 'Send';
+
+  @override
+  String get chatNewChat => 'New chat';
+
+  @override
+  String get chatSessions => 'Chat history';
+
+  @override
+  String get chatSessionsEmpty => 'No previous chats yet';
+
+  @override
+  String get chatDisclaimer => 'AI-assisted guidance, not a diagnosis';
+
+  @override
+  String get chatThinking => 'ClinQ Assistant is typing…';
+
+  @override
+  String get chatEmergencyTitle => 'Emergency — act now';
+
+  @override
+  String get chatEmergencyBody => 'Go to the nearest hospital immediately';
+
+  @override
+  String get chatCallClinic => 'Call clinic';
+
+  @override
+  String get chatUrgentTitle => 'Needs prompt attention';
+
+  @override
+  String get chatCitations => 'Sources';
+
+  @override
+  String get chatFlagMessage => 'Report this answer';
+
+  @override
+  String get chatFlagSent =>
+      'Thank you, this reply has been reported for review.';
+
+  @override
+  String get chatWelcomeTitle => 'Hello, I\'m your ClinQ Assistant';
+
+  @override
+  String get chatWelcomeBody =>
+      'Ask me about your glucose readings, medicines, diet, or any diabetes-related question. In an emergency, always call the clinic or go to the nearest hospital.';
+
+  @override
+  String get chatEmptyInput => 'Type a message before sending';
+
+  @override
+  String get chatArchiveSession => 'Archive';
+
+  @override
+  String get chatArchived => 'Chat archived';
+
+  @override
+  String get chatAnalyzing => 'ClinQ is analyzing data…';
+
+  @override
+  String get chatAttach => 'Attach a photo';
+
+  @override
+  String get chatAttachCamera => 'Take a photo';
+
+  @override
+  String get chatAttachGallery => 'Choose from gallery';
+
+  @override
+  String get chatAttachRemove => 'Remove attachment';
+
+  @override
+  String get chatAttachUploading => 'Uploading…';
+
+  @override
+  String get chatAttachFailed =>
+      'Could not upload that photo. Please try again.';
+
+  @override
+  String get chatAttachTooLarge =>
+      'That photo is too large. Please choose one under 12 MB.';
+
+  @override
+  String get chatAttachLimit => 'You can attach up to 5 photos.';
+
+  @override
+  String get chatAttachNeedsText =>
+      'Add a short note describing the photo before sending.';
+
+  @override
+  String get chatEmptyTitle => 'How can I help today?';
+
+  @override
+  String get chatEmptyBody =>
+      'Ask about your blood sugar, diet, medicines or symptoms. Available 24/7.';
+
+  @override
+  String get chatSuggestionSugar =>
+      'My blood sugar is high today — what should I do?';
+
+  @override
+  String get chatSuggestionDiet => 'What are some healthy breakfast ideas?';
+
+  @override
+  String get chatSuggestionFeet =>
+      'My feet feel numb and tingly. Should I worry?';
+
+  @override
+  String get chatSuggestionEye => 'Help me understand my eye report';
+
+  @override
+  String get chatCopy => 'Copy';
+
+  @override
+  String get chatCopied => 'Copied to clipboard';
+
+  @override
+  String get chatRetry => 'Try again';
+
+  @override
+  String get chatScrollToLatest => 'Jump to latest';
+
+  @override
+  String get chatDateToday => 'Today';
+
+  @override
+  String get chatDateYesterday => 'Yesterday';
+
+  @override
+  String get voiceListening => 'Listening…';
+
+  @override
+  String get voiceTapToSpeak => 'Speak to the assistant';
+
+  @override
+  String get voiceDone => 'Done';
+
+  @override
+  String get voiceCancel => 'Cancel';
+
+  @override
+  String get voiceNoSpeech => 'I didn\'t catch that — try again';
+
+  @override
+  String get voicePermissionTitle => 'Microphone access is needed';
+
+  @override
+  String get voicePermissionBody =>
+      'Allow microphone access so you can speak instead of typing.';
+
+  @override
+  String get voiceOpenSettings => 'Open settings';
+
+  @override
+  String get voiceUnavailable => 'Voice input isn\'t available on this device';
+
+  @override
+  String get voiceSlideToCancel => 'Slide to cancel';
+
+  @override
+  String get voiceSlideToLock => 'Slide up to lock, hands-free';
+
+  @override
+  String get voiceReleaseToCancel => 'Release to cancel';
+
+  @override
+  String get voiceRecording => 'Recording';
+
+  @override
+  String get voiceReviewBeforeSending => 'Check the text before sending';
+
+  @override
+  String get glucoseTitle => 'Glucose';
+
+  @override
+  String get glucoseLogReading => 'Log a reading';
+
+  @override
+  String get glucoseValueLabel => 'Blood glucose (mg/dL)';
+
+  @override
+  String get glucoseContextLabel => 'When was this taken?';
+
+  @override
+  String get glucoseContextFasting => 'Fasting';
+
+  @override
+  String get glucoseContextPreMeal => 'Before meal';
+
+  @override
+  String get glucoseContextPostMeal => 'After meal';
+
+  @override
+  String get glucoseContextBedtime => 'Bedtime';
+
+  @override
+  String get glucoseContextRandom => 'Random';
+
+  @override
+  String get glucoseTimeLabel => 'Date & time';
+
+  @override
+  String get glucoseNotesLabel => 'Notes (optional)';
+
+  @override
+  String get glucoseSaveReading => 'Save reading';
+
+  @override
+  String get glucoseReadingSaved => 'Reading saved';
+
+  @override
+  String get glucoseTrend => '30-day trend';
+
+  @override
+  String get glucoseTargetRange => 'Target range';
+
+  @override
+  String get glucoseRecentReadings => 'Recent readings';
+
+  @override
+  String get glucoseEmptyTitle => 'No readings yet';
+
+  @override
+  String get glucoseEmptyBody =>
+      'Log your first blood glucose reading to start tracking your trend.';
+
+  @override
+  String get glucoseFlagSevereLow => 'Severe low';
+
+  @override
+  String get glucoseFlagLow => 'Low';
+
+  @override
+  String get glucoseFlagInRange => 'In range';
+
+  @override
+  String get glucoseFlagVeryHigh => 'Very high';
+
+  @override
+  String get glucoseFlagCriticalHigh => 'Critical high';
+
+  @override
+  String get glucoseDeleteConfirm => 'Delete this reading?';
+
+  @override
+  String get glucoseStatsAverage => 'Average';
+
+  @override
+  String get glucoseStatsMin => 'Lowest';
+
+  @override
+  String get glucoseStatsMax => 'Highest';
+
+  @override
+  String get glucoseStatsHba1c => 'Estimated HbA1c';
+
+  @override
+  String get medsTitle => 'Medications';
+
+  @override
+  String get medsTodaySchedule => 'Today\'s schedule';
+
+  @override
+  String get medsAdherence => 'Adherence';
+
+  @override
+  String get medsMarkTaken => 'Mark taken';
+
+  @override
+  String get medsMarkSkipped => 'Mark skipped';
+
+  @override
+  String get medsStatusTaken => 'Taken';
+
+  @override
+  String get medsStatusSkipped => 'Skipped';
+
+  @override
+  String get medsStatusPending => 'Pending';
+
+  @override
+  String get medsStatusMissed => 'Missed';
+
+  @override
+  String get medsEmptyTitle => 'No medicines scheduled today';
+
+  @override
+  String get medsEmptyBody =>
+      'Your doctor hasn\'t added any medicines for today.';
+
+  @override
+  String get medsRelationBeforeMeal => 'Before meal';
+
+  @override
+  String get medsRelationAfterMeal => 'After meal';
+
+  @override
+  String get medsRelationWithMeal => 'With meal';
+
+  @override
+  String get medsRelationAnytime => 'Anytime';
+
+  @override
+  String get medsSkipReasonTitle => 'Why are you skipping this dose?';
+
+  @override
+  String get medsLast30Days => 'Last 30 days';
+
+  @override
+  String get careTitle => 'Care';
+
+  @override
+  String get careFootCare => 'Foot Care';
+
+  @override
+  String get careFootCareDesc => 'Track wound checks and foot health';
+
+  @override
+  String get careEyeCare => 'Eye Care';
+
+  @override
+  String get careEyeCareDesc => 'Retinal screening reports and guidance';
+
+  @override
+  String get careAppointments => 'Appointments';
+
+  @override
+  String get careAppointmentsDesc => 'Book and manage clinic visits';
+
+  @override
+  String get carePrescriptions => 'Prescriptions';
+
+  @override
+  String get carePrescriptionsDesc => 'View prescriptions from your doctor';
+
+  @override
+  String get careLabReports => 'Lab Reports';
+
+  @override
+  String get careLabReportsDesc => 'Your lab test results';
+
+  @override
+  String get profileTitle => 'Profile';
+
+  @override
+  String get profileLanguage => 'Language';
+
+  @override
+  String get profileLogout => 'Log out';
+
+  @override
+  String get profileEditProfile => 'Edit profile';
+
+  @override
+  String get profileAbout => 'About ClinQ';
+
+  @override
+  String get profilePatient => 'Patient';
+
+  @override
+  String get profileAppearance => 'Appearance';
+
+  @override
+  String get profileThemeLight => 'Light';
+
+  @override
+  String get profileThemeDark => 'Dark';
+
+  @override
+  String get profileThemeSystem => 'System';
+
+  @override
+  String get profileAccount => 'Account';
+
+  @override
+  String get profileClinic => 'Clinic';
+
+  @override
+  String get profileSupport => 'Support';
+
+  @override
+  String get profileDiabetesType => 'Diabetes type';
+
+  @override
+  String get profileDiabetesTypeNotSet => 'Not set';
+
+  @override
+  String get profileNotifications => 'Notifications';
+
+  @override
+  String get profileCallClinic => 'Call clinic';
+
+  @override
+  String get profileFooter => 'Carefully made for your wellbeing';
+
+  @override
+  String get profileSave => 'Save';
+
+  @override
+  String get profileSaved => 'Your details have been updated';
+
+  @override
+  String get profilePhoneLocked =>
+      'Your phone number is your login and cannot be changed here. Please contact the clinic if it needs updating.';
+
+  @override
+  String get profileChangePhoto => 'Change photo';
+
+  @override
+  String get profileDiabetesSheetTitle => 'Your diabetes type';
+
+  @override
+  String get profileDiabetesSheetBody =>
+      'This helps the assistant give you the right guidance. Ask your doctor if you are not sure.';
+
+  @override
+  String get profileDiabetesType1Desc => 'The body makes no insulin';
+
+  @override
+  String get profileDiabetesType2Desc => 'Insulin is not used well';
+
+  @override
+  String get profileDiabetesGestationalDesc => 'Occurs during pregnancy';
+
+  @override
+  String get profileDiabetesPrediabetesDesc =>
+      'Glucose above normal, below diabetes';
+
+  @override
+  String get profileDiabetesNoneDesc => 'Not diabetic';
+
+  @override
+  String get profileNotificationsBody =>
+      'Alerts from the clinic are not yet delivered to this device. Your doctor still sees every alert you raise.';
+
+  @override
+  String get errorBadRequest => 'That request could not be understood.';
+
+  @override
+  String get errorValidation => 'Please check the details you entered.';
+
+  @override
+  String get errorUnauthorized =>
+      'Your session has expired. Please log in again.';
+
+  @override
+  String get errorForbidden => 'You don\'t have permission to do that.';
+
+  @override
+  String get errorNotFound => 'We couldn\'t find what you\'re looking for.';
+
+  @override
+  String get errorConflict => 'This conflicts with existing data.';
+
+  @override
+  String get errorDuplicate => 'This already exists.';
+
+  @override
+  String get errorRateLimited =>
+      'Too many attempts. Please wait a moment and try again.';
+
+  @override
+  String get errorInvalidId => 'That reference is invalid.';
+
+  @override
+  String get errorInternal =>
+      'Something went wrong on our end. Please try again.';
+
+  @override
+  String get errorAiUnavailable =>
+      'The AI assistant is temporarily unavailable. Please try again shortly.';
+}

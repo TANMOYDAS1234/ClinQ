@@ -1,0 +1,154 @@
+import 'package:flutter/material.dart';
+
+import 'app_colors.dart';
+import 'app_spacing.dart';
+
+/// Material 3 theme for ClinQ.
+///
+/// Deliberately does NOT set a custom `fontFamily`: the platform default
+/// (Roboto/Noto on Android, San Francisco on iOS) already ships full
+/// Bengali and Devanagari glyph coverage, whereas most bundled display
+/// fonts do not. Overriding it risks tofu boxes for bn/hi users.
+class AppTheme {
+  AppTheme._();
+
+  static ThemeData light() => _build(Brightness.light);
+  static ThemeData dark() => _build(Brightness.dark);
+
+  static ThemeData _build(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: AppColors.primary,
+      brightness: brightness,
+      error: AppColors.danger,
+    );
+
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+    );
+
+    // Minimum body text 16sp, headings 20-28sp, high contrast.
+    final textTheme = base.textTheme
+        .copyWith(
+          headlineLarge: base.textTheme.headlineLarge?.copyWith(
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            height: 1.25,
+          ),
+          headlineMedium: base.textTheme.headlineMedium?.copyWith(
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            height: 1.25,
+          ),
+          headlineSmall: base.textTheme.headlineSmall?.copyWith(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            height: 1.3,
+          ),
+          titleLarge: base.textTheme.titleLarge?.copyWith(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+          titleMedium: base.textTheme.titleMedium?.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+          titleSmall: base.textTheme.titleSmall?.copyWith(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+          bodyLarge: base.textTheme.bodyLarge?.copyWith(fontSize: 17, height: 1.4),
+          bodyMedium: base.textTheme.bodyMedium?.copyWith(fontSize: 16, height: 1.4),
+          bodySmall: base.textTheme.bodySmall?.copyWith(fontSize: 14, height: 1.35),
+          labelLarge: base.textTheme.labelLarge?.copyWith(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        )
+        .apply(
+          bodyColor: colorScheme.onSurface,
+          displayColor: colorScheme.onSurface,
+        );
+
+    return base.copyWith(
+      textTheme: textTheme,
+      appBarTheme: AppBarTheme(
+        backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        foregroundColor: colorScheme.onSurface,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: textTheme.titleLarge,
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: colorScheme.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        ),
+        margin: EdgeInsets.zero,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size.fromHeight(AppSpacing.minTapTarget),
+          textStyle: textTheme.labelLarge,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(AppSpacing.minTapTarget),
+          textStyle: textTheme.labelLarge,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(AppSpacing.minTapTarget, AppSpacing.minTapTarget),
+          textStyle: textTheme.labelLarge,
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: isDark ? colorScheme.surfaceContainerHigh : Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.md,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          borderSide: BorderSide(color: colorScheme.outlineVariant),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          borderSide: BorderSide(color: colorScheme.outlineVariant),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          borderSide: BorderSide(color: colorScheme.error, width: 1.5),
+        ),
+        labelStyle: textTheme.bodyMedium,
+        hintStyle: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        height: 68,
+        backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+        indicatorColor: colorScheme.primaryContainer,
+        labelTextStyle: WidgetStateProperty.all(
+          textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ),
+      dividerTheme: DividerThemeData(color: colorScheme.outlineVariant, space: 1),
+    );
+  }
+}

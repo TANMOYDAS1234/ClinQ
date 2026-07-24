@@ -1,0 +1,176 @@
+import { generateFromImage, generate, AiUnavailableError } from './gemini.js';
+import { retrieve, formatContext } from './rag.js';
+import { env } from '../../config/env.js';
+import { logger } from '../../config/logger.js';
+
+const LANGUAGE_NAME = { en: 'English', bn: 'Bengali (বাংলা)', hi: 'Hindi (हिन्दी)' };
+
+/**
+ * Diabetic foot image assessment.
+ *
+ * Scoped deliberately narrowly: the model describes what is visible and
+ * suggests an urgency, it does not diagnose. Its output is combined with the
+ * deterministic symptom rules by the caller, and the *higher* of the two risk
+ * levels always wins — an optimistic model can never talk the system down from
+ * a rule-based "urgent".
+ */
+const FOOT_SCHEMA = {
+  type: 'object',
+  properties: {
+    riskLevel: { type: 'string', enum: ['low', 'moderate', 'high', 'urgent'] },
+    wagnerGradeEstimate: { type: 'integer' },
+    observations: { type: 'string' },
+    recommendations: { type: 'string' },
+    confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
+    imageQualityIssue: { type: 'string' },
+  },
+  required: ['riskLevel', 'observations', 'recommendations', 'confidence'],
+};
+
+export async function assessFootImages({ images, symptoms, language = 'en', patientContext }) {
+  if (!images?.length) return null;
+
+  const grounding = await retrieve('diabetic foot ulcer assessment wound infection signs care', {
+    categories: ['foot_care'],
+    language: 'en',
+    limit: 4,
+  }).catch(() => []);
+
+  const system = `You are a clinical triage assistant supporting ${env.DOCTOR_DISPLAY_NAME}, a Consultant Diabetologist, in reviewing diabetic foot photographs submitted by patients.
+
+Your role is strictly limited:
+- Describe only what is actually visible in the photograph. Do not speculate about what might be underneath.
+- You are NOT making a diagnosis. A clinician reviews every case.
+- When the image is blurred, too dark, or does not clearly show a foot, say so in "imageQualityIssue" and set confidence to "low". Never guess to be helpful.
+- Err toward a HIGHER risk level when uncertain. Under-calling a diabetic foot infection can cost a patient their limb.
+
+Set riskLevel using these anchors:
+- "urgent": visible black/necrotic tissue, gangrene, exposed bone or tendon, spreading redness with streaking, large amounts of pus.
+- "high": open ulcer, purulent discharge, significant surrounding redness or swelling, deep wound.
+- "moderate": superficial break in skin, callus with surrounding redness, blister, early pressure damage.
+- "low": intact skin, dry skin, well-healed scar, mild callus with no redness.
+
+wagnerGradeEstimate: 0-5 on the Wagner ulcer classification, or omit if it cannot be judged from the image.
+observations: 2-4 plain sentences describing what is visible.
+recommendations: what the patient should do next, in ${LANGUAGE_NAME[language] ?? 'English'}. Never recommend specific medicines or antibiotics.
+
+Approved clinical reference material:
+${formatContext(grounding) ?? 'None available.'}`;
+
+  const symptomText = Object.entries(symptoms ?? {})
+    .filter(([, v]) => v !== false && v != null && v !== 'none')
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(', ');
+
+  const prompt = `Assess these diabetic foot photograph(s).
+
+Patient-reported symptoms: ${symptomText || 'none reported'}
+
+Patient background:
+${patientContext ?? 'Not available.'}
+
+Return your assessment as JSON.`;
+
+  try {
+    const result = await generateFromImage({ system, prompt, images, responseSchema: FOOT_SCHEMA });
+    const json = result.json;
+    if (!json) throw new AiUnavailableError(new Error('unparseable foot assessment'));
+
+    return {
+      riskLevel: json.riskLevel,
+      wagnerGradeEstimate: Number.isInteger(json.wagnerGradeEstimate) ? json.wagnerGradeEstimate : undefined,
+      observations: json.observations,
+      recommendations: json.recommendations,
+      confidence: json.imageQualityIssue ? 'low' : json.confidence,
+      imageQualityIssue: json.imageQualityIssue ?? null,
+      modelVersion: result.modelVersion,
+      generatedAt: new Date(),
+    };
+  } catch (err) {
+    logger.error({ err: err?.message }, 'foot image assessment failed');
+    return null; // the caller falls back to rule-based risk alone
+  }
+}
+
+/**
+ * Explains an existing ophthalmology report in plain language.
+ *
+ * Note what this does NOT do: it does not grade retinopathy from a fundus
+ * image. That requires a validated diagnostic device and regulatory clearance.
+ * It only translates a report a qualified clinician has already produced.
+ */
+const EYE_SCHEMA = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    whatItMeans: { type: 'string' },
+    recommendedActions: { type: 'string' },
+    referralUrgency: { type: 'string', enum: ['routine', 'soon', 'urgent'] },
+    extractedGrade: {
+      type: 'string',
+      enum: ['no_dr', 'mild_npdr', 'moderate_npdr', 'severe_npdr', 'pdr', 'unknown'],
+    },
+  },
+  required: ['summary', 'whatItMeans', 'recommendedActions', 'referralUrgency'],
+};
+
+export async function explainEyeReport({ reportText, images, reportedGrade, language = 'en', patientContext }) {
+  const grounding = await retrieve('diabetic retinopathy grading what it means follow up screening', {
+    categories: ['eye_care'],
+    language: 'en',
+    limit: 4,
+  }).catch(() => []);
+
+  const system = `You explain eye examination reports to patients of ${env.DOCTOR_DISPLAY_NAME}, a Consultant Diabetologist. Many of these patients have diabetic retinopathy.
+
+Rules:
+- You are explaining a report that an eye specialist has ALREADY produced. You are not examining the eye or making a diagnosis yourself.
+- Never grade retinopathy from an image. If you are given a photograph rather than a written report, read only the printed text in it. If there is no readable text, say the report could not be read and set extractedGrade to "unknown".
+- Write in ${LANGUAGE_NAME[language] ?? 'English'}, for someone with no medical training. Explain every medical term the first time you use it.
+- Be honest but not alarming. Diabetic retinopathy is treatable when caught early, and that reassurance belongs in the explanation.
+- Set referralUrgency to "urgent" for proliferative retinopathy (PDR), macular oedema, or any mention of sudden vision change or vitreous haemorrhage. "soon" for severe NPDR. "routine" otherwise.
+- Never suggest medicines or procedures. Direct the patient to their eye specialist and to ${env.DOCTOR_DISPLAY_NAME}.
+
+Approved reference material:
+${formatContext(grounding) ?? 'None available.'}`;
+
+  const prompt = `Explain this eye report to the patient.
+
+Grade recorded in the app: ${reportedGrade ?? 'not specified'}
+
+Report text:
+${reportText?.trim() || '(no text provided — read the attached image if present)'}
+
+Patient background:
+${patientContext ?? 'Not available.'}
+
+Return JSON.`;
+
+  try {
+    const result = images?.length
+      ? await generateFromImage({ system, prompt, images, responseSchema: EYE_SCHEMA })
+      : await generate({
+          system,
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          responseSchema: EYE_SCHEMA,
+          temperature: 0.2,
+        });
+
+    const json = result.json;
+    if (!json) return null;
+
+    return {
+      summary: json.summary,
+      whatItMeans: json.whatItMeans,
+      recommendedActions: json.recommendedActions,
+      referralUrgency: json.referralUrgency,
+      extractedGrade: json.extractedGrade ?? 'unknown',
+      language,
+      modelVersion: result.modelVersion,
+      generatedAt: new Date(),
+    };
+  } catch (err) {
+    logger.error({ err: err?.message }, 'eye report explanation failed');
+    return null;
+  }
+}

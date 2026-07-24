@@ -1,0 +1,62 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/network/api_client.dart';
+import '../../../shared/models/paged.dart';
+import '../../../shared/providers/core_providers.dart';
+import '../domain/chat_message.dart';
+import '../domain/chat_session.dart';
+import '../domain/send_message_result.dart';
+
+/// Talks to `/chat/*` (API_CONTRACT.md §2).
+class ChatRepository {
+  ChatRepository(this._client);
+
+  final ApiClient _client;
+
+  Future<SendMessageResult> sendMessage({
+    String? sessionId,
+    required String text,
+    required String language,
+    List<String>? attachments,
+  }) async {
+    final json = await _client.postJson(
+      '/chat/message',
+      body: {
+        if (sessionId != null) 'sessionId': sessionId,
+        'text': text,
+        'language': language,
+        if (attachments != null && attachments.isNotEmpty) 'attachments': attachments,
+      },
+    );
+    return SendMessageResult.fromJson(json);
+  }
+
+  Future<Paged<ChatSession>> getSessions({int page = 1, int limit = 50}) async {
+    final json = await _client.getJson('/chat/sessions', query: {'page': page, 'limit': limit});
+    return Paged.fromJson(json, ChatSession.fromJson);
+  }
+
+  Future<Paged<ChatMessage>> getSessionMessages(
+    String sessionId, {
+    int page = 1,
+    int limit = 50,
+  }) async {
+    final json = await _client.getJson(
+      '/chat/sessions/$sessionId/messages',
+      query: {'page': page, 'limit': limit},
+    );
+    return Paged.fromJson(json, ChatMessage.fromJson);
+  }
+
+  Future<void> archiveSession(String sessionId) async {
+    await _client.postJson('/chat/sessions/$sessionId/archive');
+  }
+
+  Future<void> flagMessage(String messageId) async {
+    await _client.postJson('/chat/messages/$messageId/flag');
+  }
+}
+
+final Provider<ChatRepository> chatRepositoryProvider = Provider<ChatRepository>((ref) {
+  return ChatRepository(ref.watch(apiClientProvider));
+});

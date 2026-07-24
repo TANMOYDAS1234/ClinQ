@@ -1,0 +1,528 @@
+import { Router } from 'express';
+import dayjs from 'dayjs';
+import { z } from 'zod';
+import { requireAuth, requireClinician } from '../middleware/auth.js';
+import { validate, q } from '../middleware/validate.js';
+import { asyncHandler, notFound } from '../middleware/errors.js';
+import { audit } from '../middleware/audit.js';
+import { User, ROLES } from '../models/User.js';
+import { PatientProfile } from '../models/PatientProfile.js';
+import { ClinicalAlert, ALERT_SEVERITY } from '../models/ClinicalAlert.js';
+import { Appointment } from '../models/Appointment.js';
+import { GlucoseReading } from '../models/GlucoseReading.js';
+import { ChatSession } from '../models/ChatSession.js';
+import { ChatMessage } from '../models/ChatMessage.js';
+import { KnowledgeChunk } from '../models/KnowledgeChunk.js';
+import { Hba1cRecord } from '../models/Hba1cRecord.js';
+import { FootAssessment } from '../models/FootAssessment.js';
+import { acknowledgeAlert, resolveAlert } from '../services/alerts.js';
+import { computeAdherence, glucoseTrends, computeHealthScore } from '../services/analytics.js';
+import { buildPatientContext } from '../services/patientContext.js';
+import { embed } from '../services/ai/gemini.js';
+import { paged, pageParams } from '../utils/pagination.js';
+import { logger } from '../config/logger.js';
+
+const router = Router();
+router.use(requireAuth, requireClinician);
+
+// ---------------------------------------------------------------------------
+// Overview
+// ---------------------------------------------------------------------------
+
+router.get(
+  '/overview',
+  asyncHandler(async (req, res) => {
+    const dayStart = dayjs().startOf('day').toDate();
+    const dayEnd = dayjs().endOf('day').toDate();
+
+    const [patientCount, activeToday, alertCounts, appointmentsToday, riskGroups] = await Promise.all([
+      User.countDocuments({ role: ROLES.PATIENT, isActive: true }),
+      GlucoseReading.distinct('patient', { measuredAt: { $gte: dayStart } }).then((ids) => ids.length),
+      ClinicalAlert.aggregate([
+        { $match: { status: 'open' } },
+        { $group: { _id: '$severity', count: { $sum: 1 } } },
+      ]),
+      Appointment.countDocuments({
+        scheduledFor: { $gte: dayStart, $lte: dayEnd },
+        status: { $nin: ['cancelled'] },
+      }),
+      PatientProfile.aggregate([{ $group: { _id: '$riskBand', count: { $sum: 1 } } }]),
+    ]);
+
+    const bySeverity = Object.fromEntries(alertCounts.map((a) => [a._id, a.count]));
+    const byRisk = Object.fromEntries(riskGroups.map((r) => [r._id ?? 'low', r.count]));
+
+    res.json({
+      patientCount,
+      activeToday,
+      openAlerts: {
+        emergency: bySeverity.emergency ?? 0,
+        urgent: bySeverity.urgent ?? 0,
+        warning: bySeverity.warning ?? 0,
+        total: alertCounts.reduce((s, a) => s + a.count, 0),
+      },
+      appointmentsToday,
+      riskDistribution: {
+        low: byRisk.low ?? 0,
+        moderate: byRisk.moderate ?? 0,
+        high: byRisk.high ?? 0,
+        critical: byRisk.critical ?? 0,
+      },
+    });
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Patient list + segmentation
+// ---------------------------------------------------------------------------
+
+router.get(
+  '/patients',
+  validate({
+    query: pageParams.and(
+      z.object({
+        riskBand: z.enum(['low', 'moderate', 'high', 'critical']).optional(),
+        search: z.string().max(120).optional(),
+        sort: z.enum(['risk', 'name', 'recent']).default('risk'),
+      }),
+    ),
+  }),
+  audit('read', 'PatientList'),
+  asyncHandler(async (req, res) => {
+    const { page, limit, skip, riskBand, search, sort } = q(req);
+
+    const userFilter = { role: ROLES.PATIENT, isActive: true };
+    if (search) {
+      // Escaped so a patient searching for "a.b" cannot inject a regex.
+      const safe = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      userFilter.$or = [{ name: new RegExp(safe, 'i') }, { phone: new RegExp(safe, 'i') }];
+    }
+
+    let profileFilter = {};
+    if (riskBand) profileFilter = { riskBand };
+
+    const matchingProfiles = await PatientProfile.find(profileFilter).select('user riskScore riskBand').lean();
+    const profileMap = new Map(matchingProfiles.map((p) => [p.user.toString(), p]));
+
+    if (riskBand) userFilter._id = { $in: matchingProfiles.map((p) => p.user) };
+
+    const sortSpec = sort === 'name' ? { name: 1 } : { createdAt: -1 };
+    const [users, total] = await Promise.all([
+      User.find(userFilter).sort(sortSpec).skip(skip).limit(limit).select('name phone createdAt').lean(),
+      User.countDocuments(userFilter),
+    ]);
+
+    const ids = users.map((u) => u._id);
+    const [lastReadings, alertCounts] = await Promise.all([
+      GlucoseReading.aggregate([
+        { $match: { patient: { $in: ids } } },
+        { $sort: { measuredAt: -1 } },
+        { $group: { _id: '$patient', measuredAt: { $first: '$measuredAt' }, value: { $first: '$valueMgDl' } } },
+      ]),
+      ClinicalAlert.aggregate([
+        { $match: { patient: { $in: ids }, status: 'open' } },
+        { $group: { _id: '$patient', count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    const readingMap = new Map(lastReadings.map((r) => [r._id.toString(), r]));
+    const alertMap = new Map(alertCounts.map((a) => [a._id.toString(), a.count]));
+
+    const items = users.map((u) => {
+      const id = u._id.toString();
+      const profile = profileMap.get(id);
+      const reading = readingMap.get(id);
+      return {
+        id: u._id,
+        name: u.name,
+        phone: u.phone,
+        riskScore: profile?.riskScore ?? 0,
+        riskBand: profile?.riskBand ?? 'low',
+        lastReadingAt: reading?.measuredAt ?? null,
+        lastReadingValue: reading?.value ?? null,
+        openAlertCount: alertMap.get(id) ?? 0,
+      };
+    });
+
+    if (sort === 'risk') items.sort((a, b) => b.riskScore - a.riskScore);
+    if (sort === 'recent') {
+      items.sort((a, b) => new Date(b.lastReadingAt ?? 0) - new Date(a.lastReadingAt ?? 0));
+    }
+
+    res.json(paged(items, { page, limit, total }));
+  }),
+);
+
+router.get(
+  '/patients/:id/summary',
+  audit('read', 'PatientSummary'),
+  asyncHandler(async (req, res) => {
+    const patient = await User.findOne({ _id: req.params.id, role: ROLES.PATIENT }).lean();
+    if (!patient) throw notFound('Patient not found');
+    req.patientId = patient._id;
+
+    const [profile, healthScore, trends, adherence, alerts, latestHba1c, footAssessments, context] =
+      await Promise.all([
+        PatientProfile.findOne({ user: patient._id }).lean(),
+        computeHealthScore(patient._id, { days: 30 }),
+        glucoseTrends(patient._id, { days: 90 }),
+        computeAdherence(patient._id, { days: 30 }),
+        ClinicalAlert.find({ patient: patient._id }).sort({ createdAt: -1 }).limit(20).lean(),
+        Hba1cRecord.find({ patient: patient._id }).sort({ testedOn: -1 }).limit(6).lean(),
+        FootAssessment.find({ patient: patient._id }).sort({ assessedAt: -1 }).limit(5).lean(),
+        buildPatientContext(patient._id),
+      ]);
+
+    res.json({
+      patient: {
+        id: patient._id,
+        name: patient.name,
+        phone: patient.phone,
+        email: patient.email ?? null,
+        language: patient.language,
+        dateOfBirth: patient.dateOfBirth ?? null,
+        gender: patient.gender,
+        age: patient.dateOfBirth ? dayjs().diff(dayjs(patient.dateOfBirth), 'year') : null,
+      },
+      profile,
+      healthScore,
+      trends,
+      adherence,
+      hba1cHistory: latestHba1c.map((h) => ({ percentage: h.percentage, testedOn: h.testedOn })),
+      footAssessments: footAssessments.map((f) => ({
+        id: f._id,
+        assessedAt: f.assessedAt,
+        site: f.site,
+        finalRiskLevel: f.finalRiskLevel,
+      })),
+      alerts: alerts.map(serialiseAlert),
+      // The same summary the AI assistant sees — useful for the doctor to
+      // understand why it answered the way it did.
+      aiContext: context.text,
+    });
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Alerts
+// ---------------------------------------------------------------------------
+
+router.get(
+  '/alerts',
+  validate({
+    query: pageParams.and(
+      z.object({
+        status: z.enum(['open', 'acknowledged', 'resolved', 'dismissed']).optional(),
+        severity: z.enum(ALERT_SEVERITY).optional(),
+      }),
+    ),
+  }),
+  audit('read', 'ClinicalAlert'),
+  asyncHandler(async (req, res) => {
+    const { page, limit, skip, status, severity } = q(req);
+    const filter = { ...(status ? { status } : {}), ...(severity ? { severity } : {}) };
+
+    const [items, total] = await Promise.all([
+      ClinicalAlert.find(filter)
+        .sort({ severity: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('patient', 'name phone')
+        .lean(),
+      ClinicalAlert.countDocuments(filter),
+    ]);
+
+    res.json(paged(items.map(serialiseAlert), { page, limit, total }));
+  }),
+);
+
+router.post(
+  '/alerts/:id/acknowledge',
+  audit('update', 'ClinicalAlert'),
+  asyncHandler(async (req, res) => {
+    const alert = await acknowledgeAlert(req.params.id, req.user._id);
+    if (!alert) throw notFound('Alert not found');
+    res.json({ alert: serialiseAlert(alert) });
+  }),
+);
+
+router.post(
+  '/alerts/:id/resolve',
+  validate({ body: z.object({ notes: z.string().max(2000).optional() }) }),
+  audit('update', 'ClinicalAlert'),
+  asyncHandler(async (req, res) => {
+    const alert = await resolveAlert(req.params.id, req.user._id, req.body.notes);
+    if (!alert) throw notFound('Alert not found');
+    res.json({ alert: serialiseAlert(alert) });
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// AI chat monitoring
+// ---------------------------------------------------------------------------
+
+router.get(
+  '/chat-review',
+  validate({
+    query: pageParams.and(
+      z.object({
+        flagged: z.coerce.boolean().default(true),
+        urgency: z.enum(['routine', 'advice', 'urgent', 'emergency']).optional(),
+      }),
+    ),
+  }),
+  audit('read', 'ChatSession'),
+  asyncHandler(async (req, res) => {
+    const { page, limit, skip, flagged, urgency } = q(req);
+    const filter = {
+      ...(flagged ? { flaggedForReview: true } : {}),
+      ...(urgency ? { highestUrgency: urgency } : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      ChatSession.find(filter)
+        .sort({ lastMessageAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('patient', 'name phone')
+        .lean(),
+      ChatSession.countDocuments(filter),
+    ]);
+
+    res.json(
+      paged(
+        items.map((s) => ({
+          id: s._id,
+          patientId: s.patient?._id,
+          patientName: s.patient?.name ?? null,
+          title: s.title,
+          language: s.language,
+          messageCount: s.messageCount,
+          highestUrgency: s.highestUrgency,
+          flaggedForReview: s.flaggedForReview,
+          reviewedAt: s.reviewedAt ?? null,
+          lastMessageAt: s.lastMessageAt,
+        })),
+        { page, limit, total },
+      ),
+    );
+  }),
+);
+
+router.get(
+  '/chat-review/:sessionId',
+  audit('read', 'ChatMessage'),
+  asyncHandler(async (req, res) => {
+    const session = await ChatSession.findById(req.params.sessionId).populate('patient', 'name phone').lean();
+    if (!session) throw notFound('Conversation not found');
+    req.patientId = session.patient?._id;
+
+    const messages = await ChatMessage.find({ session: session._id }).sort({ seq: 1 }).lean();
+
+    res.json({
+      session: {
+        id: session._id,
+        patientId: session.patient?._id,
+        patientName: session.patient?.name ?? null,
+        title: session.title,
+        highestUrgency: session.highestUrgency,
+        language: session.language,
+      },
+      messages: messages.map((m) => ({
+        id: m._id,
+        seq: m.seq,
+        role: m.role,
+        content: m.content,
+        urgency: m.triage?.urgency ?? 'routine',
+        matchedRules: m.triage?.matchedRules ?? [],
+        ruleDriven: m.triage?.ruleDriven ?? false,
+        // Which approved chunks grounded the answer — the audit trail for
+        // "why did the assistant say that?".
+        citations: (m.citations ?? []).map((c) => ({ id: c.chunk, title: c.title, score: c.score })),
+        isFallback: m.isFallback ?? false,
+        flaggedByPatient: m.flaggedByPatient ?? false,
+        modelVersion: m.modelVersion ?? null,
+        latencyMs: m.latencyMs ?? null,
+        createdAt: m.createdAt,
+      })),
+    });
+  }),
+);
+
+router.post(
+  '/chat-review/:sessionId/reviewed',
+  asyncHandler(async (req, res) => {
+    const session = await ChatSession.findByIdAndUpdate(
+      req.params.sessionId,
+      { flaggedForReview: false, reviewedBy: req.user._id, reviewedAt: new Date() },
+      { new: true },
+    );
+    if (!session) throw notFound('Conversation not found');
+    res.status(204).end();
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Knowledge base curation
+// ---------------------------------------------------------------------------
+
+const knowledgeSchema = z.object({
+  docId: z.string().max(120),
+  title: z.string().min(1).max(300),
+  section: z.string().max(300).optional(),
+  content: z.string().min(20).max(8000),
+  language: z.enum(['en', 'bn', 'hi']).default('en'),
+  category: z.enum([
+    'diabetes_basics', 'hypoglycaemia', 'hyperglycaemia', 'insulin', 'oral_medication',
+    'diet', 'exercise', 'foot_care', 'eye_care', 'kidney', 'hypertension',
+    'sick_day_rules', 'emergency', 'clinic_info', 'general',
+  ]),
+  tags: z.array(z.string().max(40)).max(20).default([]),
+  sourceCitation: z.string().max(500).optional(),
+});
+
+router.get(
+  '/knowledge',
+  validate({
+    query: pageParams.and(
+      z.object({
+        status: z.enum(['draft', 'pending_review', 'approved', 'retired']).optional(),
+        category: z.string().optional(),
+        language: z.enum(['en', 'bn', 'hi']).optional(),
+      }),
+    ),
+  }),
+  asyncHandler(async (req, res) => {
+    const { page, limit, skip, status, category, language } = q(req);
+    const filter = {
+      ...(status ? { status } : {}),
+      ...(category ? { category } : {}),
+      ...(language ? { language } : {}),
+    };
+    const [items, total] = await Promise.all([
+      KnowledgeChunk.find(filter).sort({ updatedAt: -1 }).skip(skip).limit(limit).lean(),
+      KnowledgeChunk.countDocuments(filter),
+    ]);
+    res.json(paged(items.map(serialiseChunk), { page, limit, total }));
+  }),
+);
+
+router.post(
+  '/knowledge',
+  validate({ body: knowledgeSchema }),
+  asyncHandler(async (req, res) => {
+    const chunk = await KnowledgeChunk.create({ ...req.body, status: 'pending_review' });
+    // Embed in the background — the doctor should not wait on the API, and the
+    // chunk is not retrievable until approved anyway.
+    embedChunk(chunk._id, req.body.content, req.body.title).catch((err) =>
+      logger.error({ err: err?.message }, 'knowledge embedding failed'),
+    );
+    res.status(201).json({ chunk: serialiseChunk(chunk) });
+  }),
+);
+
+router.patch(
+  '/knowledge/:id',
+  validate({ body: knowledgeSchema.partial() }),
+  asyncHandler(async (req, res) => {
+    const chunk = await KnowledgeChunk.findById(req.params.id);
+    if (!chunk) throw notFound('Knowledge entry not found');
+
+    const contentChanged = req.body.content && req.body.content !== chunk.content;
+    Object.assign(chunk, req.body);
+    if (contentChanged) {
+      // Edited content must be re-approved — otherwise a chunk approved as safe
+      // could be silently rewritten and still serve patients.
+      chunk.status = 'pending_review';
+      chunk.version += 1;
+      chunk.approvedBy = undefined;
+      chunk.approvedAt = undefined;
+    }
+    await chunk.save();
+
+    if (contentChanged) {
+      embedChunk(chunk._id, chunk.content, chunk.title).catch(() => {});
+    }
+    res.json({ chunk: serialiseChunk(chunk) });
+  }),
+);
+
+router.post(
+  '/knowledge/:id/approve',
+  requireClinician,
+  asyncHandler(async (req, res) => {
+    const chunk = await KnowledgeChunk.findById(req.params.id).select('+embedding');
+    if (!chunk) throw notFound('Knowledge entry not found');
+
+    // Refuse to approve something that cannot actually be retrieved.
+    if (!chunk.embedding?.length) {
+      await embedChunk(chunk._id, chunk.content, chunk.title);
+    }
+
+    chunk.status = 'approved';
+    chunk.approvedBy = req.user._id;
+    chunk.approvedAt = new Date();
+    await chunk.save();
+
+    res.json({ chunk: serialiseChunk(chunk) });
+  }),
+);
+
+router.post(
+  '/knowledge/:id/retire',
+  asyncHandler(async (req, res) => {
+    const chunk = await KnowledgeChunk.findByIdAndUpdate(req.params.id, { status: 'retired' }, { new: true });
+    if (!chunk) throw notFound('Knowledge entry not found');
+    res.json({ chunk: serialiseChunk(chunk) });
+  }),
+);
+
+async function embedChunk(id, content, title) {
+  const vector = await embed(content, { taskType: 'RETRIEVAL_DOCUMENT', title });
+  await KnowledgeChunk.updateOne(
+    { _id: id },
+    { embedding: vector, embeddingModel: process.env.GEMINI_EMBED_MODEL, embeddedAt: new Date() },
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+function serialiseAlert(a) {
+  const patient = a.patient && typeof a.patient === 'object' && a.patient.name ? a.patient : null;
+  return {
+    id: a._id,
+    patientId: patient?._id ?? a.patient,
+    patientName: patient?.name ?? null,
+    patientPhone: patient?.phone ?? null,
+    severity: a.severity,
+    type: a.type,
+    title: a.title,
+    detail: a.detail ?? null,
+    status: a.status,
+    matchedRules: a.matchedRules ?? [],
+    source: a.source,
+    acknowledgedAt: a.acknowledgedAt ?? null,
+    resolvedAt: a.resolvedAt ?? null,
+    resolutionNotes: a.resolutionNotes ?? null,
+    createdAt: a.createdAt,
+  };
+}
+
+const serialiseChunk = (c) => ({
+  id: c._id,
+  docId: c.docId,
+  title: c.title,
+  section: c.section ?? null,
+  content: c.content,
+  language: c.language,
+  category: c.category,
+  tags: c.tags ?? [],
+  status: c.status,
+  version: c.version,
+  hasEmbedding: Boolean(c.embeddedAt),
+  sourceCitation: c.sourceCitation ?? null,
+  approvedAt: c.approvedAt ?? null,
+  updatedAt: c.updatedAt,
+});
+
+export default router;

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug builds only.
+
+  Android 9+ blocks cleartext HTTP by default, which would stop the app talking
+  to a development backend on http://localhost:4000. This config re-permits it,
+  but ONLY for loopback and private LAN addresses — everything else still
+  requires HTTPS, even in debug.
+
+  This file lives under src/debug/ so it is never merged into a release build.
+  A release build talks to the production backend over HTTPS with cleartext
+  disabled, which for patient data is not negotiable.
+-->
+<network-security-config>
+    <!-- Reached via `adb reverse tcp:4000 tcp:4000` over USB. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <!-- Android emulator's alias for the host machine. -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+
+    <!-- Development machine on the local Wi-Fi network. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">192.168.0.0</domain>
+        <domain includeSubdomains="true">192.168.1.9</domain>
+    </domain-config>
+
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

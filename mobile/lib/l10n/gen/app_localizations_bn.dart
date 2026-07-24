@@ -1,0 +1,791 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for Bengali Bangla (`bn`).
+class AppLocalizationsBn extends AppLocalizations {
+  AppLocalizationsBn([String locale = 'bn']) : super(locale);
+
+  @override
+  String get appName => 'ClinQ';
+
+  @override
+  String get appTagline => 'ডাঃ অমিত কুমার দে-র সঙ্গে ডায়াবেটিস পরিচর্যা';
+
+  @override
+  String get commonRetry => 'আবার চেষ্টা করুন';
+
+  @override
+  String get commonCancel => 'বাতিল';
+
+  @override
+  String get commonSave => 'সেভ করুন';
+
+  @override
+  String get commonSubmit => 'জমা দিন';
+
+  @override
+  String get commonLoading => 'লোড হচ্ছে…';
+
+  @override
+  String get commonOk => 'ঠিক আছে';
+
+  @override
+  String get commonClose => 'বন্ধ করুন';
+
+  @override
+  String get commonDelete => 'মুছুন';
+
+  @override
+  String get commonEdit => 'সম্পাদনা';
+
+  @override
+  String get commonYes => 'হ্যাঁ';
+
+  @override
+  String get commonNo => 'না';
+
+  @override
+  String get commonSomethingWentWrong => 'কিছু একটা সমস্যা হয়েছে';
+
+  @override
+  String get commonNoInternet =>
+      'ইন্টারনেট সংযোগ নেই। নেটওয়ার্ক পরীক্ষা করুন।';
+
+  @override
+  String get commonTryAgain => 'আবার চেষ্টা করুন';
+
+  @override
+  String get commonComingSoon => 'শীঘ্রই আসছে';
+
+  @override
+  String get commonComingSoonBody =>
+      'এই অংশটি তৈরি হচ্ছে, পরবর্তী আপডেটে পাওয়া যাবে।';
+
+  @override
+  String get commonRequiredField => 'এই তথ্যটি আবশ্যক';
+
+  @override
+  String get commonUnknownError => 'একটি অপ্রত্যাশিত সমস্যা হয়েছে';
+
+  @override
+  String get languagePickerTitle => 'আপনার ভাষা বেছে নিন';
+
+  @override
+  String get languagePickerSubtitle =>
+      'প্রোফাইল থেকে আপনি যেকোনো সময় ভাষা বদলাতে পারবেন।';
+
+  @override
+  String get languageEnglish => 'English';
+
+  @override
+  String get languageBengali => 'বাংলা';
+
+  @override
+  String get languageHindi => 'हिन्दी';
+
+  @override
+  String get continueButton => 'এগিয়ে যান';
+
+  @override
+  String get authLoginTitle => 'স্বাগতম';
+
+  @override
+  String get authLoginSubtitle => 'আপনার ডায়াবেটিস পরিচর্যা দেখতে লগ ইন করুন।';
+
+  @override
+  String get authRegisterTitle => 'অ্যাকাউন্ট তৈরি করুন';
+
+  @override
+  String get authRegisterSubtitle => 'শুরু করতে নিজের সম্পর্কে কিছু তথ্য দিন।';
+
+  @override
+  String get authPhoneLabel => 'ফোন নম্বর';
+
+  @override
+  String get authPhoneHint => '৯৮৩০০ ১২৩৪৫';
+
+  @override
+  String get authPasswordLabel => 'পাসওয়ার্ড';
+
+  @override
+  String get authNameLabel => 'পুরো নাম';
+
+  @override
+  String get authEmailLabel => 'ইমেল (ঐচ্ছিক)';
+
+  @override
+  String get authDateOfBirthLabel => 'জন্ম তারিখ';
+
+  @override
+  String get authGenderLabel => 'লিঙ্গ';
+
+  @override
+  String get authGenderMale => 'পুরুষ';
+
+  @override
+  String get authGenderFemale => 'মহিলা';
+
+  @override
+  String get authGenderOther => 'অন্যান্য';
+
+  @override
+  String get authDiabetesTypeLabel => 'ডায়াবেটিসের ধরন';
+
+  @override
+  String get authDiabetesType1 => 'টাইপ ১';
+
+  @override
+  String get authDiabetesType2 => 'টাইপ ২';
+
+  @override
+  String get authDiabetesTypeGestational => 'গর্ভাবস্থার ডায়াবেটিস';
+
+  @override
+  String get authDiabetesTypePrediabetes => 'প্রি-ডায়াবেটিস';
+
+  @override
+  String get authLoginButton => 'লগ ইন';
+
+  @override
+  String get authRegisterButton => 'অ্যাকাউন্ট তৈরি করুন';
+
+  @override
+  String get authNoAccount => 'অ্যাকাউন্ট নেই?';
+
+  @override
+  String get authHaveAccount => 'আগে থেকেই অ্যাকাউন্ট আছে?';
+
+  @override
+  String get authGoToRegister => 'নথিভুক্ত করুন';
+
+  @override
+  String get authGoToLogin => 'লগ ইন করুন';
+
+  @override
+  String get authInvalidCredentials => 'ফোন নম্বর বা পাসওয়ার্ড ভুল';
+
+  @override
+  String get authPasswordTooShort => 'পাসওয়ার্ড অন্তত ৮ অক্ষরের হতে হবে';
+
+  @override
+  String get authPasswordHelper => 'কমপক্ষে ৮টি অক্ষর';
+
+  @override
+  String get authNameTooShort => 'আপনার পুরো নাম লিখুন';
+
+  @override
+  String get authInvalidPhone => 'সঠিক ১০ সংখ্যার মোবাইল নম্বর লিখুন';
+
+  @override
+  String get authInvalidEmail => 'সঠিক ইমেল দিন, অথবা ফাঁকা রাখুন';
+
+  @override
+  String get authPasswordRequired => 'আপনার পাসওয়ার্ড লিখুন';
+
+  @override
+  String get authPasswordTooLong => 'পাসওয়ার্ড ১২৮ অক্ষরের বেশি হতে পারবে না';
+
+  @override
+  String get authConfirmPasswordLabel => 'পাসওয়ার্ড নিশ্চিত করুন';
+
+  @override
+  String get authPasswordMismatch => 'দুটি পাসওয়ার্ড মিলছে না';
+
+  @override
+  String get authNameTooLong => 'নাম ১২০ অক্ষরের বেশি হতে পারবে না';
+
+  @override
+  String get authDateOfBirthRequired => 'আপনার জন্ম তারিখ নির্বাচন করুন';
+
+  @override
+  String get authDateOfBirthTooYoung => 'জন্ম তারিখ অন্তত ১ বছর আগের হতে হবে';
+
+  @override
+  String get authGenderRequired => 'একটি বিকল্প নির্বাচন করুন';
+
+  @override
+  String get authDiabetesTypeRequired => 'আপনার ডায়াবেটিসের ধরন নির্বাচন করুন';
+
+  @override
+  String get authDiabetesTypeNone => 'নেই / ডায়াবেটিস নয়';
+
+  @override
+  String get authDiabetesTypeHelper =>
+      'নিশ্চিত না হলে আপনার ডাক্তারকে জিজ্ঞাসা করুন';
+
+  @override
+  String get authLogoutConfirmTitle => 'লগ আউট করবেন?';
+
+  @override
+  String get authLogoutConfirmBody =>
+      'আপনার পরিচর্যার তথ্য দেখতে আবার লগ ইন করতে হবে।';
+
+  @override
+  String get navHome => 'হোম';
+
+  @override
+  String get navChat => 'চ্যাট';
+
+  @override
+  String get navTrack => 'ট্র্যাক';
+
+  @override
+  String get navCare => 'কেয়ার';
+
+  @override
+  String get navProfile => 'প্রোফাইল';
+
+  @override
+  String dashboardGreetingMorning(String name) {
+    return 'সুপ্রভাত, $name';
+  }
+
+  @override
+  String dashboardGreetingAfternoon(String name) {
+    return 'শুভ অপরাহ্ন, $name';
+  }
+
+  @override
+  String dashboardGreetingEvening(String name) {
+    return 'শুভ সন্ধ্যা, $name';
+  }
+
+  @override
+  String get dashboardHealthScore => 'স্বাস্থ্য স্কোর';
+
+  @override
+  String dashboardHealthScoreBand(String band) {
+    return '$band';
+  }
+
+  @override
+  String get dashboardGlucoseLatest => 'সাম্প্রতিক ব্লাড সুগার';
+
+  @override
+  String get dashboardGlucoseAverage => '৭ দিনের গড়';
+
+  @override
+  String get dashboardTimeInRange => 'টাইম ইন রেঞ্জ';
+
+  @override
+  String get dashboardAdherence => 'ওষুধ মেনে চলা';
+
+  @override
+  String dashboardTodayPending(int count) {
+    return 'আজ $countটি বাকি';
+  }
+
+  @override
+  String get dashboardNextAppointment => 'পরবর্তী অ্যাপয়েন্টমেন্ট';
+
+  @override
+  String get dashboardNoAppointment => 'কোনো অ্যাপয়েন্টমেন্ট ঠিক করা নেই';
+
+  @override
+  String get dashboardOpenAlerts => 'সক্রিয় সতর্কতা';
+
+  @override
+  String get dashboardNoAlerts => 'কোনো সতর্কতা নেই';
+
+  @override
+  String get dashboardRecommendations => 'আপনার জন্য পরামর্শ';
+
+  @override
+  String get dashboardNoRecommendations => 'আপাতত সব ঠিক আছে';
+
+  @override
+  String get dashboardFootScreeningDue => 'পায়ের পরীক্ষা বাকি';
+
+  @override
+  String get dashboardEyeScreeningDue => 'চোখের পরীক্ষা বাকি';
+
+  @override
+  String get dashboardHba1cDue => 'HbA1c পরীক্ষা বাকি';
+
+  @override
+  String get dashboardEmptyTitle => 'এখনও কোনো তথ্য নেই';
+
+  @override
+  String get dashboardEmptyBody =>
+      'আপনার স্বাস্থ্য সারাংশ দেখতে ব্লাড সুগার ও ওষুধের তথ্য দেওয়া শুরু করুন।';
+
+  @override
+  String get dashboardErrorTitle => 'ড্যাশবোর্ড লোড করা গেল না';
+
+  @override
+  String get chatTitle => 'AI সহায়ক';
+
+  @override
+  String get chatComposerHint => 'আপনার স্বাস্থ্য নিয়ে প্রশ্ন করুন…';
+
+  @override
+  String get chatSend => 'পাঠান';
+
+  @override
+  String get chatNewChat => 'নতুন চ্যাট';
+
+  @override
+  String get chatSessions => 'চ্যাটের ইতিহাস';
+
+  @override
+  String get chatSessionsEmpty => 'এখনও কোনো পুরনো চ্যাট নেই';
+
+  @override
+  String get chatDisclaimer => 'AI-এর সহায়তা, এটি কোনো রোগ নির্ণয় নয়';
+
+  @override
+  String get chatThinking => 'ClinQ সহায়ক লিখছে…';
+
+  @override
+  String get chatEmergencyTitle => 'জরুরি অবস্থা — এখনই ব্যবস্থা নিন';
+
+  @override
+  String get chatEmergencyBody => 'অবিলম্বে নিকটবর্তী হাসপাতালে যান';
+
+  @override
+  String get chatCallClinic => 'ক্লিনিকে ফোন করুন';
+
+  @override
+  String get chatUrgentTitle => 'দ্রুত মনোযোগ প্রয়োজন';
+
+  @override
+  String get chatCitations => 'তথ্যসূত্র';
+
+  @override
+  String get chatFlagMessage => 'এই উত্তর রিপোর্ট করুন';
+
+  @override
+  String get chatFlagSent =>
+      'ধন্যবাদ, এই উত্তরটি পর্যালোচনার জন্য রিপোর্ট করা হয়েছে।';
+
+  @override
+  String get chatWelcomeTitle => 'নমস্কার, আমি আপনার ClinQ সহায়ক';
+
+  @override
+  String get chatWelcomeBody =>
+      'ব্লাড সুগার, ওষুধ, খাবার বা ডায়াবেটিস সংক্রান্ত যেকোনো প্রশ্ন আমাকে করতে পারেন। জরুরি অবস্থায় সবসময় ক্লিনিকে ফোন করুন বা নিকটবর্তী হাসপাতালে যান।';
+
+  @override
+  String get chatEmptyInput => 'পাঠানোর আগে একটি বার্তা লিখুন';
+
+  @override
+  String get chatArchiveSession => 'আর্কাইভ করুন';
+
+  @override
+  String get chatArchived => 'চ্যাট আর্কাইভ করা হয়েছে';
+
+  @override
+  String get chatAnalyzing => 'ClinQ তথ্য বিশ্লেষণ করছে…';
+
+  @override
+  String get chatAttach => 'ছবি যুক্ত করুন';
+
+  @override
+  String get chatAttachCamera => 'ছবি তুলুন';
+
+  @override
+  String get chatAttachGallery => 'গ্যালারি থেকে বেছে নিন';
+
+  @override
+  String get chatAttachRemove => 'সংযুক্তি সরান';
+
+  @override
+  String get chatAttachUploading => 'আপলোড হচ্ছে…';
+
+  @override
+  String get chatAttachFailed => 'ছবিটি আপলোড করা যায়নি। আবার চেষ্টা করুন।';
+
+  @override
+  String get chatAttachTooLarge =>
+      'ছবিটি খুব বড়। ১২ MB-এর কম একটি ছবি বেছে নিন।';
+
+  @override
+  String get chatAttachLimit => 'সর্বোচ্চ ৫টি ছবি যুক্ত করা যাবে।';
+
+  @override
+  String get chatAttachNeedsText =>
+      'পাঠানোর আগে ছবিটি সম্পর্কে সংক্ষেপে লিখুন।';
+
+  @override
+  String get chatEmptyTitle => 'আজ কীভাবে সাহায্য করতে পারি?';
+
+  @override
+  String get chatEmptyBody =>
+      'আপনার রক্তে শর্করা, খাদ্য, ওষুধ বা উপসর্গ সম্পর্কে জিজ্ঞাসা করুন। ২৪/৭ উপলব্ধ।';
+
+  @override
+  String get chatSuggestionSugar => 'আজ আমার সুগার বেশি — কী করব?';
+
+  @override
+  String get chatSuggestionDiet => 'সকালের নাস্তায় স্বাস্থ্যকর কী খেতে পারি?';
+
+  @override
+  String get chatSuggestionFeet => 'আমার পা অসাড় ও ঝিনঝিন করছে, চিন্তার কি?';
+
+  @override
+  String get chatSuggestionEye => 'আমার চোখের রিপোর্ট বুঝতে সাহায্য করুন';
+
+  @override
+  String get chatCopy => 'কপি';
+
+  @override
+  String get chatCopied => 'ক্লিপবোর্ডে কপি হয়েছে';
+
+  @override
+  String get chatRetry => 'আবার চেষ্টা করুন';
+
+  @override
+  String get chatScrollToLatest => 'সর্বশেষে যান';
+
+  @override
+  String get chatDateToday => 'আজ';
+
+  @override
+  String get chatDateYesterday => 'গতকাল';
+
+  @override
+  String get voiceListening => 'শুনছি…';
+
+  @override
+  String get voiceTapToSpeak => 'সহকারীর সাথে কথা বলুন';
+
+  @override
+  String get voiceDone => 'সম্পন্ন';
+
+  @override
+  String get voiceCancel => 'বাতিল';
+
+  @override
+  String get voiceNoSpeech => 'আমি বুঝতে পারিনি — আবার চেষ্টা করুন';
+
+  @override
+  String get voicePermissionTitle => 'মাইক্রোফোনের অনুমতি প্রয়োজন';
+
+  @override
+  String get voicePermissionBody =>
+      'টাইপ করার বদলে কথা বলতে মাইক্রোফোনের অনুমতি দিন।';
+
+  @override
+  String get voiceOpenSettings => 'সেটিংস খুলুন';
+
+  @override
+  String get voiceUnavailable => 'এই ডিভাইসে ভয়েস ইনপুট উপলব্ধ নয়';
+
+  @override
+  String get voiceSlideToCancel => 'বাতিল করতে স্লাইড করুন';
+
+  @override
+  String get voiceSlideToLock => 'হাত ছাড়া রেকর্ডে উপরে স্লাইড করুন';
+
+  @override
+  String get voiceReleaseToCancel => 'বাতিল করতে ছেড়ে দিন';
+
+  @override
+  String get voiceRecording => 'রেকর্ড হচ্ছে';
+
+  @override
+  String get voiceReviewBeforeSending => 'পাঠানোর আগে লেখাটি দেখে নিন';
+
+  @override
+  String get glucoseTitle => 'ব্লাড সুগার';
+
+  @override
+  String get glucoseLogReading => 'রিডিং যোগ করুন';
+
+  @override
+  String get glucoseValueLabel => 'ব্লাড সুগার (mg/dL)';
+
+  @override
+  String get glucoseContextLabel => 'কখন মাপা হয়েছে?';
+
+  @override
+  String get glucoseContextFasting => 'খালি পেটে';
+
+  @override
+  String get glucoseContextPreMeal => 'খাবারের আগে';
+
+  @override
+  String get glucoseContextPostMeal => 'খাবারের পরে';
+
+  @override
+  String get glucoseContextBedtime => 'ঘুমানোর আগে';
+
+  @override
+  String get glucoseContextRandom => 'যেকোনো সময়';
+
+  @override
+  String get glucoseTimeLabel => 'তারিখ ও সময়';
+
+  @override
+  String get glucoseNotesLabel => 'নোট (ঐচ্ছিক)';
+
+  @override
+  String get glucoseSaveReading => 'রিডিং সেভ করুন';
+
+  @override
+  String get glucoseReadingSaved => 'রিডিং সেভ হয়েছে';
+
+  @override
+  String get glucoseTrend => '৩০ দিনের ধারা';
+
+  @override
+  String get glucoseTargetRange => 'লক্ষ্য মাত্রা';
+
+  @override
+  String get glucoseRecentReadings => 'সাম্প্রতিক রিডিং';
+
+  @override
+  String get glucoseEmptyTitle => 'এখনও কোনো রিডিং নেই';
+
+  @override
+  String get glucoseEmptyBody =>
+      'আপনার ধারা দেখতে প্রথম ব্লাড সুগার রিডিং যোগ করুন।';
+
+  @override
+  String get glucoseFlagSevereLow => 'অত্যন্ত কম';
+
+  @override
+  String get glucoseFlagLow => 'কম';
+
+  @override
+  String get glucoseFlagInRange => 'স্বাভাবিক';
+
+  @override
+  String get glucoseFlagVeryHigh => 'খুব বেশি';
+
+  @override
+  String get glucoseFlagCriticalHigh => 'বিপজ্জনক রকম বেশি';
+
+  @override
+  String get glucoseDeleteConfirm => 'এই রিডিং মুছে ফেলবেন?';
+
+  @override
+  String get glucoseStatsAverage => 'গড়';
+
+  @override
+  String get glucoseStatsMin => 'সর্বনিম্ন';
+
+  @override
+  String get glucoseStatsMax => 'সর্বোচ্চ';
+
+  @override
+  String get glucoseStatsHba1c => 'আনুমানিক HbA1c';
+
+  @override
+  String get medsTitle => 'ওষুধ';
+
+  @override
+  String get medsTodaySchedule => 'আজকের সময়সূচি';
+
+  @override
+  String get medsAdherence => 'নিয়মিততা';
+
+  @override
+  String get medsMarkTaken => 'খাওয়া হয়েছে';
+
+  @override
+  String get medsMarkSkipped => 'বাদ দেওয়া হয়েছে';
+
+  @override
+  String get medsStatusTaken => 'খাওয়া হয়েছে';
+
+  @override
+  String get medsStatusSkipped => 'বাদ দেওয়া হয়েছে';
+
+  @override
+  String get medsStatusPending => 'বাকি আছে';
+
+  @override
+  String get medsStatusMissed => 'মিস হয়েছে';
+
+  @override
+  String get medsEmptyTitle => 'আজ কোনো ওষুধ নির্ধারিত নেই';
+
+  @override
+  String get medsEmptyBody => 'আপনার ডাক্তার আজকের জন্য কোনো ওষুধ যোগ করেননি।';
+
+  @override
+  String get medsRelationBeforeMeal => 'খাবারের আগে';
+
+  @override
+  String get medsRelationAfterMeal => 'খাবারের পরে';
+
+  @override
+  String get medsRelationWithMeal => 'খাবারের সঙ্গে';
+
+  @override
+  String get medsRelationAnytime => 'যেকোনো সময়';
+
+  @override
+  String get medsSkipReasonTitle => 'কেন এই ডোজটি বাদ দিচ্ছেন?';
+
+  @override
+  String get medsLast30Days => 'গত ৩০ দিন';
+
+  @override
+  String get careTitle => 'কেয়ার';
+
+  @override
+  String get careFootCare => 'ফুট কেয়ার';
+
+  @override
+  String get careFootCareDesc => 'ক্ষত পরীক্ষা ও পায়ের স্বাস্থ্য ট্র্যাক করুন';
+
+  @override
+  String get careEyeCare => 'চোখের যত্ন';
+
+  @override
+  String get careEyeCareDesc => 'রেটিনা স্ক্রিনিং রিপোর্ট ও পরামর্শ';
+
+  @override
+  String get careAppointments => 'অ্যাপয়েন্টমেন্ট';
+
+  @override
+  String get careAppointmentsDesc => 'ক্লিনিক ভিজিট বুক ও পরিচালনা করুন';
+
+  @override
+  String get carePrescriptions => 'প্রেসক্রিপশন';
+
+  @override
+  String get carePrescriptionsDesc => 'ডাক্তারের দেওয়া প্রেসক্রিপশন দেখুন';
+
+  @override
+  String get careLabReports => 'ল্যাব রিপোর্ট';
+
+  @override
+  String get careLabReportsDesc => 'আপনার ল্যাব টেস্টের ফলাফল';
+
+  @override
+  String get profileTitle => 'প্রোফাইল';
+
+  @override
+  String get profileLanguage => 'ভাষা';
+
+  @override
+  String get profileLogout => 'লগ আউট';
+
+  @override
+  String get profileEditProfile => 'প্রোফাইল সম্পাদনা করুন';
+
+  @override
+  String get profileAbout => 'ClinQ সম্পর্কে';
+
+  @override
+  String get profilePatient => 'রোগী';
+
+  @override
+  String get profileAppearance => 'চেহারা';
+
+  @override
+  String get profileThemeLight => 'উজ্জ্বল';
+
+  @override
+  String get profileThemeDark => 'গাঢ়';
+
+  @override
+  String get profileThemeSystem => 'সিস্টেম';
+
+  @override
+  String get profileAccount => 'অ্যাকাউন্ট';
+
+  @override
+  String get profileClinic => 'ক্লিনিক';
+
+  @override
+  String get profileSupport => 'সহায়তা';
+
+  @override
+  String get profileDiabetesType => 'ডায়াবেটিসের ধরন';
+
+  @override
+  String get profileDiabetesTypeNotSet => 'নির্ধারিত নয়';
+
+  @override
+  String get profileNotifications => 'বিজ্ঞপ্তি';
+
+  @override
+  String get profileCallClinic => 'ক্লিনিকে ফোন করুন';
+
+  @override
+  String get profileFooter => 'আপনার সুস্থতার কথা ভেবে তৈরি';
+
+  @override
+  String get profileSave => 'সংরক্ষণ করুন';
+
+  @override
+  String get profileSaved => 'আপনার তথ্য আপডেট করা হয়েছে';
+
+  @override
+  String get profilePhoneLocked =>
+      'আপনার ফোন নম্বরই আপনার লগইন, এখান থেকে বদলানো যাবে না। পরিবর্তনের প্রয়োজন হলে ক্লিনিকে যোগাযোগ করুন।';
+
+  @override
+  String get profileChangePhoto => 'ছবি বদলান';
+
+  @override
+  String get profileDiabetesSheetTitle => 'আপনার ডায়াবেটিসের ধরন';
+
+  @override
+  String get profileDiabetesSheetBody =>
+      'এটি সহকারীকে সঠিক পরামর্শ দিতে সাহায্য করে। নিশ্চিত না হলে আপনার ডাক্তারকে জিজ্ঞাসা করুন।';
+
+  @override
+  String get profileDiabetesType1Desc => 'শরীর ইনসুলিন তৈরি করে না';
+
+  @override
+  String get profileDiabetesType2Desc => 'ইনসুলিন ঠিকমতো কাজ করে না';
+
+  @override
+  String get profileDiabetesGestationalDesc => 'গর্ভাবস্থায় দেখা দেয়';
+
+  @override
+  String get profileDiabetesPrediabetesDesc =>
+      'স্বাভাবিকের বেশি, ডায়াবেটিসের কম';
+
+  @override
+  String get profileDiabetesNoneDesc => 'ডায়াবেটিস নেই';
+
+  @override
+  String get profileNotificationsBody =>
+      'ক্লিনিকের সতর্কবার্তা এখনও এই ডিভাইসে পৌঁছায় না। তবে আপনার তোলা প্রতিটি সতর্কতা ডাক্তার দেখতে পান।';
+
+  @override
+  String get errorBadRequest => 'অনুরোধটি বোঝা যায়নি।';
+
+  @override
+  String get errorValidation => 'আপনার দেওয়া তথ্য যাচাই করুন।';
+
+  @override
+  String get errorUnauthorized =>
+      'আপনার সেশনের মেয়াদ শেষ হয়ে গেছে। আবার লগ ইন করুন।';
+
+  @override
+  String get errorForbidden => 'এই কাজ করার অনুমতি আপনার নেই।';
+
+  @override
+  String get errorNotFound => 'যা খুঁজছেন তা পাওয়া যায়নি।';
+
+  @override
+  String get errorConflict => 'এটি বর্তমান তথ্যের সঙ্গে সাংঘর্ষিক।';
+
+  @override
+  String get errorDuplicate => 'এটি ইতিমধ্যেই আছে।';
+
+  @override
+  String get errorRateLimited =>
+      'অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।';
+
+  @override
+  String get errorInvalidId => 'এই রেফারেন্সটি সঠিক নয়।';
+
+  @override
+  String get errorInternal =>
+      'আমাদের দিক থেকে একটি সমস্যা হয়েছে। আবার চেষ্টা করুন।';
+
+  @override
+  String get errorAiUnavailable =>
+      'AI সহায়ক সাময়িকভাবে উপলব্ধ নেই। একটু পরে আবার চেষ্টা করুন।';
+}

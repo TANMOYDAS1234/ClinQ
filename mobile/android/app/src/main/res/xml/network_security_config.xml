@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+      Release builds block cleartext HTTP by default (Android P and newer),
+      which is correct: a real deployment must talk to an HTTPS backend.
+
+      This exception permits plain HTTP ONLY to the local development hosts a
+      tethered build reaches over the adb reverse tunnel and the emulator
+      alias. Every other host, including a real backend, is still forced onto
+      HTTPS by the base-config below.
+
+      When you ship against a real HTTPS server via an API_BASE_URL define,
+      this file simply never applies.
+    -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!--
+          The dev machine's LAN IP, so a phone on the same Wi-Fi can reach the
+          backend without the USB tunnel. This is DHCP-assigned and will change
+          if the machine reconnects; update it and rebuild if login breaks.
+        -->
+        <domain includeSubdomains="false">192.168.1.24</domain>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
