@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -132,7 +133,15 @@ class _Header extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => launchUrl(Uri(scheme: 'tel', path: p.phone)),
                   icon: const Icon(Icons.call_rounded, size: 18),
-                  label: Text(p.phone),
+                  label: const Text('Call'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => context.push('/clinician/messages/${p.id}', extra: p.name),
+                  icon: const Icon(Icons.forum_rounded, size: 18),
+                  label: const Text('Message'),
                 ),
               ),
             ],

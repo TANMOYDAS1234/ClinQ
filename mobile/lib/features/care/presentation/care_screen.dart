@@ -24,6 +24,20 @@ class _CareItem {
 
 final _items = <_CareItem>[
   _CareItem(
+    icon: Icons.forum_rounded,
+    color: AppColors.success,
+    titleBuilder: (l) => l.careMessageClinic,
+    descBuilder: (l) => l.careMessageClinicDesc,
+    route: '/care/messages',
+  ),
+  _CareItem(
+    icon: Icons.event_available_outlined,
+    color: AppColors.primary,
+    titleBuilder: (l) => l.careAppointments,
+    descBuilder: (l) => l.careAppointmentsDesc,
+    route: '/care/appointments',
+  ),
+  _CareItem(
     icon: Icons.directions_walk_rounded,
     color: AppColors.primary,
     titleBuilder: (l) => l.careFootCare,
@@ -36,13 +50,6 @@ final _items = <_CareItem>[
     titleBuilder: (l) => l.careEyeCare,
     descBuilder: (l) => l.careEyeCareDesc,
     route: '/care/eye',
-  ),
-  _CareItem(
-    icon: Icons.event_available_outlined,
-    color: AppColors.success,
-    titleBuilder: (l) => l.careAppointments,
-    descBuilder: (l) => l.careAppointmentsDesc,
-    route: '/care/appointments',
   ),
   _CareItem(
     icon: Icons.receipt_long_outlined,

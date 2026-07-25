@@ -8,6 +8,7 @@ import medicationRoutes from './medications.js';
 import careRoutes from './care.js';
 import appointmentRoutes from './appointments.js';
 import clinicRoutes from './clinics.js';
+import messageRoutes from './messages.js';
 import prescriptionRoutes from './prescriptions.js';
 import dashboardRoutes from './dashboard.js';
 import doctorRoutes from './doctor.js';
@@ -29,6 +30,7 @@ router.use('/auth', authRoutes);
 router.use('/chat', chatRoutes);
 router.use('/appointments', appointmentRoutes);
 router.use('/clinics', clinicRoutes);
+router.use('/messages', messageRoutes);
 router.use('/doctor', doctorRoutes);
 router.use('/uploads', uploadRoutes);
 

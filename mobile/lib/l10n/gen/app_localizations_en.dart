@@ -956,6 +956,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apptSelectSlotFirst => 'Please choose a time first';
 
   @override
+  String get msgClinicTitle => 'Message the clinic';
+
+  @override
+  String get msgComposerHint => 'Write a message…';
+
+  @override
+  String get msgEmpty => 'No messages yet';
+
+  @override
+  String get msgEmptyBody =>
+      'Send a message and the clinic team will reply here.';
+
+  @override
+  String get msgEmptyClinician => 'Send a message to start the conversation.';
+
+  @override
+  String get careMessageClinic => 'Message the clinic';
+
+  @override
+  String get careMessageClinicDesc => 'Chat directly with the clinic team';
+
+  @override
   String get apptToday => 'Today';
 
   @override

@@ -1918,6 +1918,48 @@ abstract class AppLocalizations {
   /// **'Please choose a time first'**
   String get apptSelectSlotFirst;
 
+  /// No description provided for @msgClinicTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Message the clinic'**
+  String get msgClinicTitle;
+
+  /// No description provided for @msgComposerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a message…'**
+  String get msgComposerHint;
+
+  /// No description provided for @msgEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet'**
+  String get msgEmpty;
+
+  /// No description provided for @msgEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a message and the clinic team will reply here.'**
+  String get msgEmptyBody;
+
+  /// No description provided for @msgEmptyClinician.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a message to start the conversation.'**
+  String get msgEmptyClinician;
+
+  /// No description provided for @careMessageClinic.
+  ///
+  /// In en, this message translates to:
+  /// **'Message the clinic'**
+  String get careMessageClinic;
+
+  /// No description provided for @careMessageClinicDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat directly with the clinic team'**
+  String get careMessageClinicDesc;
+
   /// No description provided for @apptToday.
   ///
   /// In en, this message translates to:

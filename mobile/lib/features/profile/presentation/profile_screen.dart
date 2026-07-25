@@ -16,8 +16,6 @@ import '../../../shared/providers/preferences_provider.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/domain/user.dart';
 import '../../auth/presentation/auth_controller.dart';
-import 'profile_providers.dart';
-import 'widgets/diabetes_type_sheet.dart';
 import 'widgets/profile_section.dart';
 import 'widgets/theme_selector.dart';
 
@@ -159,24 +157,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  Future<void> _pickDiabetesType(String? current) async {
-    // Captured before the await — the sheet is an async gap, and reaching for
-    // the context after it is what the lint is warning about.
-    final l10n = AppLocalizations.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-
-    final chosen = await DiabetesTypeSheet.show(context, initial: current);
-    if (chosen == null || chosen == current) return;
-
-    try {
-      await ref.read(authRepositoryProvider).updateDiabetesType(chosen);
-      ref.invalidate(diabetesTypeProvider);
-      messenger.showSnackBar(SnackBar(content: Text(l10n.profileSaved)));
-    } on ApiException {
-      messenger.showSnackBar(SnackBar(content: Text(l10n.commonSomethingWentWrong)));
-    }
-  }
-
   Future<void> _callClinic() async {
     await launchUrl(Uri(scheme: 'tel', path: AppConfig.clinicPhoneNumber));
   }
@@ -202,15 +182,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  String _diabetesLabel(AppLocalizations l10n, String? code) => switch (code) {
-    'type1' => l10n.authDiabetesType1,
-    'type2' => l10n.authDiabetesType2,
-    'gestational' => l10n.authDiabetesTypeGestational,
-    'prediabetes' => l10n.authDiabetesTypePrediabetes,
-    'none' => l10n.authDiabetesTypeNone,
-    _ => l10n.profileDiabetesTypeNotSet,
-  };
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -220,7 +191,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     final user = ref.watch(authControllerProvider).user;
     final currentLocale = ref.watch(localeControllerProvider);
-    final diabetesType = ref.watch(diabetesTypeProvider).valueOrNull;
     final glucoseUnit = ref.watch(glucoseUnitProvider);
     final lockEnabled = ref.watch(appLockProvider).enabled;
 
@@ -310,12 +280,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 icon: Icons.favorite_outline_rounded,
                 title: l10n.profileHealthDetails,
                 onTap: () => context.push('/profile/health'),
-              ),
-              ProfileRow(
-                icon: Icons.bloodtype_outlined,
-                title: l10n.profileDiabetesType,
-                value: _diabetesLabel(l10n, diabetesType),
-                onTap: () => _pickDiabetesType(diabetesType),
               ),
               ProfileRow(
                 icon: Icons.notifications_none_rounded,

@@ -25,6 +25,8 @@ import '../../features/clinician/presentation/knowledge_edit_screen.dart';
 import '../../features/clinician/presentation/knowledge_screen.dart';
 import '../../features/clinician/presentation/patient_detail_screen.dart';
 import '../../features/clinician/presentation/patients_screen.dart';
+import '../../features/messaging/presentation/clinic_chat_screen.dart';
+import '../../features/messaging/presentation/clinician_messages_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/onboarding/presentation/language_picker_screen.dart';
 import '../../features/onboarding/presentation/splash_screen.dart';
@@ -114,6 +116,14 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         path: '/clinician/knowledge/edit',
         builder: (context, state) => KnowledgeEditScreen(chunk: state.extra as KnowledgeChunk?),
       ),
+      GoRoute(path: '/clinician/messages', builder: (context, state) => const ClinicianMessagesScreen()),
+      GoRoute(
+        path: '/clinician/messages/:id',
+        builder: (context, state) => ClinicChatScreen(
+          patientId: state.pathParameters['id'],
+          title: state.extra as String?,
+        ),
+      ),
 
       // ---- Patient app --------------------------------------------------
       StatefulShellRoute.indexedStack(
@@ -157,6 +167,10 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
                         builder: (context, state) => const BookAppointmentScreen(),
                       ),
                     ],
+                  ),
+                  GoRoute(
+                    path: 'messages',
+                    builder: (context, state) => const ClinicChatScreen(),
                   ),
                   GoRoute(
                     path: 'prescriptions',

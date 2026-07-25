@@ -956,6 +956,27 @@ class AppLocalizationsHi extends AppLocalizations {
   String get apptSelectSlotFirst => 'कृपया पहले एक समय चुनें';
 
   @override
+  String get msgClinicTitle => 'क्लिनिक को संदेश भेजें';
+
+  @override
+  String get msgComposerHint => 'एक संदेश लिखें…';
+
+  @override
+  String get msgEmpty => 'अभी तक कोई संदेश नहीं';
+
+  @override
+  String get msgEmptyBody => 'एक संदेश भेजें, क्लिनिक टीम यहाँ उत्तर देगी।';
+
+  @override
+  String get msgEmptyClinician => 'बातचीत शुरू करने के लिए एक संदेश भेजें।';
+
+  @override
+  String get careMessageClinic => 'क्लिनिक को संदेश भेजें';
+
+  @override
+  String get careMessageClinicDesc => 'क्लिनिक टीम से सीधे चैट करें';
+
+  @override
   String get apptToday => 'आज';
 
   @override

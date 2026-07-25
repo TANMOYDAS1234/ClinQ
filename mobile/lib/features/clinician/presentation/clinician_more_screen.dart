@@ -216,8 +216,9 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
           ProfileSection(
             label: 'Clinic tools',
             children: [
+              ProfileRow(icon: Icons.forum_rounded, title: 'Messages', onTap: () => context.push('/clinician/messages')),
               ProfileRow(icon: Icons.notification_important_outlined, title: 'Clinical alerts', onTap: () => context.push('/clinician/alerts')),
-              ProfileRow(icon: Icons.forum_outlined, title: 'Chat review', onTap: () => context.push('/clinician/chat-review')),
+              ProfileRow(icon: Icons.reviews_outlined, title: 'Chat review', onTap: () => context.push('/clinician/chat-review')),
               ProfileRow(icon: Icons.menu_book_outlined, title: 'Knowledge base', showDivider: false, onTap: () => context.push('/clinician/knowledge')),
             ],
           ),

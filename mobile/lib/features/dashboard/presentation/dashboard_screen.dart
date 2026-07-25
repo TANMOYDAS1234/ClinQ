@@ -108,6 +108,8 @@ class _DashboardContent extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
+        const _QuickActions(),
+        const SizedBox(height: AppSpacing.lg),
         HealthScoreCard(healthScore: data.healthScore),
         const SizedBox(height: AppSpacing.md),
         GlucoseSummaryCard(glucose: data.glucose),
@@ -127,6 +129,91 @@ class _DashboardContent extends StatelessWidget {
         RecommendationsList(recommendations: data.recommendations),
         const SizedBox(height: AppSpacing.xxl),
       ],
+    );
+  }
+}
+
+/// Fast shortcuts to the three things a patient does most from home: log a
+/// reading, book a visit, and ask the assistant.
+class _QuickActions extends StatelessWidget {
+  const _QuickActions();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: _QuickAction(
+            icon: Icons.add_chart_rounded,
+            color: AppColors.primary,
+            label: l10n.glucoseLogReading,
+            onTap: () => context.go('/track'),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: _QuickAction(
+            icon: Icons.event_available_rounded,
+            color: AppColors.success,
+            label: l10n.apptBook,
+            onTap: () => context.go('/care/appointments/book'),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: _QuickAction(
+            icon: Icons.auto_awesome_rounded,
+            color: const Color(0xFF7C3AED),
+            label: l10n.chatTitle,
+            onTap: () => context.go('/chat'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({required this.icon, required this.color, required this.label, required this.onTap});
+
+  final IconData icon;
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.14), shape: BoxShape.circle),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.2),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
