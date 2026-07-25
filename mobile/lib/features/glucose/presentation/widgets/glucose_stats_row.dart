@@ -1,27 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../l10n/gen/app_localizations.dart';
+import '../../../../shared/providers/preferences_provider.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../domain/glucose_trends.dart';
 
-class GlucoseStatsRow extends StatelessWidget {
+class GlucoseStatsRow extends ConsumerWidget {
   const GlucoseStatsRow({super.key, required this.stats});
 
   final GlucoseStats stats;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final unit = ref.watch(glucoseUnitProvider);
     return Row(
       children: [
         Expanded(
-          child: _StatCard(label: l10n.glucoseStatsAverage, value: _fmt(stats.average, 'mg/dL')),
+          child: _StatCard(label: l10n.glucoseStatsAverage, value: _glucose(unit, stats.average)),
         ),
         const SizedBox(width: AppSpacing.sm),
-        Expanded(child: _StatCard(label: l10n.glucoseStatsMin, value: _fmt(stats.min, 'mg/dL'))),
+        Expanded(child: _StatCard(label: l10n.glucoseStatsMin, value: _glucose(unit, stats.min))),
         const SizedBox(width: AppSpacing.sm),
-        Expanded(child: _StatCard(label: l10n.glucoseStatsMax, value: _fmt(stats.max, 'mg/dL'))),
+        Expanded(child: _StatCard(label: l10n.glucoseStatsMax, value: _glucose(unit, stats.max))),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: _StatCard(label: l10n.glucoseStatsHba1c, value: _fmt(stats.estimatedHba1c, '%')),
@@ -29,6 +32,10 @@ class GlucoseStatsRow extends StatelessWidget {
       ],
     );
   }
+
+  // HbA1c is a percentage, so it keeps its own formatter; the three glucose
+  // stats follow the patient's chosen unit.
+  String _glucose(GlucoseUnit unit, num? value) => value == null ? '—' : unit.format(value);
 
   String _fmt(num? value, String unit) => value == null ? '—' : '$value $unit';
 }

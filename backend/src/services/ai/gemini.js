@@ -232,6 +232,63 @@ export async function embedBatch(texts, opts = {}) {
   return out;
 }
 
+/**
+ * Streams the reply text chunk by chunk, so the app can show words as they are
+ * generated instead of waiting for the whole answer. Yields plain text pieces.
+ *
+ * Safety is unchanged: the caller runs triage and raises any alert BEFORE
+ * calling this, so escalation never waits on the stream.
+ */
+export async function* generateStream({
+  system,
+  contents,
+  model = env.GEMINI_CHAT_MODEL,
+  temperature = 0.3,
+  maxOutputTokens = 600,
+}) {
+  const generationConfig = MODELS_REJECTING_THINKING.has(model)
+    ? { temperature, maxOutputTokens: Math.max(maxOutputTokens, 2400) }
+    : { temperature, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 } };
+
+  const run = () => {
+    const client = genAI.getGenerativeModel({
+      model,
+      systemInstruction: system,
+      safetySettings: SAFETY_SETTINGS,
+      generationConfig,
+    });
+    return client.generateContentStream({ contents });
+  };
+
+  let result;
+  try {
+    result = await withRetry(run, { label: `${model}:stream` });
+  } catch (err) {
+    if (isInvalidThinkingArg(err) && !MODELS_REJECTING_THINKING.has(model)) {
+      MODELS_REJECTING_THINKING.add(model);
+      logger.warn({ model }, 'model rejects thinkingConfig on stream; retrying without it');
+      const client = genAI.getGenerativeModel({
+        model,
+        systemInstruction: system,
+        safetySettings: SAFETY_SETTINGS,
+        generationConfig: { temperature, maxOutputTokens: Math.max(maxOutputTokens, 2400) },
+      });
+      result = await client.generateContentStream({ contents });
+    } else {
+      throw new AiUnavailableError(err);
+    }
+  }
+
+  try {
+    for await (const chunk of result.stream) {
+      const text = chunk.text();
+      if (text) yield text;
+    }
+  } catch (err) {
+    throw new AiUnavailableError(err);
+  }
+}
+
 export async function generateFromImage({ system, prompt, images, responseSchema, model = env.GEMINI_VISION_MODEL }) {
   const parts = [
     { text: prompt },

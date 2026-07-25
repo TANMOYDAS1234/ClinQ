@@ -3,7 +3,7 @@ import { ChatMessage } from '../../models/ChatMessage.js';
 import { triageMessage } from '../triage/engine.js';
 import { buildPatientContext } from '../patientContext.js';
 import { retrieve, formatContext } from './rag.js';
-import { generate, AiUnavailableError } from './gemini.js';
+import { generate, generateStream, AiUnavailableError } from './gemini.js';
 import { buildSystemPrompt, fallbackReply } from './prompts.js';
 import { raiseAlert } from '../alerts.js';
 import { loadAssetsForAi } from '../../routes/uploads.js';
@@ -211,6 +211,148 @@ export async function handlePatientMessage({ patientId, sessionId, text, languag
   };
 }
 
+/**
+ * Streaming variant of {@link handlePatientMessage}: yields events for an SSE
+ * response so the app renders the reply as it is generated.
+ *
+ * The safety order is identical — triage runs and any alert is raised BEFORE
+ * the first token — so streaming never delays escalation. The `meta` event
+ * carries the triage verdict and alert, so the emergency card can appear before
+ * a single word of the reply.
+ *
+ * Events: `meta` (verdict, user message, citations) → many `token` (text
+ * pieces) → optional `replace` (swap the partial for scripted fallback text on
+ * failure) → `done` (the saved assistant message).
+ */
+export async function* streamPatientMessage({ patientId, sessionId, text, language = 'en', attachments = [] }) {
+  const session = await resolveSession({ patientId, sessionId, language, text });
+  const context = await buildPatientContext(patientId);
+  const triage = triageMessage({ text, targets: context.targets, latestGlucose: context.latestGlucose });
+
+  const seq = session.messageCount + 1;
+  const userMessage = await ChatMessage.create({
+    session: session._id,
+    patient: patientId,
+    seq,
+    role: 'user',
+    content: text,
+    language,
+    attachments,
+    triage: {
+      urgency: triage.urgency,
+      matchedRules: triage.matchedRules,
+      redFlags: triage.redFlags.map((r) => r.label),
+      ruleDriven: triage.ruleDriven,
+    },
+  });
+
+  // Escalate BEFORE the first token — the clinic learns about a chest-pain
+  // message whether or not any reply is ever generated.
+  let alert = null;
+  if (triage.urgency === 'emergency' || triage.urgency === 'urgent') {
+    alert = await raiseAlert({
+      patientId,
+      severity: triage.urgency === 'emergency' ? 'emergency' : 'urgent',
+      type: triage.alertType ?? 'chat_escalation',
+      title: triage.redFlags[0]?.label ?? triage.findings[0]?.summary ?? 'Patient reported a concerning symptom',
+      detail: `Patient message: "${text.slice(0, 500)}"\n\nTriage findings:\n${triage.findings.map((f) => `- ${f.summary}`).join('\n')}`,
+      source: { kind: 'chat', ref: userMessage._id },
+      matchedRules: triage.matchedRules,
+    });
+    await ChatMessage.findByIdAndUpdate(userMessage._id, { alert: alert._id });
+  }
+
+  const [chunks, history] = await Promise.all([
+    retrieve(text, { language, categories: categoriesFor(triage), limit: 6 }).catch(() => []),
+    ChatMessage.find({ session: session._id, seq: { $lt: seq } })
+      .sort({ seq: -1 })
+      .limit(HISTORY_TURNS)
+      .lean(),
+  ]);
+
+  const images = attachments.length ? await loadAssetsForAi(attachments).catch(() => []) : [];
+  const userParts = [{ text }, ...images.map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.base64 } }))];
+  const contents = [
+    ...history
+      .reverse()
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+    { role: 'user', parts: userParts },
+  ];
+  const system = buildSystemPrompt({
+    language,
+    triage,
+    patientContext: context.text,
+    groundingContext: formatContext(chunks),
+  });
+
+  yield {
+    type: 'meta',
+    data: {
+      sessionId: session._id,
+      userMessage: serialiseMessage(userMessage),
+      triage: {
+        urgency: triage.urgency,
+        ruleDriven: triage.ruleDriven,
+        redFlags: triage.redFlags,
+        findings: triage.findings.map((f) => f.summary),
+        extracted: triage.extracted,
+      },
+      alert: alert ? { id: alert._id, severity: alert.severity, type: alert.type, title: alert.title } : null,
+      citations: chunks.slice(0, 3).map((c) => ({ id: c._id, title: c.title, source: c.sourceCitation ?? null })),
+    },
+  };
+
+  let replyText = '';
+  let isFallback = false;
+  try {
+    for await (const piece of generateStream({
+      system,
+      contents,
+      model: images.length ? env.GEMINI_VISION_MODEL : undefined,
+      temperature: triage.urgency === 'emergency' ? 0.1 : 0.3,
+      maxOutputTokens: 600,
+    })) {
+      replyText += piece;
+      yield { type: 'token', data: piece };
+    }
+    replyText = stripTrailingDisclaimer(replyText.trim());
+    if (!replyText) throw new AiUnavailableError(new Error('empty stream'));
+  } catch (err) {
+    logger.error({ err: err?.cause?.message ?? err?.message }, 'stream generation failed; scripted fallback');
+    replyText = fallbackReply(triage.urgency === 'emergency' ? 'emergency' : 'unavailable', language);
+    isFallback = true;
+    // Tell the client to discard the partial and show the scripted text.
+    yield { type: 'replace', data: replyText };
+  }
+
+  const assistantMessage = await ChatMessage.create({
+    session: session._id,
+    patient: patientId,
+    seq: seq + 1,
+    role: 'assistant',
+    content: replyText,
+    language,
+    triage: {
+      urgency: triage.urgency,
+      matchedRules: triage.matchedRules,
+      redFlags: triage.redFlags.map((r) => r.label),
+      ruleDriven: triage.ruleDriven,
+    },
+    citations: chunks.slice(0, 3).map((c) => ({ chunk: c._id, title: c.title, score: c.score })),
+    isFallback,
+    alert: alert?._id,
+  });
+
+  session.messageCount = seq + 1;
+  session.lastMessageAt = new Date();
+  session.highestUrgency = maxUrgency(session.highestUrgency, triage.urgency);
+  if (triage.urgency === 'emergency' || triage.urgency === 'urgent') session.flaggedForReview = true;
+  await session.save();
+
+  yield { type: 'done', data: { reply: serialiseMessage(assistantMessage) } };
+}
+
 async function resolveSession({ patientId, sessionId, language, text }) {
   if (sessionId) {
     const existing = await ChatSession.findOne({ _id: sessionId, patient: patientId });
@@ -234,5 +376,11 @@ function serialiseMessage(m) {
     urgency: m.triage?.urgency ?? 'routine',
     isFallback: m.isFallback ?? false,
     createdAt: m.createdAt,
+    // Attachment ids, so the app can render the photo the patient sent. The
+    // raw bytes are fetched separately from /uploads/:id/raw (owner-only).
+    attachments: (m.attachments ?? []).map((a) => ({
+      id: a.toString?.() ?? a,
+      url: `/api/v1/uploads/${a.toString?.() ?? a}/raw`,
+    })),
   };
 }

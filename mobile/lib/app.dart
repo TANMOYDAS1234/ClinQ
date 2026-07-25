@@ -7,6 +7,7 @@ import 'core/theme/app_theme.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'shared/providers/locale_provider.dart';
 import 'shared/providers/theme_provider.dart';
+import 'shared/widgets/app_lock_gate.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -30,6 +31,9 @@ class App extends ConsumerWidget {
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       routerConfig: router,
+      // The lock gate sits above every route, so it covers the whole app when
+      // locked. `child` is the router's current page.
+      builder: (context, child) => AppLockGate(child: child ?? const SizedBox.shrink()),
     );
   }
 }

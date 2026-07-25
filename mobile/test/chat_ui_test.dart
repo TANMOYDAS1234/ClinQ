@@ -25,7 +25,12 @@ void main() {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(body: child),
+      // Disable animations so the composer's ever-repeating gradient border
+      // doesn't hang pumpAndSettle; the border honours this and paints static.
+      home: MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: Scaffold(body: child),
+      ),
     ),
   );
 
@@ -174,20 +179,29 @@ void main() {
   });
 
   group('Composer', () {
-    testWidgets('shows the mic when empty and the send icon once text is typed', (tester) async {
+    testWidgets('shows the mic and send together; send fires only with text', (tester) async {
+      var sent = 0;
       await tester.pumpWidget(
-        harness(ChatComposer(onSend: (_, _) {}, isSending: false, languageCode: 'en')),
+        harness(ChatComposer(onSend: (_, _) => sent++, isSending: false, languageCode: 'en')),
       );
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.send_rounded), findsNothing);
+      // Gemini-style: the dictation mic sits inside the pill and the send
+      // button sits beside it — both are always present.
+      expect(find.byIcon(Icons.mic_none_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.send_rounded), findsOneWidget);
 
+      // Empty: tapping send does nothing.
+      await tester.tap(find.byIcon(Icons.send_rounded));
+      await tester.pumpAndSettle();
+      expect(sent, 0);
+
+      // With text: send fires.
       await tester.enterText(find.byType(TextField), 'my sugar is 210');
       await tester.pumpAndSettle();
-
-      expect(find.byIcon(Icons.send_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.mic_rounded), findsNothing);
+      await tester.tap(find.byIcon(Icons.send_rounded));
+      await tester.pumpAndSettle();
+      expect(sent, 1);
     });
 
     testWidgets('draws no inner border inside the pill', (tester) async {
@@ -228,7 +242,8 @@ void main() {
       await tester.enterText(find.byType(TextField), '   ');
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.send_rounded));
+      await tester.pumpAndSettle();
       expect(sent, 0);
     });
 

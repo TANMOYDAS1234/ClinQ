@@ -1534,6 +1534,408 @@ abstract class AppLocalizations {
   /// **'Alerts from the clinic are not yet delivered to this device. Your doctor still sees every alert you raise.'**
   String get profileNotificationsBody;
 
+  /// No description provided for @profilePreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences'**
+  String get profilePreferences;
+
+  /// No description provided for @profileSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get profileSecurity;
+
+  /// No description provided for @profileHealthDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Health details'**
+  String get profileHealthDetails;
+
+  /// No description provided for @profileGlucoseUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Glucose unit'**
+  String get profileGlucoseUnit;
+
+  /// No description provided for @profileAppLock.
+  ///
+  /// In en, this message translates to:
+  /// **'App lock'**
+  String get profileAppLock;
+
+  /// No description provided for @profileAppLockSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Require unlock to open the app'**
+  String get profileAppLockSub;
+
+  /// No description provided for @notifMedicationReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Medication reminders'**
+  String get notifMedicationReminders;
+
+  /// No description provided for @notifMedicationRemindersSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Nudge me when a dose is due'**
+  String get notifMedicationRemindersSub;
+
+  /// No description provided for @notifAppointmentAlerts.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment reminders'**
+  String get notifAppointmentAlerts;
+
+  /// No description provided for @notifAppointmentAlertsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind me before a visit'**
+  String get notifAppointmentAlertsSub;
+
+  /// No description provided for @notifClinicAlerts.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinic messages'**
+  String get notifClinicAlerts;
+
+  /// No description provided for @notifClinicAlertsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Replies and follow-ups from the clinic'**
+  String get notifClinicAlertsSub;
+
+  /// No description provided for @notifDeliveryNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Push delivery to this phone is being set up. These preferences will apply once it is live; your doctor already sees every alert you raise.'**
+  String get notifDeliveryNote;
+
+  /// No description provided for @healthHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Height (cm)'**
+  String get healthHeight;
+
+  /// No description provided for @healthWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight (kg)'**
+  String get healthWeight;
+
+  /// No description provided for @healthDiagnosedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnosed on'**
+  String get healthDiagnosedOn;
+
+  /// No description provided for @healthAllergies.
+  ///
+  /// In en, this message translates to:
+  /// **'Allergies'**
+  String get healthAllergies;
+
+  /// No description provided for @healthAllergiesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Penicillin, Sulfa'**
+  String get healthAllergiesHint;
+
+  /// No description provided for @healthEmergencyContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Emergency contact'**
+  String get healthEmergencyContact;
+
+  /// No description provided for @healthContactName.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact name'**
+  String get healthContactName;
+
+  /// No description provided for @healthContactPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact phone'**
+  String get healthContactPhone;
+
+  /// No description provided for @healthContactRelation.
+  ///
+  /// In en, this message translates to:
+  /// **'Relationship'**
+  String get healthContactRelation;
+
+  /// No description provided for @healthNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get healthNotSet;
+
+  /// No description provided for @appLockEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock with fingerprint or face'**
+  String get appLockEnable;
+
+  /// No description provided for @appLockUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This device has no fingerprint or face unlock set up.'**
+  String get appLockUnavailable;
+
+  /// No description provided for @appLockPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock ClinQ'**
+  String get appLockPrompt;
+
+  /// No description provided for @appLockLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'ClinQ is locked'**
+  String get appLockLocked;
+
+  /// No description provided for @appLockUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get appLockUnlock;
+
+  /// No description provided for @apptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointments'**
+  String get apptTitle;
+
+  /// No description provided for @apptBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Book appointment'**
+  String get apptBook;
+
+  /// No description provided for @apptUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get apptUpcoming;
+
+  /// No description provided for @apptPast.
+  ///
+  /// In en, this message translates to:
+  /// **'Past'**
+  String get apptPast;
+
+  /// No description provided for @apptNoUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming appointments'**
+  String get apptNoUpcoming;
+
+  /// No description provided for @apptNoUpcomingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Book a visit with the clinic and it will appear here.'**
+  String get apptNoUpcomingBody;
+
+  /// No description provided for @apptNoPast.
+  ///
+  /// In en, this message translates to:
+  /// **'No past appointments'**
+  String get apptNoPast;
+
+  /// No description provided for @apptChooseClinic.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a clinic'**
+  String get apptChooseClinic;
+
+  /// No description provided for @apptChooseDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a date'**
+  String get apptChooseDate;
+
+  /// No description provided for @apptChooseTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a time'**
+  String get apptChooseTime;
+
+  /// No description provided for @apptNoSlots.
+  ///
+  /// In en, this message translates to:
+  /// **'No available times on this day'**
+  String get apptNoSlots;
+
+  /// No description provided for @apptClosedThatDay.
+  ///
+  /// In en, this message translates to:
+  /// **'The clinic is closed on this day'**
+  String get apptClosedThatDay;
+
+  /// No description provided for @apptReasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason for visit (optional)'**
+  String get apptReasonLabel;
+
+  /// No description provided for @apptReasonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Follow-up, sugar review'**
+  String get apptReasonHint;
+
+  /// No description provided for @apptConfirmBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm booking'**
+  String get apptConfirmBooking;
+
+  /// No description provided for @apptBookedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment confirmed'**
+  String get apptBookedTitle;
+
+  /// No description provided for @apptBookedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your appointment is confirmed. You\'ll find it under Upcoming.'**
+  String get apptBookedBody;
+
+  /// No description provided for @apptCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel appointment'**
+  String get apptCancel;
+
+  /// No description provided for @apptCancelConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this appointment?'**
+  String get apptCancelConfirm;
+
+  /// No description provided for @apptCancelConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The time slot will be released for others.'**
+  String get apptCancelConfirmBody;
+
+  /// No description provided for @apptCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment cancelled'**
+  String get apptCancelled;
+
+  /// No description provided for @apptReschedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Reschedule'**
+  String get apptReschedule;
+
+  /// No description provided for @apptCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Call clinic'**
+  String get apptCall;
+
+  /// No description provided for @apptDirections.
+  ///
+  /// In en, this message translates to:
+  /// **'Directions'**
+  String get apptDirections;
+
+  /// No description provided for @apptStatusRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested'**
+  String get apptStatusRequested;
+
+  /// No description provided for @apptStatusConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed'**
+  String get apptStatusConfirmed;
+
+  /// No description provided for @apptStatusCheckedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked in'**
+  String get apptStatusCheckedIn;
+
+  /// No description provided for @apptStatusInConsultation.
+  ///
+  /// In en, this message translates to:
+  /// **'In consultation'**
+  String get apptStatusInConsultation;
+
+  /// No description provided for @apptStatusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get apptStatusCompleted;
+
+  /// No description provided for @apptStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get apptStatusCancelled;
+
+  /// No description provided for @apptStatusNoShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed'**
+  String get apptStatusNoShow;
+
+  /// No description provided for @apptModeInClinic.
+  ///
+  /// In en, this message translates to:
+  /// **'In clinic'**
+  String get apptModeInClinic;
+
+  /// No description provided for @apptModeTeleconsult.
+  ///
+  /// In en, this message translates to:
+  /// **'Video consult'**
+  String get apptModeTeleconsult;
+
+  /// No description provided for @apptSlotTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'That time was just taken. Please pick another.'**
+  String get apptSlotTaken;
+
+  /// No description provided for @apptBookingFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not book. Please try again.'**
+  String get apptBookingFailed;
+
+  /// No description provided for @apptSelectSlotFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Please choose a time first'**
+  String get apptSelectSlotFirst;
+
+  /// No description provided for @apptToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get apptToday;
+
+  /// No description provided for @apptTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get apptTomorrow;
+
+  /// No description provided for @apptWithDoctor.
+  ///
+  /// In en, this message translates to:
+  /// **'with {doctor}'**
+  String apptWithDoctor(String doctor);
+
   /// No description provided for @errorBadRequest.
   ///
   /// In en, this message translates to:

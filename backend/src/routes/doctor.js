@@ -266,14 +266,18 @@ router.get(
   validate({
     query: pageParams.and(
       z.object({
-        flagged: z.coerce.boolean().default(true),
         urgency: z.enum(['routine', 'advice', 'urgent', 'emergency']).optional(),
       }),
     ),
   }),
   audit('read', 'ChatSession'),
   asyncHandler(async (req, res) => {
-    const { page, limit, skip, flagged, urgency } = q(req);
+    const { page, limit, skip, urgency } = q(req);
+    // `flagged` is read from the raw query rather than the zod schema: pageParams
+    // is `.passthrough()`, so an intersected `z.coerce.boolean()` would keep the
+    // string on one side and a boolean on the other and fail to merge. Defaults
+    // to true (only flagged threads), false only when explicitly "false".
+    const flagged = req.query.flagged !== 'false';
     const filter = {
       ...(flagged ? { flaggedForReview: true } : {}),
       ...(urgency ? { highestUrgency: urgency } : {}),

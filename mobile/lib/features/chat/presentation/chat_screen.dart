@@ -88,10 +88,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final language = _replyLanguage;
 
     ref.listen(chatControllerProvider, (previous, next) {
-      if (previous?.messages.length != next.messages.length) _scrollToBottom();
+      final lengthChanged = previous?.messages.length != next.messages.length;
+      // Also follow a streaming reply, whose length is fixed but whose last
+      // message's content grows token by token.
+      final contentGrew = previous != null &&
+          previous.messages.isNotEmpty &&
+          next.messages.isNotEmpty &&
+          previous.messages.last.content.length != next.messages.last.content.length;
+      if (lengthChanged || contentGrew) _scrollToBottom();
     });
 
     final entries = _withDateSeparators(chatState.messages);
+    // The "analysing" bubble shows only in the gap between sending and the
+    // first streamed token — once the assistant's (growing) reply is on screen,
+    // it would be a duplicate.
+    final showGenerating = chatState.isSending &&
+        (chatState.messages.isEmpty || chatState.messages.last.isUser);
 
     return Scaffold(
       appBar: AppBar(
@@ -108,8 +120,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ],
       ),
       drawer: const SessionDrawer(),
+      // The Scaffold does not resize for the keyboard; instead the content is
+      // padded by the keyboard inset below. This keeps the dotted background a
+      // fixed, full-screen layer that never repaints as the keyboard animates —
+      // which was a real source of the input/attach lag.
+      resizeToAvoidBottomInset: false,
       body: DottedBackground(
-        child: Column(
+        child: Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Column(
           children: [
             if (chatState.error != null)
               Container(
@@ -131,7 +150,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   : ListView.builder(
                       controller: _scrollController,
                       padding: const EdgeInsets.all(AppSpacing.md),
-                      itemCount: entries.length + (chatState.isSending ? 1 : 0),
+                      itemCount: entries.length + (showGenerating ? 1 : 0),
                       itemBuilder: (context, index) {
                         if (index == entries.length) return const GeneratingBubble();
 
@@ -186,6 +205,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               languageCode: language,
             ),
           ],
+          ),
         ),
       ),
     );

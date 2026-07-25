@@ -1,0 +1,103 @@
+import 'clinician_models.dart';
+
+/// A quarterly HbA1c point on the patient's record.
+class Hba1cPoint {
+  const Hba1cPoint({required this.percentage, this.testedOn});
+  final num percentage;
+  final DateTime? testedOn;
+
+  factory Hba1cPoint.fromJson(Map<String, dynamic> j) => Hba1cPoint(
+    percentage: (j['percentage'] as num?) ?? 0,
+    testedOn: DateTime.tryParse(j['testedOn']?.toString() ?? '')?.toLocal(),
+  );
+}
+
+/// The full clinical picture for one patient (`GET /doctor/patients/:id/summary`).
+/// Only the fields the clinician UI renders are pulled out; the raw analytics
+/// blobs are large and screen-specific.
+class PatientSummary {
+  const PatientSummary({
+    required this.id,
+    required this.name,
+    required this.phone,
+    this.email,
+    this.gender,
+    this.age,
+    this.language,
+    this.diabetesType,
+    this.riskBand,
+    this.riskScore,
+    this.healthScore,
+    this.healthBand,
+    this.adherencePercent,
+    this.glucoseAverage,
+    this.timeInRangePercent,
+    this.estimatedHba1c,
+    this.hba1cHistory = const [],
+    this.alerts = const [],
+    this.aiContext,
+  });
+
+  final String id;
+  final String name;
+  final String phone;
+  final String? email;
+  final String? gender;
+  final int? age;
+  final String? language;
+
+  final String? diabetesType;
+  final String? riskBand;
+  final int? riskScore;
+
+  final int? healthScore;
+  final String? healthBand;
+  final int? adherencePercent;
+
+  final int? glucoseAverage;
+  final int? timeInRangePercent;
+  final double? estimatedHba1c;
+
+  final List<Hba1cPoint> hba1cHistory;
+  final List<ClinicalAlert> alerts;
+  final String? aiContext;
+
+  factory PatientSummary.fromJson(Map<String, dynamic> j) {
+    final patient = j['patient'] as Map<String, dynamic>? ?? const {};
+    final profile = j['profile'] as Map<String, dynamic>? ?? const {};
+    final health = j['healthScore'] as Map<String, dynamic>? ?? const {};
+    final adherence = j['adherence'] as Map<String, dynamic>? ?? const {};
+    final trends = j['trends'] as Map<String, dynamic>? ?? const {};
+    final stats = trends['stats'] as Map<String, dynamic>?;
+
+    return PatientSummary(
+      id: patient['id']?.toString() ?? '',
+      name: patient['name']?.toString() ?? '',
+      phone: patient['phone']?.toString() ?? '',
+      email: patient['email']?.toString(),
+      gender: patient['gender']?.toString(),
+      age: (patient['age'] as num?)?.toInt(),
+      language: patient['language']?.toString(),
+      diabetesType: profile['diabetesType']?.toString(),
+      riskBand: profile['riskBand']?.toString(),
+      riskScore: (profile['riskScore'] as num?)?.toInt(),
+      healthScore: (health['score'] as num?)?.toInt(),
+      healthBand: health['band']?.toString(),
+      adherencePercent: (adherence['percentage'] as num?)?.toInt(),
+      glucoseAverage: (stats?['average'] as num?)?.toInt(),
+      timeInRangePercent: (stats?['timeInRangePercent'] as num?)?.toInt(),
+      estimatedHba1c: (stats?['estimatedHba1c'] as num?)?.toDouble(),
+      hba1cHistory: (j['hba1cHistory'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(Hba1cPoint.fromJson)
+              .toList() ??
+          const [],
+      alerts: (j['alerts'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(ClinicalAlert.fromJson)
+              .toList() ??
+          const [],
+      aiContext: j['aiContext']?.toString(),
+    );
+  }
+}

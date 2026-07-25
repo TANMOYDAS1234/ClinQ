@@ -38,6 +38,9 @@ const userSchema = new mongoose.Schema(
     // Push delivery targets for reminders and escalations.
     deviceTokens: [{ type: String }],
 
+    // Optional profile photo — a MediaAsset id, served from /uploads/:id/raw.
+    avatarAssetId: { type: mongoose.Schema.Types.ObjectId, ref: 'MediaAsset' },
+
     isActive: { type: Boolean, default: true },
     lastLoginAt: Date,
 
@@ -69,6 +72,7 @@ userSchema.methods.toPublic = function toPublic() {
     language: this.language,
     dateOfBirth: this.dateOfBirth ?? null,
     gender: this.gender,
+    avatarUrl: this.avatarAssetId ? `/api/v1/uploads/${this.avatarAssetId}/raw` : null,
     createdAt: this.createdAt,
   };
 };

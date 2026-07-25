@@ -1,0 +1,128 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { requireAuth, requireClinician } from '../middleware/auth.js';
+import { validate, q } from '../middleware/validate.js';
+import { asyncHandler, notFound, badRequest } from '../middleware/errors.js';
+import { audit } from '../middleware/audit.js';
+import { Clinic } from '../models/Clinic.js';
+import { User, ROLES } from '../models/User.js';
+import { generateSlots } from '../services/scheduling.js';
+import { dayjs, DATE_RE, TIME_RE } from '../utils/clinicTime.js';
+
+const router = Router();
+router.use(requireAuth);
+
+const isClinician = (req) => req.user.role !== ROLES.PATIENT;
+
+const timeStr = z.string().regex(TIME_RE, 'time must be HH:mm');
+const windowShape = z
+  .object({ start: timeStr, end: timeStr })
+  .refine((w) => w.start < w.end, { message: 'window end must be after start' });
+
+const weeklyHourShape = z
+  .object({ dayOfWeek: z.number().int().min(0).max(6), start: timeStr, end: timeStr })
+  .refine((w) => w.start < w.end, { message: 'window end must be after start' });
+
+const overrideShape = z.object({
+  date: z.string().regex(DATE_RE),
+  isClosed: z.boolean().default(false),
+  windows: z.array(windowShape).max(6).default([]),
+  note: z.string().max(200).optional(),
+});
+
+const clinicBody = z.object({
+  name: z.string().min(1).max(160),
+  addressLine: z.string().max(400).optional(),
+  city: z.string().max(120).optional(),
+  phone: z.string().max(40).optional(),
+  mapUrl: z.string().max(600).optional(),
+  slotMinutes: z.number().int().min(5).max(120).default(15),
+  weeklyHours: z.array(weeklyHourShape).max(50).default([]),
+  overrides: z.array(overrideShape).max(120).default([]),
+  isActive: z.boolean().default(true),
+  sortIndex: z.number().int().optional(),
+});
+
+/** List clinics. Patients see only active ones; clinicians see everything. */
+router.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const filter = isClinician(req) ? {} : { isActive: true };
+    const clinics = await Clinic.find(filter).sort({ sortIndex: 1, name: 1 });
+    res.json({ items: clinics.map((c) => c.toPublic()) });
+  }),
+);
+
+router.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const clinic = await Clinic.findById(req.params.id);
+    if (!clinic || (!isClinician(req) && !clinic.isActive)) throw notFound('Clinic not found');
+    res.json({ clinic: clinic.toPublic() });
+  }),
+);
+
+/** Bookable slots for a clinic on a clinic-local date. */
+router.get(
+  '/:id/slots',
+  validate({ query: z.object({ date: z.string().regex(DATE_RE) }) }),
+  asyncHandler(async (req, res) => {
+    const clinic = await Clinic.findById(req.params.id);
+    if (!clinic || (!isClinician(req) && !clinic.isActive)) throw notFound('Clinic not found');
+
+    const date = q(req).date;
+    if (!dayjs(date, 'YYYY-MM-DD', true).isValid()) throw badRequest('Invalid date');
+
+    const slots = await generateSlots(clinic, date);
+    res.json({
+      clinicId: clinic._id,
+      date,
+      slotMinutes: clinic.slotMinutes,
+      slots,
+    });
+  }),
+);
+
+router.post(
+  '/',
+  requireClinician,
+  validate({ body: clinicBody }),
+  audit('create', 'Clinic'),
+  asyncHandler(async (req, res) => {
+    // Tie the schedule to the clinic (the single doctor today).
+    const doctor = await User.findOne({ role: ROLES.DOCTOR }).select('_id').lean();
+    const clinic = await Clinic.create({ ...req.body, doctor: doctor?._id });
+    res.status(201).json({ clinic: clinic.toPublic() });
+  }),
+);
+
+router.patch(
+  '/:id',
+  requireClinician,
+  validate({ body: clinicBody.partial() }),
+  audit('update', 'Clinic'),
+  asyncHandler(async (req, res) => {
+    const clinic = await Clinic.findById(req.params.id);
+    if (!clinic) throw notFound('Clinic not found');
+    Object.assign(clinic, req.body);
+    await clinic.save();
+    res.json({ clinic: clinic.toPublic() });
+  }),
+);
+
+/**
+ * Soft-delete: mark inactive rather than remove, so appointments already booked
+ * here keep a valid clinic reference and history stays intact.
+ */
+router.delete(
+  '/:id',
+  requireClinician,
+  audit('update', 'Clinic'),
+  asyncHandler(async (req, res) => {
+    const clinic = await Clinic.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    if (!clinic) throw notFound('Clinic not found');
+    res.json({ clinic: clinic.toPublic() });
+  }),
+);
+
+export default router;

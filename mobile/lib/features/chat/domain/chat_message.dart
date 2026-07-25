@@ -25,6 +25,7 @@ class ChatMessage {
     this.createdAt,
     this.citations,
     this.triage,
+    this.attachmentPaths = const [],
   });
 
   final String id;
@@ -43,6 +44,10 @@ class ChatMessage {
   final List<Citation>? citations;
   final Triage? triage;
 
+  /// Relative `/api/v1/uploads/:id/raw` paths of photos the patient attached.
+  /// The full URL and auth header are assembled at render time.
+  final List<String> attachmentPaths;
+
   bool get isUser => role == 'user';
   bool get isEmergency => urgency == 'emergency';
   bool get isUrgent => urgency == 'urgent';
@@ -57,8 +62,35 @@ class ChatMessage {
       urgency: json['urgency']?.toString() ?? 'routine',
       isFallback: json['isFallback'] as bool?,
       createdAt: json['createdAt'] == null ? null : DateTime.tryParse(json['createdAt'].toString()),
+      attachmentPaths: _parseAttachments(json['attachments']),
     );
   }
+
+  /// Attachments arrive as `[{id, url}]`; keep the relative url.
+  static List<String> _parseAttachments(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .map((a) => a is Map ? a['url']?.toString() : a?.toString())
+        .whereType<String>()
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  /// Returns a copy with new [content] — used to grow a streaming reply as
+  /// tokens arrive, keeping every other field.
+  ChatMessage withContent(String content) => ChatMessage(
+    id: id,
+    seq: seq,
+    role: role,
+    content: content,
+    language: language,
+    urgency: urgency,
+    isFallback: isFallback,
+    createdAt: createdAt,
+    citations: citations,
+    triage: triage,
+    attachmentPaths: attachmentPaths,
+  );
 
   ChatMessage copyWith({List<Citation>? citations, Triage? triage}) {
     return ChatMessage(
@@ -72,6 +104,7 @@ class ChatMessage {
       createdAt: createdAt,
       citations: citations ?? this.citations,
       triage: triage ?? this.triage,
+      attachmentPaths: attachmentPaths,
     );
   }
 }

@@ -41,7 +41,7 @@ router.post(
   upload.single('file'),
   validate({
     body: z.object({
-      kind: z.enum(['foot_photo', 'retinal_report', 'lab_report', 'prescription_pdf', 'meal_photo', 'other']),
+      kind: z.enum(['foot_photo', 'retinal_report', 'lab_report', 'prescription_pdf', 'meal_photo', 'avatar', 'other']),
       patientId: z.string().optional(),
     }),
   }),

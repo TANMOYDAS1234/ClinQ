@@ -175,6 +175,7 @@ router.patch(
       language: z.enum(LANGUAGES).optional(),
       dateOfBirth: z.coerce.date().optional(),
       gender: z.enum(['male', 'female', 'other', 'undisclosed']).optional(),
+      avatarAssetId: z.string().optional(),
     }),
   }),
   asyncHandler(async (req, res) => {

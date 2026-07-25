@@ -15,6 +15,10 @@ const appointmentSchema = new mongoose.Schema(
     patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
 
+    // The location this appointment is booked at. Required for an in-clinic
+    // visit (its slot came from the clinic's schedule); absent for teleconsult.
+    clinic: { type: mongoose.Schema.Types.ObjectId, ref: 'Clinic', index: true },
+
     mode: { type: String, enum: ['in_clinic', 'teleconsult'], default: 'in_clinic' },
     scheduledFor: { type: Date, required: true, index: true },
     durationMinutes: { type: Number, default: 15, min: 5, max: 120 },

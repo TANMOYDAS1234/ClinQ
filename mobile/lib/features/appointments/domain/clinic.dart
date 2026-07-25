@@ -1,0 +1,143 @@
+/// A recurring weekly availability window, e.g. Monday 10:00–14:00.
+class WeeklyHour {
+  const WeeklyHour({required this.dayOfWeek, required this.start, required this.end});
+
+  /// 0 = Sunday … 6 = Saturday (matches the backend and Dart's DateTime.weekday
+  /// modulo 7).
+  final int dayOfWeek;
+  final String start; // 'HH:mm'
+  final String end; // 'HH:mm'
+
+  factory WeeklyHour.fromJson(Map<String, dynamic> j) => WeeklyHour(
+    dayOfWeek: (j['dayOfWeek'] as num?)?.toInt() ?? 0,
+    start: j['start']?.toString() ?? '00:00',
+    end: j['end']?.toString() ?? '00:00',
+  );
+
+  Map<String, dynamic> toJson() => {'dayOfWeek': dayOfWeek, 'start': start, 'end': end};
+}
+
+/// A date-specific exception to the weekly pattern — a holiday closure or
+/// special one-off hours.
+class ClinicOverride {
+  const ClinicOverride({
+    required this.date,
+    required this.isClosed,
+    this.windows = const [],
+    this.note,
+  });
+
+  final String date; // 'YYYY-MM-DD'
+  final bool isClosed;
+  final List<({String start, String end})> windows;
+  final String? note;
+
+  factory ClinicOverride.fromJson(Map<String, dynamic> j) => ClinicOverride(
+    date: j['date']?.toString() ?? '',
+    isClosed: j['isClosed'] == true,
+    windows: (j['windows'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .map((w) => (start: w['start']?.toString() ?? '', end: w['end']?.toString() ?? ''))
+            .toList() ??
+        const [],
+    note: j['note']?.toString(),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'date': date,
+    'isClosed': isClosed,
+    'windows': [for (final w in windows) {'start': w.start, 'end': w.end}],
+    if (note != null) 'note': note,
+  };
+}
+
+/// A physical location where the doctor consults, with its schedule.
+class Clinic {
+  const Clinic({
+    required this.id,
+    required this.name,
+    this.addressLine,
+    this.city,
+    this.phone,
+    this.mapUrl,
+    this.slotMinutes = 15,
+    this.weeklyHours = const [],
+    this.overrides = const [],
+    this.isActive = true,
+    this.sortIndex = 0,
+  });
+
+  final String id;
+  final String name;
+  final String? addressLine;
+  final String? city;
+  final String? phone;
+  final String? mapUrl;
+  final int slotMinutes;
+  final List<WeeklyHour> weeklyHours;
+  final List<ClinicOverride> overrides;
+  final bool isActive;
+  final int sortIndex;
+
+  /// "DD-24, Salt Lake City · Kolkata" — a one-line location summary.
+  String get locationLine {
+    final parts = [if (addressLine != null && addressLine!.isNotEmpty) addressLine, if (city != null && city!.isNotEmpty) city];
+    return parts.join(' · ');
+  }
+
+  factory Clinic.fromJson(Map<String, dynamic> j) => Clinic(
+    id: j['id']?.toString() ?? '',
+    name: j['name']?.toString() ?? '',
+    addressLine: j['addressLine']?.toString(),
+    city: j['city']?.toString(),
+    phone: j['phone']?.toString(),
+    mapUrl: j['mapUrl']?.toString(),
+    slotMinutes: (j['slotMinutes'] as num?)?.toInt() ?? 15,
+    weeklyHours: (j['weeklyHours'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .map(WeeklyHour.fromJson)
+            .toList() ??
+        const [],
+    overrides: (j['overrides'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .map(ClinicOverride.fromJson)
+            .toList() ??
+        const [],
+    isActive: j['isActive'] != false,
+    sortIndex: (j['sortIndex'] as num?)?.toInt() ?? 0,
+  );
+}
+
+/// One bookable slot returned by `GET /clinics/:id/slots`.
+class Slot {
+  const Slot({required this.time, required this.iso, required this.available});
+
+  final String time; // 'HH:mm' clinic-local
+  final String iso; // absolute ISO instant to send back when booking
+  final bool available;
+
+  factory Slot.fromJson(Map<String, dynamic> j) => Slot(
+    time: j['time']?.toString() ?? '',
+    iso: j['iso']?.toString() ?? '',
+    available: j['available'] == true,
+  );
+}
+
+/// The slot listing for a clinic on one date.
+class SlotDay {
+  const SlotDay({required this.clinicId, required this.date, required this.slotMinutes, required this.slots});
+
+  final String clinicId;
+  final String date;
+  final int slotMinutes;
+  final List<Slot> slots;
+
+  bool get hasAvailability => slots.any((s) => s.available);
+
+  factory SlotDay.fromJson(Map<String, dynamic> j) => SlotDay(
+    clinicId: j['clinicId']?.toString() ?? '',
+    date: j['date']?.toString() ?? '',
+    slotMinutes: (j['slotMinutes'] as num?)?.toInt() ?? 15,
+    slots: (j['slots'] as List?)?.whereType<Map<String, dynamic>>().map(Slot.fromJson).toList() ?? const [],
+  );
+}

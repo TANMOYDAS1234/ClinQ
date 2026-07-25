@@ -1,0 +1,265 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/network/api_exception.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../data/clinician_repository.dart';
+import '../domain/knowledge_chunk.dart';
+import 'clinician_providers.dart';
+import 'knowledge_screen.dart' show knowledgeStatusColor, knowledgeStatusLabel;
+
+/// Create or edit an assistant knowledge entry, and approve/retire it. Editing
+/// the content sends it back to "pending review" server-side — approved text
+/// can never be silently rewritten and still served.
+class KnowledgeEditScreen extends ConsumerStatefulWidget {
+  const KnowledgeEditScreen({super.key, this.chunk});
+
+  final KnowledgeChunk? chunk;
+
+  @override
+  ConsumerState<KnowledgeEditScreen> createState() => _KnowledgeEditScreenState();
+}
+
+class _KnowledgeEditScreenState extends ConsumerState<KnowledgeEditScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _docId;
+  late final TextEditingController _title;
+  late final TextEditingController _section;
+  late final TextEditingController _content;
+  late final TextEditingController _source;
+  late final TextEditingController _tags;
+
+  String _language = 'en';
+  String _category = 'general';
+  String _status = 'draft';
+  bool _saving = false;
+
+  bool get _editing => widget.chunk != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final c = widget.chunk;
+    _docId = TextEditingController(text: c?.docId ?? '');
+    _title = TextEditingController(text: c?.title ?? '');
+    _section = TextEditingController(text: c?.section ?? '');
+    _content = TextEditingController(text: c?.content ?? '');
+    _source = TextEditingController(text: c?.sourceCitation ?? '');
+    _tags = TextEditingController(text: c?.tags.join(', ') ?? '');
+    _language = c?.language ?? 'en';
+    _category = c?.category ?? 'general';
+    _status = c?.status ?? 'draft';
+  }
+
+  @override
+  void dispose() {
+    _docId.dispose();
+    _title.dispose();
+    _section.dispose();
+    _content.dispose();
+    _source.dispose();
+    _tags.dispose();
+    super.dispose();
+  }
+
+  void _invalidateLists() {
+    // Any status filter the list might be showing.
+    for (final s in [null, 'approved', 'pending_review', 'draft', 'retired']) {
+      ref.invalidate(knowledgeProvider((status: s, category: null, language: null)));
+    }
+  }
+
+  Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    setState(() => _saving = true);
+
+    final tags = _tags.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    final body = {
+      'docId': _docId.text.trim(),
+      'title': _title.text.trim(),
+      if (_section.text.trim().isNotEmpty) 'section': _section.text.trim(),
+      'content': _content.text.trim(),
+      'language': _language,
+      'category': _category,
+      'tags': tags,
+      if (_source.text.trim().isNotEmpty) 'sourceCitation': _source.text.trim(),
+    };
+
+    try {
+      final repo = ref.read(clinicianRepositoryProvider);
+      final saved = _editing ? await repo.updateKnowledge(widget.chunk!.id, body) : await repo.createKnowledge(body);
+      _invalidateLists();
+      if (!mounted) return;
+      setState(() => _status = saved.status);
+      messenger.showSnackBar(const SnackBar(content: Text('Saved — pending review until approved')));
+      navigator.pop();
+    } on ApiException catch (e) {
+      setState(() => _saving = false);
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  Future<void> _approve() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    setState(() => _saving = true);
+    try {
+      await ref.read(clinicianRepositoryProvider).approveKnowledge(widget.chunk!.id);
+      _invalidateLists();
+      messenger.showSnackBar(const SnackBar(content: Text('Approved — the assistant can now use it')));
+      navigator.pop();
+    } on ApiException catch (e) {
+      setState(() => _saving = false);
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  Future<void> _retire() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Retire entry?'),
+        content: const Text('The assistant will stop using it. You can re-approve later.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(style: TextButton.styleFrom(foregroundColor: AppColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('Retire')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(clinicianRepositoryProvider).retireKnowledge(widget.chunk!.id);
+      _invalidateLists();
+      navigator.pop();
+    } on ApiException {
+      messenger.showSnackBar(const SnackBar(content: Text('Could not retire. Please try again.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_editing ? 'Edit entry' : 'New entry'),
+        actions: [
+          if (_editing && _status != 'retired')
+            PopupMenuButton<String>(
+              onSelected: (v) => v == 'retire' ? _retire() : null,
+              itemBuilder: (_) => const [PopupMenuItem(value: 'retire', child: Text('Retire entry'))],
+            ),
+        ],
+      ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 120),
+          children: [
+            if (_editing)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: knowledgeStatusColor(_status).withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
+                      child: Text(knowledgeStatusLabel(_status), style: TextStyle(color: knowledgeStatusColor(_status), fontWeight: FontWeight.w700, fontSize: 12.5)),
+                    ),
+                  ],
+                ),
+              ),
+            TextFormField(
+              controller: _title,
+              decoration: const InputDecoration(labelText: 'Title'),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _docId,
+                    decoration: const InputDecoration(labelText: 'Document ID', hintText: 'e.g. diet-basics-01'),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: TextFormField(controller: _section, decoration: const InputDecoration(labelText: 'Section (optional)'))),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _content,
+              minLines: 5,
+              maxLines: 14,
+              maxLength: 8000,
+              decoration: const InputDecoration(labelText: 'Content', alignLabelWithHint: true, hintText: 'The guidance the assistant may use…'),
+              validator: (v) => (v == null || v.trim().length < 20) ? 'At least 20 characters' : null,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Language', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant)),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              children: [
+                for (final l in const [('en', 'English'), ('bn', 'বাংলা'), ('hi', 'हिन्दी')])
+                  ChoiceChip(label: Text(l.$2), selected: _language == l.$1, onSelected: (_) => setState(() => _language = l.$1)),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            DropdownButtonFormField<String>(
+              initialValue: _category,
+              decoration: const InputDecoration(labelText: 'Category'),
+              items: [
+                for (final c in KnowledgeChunk.categories)
+                  DropdownMenuItem(value: c, child: Text(c.replaceAll('_', ' '))),
+              ],
+              onChanged: (v) => setState(() => _category = v ?? 'general'),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(controller: _source, decoration: const InputDecoration(labelText: 'Source citation (optional)')),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(controller: _tags, decoration: const InputDecoration(labelText: 'Tags (comma-separated)', hintText: 'diet, breakfast')),
+          ],
+        ),
+      ),
+      bottomSheet: Container(
+        padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md + MediaQuery.of(context).padding.bottom),
+        decoration: BoxDecoration(color: scheme.surface, border: Border(top: BorderSide(color: scheme.outlineVariant))),
+        child: Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 50,
+                child: OutlinedButton(
+                  onPressed: _saving ? null : _save,
+                  child: Text(_editing ? 'Save' : 'Create'),
+                ),
+              ),
+            ),
+            if (_editing && _status != 'approved') ...[
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: SizedBox(
+                  height: 50,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.success),
+                    onPressed: _saving ? null : _approve,
+                    icon: const Icon(Icons.verified_rounded, size: 18),
+                    label: const Text('Approve'),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}

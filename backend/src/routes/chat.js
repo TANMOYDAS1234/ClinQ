@@ -5,7 +5,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { validate, q } from '../middleware/validate.js';
 import { asyncHandler, notFound } from '../middleware/errors.js';
 import { audit } from '../middleware/audit.js';
-import { handlePatientMessage } from '../services/ai/assistant.js';
+import { handlePatientMessage, streamPatientMessage } from '../services/ai/assistant.js';
 import { ChatSession } from '../models/ChatSession.js';
 import { ChatMessage } from '../models/ChatMessage.js';
 import { paged, pageParams } from '../utils/pagination.js';
@@ -53,6 +53,57 @@ router.post(
       attachments: req.body.attachments,
     });
     res.json(result);
+  }),
+);
+
+/**
+ * Streaming sibling of POST /message. Same triage-first safety order, but the
+ * reply is delivered as Server-Sent Events so the app can show words as they
+ * are generated. The client falls back to the non-streaming endpoint if the
+ * stream cannot be opened.
+ */
+router.post(
+  '/message/stream',
+  requireAuth,
+  chatLimiter,
+  validate({
+    body: z.object({
+      sessionId: z.string().optional(),
+      text: z.string().trim().min(1, 'Message cannot be empty').max(4000),
+      language: z.enum(['en', 'bn', 'hi']).optional(),
+      attachments: z.array(z.string()).max(5).default([]),
+    }),
+  }),
+  audit('create', 'ChatMessage'),
+  asyncHandler(async (req, res) => {
+    res.set({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      // Stop nginx from buffering the stream so tokens arrive as they are sent.
+      'X-Accel-Buffering': 'no',
+    });
+    res.flushHeaders();
+
+    const send = (type, data) => res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+
+    try {
+      for await (const ev of streamPatientMessage({
+        patientId: req.user._id,
+        sessionId: req.body.sessionId,
+        text: req.body.text,
+        language: req.body.language ?? req.user.language ?? 'en',
+        attachments: req.body.attachments,
+      })) {
+        send(ev.type, ev.data);
+      }
+    } catch (err) {
+      // The generator already scripts a fallback for AI failures; this catches
+      // anything earlier (DB, retrieval) so the client is not left hanging.
+      send('error', { message: 'Something went wrong. Please try again.' });
+    } finally {
+      res.end();
+    }
   }),
 );
 
@@ -146,7 +197,10 @@ function serialiseMessage(m) {
     redFlags: m.triage?.redFlags ?? [],
     citations: (m.citations ?? []).map((c) => ({ id: c.chunk, title: c.title })),
     isFallback: m.isFallback ?? false,
-    attachments: m.attachments ?? [],
+    attachments: (m.attachments ?? []).map((a) => ({
+      id: a.toString?.() ?? a,
+      url: `/api/v1/uploads/${a.toString?.() ?? a}/raw`,
+    })),
     createdAt: m.createdAt,
   };
 }

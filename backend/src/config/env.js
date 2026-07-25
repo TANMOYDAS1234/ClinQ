@@ -37,6 +37,11 @@ const schema = z.object({
   CLINIC_NAME: z.string().default('Dr. Amit Kumar Dey Clinic'),
   CLINIC_EMERGENCY_PHONE: z.string().default('+91-0000000000'),
   DOCTOR_DISPLAY_NAME: z.string().default('Dr. Amit Kumar Dey'),
+
+  // Clinic wall-clock timezone. All appointment slot times are computed in this
+  // zone, so the schedule is correct no matter what timezone the server runs in
+  // (a VPS is often UTC). India is a single zone.
+  CLINIC_TZ: z.string().default('Asia/Kolkata'),
 });
 
 const parsed = schema.safeParse(process.env);

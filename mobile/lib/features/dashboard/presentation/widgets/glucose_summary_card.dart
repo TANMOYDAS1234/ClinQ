@@ -1,21 +1,24 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../l10n/gen/app_localizations.dart';
+import '../../../../shared/providers/preferences_provider.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../domain/dashboard_data.dart';
 
-class GlucoseSummaryCard extends StatelessWidget {
+class GlucoseSummaryCard extends ConsumerWidget {
   const GlucoseSummaryCard({super.key, required this.glucose});
 
   final DashboardGlucose glucose;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final unit = ref.watch(glucoseUnitProvider);
     final latest = glucose.latest;
     final color = latest == null ? AppColors.primary : AppColors.forGlucoseFlag(latest.flag);
 
@@ -45,13 +48,13 @@ class GlucoseSummaryCard extends StatelessWidget {
               textBaseline: TextBaseline.alphabetic,
               children: [
                 Text(
-                  '${latest.value}',
+                  unit.format(latest.value, withUnit: false),
                   style: Theme.of(
                     context,
                   ).textTheme.headlineLarge?.copyWith(color: color, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(width: 6),
-                Text('mg/dL', style: Theme.of(context).textTheme.bodyMedium),
+                Text(unit.label, style: Theme.of(context).textTheme.bodyMedium),
               ],
             ),
           const SizedBox(height: AppSpacing.md),
@@ -88,7 +91,7 @@ class GlucoseSummaryCard extends StatelessWidget {
                   label: l10n.dashboardGlucoseAverage,
                   value: glucose.sevenDayAverage == null
                       ? '—'
-                      : '${glucose.sevenDayAverage} mg/dL',
+                      : unit.format(glucose.sevenDayAverage!),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),

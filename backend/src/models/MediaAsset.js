@@ -12,7 +12,15 @@ const mediaAssetSchema = new mongoose.Schema(
 
     kind: {
       type: String,
-      enum: ['foot_photo', 'retinal_report', 'lab_report', 'prescription_pdf', 'meal_photo', 'other'],
+      enum: [
+        'foot_photo',
+        'retinal_report',
+        'lab_report',
+        'prescription_pdf',
+        'meal_photo',
+        'avatar',
+        'other',
+      ],
       required: true,
       index: true,
     },

@@ -45,6 +45,13 @@ dependencies:
   # becomes text would bypass emergency detection entirely.
   speech_to_text: ^7.0.0
 
+  # Biometric / device-credential app lock.
+  local_auth: ^2.3.0
+
+  # Local notifications (foreground + background while running). Short, proper
+  # copy for appointment and clinic updates.
+  flutter_local_notifications: ^18.0.1
+
   # Misc
   image_picker: ^1.1.2
   shared_preferences: ^2.3.4

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../l10n/gen/app_localizations.dart';
+import '../../../../shared/providers/preferences_provider.dart';
 import '../../domain/glucose_reading.dart';
 
-class GlucoseReadingTile extends StatelessWidget {
+class GlucoseReadingTile extends ConsumerWidget {
   const GlucoseReadingTile({super.key, required this.reading, this.onDelete});
 
   final GlucoseReading reading;
@@ -43,9 +45,10 @@ class GlucoseReadingTile extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final color = AppColors.forGlucoseFlag(reading.flag);
+    final unit = ref.watch(glucoseUnitProvider);
 
     return Dismissible(
       key: ValueKey(reading.id),
@@ -93,13 +96,13 @@ class GlucoseReadingTile extends StatelessWidget {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        '${reading.valueMgDl}',
+                        unit.format(reading.valueMgDl, withUnit: false),
                         style: Theme.of(
                           context,
                         ).textTheme.titleLarge?.copyWith(color: color, fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(width: 4),
-                      Text('mg/dL', style: Theme.of(context).textTheme.bodySmall),
+                      Text(unit.label, style: Theme.of(context).textTheme.bodySmall),
                     ],
                   ),
                   const SizedBox(height: 2),

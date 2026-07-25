@@ -6,6 +6,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../l10n/gen/app_localizations.dart';
 import '../../../../shared/widgets/markdown_text.dart';
 import '../../domain/chat_message.dart';
+import 'chat_attachment_thumbs.dart';
 import 'citation_chips.dart';
 import 'emergency_card.dart';
 import 'urgent_card.dart';
@@ -81,6 +82,9 @@ class ChatMessageBubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
+            // Photos the patient attached, shown above their text.
+            if (message.attachmentPaths.isNotEmpty)
+              ChatAttachmentThumbs(paths: message.attachmentPaths),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               decoration: BoxDecoration(

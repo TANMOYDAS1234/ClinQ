@@ -3,6 +3,11 @@
          converted to text before sending; no audio leaves the phone. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Optional biometric app lock (local_auth). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <!-- Local notifications (appointment/clinic updates). Runtime-requested on
+         Android 13+. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <!-- Android 11+ package visibility: required for speech_to_text to see
          the system speech recogniser. -->

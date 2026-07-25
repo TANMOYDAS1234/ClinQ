@@ -78,12 +78,40 @@ class AuthRepository {
     await _client.patchJson('/auth/me/profile', body: {'diabetesType': diabetesType});
   }
 
+  /// The full `PatientProfile` from `GET /auth/me` — height, diagnosis date,
+  /// allergies, emergency contact, targets.
+  Future<Map<String, dynamic>> getProfile() async {
+    final json = await _client.getJson('/auth/me');
+    final profile = json['profile'];
+    return profile is Map<String, dynamic> ? profile : <String, dynamic>{};
+  }
+
+  /// Updates the clinical profile fields via `PATCH /auth/me/profile`. Only
+  /// non-null keys are sent, so an unedited field is left untouched.
+  Future<void> updateProfile({
+    double? heightCm,
+    String? diagnosedOn,
+    List<String>? allergies,
+    Map<String, String>? emergencyContact,
+  }) async {
+    await _client.patchJson(
+      '/auth/me/profile',
+      body: {
+        if (heightCm != null) 'heightCm': heightCm,
+        if (diagnosedOn != null) 'diagnosedOn': diagnosedOn,
+        if (allergies != null) 'allergies': allergies,
+        if (emergencyContact != null) 'emergencyContact': emergencyContact,
+      },
+    );
+  }
+
   Future<AppUser> updateMe({
     String? name,
     String? email,
     String? language,
     String? dateOfBirth,
     String? gender,
+    String? avatarAssetId,
   }) async {
     final json = await _client.patchJson(
       '/auth/me',
@@ -93,6 +121,7 @@ class AuthRepository {
         if (language != null) 'language': language,
         if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
         if (gender != null) 'gender': gender,
+        if (avatarAssetId != null) 'avatarAssetId': avatarAssetId,
       },
     );
     return AppUser.fromJson(json['user'] as Map<String, dynamic>);

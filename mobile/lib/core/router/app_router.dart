@@ -2,16 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/appointments/domain/clinic.dart';
+import '../../features/appointments/presentation/book_appointment_screen.dart';
+import '../../features/clinician/domain/knowledge_chunk.dart';
+import '../../features/appointments/presentation/my_appointments_screen.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/care/presentation/care_placeholder_screen.dart';
 import '../../features/care/presentation/care_screen.dart';
 import '../../features/chat/presentation/chat_screen.dart';
+import '../../features/clinician/presentation/alerts_screen.dart';
+import '../../features/clinician/presentation/appointments_admin_screen.dart';
+import '../../features/clinician/presentation/chat_review_detail_screen.dart';
+import '../../features/clinician/presentation/chat_review_screen.dart';
+import '../../features/clinician/presentation/clinic_edit_screen.dart';
+import '../../features/clinician/presentation/clinician_more_screen.dart';
+import '../../features/clinician/presentation/clinician_shell.dart';
+import '../../features/clinician/presentation/clinics_screen.dart';
+import '../../features/clinician/presentation/dashboard_screen.dart' as clinician;
+import '../../features/clinician/presentation/knowledge_edit_screen.dart';
+import '../../features/clinician/presentation/knowledge_screen.dart';
+import '../../features/clinician/presentation/patient_detail_screen.dart';
+import '../../features/clinician/presentation/patients_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/onboarding/presentation/language_picker_screen.dart';
 import '../../features/onboarding/presentation/splash_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
+import '../../features/profile/presentation/health_details_screen.dart';
+import '../../features/profile/presentation/notifications_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/shell/presentation/app_shell.dart';
 import '../../features/shell/presentation/track_screen.dart';
@@ -29,6 +48,8 @@ class _RouterRefreshNotifier extends ChangeNotifier {
   }
 }
 
+bool _isClinician(AuthState s) => s.user?.role == 'doctor' || s.user?.role == 'staff';
+
 String? _redirect(Ref ref, GoRouterState state) {
   final authState = ref.read(authControllerProvider);
   final hasLanguage = ref.read(localeControllerProvider.notifier).hasChosenLanguage;
@@ -39,6 +60,7 @@ String? _redirect(Ref ref, GoRouterState state) {
   const login = '/login';
   const register = '/register';
   const home = '/home';
+  const clinicianHome = '/clinician';
 
   final isAuthRoute = loc == login || loc == register;
 
@@ -54,7 +76,13 @@ String? _redirect(Ref ref, GoRouterState state) {
     return isAuthRoute ? null : login;
   }
 
-  // authenticated
+  // Authenticated. Doctors and staff live in the clinician area; patients in
+  // the main app. Each is kept out of the other's tree.
+  final inClinicianArea = loc.startsWith('/clinician');
+  if (_isClinician(authState)) {
+    return inClinicianArea ? null : clinicianHome;
+  }
+  if (inClinicianArea) return home;
   if (loc == splash || loc == language || isAuthRoute) return home;
   return null;
 }
@@ -71,6 +99,23 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/language', builder: (context, state) => const LanguagePickerScreen()),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
+
+      // Clinical-alert triage, chat review and knowledge curation are pushed
+      // over the clinician shell from several places, so they live at the root.
+      GoRoute(path: '/clinician/alerts', builder: (context, state) => const AlertsScreen()),
+      GoRoute(path: '/clinician/chat-review', builder: (context, state) => const ChatReviewScreen()),
+      GoRoute(
+        path: '/clinician/chat-review/:id',
+        builder: (context, state) => ChatReviewDetailScreen(sessionId: state.pathParameters['id']!),
+      ),
+      GoRoute(path: '/clinician/knowledge', builder: (context, state) => const KnowledgeScreen()),
+      GoRoute(path: '/clinician/knowledge/new', builder: (context, state) => const KnowledgeEditScreen()),
+      GoRoute(
+        path: '/clinician/knowledge/edit',
+        builder: (context, state) => KnowledgeEditScreen(chunk: state.extra as KnowledgeChunk?),
+      ),
+
+      // ---- Patient app --------------------------------------------------
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => AppShell(navigationShell: navigationShell),
         branches: [
@@ -105,10 +150,13 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'appointments',
-                    builder: (context, state) => CarePlaceholderScreen(
-                      title: AppLocalizations.of(context).careAppointments,
-                      icon: Icons.event_available_outlined,
-                    ),
+                    builder: (context, state) => const MyAppointmentsScreen(),
+                    routes: [
+                      GoRoute(
+                        path: 'book',
+                        builder: (context, state) => const BookAppointmentScreen(),
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: 'prescriptions',
@@ -134,10 +182,62 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
                 path: '/profile',
                 builder: (context, state) => const ProfileScreen(),
                 routes: [
+                  GoRoute(path: 'edit', builder: (context, state) => const EditProfileScreen()),
+                  GoRoute(path: 'health', builder: (context, state) => const HealthDetailsScreen()),
+                  GoRoute(path: 'notifications', builder: (context, state) => const NotificationsScreen()),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+
+      // ---- Clinician app (doctor + staff) -------------------------------
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) => ClinicianShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/clinician', builder: (context, state) => const clinician.ClinicianDashboardScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/clinician/appointments', builder: (context, state) => const AppointmentsAdminScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/clinician/patients',
+                builder: (context, state) => const PatientsScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => PatientDetailScreen(patientId: state.pathParameters['id']!),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/clinician/clinics',
+                builder: (context, state) => const ClinicsScreen(),
+                routes: [
+                  GoRoute(path: 'new', builder: (context, state) => const ClinicEditScreen()),
                   GoRoute(
                     path: 'edit',
-                    builder: (context, state) => const EditProfileScreen(),
+                    builder: (context, state) => ClinicEditScreen(clinic: state.extra as Clinic?),
                   ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/clinician/more',
+                builder: (context, state) => const ClinicianMoreScreen(),
+                routes: [
+                  GoRoute(path: 'edit', builder: (context, state) => const EditProfileScreen()),
                 ],
               ),
             ],

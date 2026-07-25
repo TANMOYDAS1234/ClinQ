@@ -9,6 +9,7 @@ class AppUser {
     this.email,
     this.dateOfBirth,
     this.gender,
+    this.avatarUrl,
     this.createdAt,
   });
 
@@ -29,6 +30,9 @@ class AppUser {
   /// `male` | `female` | `other`.
   final String? gender;
 
+  /// Relative `/api/v1/uploads/:id/raw` path of the profile photo, or null.
+  final String? avatarUrl;
+
   final DateTime? createdAt;
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
@@ -41,6 +45,7 @@ class AppUser {
       language: json['language']?.toString() ?? 'en',
       dateOfBirth: _parseDate(json['dateOfBirth']),
       gender: json['gender'] as String?,
+      avatarUrl: json['avatarUrl'] as String?,
       createdAt: _parseDate(json['createdAt']),
     );
   }
@@ -50,7 +55,7 @@ class AppUser {
     return DateTime.tryParse(value.toString());
   }
 
-  AppUser copyWith({String? language}) {
+  AppUser copyWith({String? language, String? avatarUrl}) {
     return AppUser(
       id: id,
       name: name,
@@ -60,6 +65,7 @@ class AppUser {
       email: email,
       dateOfBirth: dateOfBirth,
       gender: gender,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
       createdAt: createdAt,
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_config.dart';
@@ -8,7 +9,11 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../l10n/gen/app_localizations.dart';
+import '../../../shared/data/upload_repository.dart';
+import '../../../shared/providers/app_lock_provider.dart';
 import '../../../shared/providers/locale_provider.dart';
+import '../../../shared/providers/preferences_provider.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/domain/user.dart';
 import '../../auth/presentation/auth_controller.dart';
 import 'profile_providers.dart';
@@ -16,10 +21,17 @@ import 'widgets/diabetes_type_sheet.dart';
 import 'widgets/profile_section.dart';
 import 'widgets/theme_selector.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
-  Future<void> _changeLanguage(WidgetRef ref, String code) async {
+  @override
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _uploadingAvatar = false;
+
+  Future<void> _changeLanguage(String code) async {
     await ref.read(localeControllerProvider.notifier).setLanguage(code);
     ref.read(authControllerProvider.notifier).updateLocalUserLanguage(code);
     // Best-effort sync: the UI has already switched, and the account copy
@@ -31,7 +43,123 @@ class ProfileScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _pickDiabetesType(BuildContext context, WidgetRef ref, String? current) async {
+  /// Pick a photo, upload it as an `avatar` asset, then point the account at it.
+  /// The returned user carries the new `avatarUrl`, so swapping it into auth
+  /// state refreshes the avatar everywhere without a refetch.
+  Future<void> _changeAvatar() async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    final source = await _pickImageSource();
+    if (source == null) return;
+
+    final XFile? file = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (file == null) return;
+
+    setState(() => _uploadingAvatar = true);
+    try {
+      final asset = await ref.read(uploadRepositoryProvider).uploadImage(
+        path: file.path,
+        filename: file.name,
+        kind: UploadKind.avatar,
+      );
+      final user = await ref.read(authRepositoryProvider).updateMe(avatarAssetId: asset.id);
+      ref.read(authControllerProvider.notifier).replaceUser(user);
+      messenger.showSnackBar(SnackBar(content: Text(l10n.profileSaved)));
+    } on ApiException {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.chatAttachFailed)));
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
+
+  Future<ImageSource?> _pickImageSource() {
+    final l10n = AppLocalizations.of(context);
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: Text(l10n.chatAttachCamera),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text(l10n.chatAttachGallery),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickGlucoseUnit() async {
+    final l10n = AppLocalizations.of(context);
+    final current = ref.read(glucoseUnitProvider);
+    final chosen = await showModalBottomSheet<GlucoseUnit>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  l10n.profileGlucoseUnit,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+            for (final unit in GlucoseUnit.values)
+              ListTile(
+                title: Text(unit.label, style: const TextStyle(fontSize: 16)),
+                trailing: unit == current
+                    ? Icon(Icons.check_rounded, color: Theme.of(ctx).colorScheme.primary)
+                    : null,
+                onTap: () => Navigator.pop(ctx, unit),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (chosen != null && chosen != current) {
+      await ref.read(appPreferencesProvider.notifier).setGlucoseUnit(chosen);
+    }
+  }
+
+  Future<void> _toggleAppLock(bool enable) async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final controller = ref.read(appLockProvider.notifier);
+
+    if (enable) {
+      if (!await controller.canUse()) {
+        messenger.showSnackBar(SnackBar(content: Text(l10n.appLockUnavailable)));
+        return;
+      }
+      final ok = await controller.enable(l10n.appLockPrompt);
+      if (!ok) {
+        messenger.showSnackBar(SnackBar(content: Text(l10n.appLockUnavailable)));
+      }
+    } else {
+      await controller.disable();
+    }
+  }
+
+  Future<void> _pickDiabetesType(String? current) async {
     // Captured before the await — the sheet is an async gap, and reaching for
     // the context after it is what the lint is warning about.
     final l10n = AppLocalizations.of(context);
@@ -53,7 +181,7 @@ class ProfileScreen extends ConsumerWidget {
     await launchUrl(Uri(scheme: 'tel', path: AppConfig.clinicPhoneNumber));
   }
 
-  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
+  Future<void> _confirmLogout() async {
     final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -84,7 +212,7 @@ class ProfileScreen extends ConsumerWidget {
   };
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -93,6 +221,8 @@ class ProfileScreen extends ConsumerWidget {
     final user = ref.watch(authControllerProvider).user;
     final currentLocale = ref.watch(localeControllerProvider);
     final diabetesType = ref.watch(diabetesTypeProvider).valueOrNull;
+    final glucoseUnit = ref.watch(glucoseUnitProvider);
+    final lockEnabled = ref.watch(appLockProvider).enabled;
 
     return Scaffold(
       appBar: AppBar(
@@ -110,38 +240,21 @@ class ProfileScreen extends ConsumerWidget {
           AppSpacing.xl,
         ),
         children: [
-          _Header(user: user, accent: accent),
+          _Header(
+            user: user,
+            accent: accent,
+            uploading: _uploadingAvatar,
+            onEditPhoto: _uploadingAvatar ? null : _changeAvatar,
+          ),
           const SizedBox(height: AppSpacing.xl),
 
           // ---- Appearance -----------------------------------------------
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
-            child: Text(
-              l10n.profileAppearance.toUpperCase(),
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.8,
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-          ),
+          _SectionLabel(l10n.profileAppearance),
           const ThemeSelector(),
           const SizedBox(height: AppSpacing.lg),
 
           // ---- Language --------------------------------------------------
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
-            child: Text(
-              l10n.profileLanguage.toUpperCase(),
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.8,
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-          ),
+          _SectionLabel(l10n.profileLanguage),
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
@@ -152,23 +265,37 @@ class ProfileScreen extends ConsumerWidget {
                 label: l10n.languageEnglish,
                 selected: currentLocale?.languageCode == 'en',
                 accent: accent,
-                onTap: () => _changeLanguage(ref, 'en'),
+                onTap: () => _changeLanguage('en'),
               ),
               _LangChip(
                 label: l10n.languageBengali,
                 selected: currentLocale?.languageCode == 'bn',
                 accent: accent,
-                onTap: () => _changeLanguage(ref, 'bn'),
+                onTap: () => _changeLanguage('bn'),
               ),
               _LangChip(
                 label: l10n.languageHindi,
                 selected: currentLocale?.languageCode == 'hi',
                 accent: accent,
-                onTap: () => _changeLanguage(ref, 'hi'),
+                onTap: () => _changeLanguage('hi'),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
+
+          // ---- Preferences ----------------------------------------------
+          ProfileSection(
+            label: l10n.profilePreferences,
+            children: [
+              ProfileRow(
+                icon: Icons.water_drop_outlined,
+                title: l10n.profileGlucoseUnit,
+                value: glucoseUnit.label,
+                showDivider: false,
+                onTap: _pickGlucoseUnit,
+              ),
+            ],
+          ),
 
           // ---- Account ---------------------------------------------------
           ProfileSection(
@@ -180,31 +307,45 @@ class ProfileScreen extends ConsumerWidget {
                 onTap: () => context.push('/profile/edit'),
               ),
               ProfileRow(
+                icon: Icons.favorite_outline_rounded,
+                title: l10n.profileHealthDetails,
+                onTap: () => context.push('/profile/health'),
+              ),
+              ProfileRow(
                 icon: Icons.bloodtype_outlined,
                 title: l10n.profileDiabetesType,
                 value: _diabetesLabel(l10n, diabetesType),
-                onTap: () => _pickDiabetesType(context, ref, diabetesType),
+                onTap: () => _pickDiabetesType(diabetesType),
               ),
               ProfileRow(
                 icon: Icons.notifications_none_rounded,
                 title: l10n.profileNotifications,
                 showDivider: false,
-                onTap: () => showDialog<void>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Text(l10n.profileNotifications),
-                    content: Text(l10n.profileNotificationsBody),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: Text(l10n.commonOk),
-                      ),
-                    ],
-                  ),
-                ),
+                onTap: () => context.push('/profile/notifications'),
               ),
             ],
           ),
+
+          // ---- Security --------------------------------------------------
+          _SectionLabel(l10n.profileSecurity),
+          Container(
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              border: Border.all(color: scheme.outlineVariant),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: SwitchListTile.adaptive(
+              value: lockEnabled,
+              onChanged: _toggleAppLock,
+              activeThumbColor: accent,
+              secondary: Icon(Icons.lock_outline_rounded, color: accent),
+              title: Text(l10n.profileAppLock, style: const TextStyle(fontSize: 16)),
+              subtitle: Text(l10n.profileAppLockSub, style: const TextStyle(fontSize: 13)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
 
           // ---- Clinic ----------------------------------------------------
           ProfileSection(
@@ -242,7 +383,7 @@ class ProfileScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
                 ),
               ),
-              onPressed: () => _confirmLogout(context, ref),
+              onPressed: _confirmLogout,
               icon: const Icon(Icons.logout_rounded, size: 22),
               label: Text(
                 l10n.profileLogout,
@@ -263,11 +404,42 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
+/// The small-caps section heading used for the inline (non-boxed) sections.
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.8,
+          color: scheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
 class _Header extends StatelessWidget {
-  const _Header({required this.user, required this.accent});
+  const _Header({
+    required this.user,
+    required this.accent,
+    required this.uploading,
+    required this.onEditPhoto,
+  });
 
   final AppUser? user;
   final Color accent;
+  final bool uploading;
+  final VoidCallback? onEditPhoto;
 
   @override
   Widget build(BuildContext context) {
@@ -277,19 +449,45 @@ class _Header extends StatelessWidget {
 
     return Column(
       children: [
-        Container(
-          width: 96,
-          height: 96,
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.16),
-            shape: BoxShape.circle,
-            border: Border.all(color: accent.withValues(alpha: 0.35), width: 2),
-          ),
-          child: Center(
-            child: Text(
-              // Never crash on a missing name — an empty account still renders.
-              (name.isNotEmpty ? name[0] : '?').toUpperCase(),
-              style: TextStyle(fontSize: 38, fontWeight: FontWeight.w800, color: accent),
+        Semantics(
+          button: true,
+          label: l10n.profileChangePhoto,
+          child: GestureDetector(
+            onTap: onEditPhoto,
+            child: Stack(
+              children: [
+                UserAvatar(name: name, avatarUrl: user?.avatarUrl, accent: accent, size: 96),
+                // Dim + spinner while the new photo is uploading.
+                if (uploading)
+                  Positioned.fill(
+                    child: ClipOval(
+                      child: ColoredBox(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 26,
+                            height: 26,
+                            child: CircularProgressIndicator(strokeWidth: 2.6, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                // Camera badge in the corner.
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: accent,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: scheme.surface, width: 2.5),
+                    ),
+                    child: const Icon(Icons.photo_camera_rounded, size: 15, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

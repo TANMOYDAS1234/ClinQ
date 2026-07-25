@@ -1,0 +1,136 @@
+/// Dashboard headline numbers from `GET /doctor/overview`.
+class ClinicOverview {
+  const ClinicOverview({
+    required this.patientCount,
+    required this.activeToday,
+    required this.appointmentsToday,
+    required this.emergencyAlerts,
+    required this.urgentAlerts,
+    required this.warningAlerts,
+    required this.totalOpenAlerts,
+    required this.riskLow,
+    required this.riskModerate,
+    required this.riskHigh,
+    required this.riskCritical,
+  });
+
+  final int patientCount;
+  final int activeToday;
+  final int appointmentsToday;
+  final int emergencyAlerts;
+  final int urgentAlerts;
+  final int warningAlerts;
+  final int totalOpenAlerts;
+  final int riskLow;
+  final int riskModerate;
+  final int riskHigh;
+  final int riskCritical;
+
+  factory ClinicOverview.fromJson(Map<String, dynamic> j) {
+    final alerts = j['openAlerts'] as Map<String, dynamic>? ?? const {};
+    final risk = j['riskDistribution'] as Map<String, dynamic>? ?? const {};
+    int n(dynamic v) => (v as num?)?.toInt() ?? 0;
+    return ClinicOverview(
+      patientCount: n(j['patientCount']),
+      activeToday: n(j['activeToday']),
+      appointmentsToday: n(j['appointmentsToday']),
+      emergencyAlerts: n(alerts['emergency']),
+      urgentAlerts: n(alerts['urgent']),
+      warningAlerts: n(alerts['warning']),
+      totalOpenAlerts: n(alerts['total']),
+      riskLow: n(risk['low']),
+      riskModerate: n(risk['moderate']),
+      riskHigh: n(risk['high']),
+      riskCritical: n(risk['critical']),
+    );
+  }
+}
+
+/// One row in the doctor's patient directory (`GET /doctor/patients`).
+class PatientListItem {
+  const PatientListItem({
+    required this.id,
+    required this.name,
+    required this.phone,
+    required this.riskScore,
+    required this.riskBand,
+    this.lastReadingAt,
+    this.lastReadingValue,
+    this.openAlertCount = 0,
+  });
+
+  final String id;
+  final String name;
+  final String phone;
+  final int riskScore;
+  final String riskBand; // low | moderate | high | critical
+  final DateTime? lastReadingAt;
+  final num? lastReadingValue;
+  final int openAlertCount;
+
+  factory PatientListItem.fromJson(Map<String, dynamic> j) => PatientListItem(
+    id: j['id']?.toString() ?? '',
+    name: j['name']?.toString() ?? '',
+    phone: j['phone']?.toString() ?? '',
+    riskScore: (j['riskScore'] as num?)?.toInt() ?? 0,
+    riskBand: j['riskBand']?.toString() ?? 'low',
+    lastReadingAt: DateTime.tryParse(j['lastReadingAt']?.toString() ?? '')?.toLocal(),
+    lastReadingValue: j['lastReadingValue'] as num?,
+    openAlertCount: (j['openAlertCount'] as num?)?.toInt() ?? 0,
+  );
+}
+
+/// A clinical alert (`GET /doctor/alerts`).
+class ClinicalAlert {
+  const ClinicalAlert({
+    required this.id,
+    required this.severity,
+    required this.type,
+    required this.title,
+    required this.status,
+    this.patientId,
+    this.patientName,
+    this.patientPhone,
+    this.detail,
+    this.matchedRules = const [],
+    this.createdAt,
+    this.acknowledgedAt,
+    this.resolvedAt,
+    this.resolutionNotes,
+  });
+
+  final String id;
+  final String severity; // emergency | urgent | warning | info
+  final String type;
+  final String title;
+  final String status; // open | acknowledged | resolved | dismissed
+  final String? patientId;
+  final String? patientName;
+  final String? patientPhone;
+  final String? detail;
+  final List<String> matchedRules;
+  final DateTime? createdAt;
+  final DateTime? acknowledgedAt;
+  final DateTime? resolvedAt;
+  final String? resolutionNotes;
+
+  bool get isOpen => status == 'open';
+  bool get isResolved => status == 'resolved' || status == 'dismissed';
+
+  factory ClinicalAlert.fromJson(Map<String, dynamic> j) => ClinicalAlert(
+    id: j['id']?.toString() ?? '',
+    severity: j['severity']?.toString() ?? 'warning',
+    type: j['type']?.toString() ?? 'other',
+    title: j['title']?.toString() ?? '',
+    status: j['status']?.toString() ?? 'open',
+    patientId: j['patientId']?.toString(),
+    patientName: j['patientName']?.toString(),
+    patientPhone: j['patientPhone']?.toString(),
+    detail: j['detail']?.toString(),
+    matchedRules: (j['matchedRules'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+    createdAt: DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal(),
+    acknowledgedAt: DateTime.tryParse(j['acknowledgedAt']?.toString() ?? '')?.toLocal(),
+    resolvedAt: DateTime.tryParse(j['resolvedAt']?.toString() ?? '')?.toLocal(),
+    resolutionNotes: j['resolutionNotes']?.toString(),
+  );
+}

@@ -45,6 +45,7 @@ class UploadKind {
   static const String labReport = 'lab_report';
   static const String prescriptionPdf = 'prescription_pdf';
   static const String mealPhoto = 'meal_photo';
+  static const String avatar = 'avatar';
   static const String other = 'other';
 }
 

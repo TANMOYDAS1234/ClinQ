@@ -760,6 +760,213 @@ class AppLocalizationsHi extends AppLocalizations {
       'क्लिनिक की चेतावनियाँ अभी इस डिवाइस पर नहीं आतीं। लेकिन आपकी उठाई हर चेतावनी डॉक्टर देखते हैं।';
 
   @override
+  String get profilePreferences => 'प्राथमिकताएँ';
+
+  @override
+  String get profileSecurity => 'सुरक्षा';
+
+  @override
+  String get profileHealthDetails => 'स्वास्थ्य विवरण';
+
+  @override
+  String get profileGlucoseUnit => 'ग्लूकोज़ की इकाई';
+
+  @override
+  String get profileAppLock => 'ऐप लॉक';
+
+  @override
+  String get profileAppLockSub => 'ऐप खोलने के लिए अनलॉक ज़रूरी';
+
+  @override
+  String get notifMedicationReminders => 'दवा अनुस्मारक';
+
+  @override
+  String get notifMedicationRemindersSub => 'खुराक का समय होने पर याद दिलाएँ';
+
+  @override
+  String get notifAppointmentAlerts => 'अपॉइंटमेंट अनुस्मारक';
+
+  @override
+  String get notifAppointmentAlertsSub => 'विज़िट से पहले याद दिलाएँ';
+
+  @override
+  String get notifClinicAlerts => 'क्लिनिक संदेश';
+
+  @override
+  String get notifClinicAlertsSub => 'क्लिनिक से जवाब और फ़ॉलो-अप';
+
+  @override
+  String get notifDeliveryNote =>
+      'इस फ़ोन पर पुश डिलीवरी सेट की जा रही है। चालू होने पर ये प्राथमिकताएँ लागू होंगी; आपकी उठाई हर चेतावनी डॉक्टर अभी देखते हैं।';
+
+  @override
+  String get healthHeight => 'कद (सेमी)';
+
+  @override
+  String get healthWeight => 'वज़न (किग्रा)';
+
+  @override
+  String get healthDiagnosedOn => 'निदान की तारीख';
+
+  @override
+  String get healthAllergies => 'एलर्जी';
+
+  @override
+  String get healthAllergiesHint => 'जैसे पेनिसिलिन, सल्फा';
+
+  @override
+  String get healthEmergencyContact => 'आपातकालीन संपर्क';
+
+  @override
+  String get healthContactName => 'संपर्क का नाम';
+
+  @override
+  String get healthContactPhone => 'संपर्क फ़ोन';
+
+  @override
+  String get healthContactRelation => 'रिश्ता';
+
+  @override
+  String get healthNotSet => 'निर्धारित नहीं';
+
+  @override
+  String get appLockEnable => 'फ़िंगरप्रिंट या चेहरे से अनलॉक करें';
+
+  @override
+  String get appLockUnavailable =>
+      'इस डिवाइस पर फ़िंगरप्रिंट या फ़ेस अनलॉक सेट नहीं है।';
+
+  @override
+  String get appLockPrompt => 'ClinQ अनलॉक करें';
+
+  @override
+  String get appLockLocked => 'ClinQ लॉक है';
+
+  @override
+  String get appLockUnlock => 'अनलॉक करें';
+
+  @override
+  String get apptTitle => 'अपॉइंटमेंट';
+
+  @override
+  String get apptBook => 'अपॉइंटमेंट बुक करें';
+
+  @override
+  String get apptUpcoming => 'आगामी';
+
+  @override
+  String get apptPast => 'पिछले';
+
+  @override
+  String get apptNoUpcoming => 'कोई आगामी अपॉइंटमेंट नहीं';
+
+  @override
+  String get apptNoUpcomingBody =>
+      'क्लिनिक में विज़िट बुक करें, यह यहाँ दिखेगी।';
+
+  @override
+  String get apptNoPast => 'कोई पिछली अपॉइंटमेंट नहीं';
+
+  @override
+  String get apptChooseClinic => 'एक क्लिनिक चुनें';
+
+  @override
+  String get apptChooseDate => 'एक तारीख़ चुनें';
+
+  @override
+  String get apptChooseTime => 'एक समय चुनें';
+
+  @override
+  String get apptNoSlots => 'इस दिन कोई समय उपलब्ध नहीं';
+
+  @override
+  String get apptClosedThatDay => 'इस दिन क्लिनिक बंद है';
+
+  @override
+  String get apptReasonLabel => 'विज़िट का कारण (वैकल्पिक)';
+
+  @override
+  String get apptReasonHint => 'जैसे फ़ॉलो-अप, शुगर समीक्षा';
+
+  @override
+  String get apptConfirmBooking => 'बुकिंग की पुष्टि करें';
+
+  @override
+  String get apptBookedTitle => 'अपॉइंटमेंट पुष्ट';
+
+  @override
+  String get apptBookedBody =>
+      'आपकी अपॉइंटमेंट पुष्ट हो गई है। आप इसे आगामी में देख सकते हैं।';
+
+  @override
+  String get apptCancel => 'अपॉइंटमेंट रद्द करें';
+
+  @override
+  String get apptCancelConfirm => 'यह अपॉइंटमेंट रद्द करें?';
+
+  @override
+  String get apptCancelConfirmBody => 'यह समय दूसरों के लिए छोड़ दिया जाएगा।';
+
+  @override
+  String get apptCancelled => 'अपॉइंटमेंट रद्द कर दी गई';
+
+  @override
+  String get apptReschedule => 'समय बदलें';
+
+  @override
+  String get apptCall => 'क्लिनिक को कॉल करें';
+
+  @override
+  String get apptDirections => 'दिशा-निर्देश';
+
+  @override
+  String get apptStatusRequested => 'अनुरोधित';
+
+  @override
+  String get apptStatusConfirmed => 'पुष्ट';
+
+  @override
+  String get apptStatusCheckedIn => 'चेक-इन';
+
+  @override
+  String get apptStatusInConsultation => 'परामर्श जारी';
+
+  @override
+  String get apptStatusCompleted => 'पूर्ण';
+
+  @override
+  String get apptStatusCancelled => 'रद्द';
+
+  @override
+  String get apptStatusNoShow => 'अनुपस्थित';
+
+  @override
+  String get apptModeInClinic => 'क्लिनिक में';
+
+  @override
+  String get apptModeTeleconsult => 'वीडियो परामर्श';
+
+  @override
+  String get apptSlotTaken => 'यह समय अभी-अभी ले लिया गया। कृपया दूसरा चुनें।';
+
+  @override
+  String get apptBookingFailed => 'बुक नहीं हो सका। कृपया पुनः प्रयास करें।';
+
+  @override
+  String get apptSelectSlotFirst => 'कृपया पहले एक समय चुनें';
+
+  @override
+  String get apptToday => 'आज';
+
+  @override
+  String get apptTomorrow => 'कल';
+
+  @override
+  String apptWithDoctor(String doctor) {
+    return '$doctor के साथ';
+  }
+
+  @override
   String get errorBadRequest => 'यह अनुरोध समझा नहीं जा सका।';
 
   @override

@@ -759,6 +759,214 @@ class AppLocalizationsEn extends AppLocalizations {
       'Alerts from the clinic are not yet delivered to this device. Your doctor still sees every alert you raise.';
 
   @override
+  String get profilePreferences => 'Preferences';
+
+  @override
+  String get profileSecurity => 'Security';
+
+  @override
+  String get profileHealthDetails => 'Health details';
+
+  @override
+  String get profileGlucoseUnit => 'Glucose unit';
+
+  @override
+  String get profileAppLock => 'App lock';
+
+  @override
+  String get profileAppLockSub => 'Require unlock to open the app';
+
+  @override
+  String get notifMedicationReminders => 'Medication reminders';
+
+  @override
+  String get notifMedicationRemindersSub => 'Nudge me when a dose is due';
+
+  @override
+  String get notifAppointmentAlerts => 'Appointment reminders';
+
+  @override
+  String get notifAppointmentAlertsSub => 'Remind me before a visit';
+
+  @override
+  String get notifClinicAlerts => 'Clinic messages';
+
+  @override
+  String get notifClinicAlertsSub => 'Replies and follow-ups from the clinic';
+
+  @override
+  String get notifDeliveryNote =>
+      'Push delivery to this phone is being set up. These preferences will apply once it is live; your doctor already sees every alert you raise.';
+
+  @override
+  String get healthHeight => 'Height (cm)';
+
+  @override
+  String get healthWeight => 'Weight (kg)';
+
+  @override
+  String get healthDiagnosedOn => 'Diagnosed on';
+
+  @override
+  String get healthAllergies => 'Allergies';
+
+  @override
+  String get healthAllergiesHint => 'e.g. Penicillin, Sulfa';
+
+  @override
+  String get healthEmergencyContact => 'Emergency contact';
+
+  @override
+  String get healthContactName => 'Contact name';
+
+  @override
+  String get healthContactPhone => 'Contact phone';
+
+  @override
+  String get healthContactRelation => 'Relationship';
+
+  @override
+  String get healthNotSet => 'Not set';
+
+  @override
+  String get appLockEnable => 'Unlock with fingerprint or face';
+
+  @override
+  String get appLockUnavailable =>
+      'This device has no fingerprint or face unlock set up.';
+
+  @override
+  String get appLockPrompt => 'Unlock ClinQ';
+
+  @override
+  String get appLockLocked => 'ClinQ is locked';
+
+  @override
+  String get appLockUnlock => 'Unlock';
+
+  @override
+  String get apptTitle => 'Appointments';
+
+  @override
+  String get apptBook => 'Book appointment';
+
+  @override
+  String get apptUpcoming => 'Upcoming';
+
+  @override
+  String get apptPast => 'Past';
+
+  @override
+  String get apptNoUpcoming => 'No upcoming appointments';
+
+  @override
+  String get apptNoUpcomingBody =>
+      'Book a visit with the clinic and it will appear here.';
+
+  @override
+  String get apptNoPast => 'No past appointments';
+
+  @override
+  String get apptChooseClinic => 'Choose a clinic';
+
+  @override
+  String get apptChooseDate => 'Choose a date';
+
+  @override
+  String get apptChooseTime => 'Choose a time';
+
+  @override
+  String get apptNoSlots => 'No available times on this day';
+
+  @override
+  String get apptClosedThatDay => 'The clinic is closed on this day';
+
+  @override
+  String get apptReasonLabel => 'Reason for visit (optional)';
+
+  @override
+  String get apptReasonHint => 'e.g. Follow-up, sugar review';
+
+  @override
+  String get apptConfirmBooking => 'Confirm booking';
+
+  @override
+  String get apptBookedTitle => 'Appointment confirmed';
+
+  @override
+  String get apptBookedBody =>
+      'Your appointment is confirmed. You\'ll find it under Upcoming.';
+
+  @override
+  String get apptCancel => 'Cancel appointment';
+
+  @override
+  String get apptCancelConfirm => 'Cancel this appointment?';
+
+  @override
+  String get apptCancelConfirmBody =>
+      'The time slot will be released for others.';
+
+  @override
+  String get apptCancelled => 'Appointment cancelled';
+
+  @override
+  String get apptReschedule => 'Reschedule';
+
+  @override
+  String get apptCall => 'Call clinic';
+
+  @override
+  String get apptDirections => 'Directions';
+
+  @override
+  String get apptStatusRequested => 'Requested';
+
+  @override
+  String get apptStatusConfirmed => 'Confirmed';
+
+  @override
+  String get apptStatusCheckedIn => 'Checked in';
+
+  @override
+  String get apptStatusInConsultation => 'In consultation';
+
+  @override
+  String get apptStatusCompleted => 'Completed';
+
+  @override
+  String get apptStatusCancelled => 'Cancelled';
+
+  @override
+  String get apptStatusNoShow => 'Missed';
+
+  @override
+  String get apptModeInClinic => 'In clinic';
+
+  @override
+  String get apptModeTeleconsult => 'Video consult';
+
+  @override
+  String get apptSlotTaken => 'That time was just taken. Please pick another.';
+
+  @override
+  String get apptBookingFailed => 'Could not book. Please try again.';
+
+  @override
+  String get apptSelectSlotFirst => 'Please choose a time first';
+
+  @override
+  String get apptToday => 'Today';
+
+  @override
+  String get apptTomorrow => 'Tomorrow';
+
+  @override
+  String apptWithDoctor(String doctor) {
+    return 'with $doctor';
+  }
+
+  @override
   String get errorBadRequest => 'That request could not be understood.';
 
   @override

@@ -41,6 +41,13 @@ class AppConfig {
     return 'http://$_host:$_port$_apiPath';
   }
 
+  /// Scheme + host, without the `/api/v1` path — for building absolute URLs
+  /// from the relative paths the API returns (e.g. upload raw-image URLs).
+  static String get apiOrigin {
+    final base = apiBaseUrl;
+    return base.endsWith(_apiPath) ? base.substring(0, base.length - _apiPath.length) : base;
+  }
+
   static String get _host {
     if (kIsWeb) return 'localhost';
     try {

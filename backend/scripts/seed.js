@@ -21,6 +21,7 @@ import { Medication } from '../src/models/Medication.js';
 import { MedicationLog } from '../src/models/MedicationLog.js';
 import { LifestyleLog } from '../src/models/LifestyleLog.js';
 import { Appointment } from '../src/models/Appointment.js';
+import { Clinic } from '../src/models/Clinic.js';
 import { ChatSession } from '../src/models/ChatSession.js';
 import { ChatMessage } from '../src/models/ChatMessage.js';
 import { ClinicalAlert } from '../src/models/ClinicalAlert.js';
@@ -66,7 +67,7 @@ async function main() {
       GlucoseReading.deleteMany({}), Hba1cRecord.deleteMany({}), VitalRecord.deleteMany({}),
       Medication.deleteMany({}), MedicationLog.deleteMany({}), LifestyleLog.deleteMany({}),
       Appointment.deleteMany({}), ChatSession.deleteMany({}), ChatMessage.deleteMany({}),
-      ClinicalAlert.deleteMany({}),
+      ClinicalAlert.deleteMany({}), Clinic.deleteMany({}),
     ]);
   }
 
@@ -87,6 +88,9 @@ async function main() {
     role: ROLES.STAFF,
     language: 'en',
   });
+
+  // ---- Clinics + weekly availability -------------------------------------
+  const clinics = await seedClinics(doctor);
 
   // ---- Patients -----------------------------------------------------------
   const patientSpecs = [
@@ -131,7 +135,7 @@ async function main() {
       { upsert: true, new: true },
     );
 
-    await seedClinicalHistory(user, spec, doctor);
+    await seedClinicalHistory(user, spec, doctor, clinics);
     await recomputePatientRisk(user._id);
     logger.info({ patient: spec.name }, 'seeded clinical history');
   }
@@ -140,7 +144,57 @@ async function main() {
   await disconnectDb();
 }
 
-async function seedClinicalHistory(user, spec, doctor) {
+/**
+ * Two clinics with realistic weekly availability, so the booking flow has
+ * live schedules to render against. dayOfWeek: 0 = Sunday … 6 = Saturday.
+ */
+async function seedClinics(doctor) {
+  if ((await Clinic.countDocuments()) > 0) {
+    return Clinic.find().sort({ sortIndex: 1 });
+  }
+
+  const weekdays = [1, 2, 3, 4, 5]; // Mon–Fri
+  const saltLakeHours = [
+    // Morning and evening sittings on weekdays, morning only on Saturday.
+    ...weekdays.flatMap((d) => [
+      { dayOfWeek: d, start: '10:00', end: '14:00' },
+      { dayOfWeek: d, start: '17:00', end: '20:00' },
+    ]),
+    { dayOfWeek: 6, start: '10:00', end: '14:00' },
+  ];
+  const behalaHours = [2, 4, 6].map((d) => ({ dayOfWeek: d, start: '18:00', end: '21:00' }));
+
+  const created = [];
+  created.push(
+    await Clinic.create({
+      name: 'Salt Lake Diabetes & Endocrine Centre',
+      addressLine: 'DD-24, Sector 1, Salt Lake City',
+      city: 'Kolkata',
+      phone: '+913340000001',
+      doctor: doctor._id,
+      slotMinutes: 15,
+      weeklyHours: saltLakeHours,
+      sortIndex: 0,
+    }),
+  );
+  created.push(
+    await Clinic.create({
+      name: 'Behala Evening Clinic',
+      addressLine: '14 Diamond Harbour Road, Behala',
+      city: 'Kolkata',
+      phone: '+913340000002',
+      doctor: doctor._id,
+      slotMinutes: 20,
+      weeklyHours: behalaHours,
+      sortIndex: 1,
+    }),
+  );
+
+  logger.info({ count: created.length }, 'created clinics');
+  return created;
+}
+
+async function seedClinicalHistory(user, spec, doctor, clinics) {
   const existing = await GlucoseReading.countDocuments({ patient: user._id });
   if (existing > 0) {
     logger.info({ patient: spec.name }, 'history already present, skipping');
@@ -307,18 +361,22 @@ async function seedClinicalHistory(user, spec, doctor) {
   await LifestyleLog.insertMany(lifestyle);
 
   // --- Appointments ---
+  const clinic = clinics?.[0] ?? null;
+  const isTele = spec.profile === 'variable';
   await Appointment.create({
     patient: user._id, doctor: doctor._id,
+    clinic: clinic?._id,
     scheduledFor: dayjs().subtract(45, 'day').hour(11).toDate(),
-    status: 'completed', mode: 'in_clinic', durationMinutes: 15,
+    status: 'completed', mode: 'in_clinic', durationMinutes: clinic?.slotMinutes ?? 15,
     reason: 'Routine diabetes review',
     consultationNotes: 'Reviewed sugar diary. Reinforced diet advice and foot care.',
   });
   await Appointment.create({
     patient: user._id, doctor: doctor._id,
+    clinic: isTele ? undefined : clinic?._id,
     scheduledFor: dayjs().add(spec.profile === 'poor' ? 2 : 12, 'day').hour(11).minute(30).toDate(),
-    status: 'confirmed', mode: spec.profile === 'variable' ? 'teleconsult' : 'in_clinic',
-    durationMinutes: 15, reason: 'Follow-up',
+    status: 'confirmed', mode: isTele ? 'teleconsult' : 'in_clinic',
+    durationMinutes: clinic?.slotMinutes ?? 15, reason: 'Follow-up',
   });
 }
 

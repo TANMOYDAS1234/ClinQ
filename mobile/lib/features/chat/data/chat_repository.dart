@@ -31,6 +31,28 @@ class ChatRepository {
     return SendMessageResult.fromJson(json);
   }
 
+  /// Streams the reply as Server-Sent Events, yielding `(event, data)` pairs:
+  /// `meta` (verdict, echoed user message, citations), many `token` (text
+  /// pieces), an optional `replace` (swap the partial for fallback text), and
+  /// `done` (the saved reply). Throws if the stream cannot be opened, so the
+  /// caller can fall back to [sendMessage].
+  Stream<(String, Map<String, dynamic>)> streamMessage({
+    String? sessionId,
+    required String text,
+    required String language,
+    List<String>? attachments,
+  }) {
+    return _client.postSse(
+      '/chat/message/stream',
+      body: {
+        if (sessionId != null) 'sessionId': sessionId,
+        'text': text,
+        'language': language,
+        if (attachments != null && attachments.isNotEmpty) 'attachments': attachments,
+      },
+    );
+  }
+
   Future<Paged<ChatSession>> getSessions({int page = 1, int limit = 50}) async {
     final json = await _client.getJson('/chat/sessions', query: {'page': page, 'limit': limit});
     return Paged.fromJson(json, ChatSession.fromJson);

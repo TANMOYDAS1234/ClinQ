@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
@@ -160,8 +161,70 @@ class ApiClient {
     String path, {
     required FormData formData,
   }) async {
-    final response = await _run(() => _dio.post(path, data: formData));
+    // The client's default Content-Type is application/json, which is wrong for
+    // a file upload: it overrides the multipart boundary Dio must generate, so
+    // the server cannot parse the file and the upload fails. Force multipart
+    // here so Dio computes the boundary from the FormData.
+    final response = await _run(
+      () => _dio.post(
+        path,
+        data: formData,
+        options: Options(contentType: Headers.multipartFormDataContentType),
+      ),
+    );
     return _asMap(response.data);
+  }
+
+  /// Opens a Server-Sent Events stream and yields `(event, data)` pairs as they
+  /// arrive. Used for streaming the chat reply token by token. Errors surface as
+  /// [ApiException] so the caller can fall back to the non-streaming path.
+  Stream<(String, Map<String, dynamic>)> postSse(String path, {Object? body}) async* {
+    final Response<ResponseBody> response;
+    try {
+      response = await _dio.post<ResponseBody>(
+        path,
+        data: body,
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: {'Accept': 'text/event-stream'},
+        ),
+      );
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+
+    var buffer = '';
+    await for (final chunk in response.data!.stream) {
+      buffer += utf8.decode(chunk, allowMalformed: true);
+      // SSE frames are separated by a blank line.
+      var sep = buffer.indexOf('\n\n');
+      while (sep >= 0) {
+        final frame = buffer.substring(0, sep);
+        buffer = buffer.substring(sep + 2);
+        final parsed = _parseFrame(frame);
+        if (parsed != null) yield parsed;
+        sep = buffer.indexOf('\n\n');
+      }
+    }
+  }
+
+  (String, Map<String, dynamic>)? _parseFrame(String frame) {
+    String? event;
+    final dataLines = <String>[];
+    for (final line in frame.split('\n')) {
+      if (line.startsWith('event:')) {
+        event = line.substring(6).trim();
+      } else if (line.startsWith('data:')) {
+        dataLines.add(line.substring(5).trimLeft());
+      }
+    }
+    if (event == null || dataLines.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(dataLines.join('\n'));
+      return (event, decoded is Map<String, dynamic> ? decoded : {'value': decoded});
+    } catch (_) {
+      return null;
+    }
   }
 
   Map<String, dynamic>? _cleanQuery(Map<String, dynamic>? query) {

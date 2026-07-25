@@ -12,6 +12,13 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 
 final secureStoreProvider = Provider<SecureStore>((ref) => SecureStore());
 
+/// Bearer header for owner-only image endpoints (`/uploads/:id/raw`), so an
+/// `Image.network` can fetch protected photos. Read once per session.
+final imageAuthHeaderProvider = FutureProvider<Map<String, String>>((ref) async {
+  final token = await ref.watch(secureStoreProvider).readAccessToken();
+  return token == null ? {} : {'Authorization': 'Bearer $token'};
+});
+
 /// The single Dio-backed client every repository depends on. Wires the
 /// refresh-expired callback back into [authControllerProvider] so that a
 /// failed silent-refresh anywhere in the app immediately drops the user to

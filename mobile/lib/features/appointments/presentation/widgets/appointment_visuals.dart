@@ -1,0 +1,220 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../l10n/gen/app_localizations.dart';
+import '../../domain/appointment.dart';
+
+Color appointmentStatusColor(String status) {
+  switch (status) {
+    case 'requested':
+      return AppColors.warning;
+    case 'confirmed':
+    case 'checked_in':
+      return AppColors.primary;
+    case 'in_consultation':
+      return AppColors.success;
+    case 'completed':
+      return AppColors.success;
+    case 'no_show':
+      return AppColors.danger;
+    case 'cancelled':
+    default:
+      return const Color(0xFF6B7280);
+  }
+}
+
+String appointmentStatusLabel(AppLocalizations l, String s) => switch (s) {
+  'requested' => l.apptStatusRequested,
+  'confirmed' => l.apptStatusConfirmed,
+  'checked_in' => l.apptStatusCheckedIn,
+  'in_consultation' => l.apptStatusInConsultation,
+  'completed' => l.apptStatusCompleted,
+  'cancelled' => l.apptStatusCancelled,
+  'no_show' => l.apptStatusNoShow,
+  _ => s,
+};
+
+String appointmentModeLabel(AppLocalizations l, String mode) =>
+    mode == 'teleconsult' ? l.apptModeTeleconsult : l.apptModeInClinic;
+
+/// A small coloured status chip.
+class StatusPill extends StatelessWidget {
+  const StatusPill({super.key, required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final color = appointmentStatusColor(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        appointmentStatusLabel(l10n, status),
+        style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12.5),
+      ),
+    );
+  }
+}
+
+/// One appointment rendered as a card. [clinicianView] shows the patient's
+/// details (for the clinic diary); otherwise it shows the clinic location (for
+/// the patient's own list).
+class AppointmentCard extends StatelessWidget {
+  const AppointmentCard({
+    super.key,
+    required this.appointment,
+    this.clinicianView = false,
+    this.onTap,
+    this.trailing,
+    this.actions,
+  });
+
+  final Appointment appointment;
+  final bool clinicianView;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+  final List<Widget>? actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final a = appointment;
+    final color = appointmentStatusColor(a.status);
+    final dimmed = a.isCancelled;
+
+    final title = clinicianView ? (a.patientName ?? l10n.profilePatient) : (a.clinicName ?? l10n.apptModeInClinic);
+    final subtitle = clinicianView
+        ? (a.patientPhone ?? '')
+        : [if (a.clinicAddress != null) a.clinicAddress!, if (a.clinicCity != null) a.clinicCity!].join(' · ');
+
+    return Opacity(
+      opacity: dimmed ? 0.6 : 1,
+      child: Container(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Time block.
+                    Container(
+                      width: 58,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            DateFormat('h:mm').format(a.scheduledFor),
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: color),
+                          ),
+                          Text(
+                            DateFormat('a').format(a.scheduledFor),
+                            style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (subtitle.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitle,
+                              style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(
+                                a.isTeleconsult ? Icons.videocam_outlined : Icons.location_on_outlined,
+                                size: 14,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                appointmentModeLabel(l10n, a.mode),
+                                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                DateFormat('EEE, d MMM').format(a.scheduledFor),
+                                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        StatusPill(status: a.status),
+                        if (trailing != null) ...[const SizedBox(height: 6), trailing!],
+                      ],
+                    ),
+                  ],
+                ),
+                if (a.reason != null && a.reason!.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    a.reason!,
+                    style: TextStyle(fontSize: 13.5, color: scheme.onSurface, height: 1.3),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if (actions != null && actions!.isNotEmpty) ...[
+                  const Divider(height: AppSpacing.lg),
+                  Row(mainAxisAlignment: MainAxisAlignment.end, children: _spaced(actions!)),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _spaced(List<Widget> items) {
+    final out = <Widget>[];
+    for (var i = 0; i < items.length; i++) {
+      out.add(items[i]);
+      if (i < items.length - 1) out.add(const SizedBox(width: AppSpacing.sm));
+    }
+    return out;
+  }
+}
