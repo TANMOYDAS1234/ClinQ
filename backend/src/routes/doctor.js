@@ -108,7 +108,15 @@ router.get(
 
     const sortSpec = sort === 'name' ? { name: 1 } : { createdAt: -1 };
     const [users, total] = await Promise.all([
-      User.find(userFilter).sort(sortSpec).skip(skip).limit(limit).select('name phone createdAt').lean(),
+      // avatarAssetId included so a photo the patient sets is visible to the
+      // clinic. Without it the field never left the database and the doctor's
+      // list showed an initial for a patient who had uploaded a picture.
+      User.find(userFilter)
+        .sort(sortSpec)
+        .skip(skip)
+        .limit(limit)
+        .select('name phone createdAt avatarAssetId')
+        .lean(),
       User.countDocuments(userFilter),
     ]);
 
@@ -136,6 +144,8 @@ router.get(
         id: u._id,
         name: u.name,
         phone: u.phone,
+        // `lean()` skips the schema's toJSON, so build the URL by hand.
+        avatarUrl: u.avatarAssetId ? `/api/v1/uploads/${u.avatarAssetId}/raw` : null,
         riskScore: profile?.riskScore ?? 0,
         riskBand: profile?.riskBand ?? 'low',
         lastReadingAt: reading?.measuredAt ?? null,
@@ -178,6 +188,7 @@ router.get(
         id: patient._id,
         name: patient.name,
         phone: patient.phone,
+        avatarUrl: patient.avatarAssetId ? `/api/v1/uploads/${patient.avatarAssetId}/raw` : null,
         email: patient.email ?? null,
         language: patient.language,
         dateOfBirth: patient.dateOfBirth ?? null,

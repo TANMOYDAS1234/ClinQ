@@ -257,10 +257,10 @@ class _PatientRow extends StatelessWidget {
     }
   }
 
-  /// Messaging happens inside the patient's own assistant thread, which lives
-  /// on their detail screen — so this opens there rather than to a second inbox.
+  /// Straight into the patient's own conversation — not their profile. The
+  /// point of putting this on the row was to remove a screen, not move one.
   void _message(BuildContext context) {
-    context.push('/clinician/patients/${patient.id}?compose=1');
+    context.push('/clinician/patients/${patient.id}/thread', extra: patient.name);
   }
 }
 

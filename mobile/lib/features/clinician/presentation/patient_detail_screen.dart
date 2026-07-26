@@ -139,7 +139,7 @@ class _Header extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () => context.push('/clinician/messages/${p.id}', extra: p.name),
+                  onPressed: () => context.push('/clinician/patients/${p.id}/thread', extra: p.name),
                   icon: const Icon(Icons.forum_rounded, size: 18),
                   label: const Text('Message'),
                 ),

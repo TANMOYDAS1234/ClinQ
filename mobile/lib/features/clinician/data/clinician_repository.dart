@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/models/paged.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../chat/domain/chat_message.dart';
 import '../domain/chat_review.dart';
 import '../domain/clinician_models.dart';
 import '../domain/knowledge_chunk.dart';
@@ -18,6 +19,26 @@ class ClinicianRepository {
   Future<ClinicOverview> overview() async {
     final json = await _client.getJson('/doctor/overview');
     return ClinicOverview.fromJson(json);
+  }
+
+  /// The patient's own conversation, as the patient sees it.
+  ///
+  /// Reuses [ChatMessage] rather than a clinician-specific model on purpose:
+  /// the doctor is reading the same thread, and a parallel type would let the
+  /// two views drift apart.
+  Future<({String? patientName, List<ChatMessage> messages})> patientThread(String patientId) async {
+    final json = await _client.getJson('/chat/patients/$patientId/thread', query: {'limit': 100});
+    final items = (json['items'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(ChatMessage.fromJson)
+        .toList()
+      ..sort((a, b) => a.seq.compareTo(b.seq));
+
+    final patient = json['patient'];
+    return (
+      patientName: patient is Map ? patient['name']?.toString() : null,
+      messages: items,
+    );
   }
 
   /// Sends the clinician's own words into the patient's assistant thread.

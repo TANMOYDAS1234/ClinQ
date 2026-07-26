@@ -175,6 +175,59 @@ router.post(
 );
 
 /**
+ * The patient's conversation, read by a clinician.
+ *
+ * The patient-facing history route is scoped to `req.user`, so a doctor cannot
+ * use it. This returns the same thread — assistant turns, the patient's own
+ * words and any clinician replies — so the clinic reads exactly what the
+ * patient reads, rather than a separate inbox showing half the story.
+ */
+router.get(
+  '/patients/:patientId/thread',
+  requireAuth,
+  requireClinician,
+  resolvePatientScope,
+  validate({ query: pageParams }),
+  audit('read', 'ChatMessage'),
+  asyncHandler(async (req, res) => {
+    const session = await ChatSession.findOne({ patient: req.patientId, isArchived: false })
+      .sort({ lastMessageAt: -1 })
+      .lean();
+
+    if (!session) {
+      // No conversation yet is a normal state, not an error: the clinic may be
+      // reaching out first. An empty thread lets the composer open regardless.
+      return res.json({
+        session: null,
+        items: [],
+        page: 1,
+        limit: 0,
+        total: 0,
+        hasMore: false,
+        patient: req.patientUser
+          ? { id: req.patientUser._id, name: req.patientUser.name, phone: req.patientUser.phone }
+          : null,
+      });
+    }
+
+    const { page, limit, skip } = q(req);
+    const filter = { session: session._id };
+    const [items, total] = await Promise.all([
+      ChatMessage.find(filter).sort({ seq: 1 }).skip(skip).limit(limit).populate('sender', 'name').lean(),
+      ChatMessage.countDocuments(filter),
+    ]);
+
+    res.json({
+      ...paged(items.map(serialiseMessage), { page, limit, total }),
+      session: serialiseSession(session),
+      patient: req.patientUser
+        ? { id: req.patientUser._id, name: req.patientUser.name, phone: req.patientUser.phone }
+        : null,
+    });
+  }),
+);
+
+/**
  * The doctor (or staff) speaking directly into the patient's assistant thread.
  *
  * There is deliberately no separate doctor-patient inbox. The assistant handles

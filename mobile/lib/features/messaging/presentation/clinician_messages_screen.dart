@@ -110,7 +110,9 @@ class _ThreadRow extends StatelessWidget {
             ),
         ],
       ),
-      onTap: () => context.push('/clinician/messages/${t.patientId}', extra: t.patientName),
+      // Opens the patient's real conversation, not the legacy clinic-only
+      // thread this inbox was originally built against.
+      onTap: () => context.push('/clinician/patients/${t.patientId}/thread', extra: t.patientName),
     );
   }
 }

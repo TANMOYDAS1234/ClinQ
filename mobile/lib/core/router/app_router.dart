@@ -24,6 +24,7 @@ import '../../features/clinician/presentation/dashboard_screen.dart' as clinicia
 import '../../features/clinician/presentation/knowledge_edit_screen.dart';
 import '../../features/clinician/presentation/knowledge_screen.dart';
 import '../../features/clinician/presentation/patient_detail_screen.dart';
+import '../../features/clinician/presentation/patient_thread_screen.dart';
 import '../../features/clinician/presentation/patients_screen.dart';
 import '../../features/messaging/presentation/clinic_chat_screen.dart';
 import '../../features/messaging/presentation/clinician_messages_screen.dart';
@@ -117,11 +118,14 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => KnowledgeEditScreen(chunk: state.extra as KnowledgeChunk?),
       ),
       GoRoute(path: '/clinician/messages', builder: (context, state) => const ClinicianMessagesScreen()),
+      // Messaging a patient opens their real conversation — the same thread the
+      // patient reads on their Care Team screen — rather than a clinic-only
+      // inbox holding a different half of the exchange.
       GoRoute(
-        path: '/clinician/messages/:id',
-        builder: (context, state) => ClinicChatScreen(
-          patientId: state.pathParameters['id'],
-          title: state.extra as String?,
+        path: '/clinician/patients/:id/thread',
+        builder: (context, state) => PatientThreadScreen(
+          patientId: state.pathParameters['id']!,
+          patientName: state.extra as String?,
         ),
       ),
 
