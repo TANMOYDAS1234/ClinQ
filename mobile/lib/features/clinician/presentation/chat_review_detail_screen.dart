@@ -233,8 +233,9 @@ class _MessageBubble extends StatelessWidget {
     final m = message;
     final isUser = m.isUser;
     final isClinician = m.isClinician;
-    // The clinic's own replies sit on the right beside the doctor reading them;
-    // the patient and the assistant stay on the left.
+    // The clinic's replies sit on the same side as the assistant, matching what
+    // the patient sees: one continuous conversation rather than messages
+    // hopping sides. Who spoke is carried by the label, not the alignment.
     final align = isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start;
     final bubbleColor = isUser
         ? AppColors.primary.withValues(alpha: 0.12)
