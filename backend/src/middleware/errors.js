@@ -56,6 +56,15 @@ export function errorHandler(err, req, res, next) {
     message = `An account with that ${field} already exists`;
   }
 
+  // Driver errors carry their own numeric `code` — MongoServerError 13 is
+  // Unauthorized, 18 is AuthenticationFailed — and `err.code ?? ...` above
+  // passes it straight through. That breaks the contract in API_CONTRACT.md,
+  // where every code is a name, and the app (which matches on names like
+  // UNAUTHORIZED) falls through to a bare "unexpected error occurred" that
+  // says nothing about what broke. The number is still logged below; only the
+  // patient-facing payload is normalised.
+  if (typeof code !== 'string') code = 'INTERNAL_ERROR';
+
   if (status >= 500) {
     logger.error({ err, path: req.originalUrl, method: req.method }, 'unhandled error');
     // Never leak internal details to a patient's device in production.

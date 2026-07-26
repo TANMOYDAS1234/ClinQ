@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import mongoose from 'mongoose';
 
+import { isProd } from '../config/env.js';
+import { logger } from '../config/logger.js';
+
 import authRoutes from './auth.js';
 import chatRoutes from './chat.js';
 import trackingRoutes from './tracking.js';
@@ -16,11 +19,42 @@ import uploadRoutes from './uploads.js';
 
 const router = Router();
 
-router.get('/health', (req, res) => {
+/**
+ * Liveness + readiness.
+ *
+ * `readyState` alone describes the socket, not whether this process can
+ * actually use the database. A deployment whose credentials lack rights on the
+ * database keeps a happily open connection and reported `db: "connected"` while
+ * every single query failed — a green health check sitting on top of a server
+ * that could not serve a login. So the check issues a real read, and answers
+ * 503 when the database is reachable but unusable, which is what a load
+ * balancer or uptime monitor needs to see.
+ */
+router.get('/health', async (req, res) => {
   const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
-  res.json({
-    status: 'ok',
-    db: states[mongoose.connection.readyState] ?? 'unknown',
+  let db = states[mongoose.connection.readyState] ?? 'unknown';
+  let detail;
+
+  if (mongoose.connection.readyState === 1) {
+    try {
+      // Deliberately not `ping`: that command succeeds without authentication
+      // and would have reported this exact outage as healthy. Listing
+      // collections needs genuine read rights on the database.
+      await mongoose.connection.db.listCollections({}, { nameOnly: true }).toArray();
+    } catch (err) {
+      db = err?.codeName === 'Unauthorized' || err?.code === 13 ? 'unauthorized' : 'error';
+      // The coarse state is safe to publish; the driver's message can name
+      // internals, so it stays out of production responses and in the log.
+      if (!isProd) detail = err?.codeName ?? err?.message;
+      logger.error({ err }, 'health check: database unusable');
+    }
+  }
+
+  const healthy = db === 'connected';
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'ok' : 'degraded',
+    db,
+    ...(detail ? { detail } : {}),
     uptime: Math.round(process.uptime()),
     version: '1.0.0',
   });
