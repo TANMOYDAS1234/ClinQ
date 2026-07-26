@@ -358,6 +358,18 @@ async function resolveSession({ patientId, sessionId, language, text }) {
     const existing = await ChatSession.findOne({ _id: sessionId, patient: patientId });
     if (existing) return existing;
   }
+
+  // No session id means "continue where this patient left off", not "start
+  // again". Creating one unconditionally scattered a single patient's history
+  // across a new session per message whenever a client had not yet learned the
+  // id — which left the clinic reading only the newest fragment while the
+  // patient read another, and the doctor's reply landing in a thread the
+  // patient was not looking at.
+  const ongoing = await ChatSession.findOne({ patient: patientId, isArchived: false }).sort({
+    lastMessageAt: -1,
+  });
+  if (ongoing) return ongoing;
+
   return ChatSession.create({
     patient: patientId,
     language,

@@ -54,6 +54,7 @@ class PatientListItem {
     required this.phone,
     required this.riskScore,
     required this.riskBand,
+    this.avatarUrl,
     this.lastReadingAt,
     this.lastReadingValue,
     this.openAlertCount = 0,
@@ -62,6 +63,10 @@ class PatientListItem {
   final String id;
   final String name;
   final String phone;
+
+  /// Relative `/api/v1/uploads/:id/raw` path of the photo the patient set, or
+  /// null. Absolute URL and auth header are assembled at render time.
+  final String? avatarUrl;
   final int riskScore;
   final String riskBand; // low | moderate | high | critical
   final DateTime? lastReadingAt;
@@ -74,6 +79,7 @@ class PatientListItem {
     phone: j['phone']?.toString() ?? '',
     riskScore: (j['riskScore'] as num?)?.toInt() ?? 0,
     riskBand: j['riskBand']?.toString() ?? 'low',
+    avatarUrl: j['avatarUrl']?.toString(),
     lastReadingAt: DateTime.tryParse(j['lastReadingAt']?.toString() ?? '')?.toLocal(),
     lastReadingValue: j['lastReadingValue'] as num?,
     openAlertCount: (j['openAlertCount'] as num?)?.toInt() ?? 0,

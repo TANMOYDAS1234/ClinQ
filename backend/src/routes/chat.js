@@ -194,7 +194,14 @@ router.get(
       .sort({ lastMessageAt: -1 })
       .lean();
 
-    if (!session) {
+    // Messages are fetched by patient, not by session. The clinic needs the
+    // whole history — a patient's care is one continuous story, and an earlier
+    // exchange is often exactly the context that explains today's question.
+    // It also heals threads already split by sessions created per message
+    // before that was fixed.
+    const total = await ChatMessage.countDocuments({ patient: req.patientId });
+
+    if (!session && total === 0) {
       // No conversation yet is a normal state, not an error: the clinic may be
       // reaching out first. An empty thread lets the composer open regardless.
       return res.json({
@@ -211,15 +218,18 @@ router.get(
     }
 
     const { page, limit, skip } = q(req);
-    const filter = { session: session._id };
-    const [items, total] = await Promise.all([
-      ChatMessage.find(filter).sort({ seq: 1 }).skip(skip).limit(limit).populate('sender', 'name').lean(),
-      ChatMessage.countDocuments(filter),
-    ]);
+    // Ordered by time, not seq: seq restarts per session, so it cannot order a
+    // history that spans several.
+    const items = await ChatMessage.find({ patient: req.patientId })
+      .sort({ createdAt: 1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('sender', 'name')
+      .lean();
 
     res.json({
       ...paged(items.map(serialiseMessage), { page, limit, total }),
-      session: serialiseSession(session),
+      session: session ? serialiseSession(session) : null,
       patient: req.patientUser
         ? { id: req.patientUser._id, name: req.patientUser.name, phone: req.patientUser.phone }
         : null,

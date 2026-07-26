@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
 import 'widgets/clinician_visuals.dart';
@@ -20,12 +21,24 @@ class PatientsScreen extends ConsumerStatefulWidget {
   ConsumerState<PatientsScreen> createState() => _PatientsScreenState();
 }
 
-class _PatientsScreenState extends ConsumerState<PatientsScreen> {
+class _PatientsScreenState extends ConsumerState<PatientsScreen>
+    with WidgetsBindingObserver {
   final _searchController = TextEditingController();
   String _search = '';
   String _sort = 'risk';
   String? _riskBand;
   Timer? _debounce;
+  Timer? _poll;
+
+  /// How often the list re-reads while the doctor is looking at it.
+  ///
+  /// A patient can change their name or photo at any moment and there is no
+  /// socket or push channel to hear about it, so the list refreshes on a timer
+  /// and on resume rather than waiting for a manual pull. Thirty seconds is
+  /// frequent enough that a change appears while the clinic is still on the
+  /// screen, and light enough to be harmless — the query is indexed and the
+  /// payload is a few rows.
+  static const _pollInterval = Duration(seconds: 30);
 
   static const _bands = [
     (null, 'All'),
@@ -36,10 +49,30 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _poll = Timer.periodic(_pollInterval, (_) => _refresh());
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _poll?.cancel();
     _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Coming back from the background is the likeliest moment for the list to
+    // be stale, so refresh immediately rather than waiting out the timer.
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  void _refresh() {
+    if (mounted) ref.invalidate(patientsProvider(_query));
   }
 
   void _onSearchChanged(String v) {
@@ -173,7 +206,6 @@ class _PatientRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final p = patient;
     final band = riskBandColor(p.riskBand);
-    final initial = (p.name.isNotEmpty ? p.name[0] : '?').toUpperCase();
 
     return InkWell(
       onTap: onTap,
@@ -187,12 +219,10 @@ class _PatientRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(color: band.withValues(alpha: 0.16), shape: BoxShape.circle),
-              child: Center(child: Text(initial, style: TextStyle(fontWeight: FontWeight.w800, color: band, fontSize: 18))),
-            ),
+            // Shows the photo the patient set, falling back to their initial.
+            // The clinic seeing the same face the patient chose is part of
+            // recognising them, so this is not merely decorative.
+            UserAvatar(name: p.name, avatarUrl: p.avatarUrl, accent: band, size: 46),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
