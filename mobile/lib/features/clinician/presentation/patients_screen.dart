@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
@@ -227,7 +229,59 @@ class _PatientRow extends StatelessWidget {
                 ],
               ],
             ),
+            // Call and message live on the row itself. Opening a patient's
+            // profile to do either cost the doctor a screen each time, on the
+            // two actions taken most often and most urgently.
+            const SizedBox(width: 4),
+            _RowAction(
+              icon: Icons.call_rounded,
+              tooltip: 'Call ${p.name}',
+              onTap: () => _call(context, p.phone),
+            ),
+            _RowAction(
+              icon: Icons.chat_bubble_outline_rounded,
+              tooltip: 'Message ${p.name}',
+              onTap: () => _message(context),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _call(BuildContext context, String phone) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (!await launchUrl(uri)) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not start a call to $phone')));
+    }
+  }
+
+  /// Messaging happens inside the patient's own assistant thread, which lives
+  /// on their detail screen — so this opens there rather than to a second inbox.
+  void _message(BuildContext context) {
+    context.push('/clinician/patients/${patient.id}?compose=1');
+  }
+}
+
+/// Compact 40px icon button used for the per-row call/message actions.
+class _RowAction extends StatelessWidget {
+  const _RowAction({required this.icon, required this.tooltip, required this.onTap});
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, size: 21, color: AppColors.primary),
         ),
       ),
     );

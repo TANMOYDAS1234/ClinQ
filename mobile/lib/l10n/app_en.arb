@@ -147,7 +147,10 @@
   "dashboardEmptyTitle": "No dashboard data yet",
   "dashboardEmptyBody": "Start logging your glucose and medicines to see your health summary here.",
   "dashboardErrorTitle": "Couldn't load your dashboard",
-  "chatTitle": "Health Assistant",
+  "chatTitle": "Care Team",
+  "chatFromClinic": "From the clinic",
+  "chatReplyToPatient": "Reply to this patient…",
+  "chatReplySent": "Sent to the patient",
   "chatComposerHint": "Ask about your health…",
   "chatSend": "Send",
   "chatSessions": "Chat history",
@@ -384,5 +387,5 @@
   "errorRateLimited": "Too many attempts. Please wait a moment and try again.",
   "errorInvalidId": "That reference is invalid.",
   "errorInternal": "Something went wrong on our end. Please try again.",
-  "errorAiUnavailable": "The Health Assistant is temporarily unavailable. Please try again shortly."
+  "errorAiUnavailable": "The assistant is temporarily unavailable. Please try again shortly."
 }

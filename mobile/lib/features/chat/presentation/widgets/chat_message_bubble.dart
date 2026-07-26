@@ -58,13 +58,18 @@ class ChatMessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
-    if (!message.isUser && message.isEmergency) {
+    // Safety cards represent a triage verdict about the patient's own message.
+    // A clinician's reply is a person talking, so it never renders as one even
+    // if the turn inherited an urgency from the conversation.
+    final isClinician = message.isClinician;
+
+    if (!message.isUser && !isClinician && message.isEmergency) {
       return Padding(
         padding: const EdgeInsets.only(bottom: AppSpacing.md),
         child: EmergencyCard(content: message.content),
       );
     }
-    if (!message.isUser && message.isUrgent) {
+    if (!message.isUser && !isClinician && message.isUrgent) {
       return Padding(
         padding: const EdgeInsets.only(bottom: AppSpacing.md),
         child: UrgentCard(content: message.content),
@@ -85,17 +90,54 @@ class ChatMessageBubble extends StatelessWidget {
             // Photos the patient attached, shown above their text.
             if (message.attachmentPaths.isNotEmpty)
               ChatAttachmentThumbs(paths: message.attachmentPaths),
+            // Name the human. A patient must never have to guess whether the
+            // words they are reading came from their doctor or from software.
+            if (isClinician) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 5),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.medical_information_rounded, size: 15, color: AppColors.primary),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        message.senderName ?? l10n.chatFromClinic,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               decoration: BoxDecoration(
-                color: isUser ? AppColors.primary : scheme.surfaceContainerLow,
+                color: isUser
+                    ? AppColors.primary
+                    : isClinician
+                    // Tinted, not grey: the doctor's own words carry more
+                    // weight than the assistant's and should look like it.
+                    ? AppColors.primary.withValues(alpha: 0.10)
+                    : scheme.surfaceContainerLow,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
                   bottomLeft: Radius.circular(isUser ? 20 : 6),
                   bottomRight: Radius.circular(isUser ? 6 : 20),
                 ),
-                border: isUser ? null : Border.all(color: scheme.outlineVariant),
+                border: isUser
+                    ? null
+                    : Border.all(
+                        color: isClinician
+                            ? AppColors.primary.withValues(alpha: 0.35)
+                            : scheme.outlineVariant,
+                      ),
               ),
               child: isUser
                   // The patient's own text is never Markdown — render it plain.
@@ -128,7 +170,10 @@ class ChatMessageBubble extends StatelessWidget {
                 ),
               ),
             ],
-            if (!isUser) ...[
+            // Citations, retry and the "AI-assisted guidance" note all describe
+            // the assistant. None of them apply to something a doctor wrote,
+            // and the disclaimer would actively misrepresent it.
+            if (!isUser && !isClinician) ...[
               if (message.citations != null && message.citations!.isNotEmpty)
                 CitationChips(citations: message.citations!),
               // A fallback reply is the scripted "service unavailable" text —

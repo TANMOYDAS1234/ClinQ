@@ -7,6 +7,12 @@ const chatMessageSchema = new mongoose.Schema(
 
     seq: { type: Number, required: true },
     role: { type: String, enum: ['user', 'assistant', 'system', 'clinician'], required: true },
+
+    // Set only on `clinician` turns: which clinician wrote it, so the patient
+    // reads "Dr. Amit Kumar Dey" rather than an anonymous clinic voice, and an
+    // audit can attribute clinical advice to a named person.
+    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
     content: { type: String, required: true, maxlength: 20000 },
     language: { type: String, enum: ['en', 'bn', 'hi'], default: 'en' },
 

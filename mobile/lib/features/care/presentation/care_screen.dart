@@ -22,14 +22,12 @@ class _CareItem {
   final String route;
 }
 
+// "Message the clinic" is deliberately absent. Messaging the doctor is not a
+// separate destination: the clinic replies inside the Health Assistant thread
+// on the Chat tab, so the assistant's guidance and the doctor's own words stay
+// one conversation. A second inbox meant the patient had to guess which of two
+// places to write, and split the history the doctor reviews.
 final _items = <_CareItem>[
-  _CareItem(
-    icon: Icons.forum_rounded,
-    color: AppColors.success,
-    titleBuilder: (l) => l.careMessageClinic,
-    descBuilder: (l) => l.careMessageClinicDesc,
-    route: '/care/messages',
-  ),
   _CareItem(
     icon: Icons.event_available_outlined,
     color: AppColors.primary,

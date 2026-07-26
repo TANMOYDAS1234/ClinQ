@@ -73,6 +73,9 @@ class ChatReviewMessage {
 
   bool get isUser => role == 'user';
 
+  /// A doctor or staff member who replied into this thread, not the assistant.
+  bool get isClinician => role == 'clinician';
+
   factory ChatReviewMessage.fromJson(Map<String, dynamic> j) => ChatReviewMessage(
     id: j['id']?.toString() ?? '',
     seq: (j['seq'] as num?)?.toInt() ?? 0,

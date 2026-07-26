@@ -20,6 +20,15 @@ class ClinicianRepository {
     return ClinicOverview.fromJson(json);
   }
 
+  /// Sends the clinician's own words into the patient's assistant thread.
+  ///
+  /// Not a separate inbox: the reply appears in the same conversation the
+  /// patient is already reading, so the assistant's answers and the doctor's
+  /// remain one exchange rather than two disconnected halves.
+  Future<void> messagePatient({required String patientId, required String content}) async {
+    await _client.postJson('/chat/patients/$patientId/clinician-message', body: {'content': content});
+  }
+
   Future<Paged<PatientListItem>> patients({
     String? riskBand,
     String? search,

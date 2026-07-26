@@ -2,6 +2,7 @@ import { createApp } from './app.js';
 import { connectDb, disconnectDb } from './config/db.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
+import { startScheduler } from './services/scheduler.js';
 
 async function main() {
   await connectDb();
@@ -11,9 +12,13 @@ async function main() {
     logger.info(`AKD Care API listening on http://localhost:${env.PORT}/api/v1`);
   });
 
+  // Time-based notifications (the doctor's evening digest of tomorrow's list).
+  const stopScheduler = startScheduler();
+
   // Finish in-flight clinical writes before dying.
   const shutdown = async (signal) => {
     logger.info({ signal }, 'shutting down');
+    stopScheduler();
     server.close(async () => {
       await disconnectDb();
       process.exit(0);

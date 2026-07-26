@@ -685,8 +685,26 @@ abstract class AppLocalizations {
   /// No description provided for @chatTitle.
   ///
   /// In en, this message translates to:
-  /// **'Health Assistant'**
+  /// **'Care Team'**
   String get chatTitle;
+
+  /// No description provided for @chatFromClinic.
+  ///
+  /// In en, this message translates to:
+  /// **'From the clinic'**
+  String get chatFromClinic;
+
+  /// No description provided for @chatReplyToPatient.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply to this patient…'**
+  String get chatReplyToPatient;
+
+  /// No description provided for @chatReplySent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to the patient'**
+  String get chatReplySent;
 
   /// No description provided for @chatComposerHint.
   ///
@@ -2035,7 +2053,7 @@ abstract class AppLocalizations {
   /// No description provided for @errorAiUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'The Health Assistant is temporarily unavailable. Please try again shortly.'**
+  /// **'The assistant is temporarily unavailable. Please try again shortly.'**
   String get errorAiUnavailable;
 }
 

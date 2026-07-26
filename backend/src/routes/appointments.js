@@ -9,6 +9,10 @@ import { audit } from '../middleware/audit.js';
 import { Appointment, APPOINTMENT_STATUS } from '../models/Appointment.js';
 import { Clinic } from '../models/Clinic.js';
 import { User, ROLES } from '../models/User.js';
+import { AppointmentWaitlist } from '../models/AppointmentWaitlist.js';
+import { PatientProfile } from '../models/PatientProfile.js';
+import { logger } from '../config/logger.js';
+import { notifyClinicOfAppointmentChange, notifyWaitlistOfFreedSlot } from '../services/notifications.js';
 import { ACTIVE_STATUSES, isSlotBookable } from '../services/scheduling.js';
 import { paged, pageParams, dateRange } from '../utils/pagination.js';
 
@@ -139,6 +143,16 @@ router.post(
     });
 
     await appointment.populate(POPULATE);
+
+    // Booking auto-confirms, so the clinic learns of it only if told. Awaited
+    // rather than fired-and-forgotten so a transport failure surfaces in the
+    // log next to the booking that caused it.
+    await notifyClinicOfAppointmentChange(
+      appointment,
+      req.patientUser?.name ?? appointment.patient?.name ?? 'A patient',
+      'booked',
+    );
+
     res.status(201).json({ appointment: serialise(appointment) });
   }),
 );
@@ -204,9 +218,96 @@ router.patch(
     await appt.save();
 
     await appt.populate(POPULATE);
+
+    await notifyClinicOfAppointmentChange(appt, appt.patient?.name ?? 'A patient', 'cancelled');
+    await offerFreedSlotToWaitlist(appt);
+
     res.json({ appointment: serialise(appt) });
   }),
 );
+
+/**
+ * Patient asks to be told if a slot frees up on a day that is currently full.
+ *
+ * Re-activates a previous request rather than erroring on the unique index, so
+ * a patient who joined, booked, and later needs the same day again just works.
+ */
+router.post(
+  '/waitlist',
+  validate({
+    body: z.object({ clinicId: z.string(), date: z.coerce.date() }),
+  }),
+  audit('create', 'AppointmentWaitlist'),
+  asyncHandler(async (req, res) => {
+    if (req.user.role !== ROLES.PATIENT) throw badRequest('Only patients can join the waitlist');
+
+    const desiredDate = dayjs(req.body.date).startOf('day').toDate();
+    const entry = await AppointmentWaitlist.findOneAndUpdate(
+      { patient: req.user._id, clinic: req.body.clinicId, desiredDate },
+      { $set: { isActive: true } },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
+
+    res.status(201).json({ waitlist: { id: entry._id, date: desiredDate, clinicId: entry.clinic } });
+  }),
+);
+
+router.delete(
+  '/waitlist/:id',
+  audit('update', 'AppointmentWaitlist'),
+  asyncHandler(async (req, res) => {
+    await AppointmentWaitlist.findOneAndUpdate(
+      { _id: req.params.id, patient: req.user._id },
+      { isActive: false },
+    );
+    res.status(204).end();
+  }),
+);
+
+/**
+ * Notifies patients waiting on the day this appointment occupied.
+ *
+ * Ordered worst-controlled first: the slot still goes to whoever books it, but
+ * the patient in most clinical need gets the head start.
+ *
+ * Never throws into the request — a patient cancelling their own appointment
+ * must not see an error because a notification could not be sent.
+ */
+async function offerFreedSlotToWaitlist(appointment) {
+  try {
+    if (!appointment.clinic) return;
+
+    const day = dayjs(appointment.scheduledFor).startOf('day').toDate();
+    const clinicId = appointment.clinic?._id ?? appointment.clinic;
+
+    const entries = await AppointmentWaitlist.find({
+      clinic: clinicId,
+      desiredDate: day,
+      isActive: true,
+      // Do not re-notify anyone told within the hour: a cancel/rebook flap
+      // would otherwise page the same people repeatedly.
+      $or: [{ lastNotifiedAt: null }, { lastNotifiedAt: { $lt: dayjs().subtract(1, 'hour').toDate() } }],
+    })
+      .populate('patient', 'name')
+      .lean();
+
+    if (!entries.length) return;
+
+    const profiles = await PatientProfile.find({ patient: { $in: entries.map((e) => e.patient._id) } })
+      .select('patient riskScore')
+      .lean();
+    const risk = new Map(profiles.map((p) => [p.patient.toString(), p.riskScore ?? 0]));
+    entries.sort((a, b) => (risk.get(b.patient._id.toString()) ?? 0) - (risk.get(a.patient._id.toString()) ?? 0));
+
+    await notifyWaitlistOfFreedSlot(entries, appointment);
+    await AppointmentWaitlist.updateMany(
+      { _id: { $in: entries.map((e) => e._id) } },
+      { lastNotifiedAt: new Date() },
+    );
+  } catch (err) {
+    logger.error({ err, appointmentId: appointment._id }, 'could not offer freed slot to waitlist');
+  }
+}
 
 router.patch(
   '/:id/status',

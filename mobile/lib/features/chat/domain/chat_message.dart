@@ -25,16 +25,25 @@ class ChatMessage {
     this.createdAt,
     this.citations,
     this.triage,
+    this.senderName,
     this.attachmentPaths = const [],
   });
 
   final String id;
   final int seq;
 
-  /// `user` | `assistant`.
+  /// `user` | `assistant` | `clinician`.
+  ///
+  /// `clinician` is the doctor or staff speaking directly into this thread.
+  /// There is no separate clinic inbox — the assistant answers what it safely
+  /// can and refers the rest, and the clinician's reply lands here so the whole
+  /// exchange stays one conversation.
   final String role;
   final String content;
   final String language;
+
+  /// Who wrote a `clinician` turn, e.g. "Dr. Amit Kumar Dey". Null otherwise.
+  final String? senderName;
 
   /// routine < advice < urgent < emergency.
   final String urgency;
@@ -49,6 +58,11 @@ class ChatMessage {
   final List<String> attachmentPaths;
 
   bool get isUser => role == 'user';
+
+  /// A real person from the clinic, not the assistant. Rendered distinctly so a
+  /// patient is never unsure whether they are reading their doctor or an AI.
+  bool get isClinician => role == 'clinician';
+
   bool get isEmergency => urgency == 'emergency';
   bool get isUrgent => urgency == 'urgent';
 
@@ -62,6 +76,7 @@ class ChatMessage {
       urgency: json['urgency']?.toString() ?? 'routine',
       isFallback: json['isFallback'] as bool?,
       createdAt: json['createdAt'] == null ? null : DateTime.tryParse(json['createdAt'].toString()),
+      senderName: json['senderName']?.toString(),
       attachmentPaths: _parseAttachments(json['attachments']),
     );
   }
@@ -89,6 +104,7 @@ class ChatMessage {
     createdAt: createdAt,
     citations: citations,
     triage: triage,
+    senderName: senderName,
     attachmentPaths: attachmentPaths,
   );
 
@@ -104,6 +120,7 @@ class ChatMessage {
       createdAt: createdAt,
       citations: citations ?? this.citations,
       triage: triage ?? this.triage,
+      senderName: senderName,
       attachmentPaths: attachmentPaths,
     );
   }

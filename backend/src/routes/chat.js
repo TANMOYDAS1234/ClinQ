@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireClinician, resolvePatientScope } from '../middleware/auth.js';
 import { validate, q } from '../middleware/validate.js';
 import { asyncHandler, notFound } from '../middleware/errors.js';
 import { audit } from '../middleware/audit.js';
 import { handlePatientMessage, streamPatientMessage } from '../services/ai/assistant.js';
 import { ChatSession } from '../models/ChatSession.js';
 import { ChatMessage } from '../models/ChatMessage.js';
+import { notifyPatientOfClinicianReply } from '../services/notifications.js';
 import { paged, pageParams } from '../utils/pagination.js';
 
 const router = Router();
@@ -134,7 +135,7 @@ router.get(
     const { page, limit, skip } = q(req);
     const filter = { session: session._id };
     const [items, total] = await Promise.all([
-      ChatMessage.find(filter).sort({ seq: 1 }).skip(skip).limit(limit).lean(),
+      ChatMessage.find(filter).sort({ seq: 1 }).skip(skip).limit(limit).populate('sender', 'name').lean(),
       ChatMessage.countDocuments(filter),
     ]);
 
@@ -173,6 +174,69 @@ router.post(
   }),
 );
 
+/**
+ * The doctor (or staff) speaking directly into the patient's assistant thread.
+ *
+ * There is deliberately no separate doctor-patient inbox. The assistant handles
+ * what it safely can and refers the rest to the clinic; a reply that arrived in
+ * a different screen would split one clinical conversation in two, and neither
+ * half would carry the context of the other. So a clinician's words land in the
+ * same thread the patient is already reading, as `role: 'clinician'` — a role
+ * the message schema has always allowed.
+ *
+ * It attaches to the patient's most recent session, or opens one if the patient
+ * has never written, so the clinic can always reach out first.
+ */
+router.post(
+  '/patients/:patientId/clinician-message',
+  requireAuth,
+  requireClinician,
+  resolvePatientScope,
+  validate({ body: z.object({ content: z.string().trim().min(1).max(4000) }) }),
+  audit('create', 'ChatMessage'),
+  asyncHandler(async (req, res) => {
+    let session = await ChatSession.findOne({ patient: req.patientId, isArchived: false }).sort({
+      lastMessageAt: -1,
+    });
+
+    if (!session) {
+      session = await ChatSession.create({
+        patient: req.patientId,
+        language: req.patientUser?.language ?? 'en',
+        title: 'Message from the clinic',
+      });
+    }
+
+    // seq is unique per session, so derive it from the current tail rather than
+    // a count — an archived or partially deleted history would collide.
+    const last = await ChatMessage.findOne({ session: session._id }).sort({ seq: -1 }).select('seq').lean();
+
+    const message = await ChatMessage.create({
+      session: session._id,
+      patient: req.patientId,
+      seq: (last?.seq ?? -1) + 1,
+      role: 'clinician',
+      sender: req.user._id,
+      content: req.body.content,
+      language: session.language,
+    });
+
+    await ChatSession.findByIdAndUpdate(session._id, {
+      lastMessageAt: message.createdAt,
+      $inc: { messageCount: 1 },
+      // The clinician has now answered, so it no longer needs review.
+      flaggedForReview: false,
+    });
+
+    await notifyPatientOfClinicianReply(req.patientId, req.user, req.body.content);
+
+    res.status(201).json({
+      sessionId: session._id,
+      message: { ...serialiseMessage(message), senderName: req.user.name },
+    });
+  }),
+);
+
 function serialiseSession(s) {
   return {
     id: s._id,
@@ -191,6 +255,8 @@ function serialiseMessage(m) {
     id: m._id,
     seq: m.seq,
     role: m.role,
+    // Present on clinician turns once populated; null everywhere else.
+    senderName: m.sender && typeof m.sender === 'object' ? (m.sender.name ?? null) : null,
     content: m.content,
     language: m.language,
     urgency: m.triage?.urgency ?? 'routine',
