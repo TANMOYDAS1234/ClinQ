@@ -318,16 +318,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardErrorTitle => 'Couldn\'t load your dashboard';
 
   @override
-  String get chatTitle => 'AI Assistant';
+  String get chatTitle => 'Health Assistant';
 
   @override
   String get chatComposerHint => 'Ask about your health…';
 
   @override
   String get chatSend => 'Send';
-
-  @override
-  String get chatNewChat => 'New chat';
 
   @override
   String get chatSessions => 'Chat history';
@@ -1023,5 +1020,5 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorAiUnavailable =>
-      'The AI assistant is temporarily unavailable. Please try again shortly.';
+      'The Health Assistant is temporarily unavailable. Please try again shortly.';
 }

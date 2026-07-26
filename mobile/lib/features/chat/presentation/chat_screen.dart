@@ -9,13 +9,11 @@ import '../../../shared/widgets/loading_view.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/chat_message.dart';
 import 'chat_controller.dart';
-import 'chat_sessions_provider.dart';
 import 'widgets/chat_composer.dart';
 import 'widgets/chat_empty_state.dart';
 import 'widgets/chat_message_bubble.dart';
 import 'widgets/dotted_background.dart';
 import 'widgets/generating_bubble.dart';
-import 'widgets/session_drawer.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -36,6 +34,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    // Resume the patient's ongoing conversation rather than opening blank.
+    // Deferred past the first frame because it mutates a provider.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(chatControllerProvider.notifier).resumeLatest();
+    });
   }
 
   void _onScroll() {
@@ -74,7 +77,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     await ref
         .read(chatControllerProvider.notifier)
         .send(text: text, language: _replyLanguage, attachments: attachments);
-    ref.invalidate(chatSessionsProvider);
     _scrollToBottom();
   }
 
@@ -98,12 +100,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (lengthChanged || contentGrew) _scrollToBottom();
     });
 
-    final entries = _withDateSeparators(chatState.messages);
-    // The "analysing" bubble shows only in the gap between sending and the
-    // first streamed token — once the assistant's (growing) reply is on screen,
-    // it would be a duplicate.
-    final showGenerating = chatState.isSending &&
-        (chatState.messages.isEmpty || chatState.messages.last.isUser);
+    // The assistant's bubble is created when the `meta` event lands, which is
+    // before the first token of its reply. Drawing it in that window rendered
+    // an empty bubble for a moment, so hold it back until it has text.
+    final messages = chatState.messages;
+    final awaitingFirstToken =
+        messages.isNotEmpty && !messages.last.isUser && messages.last.content.isEmpty;
+
+    final entries = _withDateSeparators(
+      awaitingFirstToken ? messages.sublist(0, messages.length - 1) : messages,
+    );
+
+    // The "analysing" bubble covers the whole wait — from send until there is
+    // actual text — so the two never swap to a blank gap in between. Once the
+    // reply starts streaming it would be a duplicate, so it goes.
+    final showGenerating =
+        chatState.isSending && (messages.isEmpty || messages.last.isUser || awaitingFirstToken);
 
     return Scaffold(
       appBar: AppBar(
@@ -111,23 +123,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           l10n.chatTitle,
           style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
         ),
-        actions: [
-          IconButton(
-            tooltip: l10n.chatNewChat,
-            icon: const Icon(Icons.add_rounded, size: 28),
-            onPressed: () => ref.read(chatControllerProvider.notifier).startNewChat(),
-          ),
-        ],
+        // No "new chat" action: the patient has one continuous conversation
+        // with the assistant, which the doctor reviews as a single thread.
       ),
-      drawer: const SessionDrawer(),
       // The Scaffold does not resize for the keyboard; instead the content is
       // padded by the keyboard inset below. This keeps the dotted background a
       // fixed, full-screen layer that never repaints as the keyboard animates —
       // which was a real source of the input/attach lag.
       resizeToAvoidBottomInset: false,
       body: DottedBackground(
-        child: Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: _KeyboardInset(
           child: Column(
           children: [
             if (chatState.error != null)
@@ -249,6 +254,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (code == 'AI_UNAVAILABLE') return l10n.errorAiUnavailable;
     if (code == 'NETWORK_ERROR' || code == 'TIMEOUT') return l10n.commonNoInternet;
     return l10n.commonSomethingWentWrong;
+  }
+}
+
+/// Lifts the conversation above the keyboard, without rebuilding it.
+///
+/// The Scaffold has `resizeToAvoidBottomInset: false` so the dotted background
+/// stays a fixed layer, and the keyboard inset is applied here instead. Reading
+/// the inset in [_ChatScreenState.build] subscribed the whole screen to
+/// MediaQuery, so every frame of the keyboard's open animation rebuilt the
+/// transcript, the date separators and the composer — which is what made
+/// tapping the field and the attach button feel slow.
+///
+/// Reading it here confines that per-frame rebuild to this one widget: [child]
+/// arrives already built, so Flutter sees an identical widget instance and
+/// skips the subtree entirely. Only the padding value changes.
+class _KeyboardInset extends StatelessWidget {
+  const _KeyboardInset({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    // viewInsetsOf, not MediaQuery.of: subscribes to the insets alone rather
+    // than to every MediaQuery change (text scale, orientation, padding…).
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: child,
+    );
   }
 }
 

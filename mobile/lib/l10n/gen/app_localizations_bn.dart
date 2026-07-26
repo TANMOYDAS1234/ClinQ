@@ -316,16 +316,13 @@ class AppLocalizationsBn extends AppLocalizations {
   String get dashboardErrorTitle => 'ড্যাশবোর্ড লোড করা গেল না';
 
   @override
-  String get chatTitle => 'AI সহায়ক';
+  String get chatTitle => 'স্বাস্থ্য সহায়ক';
 
   @override
   String get chatComposerHint => 'আপনার স্বাস্থ্য নিয়ে প্রশ্ন করুন…';
 
   @override
   String get chatSend => 'পাঠান';
-
-  @override
-  String get chatNewChat => 'নতুন চ্যাট';
 
   @override
   String get chatSessions => 'চ্যাটের ইতিহাস';
@@ -1017,5 +1014,5 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get errorAiUnavailable =>
-      'AI সহায়ক সাময়িকভাবে উপলব্ধ নেই। একটু পরে আবার চেষ্টা করুন।';
+      'স্বাস্থ্য সহায়ক সাময়িকভাবে উপলব্ধ নেই। একটু পরে আবার চেষ্টা করুন।';
 }

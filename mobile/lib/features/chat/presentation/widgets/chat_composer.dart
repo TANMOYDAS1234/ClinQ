@@ -46,6 +46,10 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
   bool _focused = false;
   bool _listening = false;
 
+  /// Field contents before the current dictated utterance. Null when not
+  /// dictating. See [_onTranscript].
+  String? _dictationBase;
+
   @override
   void initState() {
     super.initState();
@@ -99,14 +103,33 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
     setState(_attachments.clear);
   }
 
-  /// Dictated words are appended to whatever is already typed — never
-  /// overwritten — with a single space between.
-  void _appendDictation(String words) {
-    final existing = _controller.text.trimRight();
-    _controller.text = existing.isEmpty ? words : '$existing $words';
-    _controller.selection = TextSelection.fromPosition(
-      TextPosition(offset: _controller.text.length),
+  /// Renders the live transcript as the patient speaks.
+  ///
+  /// [_dictationBase] holds everything in the field before the current
+  /// utterance began. Each revision is drawn after it, replacing the previous
+  /// guess rather than stacking on it — otherwise "how are you" would arrive as
+  /// "how how are how are you". When an utterance is committed it becomes the
+  /// new base, so the next one appends after it. Typed text is never
+  /// overwritten.
+  void _onTranscript(String words, bool isFinal) {
+    final base = _dictationBase ??= _controller.text.trimRight();
+    final text = words.isEmpty ? base : (base.isEmpty ? words : '$base $words');
+
+    // Set text and caret together — assigning `.text` alone resets the
+    // selection to the start, which fights the user on every partial.
+    _controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
     );
+
+    if (isFinal) _dictationBase = text;
+  }
+
+  void _onListeningChanged(bool listening) {
+    // Drop the base when dictation ends so the next session re-reads whatever
+    // is in the field, including anything typed by hand in between.
+    if (!listening) _dictationBase = null;
+    setState(() => _listening = listening);
   }
 
   void _onMicUnavailable(String reason) {
@@ -270,8 +293,8 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                               padding: const EdgeInsets.only(right: 6, bottom: 4),
                               child: MicButton(
                                 languageCode: widget.languageCode,
-                                onWords: _appendDictation,
-                                onListeningChanged: (v) => setState(() => _listening = v),
+                                onTranscript: _onTranscript,
+                                onListeningChanged: _onListeningChanged,
                                 onUnavailable: _onMicUnavailable,
                               ),
                             ),

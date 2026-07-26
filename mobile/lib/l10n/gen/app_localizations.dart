@@ -685,7 +685,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatTitle.
   ///
   /// In en, this message translates to:
-  /// **'AI Assistant'**
+  /// **'Health Assistant'**
   String get chatTitle;
 
   /// No description provided for @chatComposerHint.
@@ -699,12 +699,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Send'**
   String get chatSend;
-
-  /// No description provided for @chatNewChat.
-  ///
-  /// In en, this message translates to:
-  /// **'New chat'**
-  String get chatNewChat;
 
   /// No description provided for @chatSessions.
   ///
@@ -2041,7 +2035,7 @@ abstract class AppLocalizations {
   /// No description provided for @errorAiUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'The AI assistant is temporarily unavailable. Please try again shortly.'**
+  /// **'The Health Assistant is temporarily unavailable. Please try again shortly.'**
   String get errorAiUnavailable;
 }
 

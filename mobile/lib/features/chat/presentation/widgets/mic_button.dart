@@ -24,7 +24,7 @@ class MicButton extends StatefulWidget {
   const MicButton({
     super.key,
     required this.languageCode,
-    required this.onWords,
+    required this.onTranscript,
     this.onListeningChanged,
     this.onUnavailable,
     this.size = 44,
@@ -32,8 +32,14 @@ class MicButton extends StatefulWidget {
 
   final String languageCode;
 
-  /// Final recognised words for this utterance, to append to the field.
-  final ValueChanged<String> onWords;
+  /// Live transcript for the current utterance.
+  ///
+  /// Fires continuously as the recogniser revises its guess, with
+  /// `isFinal: false`, so the patient watches their words appear as they speak.
+  /// Fires once more with `isFinal: true` when the utterance is committed —
+  /// the text is the same, but the listener should stop treating it as
+  /// provisional and let the next utterance append after it.
+  final void Function(String words, bool isFinal) onTranscript;
 
   /// Fires true when listening starts, false when it ends — the composer uses
   /// this to light up the animated border.
@@ -79,6 +85,15 @@ class _MicButtonState extends State<MicButton> with SingleTickerProviderStateMix
       return;
     }
 
+    // Go live on the tap itself. `initialize()` and `listen()` are platform
+    // calls that take a moment — on first use, long enough that a button which
+    // stayed grey until they returned read as an ignored tap. Not awaited, so
+    // nothing defers the visual response by even a frame.
+    HapticFeedback.mediumImpact();
+    setState(() => _listening = true);
+    widget.onListeningChanged?.call(true);
+    _rings.repeat();
+
     // Lazy init: the permission prompt appears on the first tap, not when the
     // chat screen opens.
     if (!_initialised) {
@@ -88,14 +103,12 @@ class _MicButtonState extends State<MicButton> with SingleTickerProviderStateMix
     }
     if (!_initialised) {
       final granted = await _speech.hasPermission;
+      // Roll back the optimistic "listening" state — nothing is being heard.
+      await _stop();
       widget.onUnavailable?.call(granted ? 'unavailable' : 'denied');
       return;
     }
-
-    await HapticFeedback.mediumImpact();
-    setState(() => _listening = true);
-    widget.onListeningChanged?.call(true);
-    _rings.repeat();
+    if (!mounted) return;
 
     await _speech.listen(
       listenOptions: SpeechListenOptions(
@@ -105,14 +118,19 @@ class _MicButtonState extends State<MicButton> with SingleTickerProviderStateMix
         onDevice: false,
         autoPunctuation: true,
         listenMode: ListenMode.dictation,
-        pauseFor: const Duration(seconds: 6),
+        // How long a silence ends the utterance. Only commits the current
+        // chunk — listening continues either way — so a shorter value costs
+        // nothing and stops a finished sentence hanging as provisional text.
+        // Not shorter than this: patients pause mid-sentence, and cutting them
+        // off would split one thought across two utterances.
+        pauseFor: const Duration(seconds: 3),
         listenFor: const Duration(minutes: 2),
       ),
       onResult: (r) {
-        // Append each finished utterance; keep listening for the next.
-        if (r.finalResult && r.recognizedWords.trim().isNotEmpty) {
-          widget.onWords(r.recognizedWords.trim());
-        }
+        // Every revision, not just the committed one. Waiting for
+        // `finalResult` meant nothing appeared until the recogniser had heard
+        // `pauseFor` of silence — seconds after the patient stopped speaking.
+        widget.onTranscript(r.recognizedWords.trim(), r.finalResult);
       },
       onSoundLevelChange: (raw) {
         final normalised = ((raw + 2) / 12).clamp(0.0, 1.0);

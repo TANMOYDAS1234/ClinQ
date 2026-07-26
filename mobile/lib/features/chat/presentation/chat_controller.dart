@@ -230,8 +230,30 @@ class ChatController extends StateNotifier<ChatState> {
     }
   }
 
-  void startNewChat() {
-    state = const ChatState();
+  /// Opens the patient's existing conversation when the chat tab is first shown.
+  ///
+  /// The assistant is one continuous thread the doctor reviews from the
+  /// clinician panel — not a series of disposable chats. Without this the app
+  /// opened blank every launch and silently started a fresh session on each
+  /// send, scattering one patient's history across many sessions.
+  ///
+  /// A patient with no history yet simply stays on the empty state; the first
+  /// send creates the session as before.
+  Future<void> resumeLatest() async {
+    if (state.sessionId != null || state.isLoadingHistory) return;
+    state = state.copyWith(isLoadingHistory: true, clearError: true);
+    try {
+      final paged = await _repository.getSessions(limit: 1);
+      if (paged.items.isEmpty) {
+        state = state.copyWith(isLoadingHistory: false);
+        return;
+      }
+      // The server sorts by lastMessageAt descending, so the first item is the
+      // most recent conversation.
+      await openSession(paged.items.first.id);
+    } on ApiException catch (e) {
+      state = state.copyWith(isLoadingHistory: false, error: e);
+    }
   }
 
   Future<bool> flagMessage(String messageId) async {

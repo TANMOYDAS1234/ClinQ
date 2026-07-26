@@ -319,16 +319,13 @@ class AppLocalizationsHi extends AppLocalizations {
   String get dashboardErrorTitle => 'डैशबोर्ड लोड नहीं हो सका';
 
   @override
-  String get chatTitle => 'AI सहायक';
+  String get chatTitle => 'स्वास्थ्य सहायक';
 
   @override
   String get chatComposerHint => 'अपनी सेहत के बारे में पूछें…';
 
   @override
   String get chatSend => 'भेजें';
-
-  @override
-  String get chatNewChat => 'नई चैट';
 
   @override
   String get chatSessions => 'चैट इतिहास';
@@ -1022,5 +1019,5 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get errorAiUnavailable =>
-      'AI सहायक अभी अस्थायी रूप से उपलब्ध नहीं है। कृपया थोड़ी देर बाद कोशिश करें।';
+      'स्वास्थ्य सहायक अभी अस्थायी रूप से उपलब्ध नहीं है। कृपया थोड़ी देर बाद कोशिश करें।';
 }
