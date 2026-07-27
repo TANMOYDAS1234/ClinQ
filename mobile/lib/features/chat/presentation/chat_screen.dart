@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,8 +24,18 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> {
+class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObserver {
   final _scrollController = ScrollController();
+
+  /// Polls for messages the patient did not send — a reply from the clinic.
+  ///
+  /// There is no socket or push channel, so the conversation is kept live by
+  /// re-reading it. Three seconds is short enough that a doctor's reply lands
+  /// while the patient is still looking at the screen, and the request is
+  /// cheap: one indexed query, and state is only touched when something new
+  /// actually arrived.
+  static const _pollInterval = Duration(seconds: 3);
+  Timer? _poll;
 
   /// Whether the list is scrolled far enough from the bottom to warrant the
   /// jump-to-latest button. Reversed lists put "latest" at offset 0, but this
@@ -34,11 +46,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addObserver(this);
     // Resume the patient's ongoing conversation rather than opening blank.
     // Deferred past the first frame because it mutates a provider.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.read(chatControllerProvider.notifier).resumeLatest();
     });
+    _poll = Timer.periodic(_pollInterval, (_) {
+      if (mounted) ref.read(chatControllerProvider.notifier).pollForUpdates();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Returning from the background is when the conversation is most likely to
+    // have moved on, so check at once instead of waiting out the timer.
+    if (state == AppLifecycleState.resumed && mounted) {
+      ref.read(chatControllerProvider.notifier).pollForUpdates();
+    }
   }
 
   void _onScroll() {
@@ -50,6 +75,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _poll?.cancel();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();

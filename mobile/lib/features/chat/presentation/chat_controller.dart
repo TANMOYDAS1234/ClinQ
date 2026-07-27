@@ -219,6 +219,32 @@ class ChatController extends StateNotifier<ChatState> {
     await send(text: question, language: language);
   }
 
+  /// Quietly re-reads the open conversation so a clinician's reply appears on
+  /// its own, without the patient reloading or being told to.
+  ///
+  /// Deliberately silent: no spinner, no error banner. A poll that failed will
+  /// simply try again, and a patient waiting on their doctor should not watch
+  /// the screen flicker every few seconds to tell them nothing has changed.
+  Future<void> pollForUpdates() async {
+    final id = state.sessionId;
+    // Never poll mid-send: a streaming reply is being assembled in state and
+    // overwriting it would truncate the words as they arrive.
+    if (id == null || state.isSending || state.isLoadingHistory) return;
+
+    try {
+      final paged = await _repository.getSessionMessages(id, limit: 100);
+      final messages = [...paged.items]..sort((a, b) => a.seq.compareTo(b.seq));
+
+      // Only touch state when something actually arrived. An unconditional
+      // assignment would rebuild the transcript every few seconds and fight
+      // the patient's own scrolling.
+      if (messages.length <= state.messages.length) return;
+      state = state.copyWith(messages: messages);
+    } on ApiException {
+      // Ignored on purpose — the next tick retries.
+    }
+  }
+
   Future<void> openSession(String sessionId) async {
     state = ChatState(sessionId: sessionId, isLoadingHistory: true);
     try {

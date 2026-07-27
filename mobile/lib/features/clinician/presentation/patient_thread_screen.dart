@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,6 +29,7 @@ class PatientThreadScreen extends ConsumerStatefulWidget {
 
 class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
   final _scrollController = ScrollController();
 
   List<ChatMessage> _messages = const [];
@@ -35,18 +38,42 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
   bool _sending = false;
   Object? _error;
 
+  /// Keeps the conversation live while the clinician has it open, so a message
+  /// the patient sends appears without reopening the screen. Same interval as
+  /// the patient's side, for the same reason: no socket or push channel exists.
+  static const _pollInterval = Duration(seconds: 3);
+  Timer? _poll;
+
   @override
   void initState() {
     super.initState();
     _patientName = widget.patientName;
     _load();
+    _poll = Timer.periodic(_pollInterval, (_) => _pollForUpdates());
   }
 
   @override
   void dispose() {
+    _poll?.cancel();
     _controller.dispose();
+    _focusNode.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Silent refresh: no spinner, no error, and state is replaced only when a
+  /// message actually arrived — otherwise every tick would rebuild the
+  /// transcript under the doctor's scrolling.
+  Future<void> _pollForUpdates() async {
+    if (!mounted || _sending || _loading) return;
+    try {
+      final result = await ref.read(clinicianRepositoryProvider).patientThread(widget.patientId);
+      if (!mounted || result.messages.length <= _messages.length) return;
+      setState(() => _messages = result.messages);
+      _scrollToBottom();
+    } on ApiException {
+      // Ignored — the next tick retries.
+    }
   }
 
   Future<void> _load() async {
@@ -116,6 +143,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
               Expanded(child: _body()),
               _Composer(
                 controller: _controller,
+                focusNode: _focusNode,
                 sending: _sending,
                 onSend: _send,
               ),
@@ -191,9 +219,19 @@ class _KeyboardInset extends StatelessWidget {
 }
 
 class _Composer extends StatelessWidget {
-  const _Composer({required this.controller, required this.sending, required this.onSend});
+  const _Composer({
+    required this.controller,
+    required this.focusNode,
+    required this.sending,
+    required this.onSend,
+  });
 
   final TextEditingController controller;
+
+  /// Held by the screen rather than the TextField's own internal one, so a
+  /// rebuild from the three-second poll cannot drop focus while the doctor is
+  /// mid-sentence.
+  final FocusNode focusNode;
   final bool sending;
   final VoidCallback onSend;
 
@@ -214,7 +252,14 @@ class _Composer extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
-                child: Container(
+                // Whole pill is the tap target, so the keyboard opens on the
+                // first tap wherever it lands.
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (!focusNode.hasFocus) focusNode.requestFocus();
+                  },
+                  child: Container(
                   constraints: const BoxConstraints(minHeight: 52),
                   decoration: BoxDecoration(
                     color: scheme.surface,
@@ -225,6 +270,7 @@ class _Composer extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: TextField(
                       controller: controller,
+                      focusNode: focusNode,
                       minLines: 1,
                       maxLines: 5,
                       textCapitalization: TextCapitalization.sentences,
@@ -240,6 +286,7 @@ class _Composer extends StatelessWidget {
                       ),
                       onSubmitted: (_) => onSend(),
                     ),
+                  ),
                   ),
                 ),
               ),

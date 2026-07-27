@@ -244,7 +244,16 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                       active: _focused || _listening,
                       listening: _listening,
                       radius: 26,
-                      child: Container(
+                      // The whole pill focuses the field, not just the glyphs
+                      // of the text area inside it. Tapping the padding either
+                      // side used to do nothing, which read as the keyboard
+                      // needing two taps to open.
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          if (!_focusNode.hasFocus) _focusNode.requestFocus();
+                        },
+                        child: Container(
                         constraints: const BoxConstraints(minHeight: 52),
                         decoration: BoxDecoration(
                           color: scheme.surface,
@@ -299,6 +308,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                               ),
                             ),
                           ],
+                        ),
                         ),
                       ),
                     ),
