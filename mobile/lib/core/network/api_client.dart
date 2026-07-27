@@ -21,9 +21,13 @@ const _publicPaths = <String>['/auth/register', '/auth/login', '/auth/refresh', 
 /// Repositories should depend on this class only — never construct their
 /// own [Dio].
 class ApiClient {
-  ApiClient({required SecureStore secureStore, VoidCallback? onAuthExpired})
-    : _secureStore = secureStore,
+  ApiClient({
+    required SecureStore secureStore,
+    VoidCallback? onAuthExpired,
+    VoidCallback? onTokensRefreshed,
+  }) : _secureStore = secureStore,
       _onAuthExpired = onAuthExpired,
+      _onTokensRefreshed = onTokensRefreshed,
       _dio = Dio(
         BaseOptions(
           baseUrl: AppConfig.apiBaseUrl,
@@ -86,6 +90,10 @@ class ApiClient {
   final SecureStore _secureStore;
   final VoidCallback? _onAuthExpired;
 
+  /// Fired after the access token is rotated, so callers holding a copy of it
+  /// can discard theirs. See the call site for why this matters to avatars.
+  final VoidCallback? _onTokensRefreshed;
+
   // Ensures concurrent 401s trigger exactly one refresh call.
   Completer<String?>? _refreshInFlight;
 
@@ -115,6 +123,12 @@ class ApiClient {
           return;
         }
         await _secureStore.saveTokens(accessToken: newAccess, refreshToken: newRefresh);
+        // Anything holding a copy of the old access token is now broken.
+        // `Image.network` fetches owner-protected photos with a header built
+        // outside Dio, so without this it keeps presenting the dead token, gets
+        // a 401, and silently falls back to an initial — the photo simply stops
+        // appearing about thirty minutes after sign-in.
+        _onTokensRefreshed?.call();
         completer.complete(newAccess);
       } catch (_) {
         completer.complete(null);

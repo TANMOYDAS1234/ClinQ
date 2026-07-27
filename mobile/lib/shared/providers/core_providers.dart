@@ -13,7 +13,15 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 final secureStoreProvider = Provider<SecureStore>((ref) => SecureStore());
 
 /// Bearer header for owner-only image endpoints (`/uploads/:id/raw`), so an
-/// `Image.network` can fetch protected photos. Read once per session.
+/// `Image.network` can fetch protected photos.
+///
+/// Deliberately NOT cached for the session. Access tokens live 30 minutes and
+/// Dio rotates them underneath; a header captured at sign-in is a dead token
+/// well before the app is closed. Because `Image.network` bypasses Dio, it
+/// cannot benefit from the refresh-and-retry interceptor — it just receives a
+/// 401 and falls back to the initial, so a profile photo quietly stopped
+/// appearing half an hour in. [apiClientProvider] invalidates this whenever the
+/// token is rotated, so the next read picks up the live one.
 final imageAuthHeaderProvider = FutureProvider<Map<String, String>>((ref) async {
   final token = await ref.watch(secureStoreProvider).readAccessToken();
   return token == null ? {} : {'Authorization': 'Bearer $token'};
@@ -28,5 +36,7 @@ final Provider<ApiClient> apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(
     secureStore: secureStore,
     onAuthExpired: () => ref.read(authControllerProvider.notifier).sessionExpired(),
+    // Drop the cached image header the moment the token behind it is replaced.
+    onTokensRefreshed: () => ref.invalidate(imageAuthHeaderProvider),
   );
 });
