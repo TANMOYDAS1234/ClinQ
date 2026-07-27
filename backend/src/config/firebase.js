@@ -1,5 +1,10 @@
 import { readFileSync } from 'node:fs';
-import admin from 'firebase-admin';
+// Modular subpath imports, not the default export. firebase-admin v12+ ships
+// ESM-aware entry points, and `import admin from 'firebase-admin'` yields an
+// interop object whose `.credential` is undefined — so `admin.credential.cert`
+// throws a TypeError that reads like a bad key when the key is fine.
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getMessaging as messagingFor } from 'firebase-admin/messaging';
 
 import { env } from './env.js';
 import { logger } from './logger.js';
@@ -29,10 +34,10 @@ export function getMessaging() {
   }
 
   try {
-    const credential = JSON.parse(readFileSync(path, 'utf8'));
-    const app = admin.initializeApp({ credential: admin.credential.cert(credential) });
-    messaging = app.messaging();
-    logger.info({ projectId: credential.project_id }, 'firebase messaging ready');
+    const serviceAccount = JSON.parse(readFileSync(path, 'utf8'));
+    const app = initializeApp({ credential: cert(serviceAccount) });
+    messaging = messagingFor(app);
+    logger.info({ projectId: serviceAccount.project_id }, 'firebase messaging ready');
     return messaging;
   } catch (err) {
     // Deliberately not fatal: a clinic should keep taking appointments and
