@@ -43,11 +43,19 @@ class UserAvatar extends ConsumerWidget {
       ),
     );
 
-    if (avatarUrl == null || headers == null) return fallback();
+    // An empty map means signed out or the token has not loaded yet. Sending
+    // no Authorization header would 401 and cache that failure.
+    if (avatarUrl == null || headers == null || headers.isEmpty) return fallback();
+
+    // Flutter's image cache keys NetworkImage on url and scale alone, ignoring
+    // headers. Once a request failed with a stale token, the failure stayed
+    // cached and the photo never returned even after the token was refreshed.
+    // Varying the url by the token makes a rotation a genuinely new entry.
+    final tokenTag = headers.values.first.hashCode.toRadixString(36);
 
     return ClipOval(
       child: Image.network(
-        '${AppConfig.apiOrigin}$avatarUrl',
+        '${AppConfig.apiOrigin}$avatarUrl?v=$tokenTag',
         headers: headers,
         width: size,
         height: size,
