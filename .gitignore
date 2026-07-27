@@ -49,3 +49,11 @@ mobile/lib/l10n/generated/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Firebase config. Identifies your project and is per-environment; keep it out
+# of the repo so a fork or a leaked clone cannot address your users' devices.
+mobile/android/app/google-services.json
+mobile/ios/Runner/GoogleService-Info.plist
+# Firebase service-account key. This one can send to every device you have.
+firebase-adminsdk*.json
+serviceAccountKey.json

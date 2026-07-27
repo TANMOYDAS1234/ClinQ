@@ -1,22 +1,70 @@
 import { User, ROLES } from '../models/User.js';
+import { getMessaging } from '../config/firebase.js';
 import { ClinicalAlert } from '../models/ClinicalAlert.js';
 import { logger } from '../config/logger.js';
 
 /**
  * Notification transport.
  *
- * Delivery is stubbed at the transport boundary: alerts and their
- * notified-at timestamps are persisted for real, but the actual push is
- * logged rather than sent. Swap `deliver()` for FCM/APNs (or an SMS gateway
- * for the emergency path) without touching any caller.
+ * Sends through FCM when credentials are configured, and logs instead when they
+ * are not — so a development machine without a service-account key still runs
+ * every caller unchanged.
+ *
+ * Failures never propagate. This channel carries medication reminders and the
+ * alert that a patient reported chest pain; a push provider having a bad minute
+ * must not roll back the clinical write that triggered it. The alert is already
+ * persisted and visible in the clinician panel regardless.
  */
 async function deliver({ tokens, title, body, data }) {
   if (!tokens?.length) {
     logger.debug({ title }, 'no device tokens registered; notification skipped');
     return { delivered: 0 };
   }
-  logger.info({ title, body, tokenCount: tokens.length, data }, '[push] would deliver');
-  return { delivered: tokens.length };
+
+  const messaging = getMessaging();
+  if (!messaging) {
+    logger.info({ title, body, tokenCount: tokens.length, data }, '[push] no credentials; logged only');
+    return { delivered: 0 };
+  }
+
+  try {
+    const response = await messaging.sendEachForMulticast({
+      tokens,
+      notification: { title, body },
+      // FCM requires every data value to be a string.
+      data: Object.fromEntries(Object.entries(data ?? {}).map(([k, v]) => [k, String(v ?? '')])),
+      android: {
+        // Clinical notifications are the reason this app has push at all, so
+        // they are exempted from Doze batching rather than arriving whenever
+        // the device next wakes.
+        priority: 'high',
+        // Must match the channel NotificationService creates on the device; an
+        // unknown id silently demotes the notification to a default channel.
+        notification: { channelId: 'clinq_updates', sound: 'default' },
+      },
+    });
+
+    // A token rejected as unregistered belongs to an uninstalled or restored
+    // app and will never deliver again. Removing it keeps the next send from
+    // wasting a slot and quietly reporting success.
+    const dead = [];
+    response.responses.forEach((r, i) => {
+      const code = r.error?.code;
+      if (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-argument') {
+        dead.push(tokens[i]);
+      }
+    });
+    if (dead.length) {
+      await User.updateMany({ deviceTokens: { $in: dead } }, { $pull: { deviceTokens: { $in: dead } } });
+      logger.info({ removed: dead.length }, 'pruned dead device tokens');
+    }
+
+    logger.info({ title, delivered: response.successCount, failed: response.failureCount }, 'push sent');
+    return { delivered: response.successCount };
+  } catch (err) {
+    logger.error({ err, title }, 'push delivery failed');
+    return { delivered: 0 };
+  }
 }
 
 export async function notifyClinicStaff(alert) {

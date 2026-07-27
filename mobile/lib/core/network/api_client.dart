@@ -167,8 +167,10 @@ class ApiClient {
     return _asMap(response.data);
   }
 
-  Future<void> delete(String path) async {
-    await _run(() => _dio.delete(path));
+  /// [body] is optional because most deletes identify the resource by path,
+  /// but a few — detaching a device token, for one — name it in the payload.
+  Future<void> delete(String path, {Map<String, dynamic>? body}) async {
+    await _run(() => _dio.delete(path, data: body));
   }
 
   Future<Map<String, dynamic>> postMultipart(

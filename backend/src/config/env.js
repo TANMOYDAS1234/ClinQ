@@ -23,6 +23,12 @@ const schema = z.object({
   GEMINI_VISION_MODEL: z.string().default('gemini-2.5-flash'),
   GEMINI_EMBED_MODEL: z.string().default('text-embedding-004'),
 
+  // Absolute path to the Firebase service-account JSON. Optional: without it
+  // notifications are logged rather than sent, so a development machine needs
+  // no credentials. Never the key itself — that file can push to every device
+  // registered to the project and belongs on the server, not in config.
+  GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
+
   // Atlas Vector Search is used when available; otherwise the RAG layer falls
   // back to in-process cosine similarity (fine for a single-clinic corpus).
   USE_ATLAS_VECTOR_SEARCH: z
