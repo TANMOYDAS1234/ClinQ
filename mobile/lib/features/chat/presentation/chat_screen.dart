@@ -37,6 +37,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   static const _pollInterval = Duration(seconds: 3);
   Timer? _poll;
 
+  /// The message being answered, shown above the composer until sent or
+  /// dismissed. Null when writing a fresh message.
+  ChatMessage? _replyingTo;
+
   /// Whether the list is scrolled far enough from the bottom to warrant the
   /// jump-to-latest button. Reversed lists put "latest" at offset 0, but this
   /// list is bottom-anchored, so "away from latest" means below maxScrollExtent.
@@ -100,10 +104,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     accountLanguage: ref.read(authControllerProvider).user?.language,
   );
 
+  /// Hides a message from this patient's view.
+  ///
+  /// The server refuses on anything carrying an emergency verdict, and its
+  /// reason is shown rather than a generic failure — "this is part of an
+  /// emergency record" explains itself; "could not hide" does not.
+  Future<void> _hide(ChatMessage message) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final error = await ref.read(chatControllerProvider.notifier).hideMessage(message.id);
+    if (error != null) messenger.showSnackBar(SnackBar(content: Text(error)));
+  }
+
   Future<void> _send(String text, [List<String> attachments = const []]) async {
-    await ref
-        .read(chatControllerProvider.notifier)
-        .send(text: text, language: _replyLanguage, attachments: attachments);
+    final replyTo = _replyingTo;
+    if (replyTo != null) setState(() => _replyingTo = null);
+
+    await ref.read(chatControllerProvider.notifier).send(
+      text: text,
+      language: _replyLanguage,
+      attachments: attachments,
+      replyToId: replyTo?.id,
+    );
     _scrollToBottom();
   }
 
@@ -198,6 +219,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                         return RepaintBoundary(
                           child: ChatMessageBubble(
                             message: message,
+                            repliedTo: message.replyToId == null
+                                ? null
+                                : chatState.messages
+                                      .where((m) => m.id == message.replyToId)
+                                      .firstOrNull,
+                            onReply: () => setState(() => _replyingTo = message),
+                            onTogglePin: () => ref
+                                .read(chatControllerProvider.notifier)
+                                .setPinned(message.id, !message.pinned),
+                            onHide: () => _hide(message),
                             onRetry: message.isUser
                                 ? null
                                 : () => ref
@@ -231,6 +262,48 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                 ],
               ),
             ),
+            // Shows what is being answered while the reply is written, so the
+            // quote is never a surprise after sending.
+            if (_replyingTo != null)
+              Container(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.md, 8, AppSpacing.sm, 8),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: Row(
+                  children: [
+                    Container(width: 3, height: 34, color: AppColors.primary),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            l10n.chatReplyingTo,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          Text(
+                            _replyingTo!.content,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => setState(() => _replyingTo = null),
+                    ),
+                  ],
+                ),
+              ),
             ChatComposer(
               onSend: _send,
               isSending: chatState.isSending,

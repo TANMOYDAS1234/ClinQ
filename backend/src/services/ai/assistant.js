@@ -1,4 +1,4 @@
-import { ChatSession } from '../../models/ChatSession.js';
+﻿import { ChatSession } from '../../models/ChatSession.js';
 import { ChatMessage } from '../../models/ChatMessage.js';
 import { triageMessage } from '../triage/engine.js';
 import { buildPatientContext } from '../patientContext.js';
@@ -21,7 +21,7 @@ const HISTORY_TURNS = 8;
  */
 function stripTrailingDisclaimer(text) {
   return text
-    .replace(/\n+\s*[—–-]\s*(This is |এটি|यह)[\s\S]*$/u, '')
+    .replace(/\n+\s*[â€”â€“-]\s*(This is |à¦à¦Ÿà¦¿|à¤¯à¤¹)[\s\S]*$/u, '')
     .trim();
 }
 
@@ -47,12 +47,12 @@ function categoriesFor(triage) {
  * Order is deliberate and load-bearing:
  *   1. persist the patient's message (never lose it, even if everything else fails)
  *   2. triage deterministically
- *   3. escalate immediately if it is an emergency — before any model call, so a
+ *   3. escalate immediately if it is an emergency â€” before any model call, so a
  *      Gemini outage cannot delay the clinic being paged
  *   4. retrieve grounding, then generate
  *   5. fall back to a written emergency script if generation fails
  */
-export async function handlePatientMessage({ patientId, sessionId, text, language = 'en', attachments = [] }) {
+export async function handlePatientMessage({ patientId, sessionId, text, language = 'en', attachments = [], replyTo }) {
   const session = await resolveSession({ patientId, sessionId, language, text });
 
   const context = await buildPatientContext(patientId);
@@ -72,6 +72,7 @@ export async function handlePatientMessage({ patientId, sessionId, text, languag
     content: text,
     language,
     attachments,
+    replyTo: replyTo ?? undefined,
     triage: {
       urgency: triage.urgency,
       matchedRules: triage.matchedRules,
@@ -110,7 +111,7 @@ export async function handlePatientMessage({ patientId, sessionId, text, languag
 
   // If the patient attached photos, load them so the assistant can actually
   // look at them. Without this the image is stored but never seen, and the
-  // reply is "I can't tell without knowing what you ate" — which reads as the
+  // reply is "I can't tell without knowing what you ate" â€” which reads as the
   // photo being ignored.
   const images = attachments.length ? await loadAssetsForAi(attachments).catch(() => []) : [];
   const userParts = [{ text }, ...images.map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.base64 } }))];
@@ -215,16 +216,16 @@ export async function handlePatientMessage({ patientId, sessionId, text, languag
  * Streaming variant of {@link handlePatientMessage}: yields events for an SSE
  * response so the app renders the reply as it is generated.
  *
- * The safety order is identical — triage runs and any alert is raised BEFORE
- * the first token — so streaming never delays escalation. The `meta` event
+ * The safety order is identical â€” triage runs and any alert is raised BEFORE
+ * the first token â€” so streaming never delays escalation. The `meta` event
  * carries the triage verdict and alert, so the emergency card can appear before
  * a single word of the reply.
  *
- * Events: `meta` (verdict, user message, citations) → many `token` (text
- * pieces) → optional `replace` (swap the partial for scripted fallback text on
- * failure) → `done` (the saved assistant message).
+ * Events: `meta` (verdict, user message, citations) â†’ many `token` (text
+ * pieces) â†’ optional `replace` (swap the partial for scripted fallback text on
+ * failure) â†’ `done` (the saved assistant message).
  */
-export async function* streamPatientMessage({ patientId, sessionId, text, language = 'en', attachments = [] }) {
+export async function* streamPatientMessage({ patientId, sessionId, text, language = 'en', attachments = [], replyTo }) {
   const session = await resolveSession({ patientId, sessionId, language, text });
   const context = await buildPatientContext(patientId);
   const triage = triageMessage({ text, targets: context.targets, latestGlucose: context.latestGlucose });
@@ -238,6 +239,7 @@ export async function* streamPatientMessage({ patientId, sessionId, text, langua
     content: text,
     language,
     attachments,
+    replyTo: replyTo ?? undefined,
     triage: {
       urgency: triage.urgency,
       matchedRules: triage.matchedRules,
@@ -246,7 +248,7 @@ export async function* streamPatientMessage({ patientId, sessionId, text, langua
     },
   });
 
-  // Escalate BEFORE the first token — the clinic learns about a chest-pain
+  // Escalate BEFORE the first token â€” the clinic learns about a chest-pain
   // message whether or not any reply is ever generated.
   let alert = null;
   if (triage.urgency === 'emergency' || triage.urgency === 'urgent') {
@@ -362,7 +364,7 @@ async function resolveSession({ patientId, sessionId, language, text }) {
   // No session id means "continue where this patient left off", not "start
   // again". Creating one unconditionally scattered a single patient's history
   // across a new session per message whenever a client had not yet learned the
-  // id — which left the clinic reading only the newest fragment while the
+  // id â€” which left the clinic reading only the newest fragment while the
   // patient read another, and the doctor's reply landing in a thread the
   // patient was not looking at.
   const ongoing = await ChatSession.findOne({ patient: patientId, isArchived: false }).sort({

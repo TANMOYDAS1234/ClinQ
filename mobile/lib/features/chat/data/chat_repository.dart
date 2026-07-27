@@ -41,6 +41,7 @@ class ChatRepository {
     required String text,
     required String language,
     List<String>? attachments,
+    String? replyToId,
   }) {
     return _client.postSse(
       '/chat/message/stream',
@@ -49,6 +50,7 @@ class ChatRepository {
         'text': text,
         'language': language,
         if (attachments != null && attachments.isNotEmpty) 'attachments': attachments,
+        if (replyToId != null) 'replyTo': replyToId,
       },
     );
   }
@@ -76,6 +78,16 @@ class ChatRepository {
 
   Future<void> flagMessage(String messageId) async {
     await _client.postJson('/chat/messages/$messageId/flag');
+  }
+
+  Future<void> setPinned(String messageId, bool pinned) async {
+    await _client.postJson('/chat/messages/$messageId/pin', body: {'pinned': pinned});
+  }
+
+  /// Hides the message from this reader only. The server refuses on anything
+  /// carrying an emergency verdict, so callers must surface that error.
+  Future<void> hideMessage(String messageId) async {
+    await _client.postJson('/chat/messages/$messageId/hide');
   }
 }
 

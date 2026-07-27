@@ -57,6 +57,7 @@ class ChatController extends StateNotifier<ChatState> {
     required String text,
     required String language,
     List<String>? attachments,
+    String? replyToId,
   }) async {
     // The server requires non-empty text even when files are attached, so a
     // photo can never be sent on its own.
@@ -90,6 +91,7 @@ class ChatController extends StateNotifier<ChatState> {
         text: trimmed,
         language: language,
         attachments: attachments,
+        replyToId: replyToId,
       )) {
         switch (event) {
           case 'meta':
@@ -279,6 +281,40 @@ class ChatController extends StateNotifier<ChatState> {
       await openSession(paged.items.first.id);
     } on ApiException catch (e) {
       state = state.copyWith(isLoadingHistory: false, error: e);
+    }
+  }
+
+  /// Pins or unpins, then reflects it locally so the thread reorders at once
+  /// rather than on the next poll.
+  Future<bool> setPinned(String messageId, bool pinned) async {
+    try {
+      await _repository.setPinned(messageId, pinned);
+      state = state.copyWith(
+        messages: [
+          for (final m in state.messages)
+            if (m.id == messageId) m.withPinned(pinned) else m,
+        ],
+      );
+      return true;
+    } on ApiException {
+      return false;
+    }
+  }
+
+  /// Hides a message from this patient's view only.
+  ///
+  /// Returns the server's message on refusal so the caller can explain why —
+  /// an emergency turn cannot be hidden, and saying so is more use than a
+  /// generic failure.
+  Future<String?> hideMessage(String messageId) async {
+    try {
+      await _repository.hideMessage(messageId);
+      state = state.copyWith(
+        messages: state.messages.where((m) => m.id != messageId).toList(),
+      );
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
     }
   }
 

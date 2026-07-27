@@ -131,6 +131,26 @@ class ChatMessage {
     attachmentPaths: attachmentPaths,
   );
 
+  /// Returns a copy with [pinned] flipped, so the thread reorders immediately
+  /// instead of waiting for the next poll to confirm it.
+  ChatMessage withPinned(bool value) => ChatMessage(
+    id: id,
+    seq: seq,
+    role: role,
+    content: content,
+    language: language,
+    urgency: urgency,
+    isFallback: isFallback,
+    createdAt: createdAt,
+    citations: citations,
+    triage: triage,
+    senderName: senderName,
+    pinned: value,
+    replyToId: replyToId,
+    seenByClinicAt: seenByClinicAt,
+    attachmentPaths: attachmentPaths,
+  );
+
   ChatMessage copyWith({List<Citation>? citations, Triage? triage}) {
     return ChatMessage(
       id: id,

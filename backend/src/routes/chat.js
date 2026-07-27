@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { requireAuth, requireClinician, resolvePatientScope } from '../middleware/auth.js';
@@ -43,6 +43,9 @@ router.post(
       text: z.string().trim().min(1, 'Message cannot be empty').max(4000),
       language: z.enum(['en', 'bn', 'hi']).optional(),
       attachments: z.array(z.string()).max(5).default([]),
+      // The earlier turn this message answers, so a reply that lands hours
+      // later still says what it is about.
+      replyTo: z.string().optional(),
     }),
   }),
   audit('create', 'ChatMessage'),
@@ -53,6 +56,7 @@ router.post(
       text: req.body.text,
       language: req.body.language ?? req.user.language ?? 'en',
       attachments: req.body.attachments,
+      replyTo: req.body.replyTo,
     });
     res.json(result);
   }),
@@ -74,6 +78,9 @@ router.post(
       text: z.string().trim().min(1, 'Message cannot be empty').max(4000),
       language: z.enum(['en', 'bn', 'hi']).optional(),
       attachments: z.array(z.string()).max(5).default([]),
+      // The earlier turn this message answers, so a reply that lands hours
+      // later still says what it is about.
+      replyTo: z.string().optional(),
     }),
   }),
   audit('create', 'ChatMessage'),
@@ -96,6 +103,7 @@ router.post(
         text: req.body.text,
         language: req.body.language ?? req.user.language ?? 'en',
         attachments: req.body.attachments,
+        replyTo: req.body.replyTo,
       })) {
         send(ev.type, ev.data);
       }
@@ -180,8 +188,8 @@ router.post(
  * The patient's conversation, read by a clinician.
  *
  * The patient-facing history route is scoped to `req.user`, so a doctor cannot
- * use it. This returns the same thread — assistant turns, the patient's own
- * words and any clinician replies — so the clinic reads exactly what the
+ * use it. This returns the same thread â€” assistant turns, the patient's own
+ * words and any clinician replies â€” so the clinic reads exactly what the
  * patient reads, rather than a separate inbox showing half the story.
  */
 router.get(
@@ -197,7 +205,7 @@ router.get(
       .lean();
 
     // Messages are fetched by patient, not by session. The clinic needs the
-    // whole history — a patient's care is one continuous story, and an earlier
+    // whole history â€” a patient's care is one continuous story, and an earlier
     // exchange is often exactly the context that explains today's question.
     // It also heals threads already split by sessions created per message
     // before that was fixed.
@@ -231,7 +239,7 @@ router.get(
 
     // Opening the thread is what "seen by the clinic" means. Stamped only on
     // the patient's own unseen turns, so the mark says a person from the clinic
-    // has read them — deliberately in place of a typing indicator, which would
+    // has read them â€” deliberately in place of a typing indicator, which would
     // promise a reply in seconds that a full clinic list cannot honour.
     await ChatMessage.updateMany(
       { patient: req.patientId, role: 'user', seenByClinicAt: null },
@@ -255,7 +263,7 @@ router.get(
  * what it safely can and refers the rest to the clinic; a reply that arrived in
  * a different screen would split one clinical conversation in two, and neither
  * half would carry the context of the other. So a clinician's words land in the
- * same thread the patient is already reading, as `role: 'clinician'` — a role
+ * same thread the patient is already reading, as `role: 'clinician'` â€” a role
  * the message schema has always allowed.
  *
  * It attaches to the patient's most recent session, or opens one if the patient
@@ -282,7 +290,7 @@ router.post(
     }
 
     // seq is unique per session, so derive it from the current tail rather than
-    // a count — an archived or partially deleted history would collide.
+    // a count â€” an archived or partially deleted history would collide.
     const last = await ChatMessage.findOne({ session: session._id }).sort({ seq: -1 }).select('seq').lean();
 
     const message = await ChatMessage.create({
