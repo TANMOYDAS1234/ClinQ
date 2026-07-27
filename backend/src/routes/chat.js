@@ -3,7 +3,8 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { requireAuth, requireClinician, resolvePatientScope } from '../middleware/auth.js';
 import { validate, q } from '../middleware/validate.js';
-import { asyncHandler, notFound } from '../middleware/errors.js';
+import { asyncHandler, notFound, badRequest } from '../middleware/errors.js';
+import { ROLES } from '../models/User.js';
 import { audit } from '../middleware/audit.js';
 import { handlePatientMessage, streamPatientMessage } from '../services/ai/assistant.js';
 import { ChatSession } from '../models/ChatSession.js';
@@ -133,7 +134,8 @@ router.get(
     if (!session) throw notFound('Conversation not found');
 
     const { page, limit, skip } = q(req);
-    const filter = { session: session._id };
+    // Messages this patient chose to hide stay in the record but leave their view.
+    const filter = { session: session._id, hiddenFor: { $ne: req.user._id } };
     const [items, total] = await Promise.all([
       ChatMessage.find(filter).sort({ seq: 1 }).skip(skip).limit(limit).populate('sender', 'name').lean(),
       ChatMessage.countDocuments(filter),
@@ -220,12 +222,21 @@ router.get(
     const { page, limit, skip } = q(req);
     // Ordered by time, not seq: seq restarts per session, so it cannot order a
     // history that spans several.
-    const items = await ChatMessage.find({ patient: req.patientId })
+    const items = await ChatMessage.find({ patient: req.patientId, hiddenFor: { $ne: req.user._id } })
       .sort({ createdAt: 1 })
       .skip(skip)
       .limit(limit)
       .populate('sender', 'name')
       .lean();
+
+    // Opening the thread is what "seen by the clinic" means. Stamped only on
+    // the patient's own unseen turns, so the mark says a person from the clinic
+    // has read them — deliberately in place of a typing indicator, which would
+    // promise a reply in seconds that a full clinic list cannot honour.
+    await ChatMessage.updateMany(
+      { patient: req.patientId, role: 'user', seenByClinicAt: null },
+      { seenByClinicAt: new Date() },
+    );
 
     res.json({
       ...paged(items.map(serialiseMessage), { page, limit, total }),
@@ -300,6 +311,73 @@ router.post(
   }),
 );
 
+/** Pin or unpin a message so it stays at the top of the thread. */
+router.post(
+  '/messages/:id/pin',
+  requireAuth,
+  validate({ body: z.object({ pinned: z.boolean() }) }),
+  audit('update', 'ChatMessage'),
+  asyncHandler(async (req, res) => {
+    const message = await findVisibleMessage(req);
+    message.pinnedAt = req.body.pinned ? new Date() : null;
+    message.pinnedBy = req.body.pinned ? req.user._id : null;
+    await message.save();
+    res.json({ id: message._id, pinned: Boolean(message.pinnedAt) });
+  }),
+);
+
+/**
+ * Hide a message from the caller's own view.
+ *
+ * Never deletes. The conversation is part of a medical record, and an answer
+ * the clinic acted on has to remain readable afterwards.
+ *
+ * A message carrying an emergency verdict cannot be hidden at all: it is the
+ * evidence the clinic was paged, and losing it would break the audit trail at
+ * the one point where it matters most.
+ */
+router.post(
+  '/messages/:id/hide',
+  requireAuth,
+  audit('update', 'ChatMessage'),
+  asyncHandler(async (req, res) => {
+    const message = await findVisibleMessage(req);
+
+    if (message.triage?.urgency === 'emergency' || message.alert) {
+      throw badRequest(
+        'This message is part of an emergency record and cannot be hidden. It shows the clinic was alerted.',
+      );
+    }
+
+    await ChatMessage.updateOne({ _id: message._id }, { $addToSet: { hiddenFor: req.user._id } });
+    res.status(204).end();
+  }),
+);
+
+router.post(
+  '/messages/:id/unhide',
+  requireAuth,
+  audit('update', 'ChatMessage'),
+  asyncHandler(async (req, res) => {
+    const message = await findVisibleMessage(req);
+    await ChatMessage.updateOne({ _id: message._id }, { $pull: { hiddenFor: req.user._id } });
+    res.status(204).end();
+  }),
+);
+
+/**
+ * Loads a message the caller is entitled to act on: their own thread if they
+ * are the patient, any patient's if they are clinical staff.
+ */
+async function findVisibleMessage(req) {
+  const filter = { _id: req.params.id };
+  if (req.user.role === ROLES.PATIENT) filter.patient = req.user._id;
+
+  const message = await ChatMessage.findOne(filter);
+  if (!message) throw notFound('Message not found');
+  return message;
+}
+
 function serialiseSession(s) {
   return {
     id: s._id,
@@ -320,6 +398,9 @@ function serialiseMessage(m) {
     role: m.role,
     // Present on clinician turns once populated; null everywhere else.
     senderName: m.sender && typeof m.sender === 'object' ? (m.sender.name ?? null) : null,
+    pinned: Boolean(m.pinnedAt),
+    replyToId: m.replyTo ? m.replyTo.toString?.() ?? m.replyTo : null,
+    seenByClinicAt: m.seenByClinicAt ?? null,
     content: m.content,
     language: m.language,
     urgency: m.triage?.urgency ?? 'routine',

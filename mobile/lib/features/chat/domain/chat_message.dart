@@ -26,8 +26,23 @@ class ChatMessage {
     this.citations,
     this.triage,
     this.senderName,
+    this.pinned = false,
+    this.replyToId,
+    this.seenByClinicAt,
     this.attachmentPaths = const [],
   });
+
+  /// Kept at the top of the thread. A dosing instruction otherwise scrolls out
+  /// of reach within a day.
+  final bool pinned;
+
+  /// The message this one answers, when the sender quoted an earlier turn.
+  final String? replyToId;
+
+  /// When the clinic first read this message. Shown to the patient as "Seen by
+  /// the clinic" — chosen over a typing indicator, which would promise a reply
+  /// within seconds that a clinician with a full list cannot keep.
+  final DateTime? seenByClinicAt;
 
   final String id;
   final int seq;
@@ -77,6 +92,11 @@ class ChatMessage {
       isFallback: json['isFallback'] as bool?,
       createdAt: json['createdAt'] == null ? null : DateTime.tryParse(json['createdAt'].toString()),
       senderName: json['senderName']?.toString(),
+      pinned: json['pinned'] == true,
+      replyToId: json['replyToId']?.toString(),
+      seenByClinicAt: json['seenByClinicAt'] == null
+          ? null
+          : DateTime.tryParse(json['seenByClinicAt'].toString()),
       attachmentPaths: _parseAttachments(json['attachments']),
     );
   }
@@ -105,6 +125,9 @@ class ChatMessage {
     citations: citations,
     triage: triage,
     senderName: senderName,
+    pinned: pinned,
+    replyToId: replyToId,
+    seenByClinicAt: seenByClinicAt,
     attachmentPaths: attachmentPaths,
   );
 

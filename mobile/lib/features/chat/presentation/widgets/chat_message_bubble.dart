@@ -16,10 +16,32 @@ import 'urgent_card.dart';
 /// dedicated safety cards instead — this is intentional and must not be
 /// "simplified" back into a plain bubble.
 class ChatMessageBubble extends StatelessWidget {
-  const ChatMessageBubble({super.key, required this.message, this.onFlag, this.onRetry});
+  const ChatMessageBubble({
+    super.key,
+    required this.message,
+    this.onFlag,
+    this.onRetry,
+    this.onReply,
+    this.onTogglePin,
+    this.onHide,
+    this.repliedTo,
+  });
 
   final ChatMessage message;
   final VoidCallback? onFlag;
+
+  /// Quote this message in the composer. Clinical chat runs over days, so a
+  /// reply has to carry what it is answering.
+  final VoidCallback? onReply;
+
+  /// Pin or unpin. Null where pinning does not apply.
+  final VoidCallback? onTogglePin;
+
+  /// Hide from this reader's own view. Never a delete — see the server route.
+  final VoidCallback? onHide;
+
+  /// The message being answered, when this one is a reply.
+  final ChatMessage? repliedTo;
 
   /// Present only on an AI-unavailable fallback reply — lets the patient
   /// resend the question once the service is back.
@@ -41,6 +63,71 @@ class ChatMessageBubble extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(6),
           child: Icon(icon, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+        ),
+      ),
+    );
+  }
+
+  /// Long-press sheet: copy, reply, pin, hide.
+  ///
+  /// Copy is offered on every message, including the patient's own and the
+  /// doctor's. A dosing instruction is exactly what someone wants to save or
+  /// send to a family member, and it was previously available only on the
+  /// assistant's replies.
+  Future<void> _showActions(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.copy_rounded),
+              title: Text(l10n.chatCopy),
+              onTap: () async {
+                Navigator.pop(sheet);
+                await Clipboard.setData(ClipboardData(text: message.content));
+                messenger.showSnackBar(SnackBar(content: Text(l10n.chatCopied)));
+              },
+            ),
+            if (onReply != null)
+              ListTile(
+                leading: const Icon(Icons.reply_rounded),
+                title: Text(l10n.chatReply),
+                onTap: () {
+                  Navigator.pop(sheet);
+                  onReply!();
+                },
+              ),
+            if (onTogglePin != null)
+              ListTile(
+                leading: Icon(message.pinned ? Icons.push_pin : Icons.push_pin_outlined),
+                title: Text(message.pinned ? l10n.chatUnpin : l10n.chatPin),
+                onTap: () {
+                  Navigator.pop(sheet);
+                  onTogglePin!();
+                },
+              ),
+            if (onHide != null)
+              ListTile(
+                leading: const Icon(Icons.visibility_off_outlined),
+                // Named "hide", not "delete", because that is what it does: the
+                // message stays in the medical record and only leaves this
+                // reader's view.
+                title: Text(l10n.chatHide),
+                subtitle: Text(
+                  l10n.chatHideNote,
+                  style: const TextStyle(fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.pop(sheet);
+                  onHide!();
+                },
+              ),
+          ],
         ),
       ),
     );
@@ -115,7 +202,42 @@ class ChatMessageBubble extends StatelessWidget {
                 ),
               ),
             ],
-            Container(
+            if (message.pinned)
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.push_pin_rounded, size: 13, color: scheme.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Text(
+                      l10n.chatPinned,
+                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            // The quoted turn this message answers, so a reply arriving hours
+            // later still says what it is about.
+            if (repliedTo != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border(left: BorderSide(color: AppColors.primary, width: 3)),
+                ),
+                child: Text(
+                  repliedTo!.content,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                ),
+              ),
+            GestureDetector(
+              onLongPress: () => _showActions(context),
+              child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               decoration: BoxDecoration(
                 color: isUser
@@ -146,11 +268,15 @@ class ChatMessageBubble extends StatelessWidget {
                       style: const TextStyle(fontSize: 17, height: 1.5, color: Colors.white),
                     )
                   // Assistant replies carry **bold** and `- ` bullets; render
-                  // them rather than showing the raw marks. Selectable so a
-                  // patient can long-press to pick out and copy a word.
+                  // them rather than showing the raw marks.
+                  //
+                  // Not selectable: long-press now opens the action sheet, and
+                  // text selection would swallow that gesture on assistant
+                  // replies only — the same press doing different things
+                  // depending on who spoke. Copy is in the sheet instead.
                   : MarkdownText(
                       data: message.content,
-                      selectable: true,
+                      selectable: false,
                       style: TextStyle(
                         fontSize: 17,
                         // 1.5 gives Bengali conjuncts and Devanagari matras room
@@ -160,13 +286,31 @@ class ChatMessageBubble extends StatelessWidget {
                       ),
                     ),
             ),
+            ),
             if (message.createdAt != null) ...[
               const SizedBox(height: 6),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Text(
-                  _timestamp(message.createdAt!),
-                  style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _timestamp(message.createdAt!),
+                      style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                    ),
+                    // Only on the patient's own turns, and only once a person
+                    // from the clinic has opened the thread. Says their message
+                    // was read without implying a reply is seconds away.
+                    if (isUser && message.seenByClinicAt != null) ...[
+                      const SizedBox(width: 6),
+                      Icon(Icons.done_all_rounded, size: 15, color: AppColors.primary),
+                      const SizedBox(width: 3),
+                      Text(
+                        l10n.chatSeenByClinic,
+                        style: const TextStyle(fontSize: 12, color: AppColors.primary),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],

@@ -694,6 +694,72 @@ abstract class AppLocalizations {
   /// **'From the clinic'**
   String get chatFromClinic;
 
+  /// No description provided for @chatCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get chatCopy;
+
+  /// No description provided for @chatCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get chatCopied;
+
+  /// No description provided for @chatReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
+  String get chatReply;
+
+  /// No description provided for @chatPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin to top'**
+  String get chatPin;
+
+  /// No description provided for @chatUnpin.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin'**
+  String get chatUnpin;
+
+  /// No description provided for @chatHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide for me'**
+  String get chatHide;
+
+  /// No description provided for @chatHideNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Stays in your medical record; only removed from your view'**
+  String get chatHideNote;
+
+  /// No description provided for @chatPinned.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned'**
+  String get chatPinned;
+
+  /// No description provided for @chatSeenByClinic.
+  ///
+  /// In en, this message translates to:
+  /// **'Seen by the clinic'**
+  String get chatSeenByClinic;
+
+  /// No description provided for @chatReplyingTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Replying to'**
+  String get chatReplyingTo;
+
+  /// No description provided for @chatCannotHideEmergency.
+  ///
+  /// In en, this message translates to:
+  /// **'This is part of an emergency record and cannot be hidden'**
+  String get chatCannotHideEmergency;
+
   /// No description provided for @chatReplyToPatient.
   ///
   /// In en, this message translates to:
@@ -909,18 +975,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Help me understand my eye report'**
   String get chatSuggestionEye;
-
-  /// No description provided for @chatCopy.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy'**
-  String get chatCopy;
-
-  /// No description provided for @chatCopied.
-  ///
-  /// In en, this message translates to:
-  /// **'Copied to clipboard'**
-  String get chatCopied;
 
   /// No description provided for @chatRetry.
   ///

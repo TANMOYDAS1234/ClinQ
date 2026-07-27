@@ -322,6 +322,41 @@ class AppLocalizationsBn extends AppLocalizations {
   String get chatFromClinic => 'ক্লিনিক থেকে';
 
   @override
+  String get chatCopy => 'কপি';
+
+  @override
+  String get chatCopied => 'ক্লিপবোর্ডে কপি হয়েছে';
+
+  @override
+  String get chatReply => 'উত্তর দিন';
+
+  @override
+  String get chatPin => 'উপরে পিন করুন';
+
+  @override
+  String get chatUnpin => 'পিন সরান';
+
+  @override
+  String get chatHide => 'আমার জন্য লুকান';
+
+  @override
+  String get chatHideNote =>
+      'আপনার মেডিকেল রেকর্ডে থেকে যাবে; শুধু আপনার স্ক্রিন থেকে সরবে';
+
+  @override
+  String get chatPinned => 'পিন করা';
+
+  @override
+  String get chatSeenByClinic => 'ক্লিনিক দেখেছে';
+
+  @override
+  String get chatReplyingTo => 'উত্তর দিচ্ছেন';
+
+  @override
+  String get chatCannotHideEmergency =>
+      'এটি জরুরি রেকর্ডের অংশ, লুকানো যাবে না';
+
+  @override
   String get chatReplyToPatient => 'এই রোগীকে উত্তর দিন…';
 
   @override
@@ -433,12 +468,6 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get chatSuggestionEye => 'আমার চোখের রিপোর্ট বুঝতে সাহায্য করুন';
-
-  @override
-  String get chatCopy => 'কপি';
-
-  @override
-  String get chatCopied => 'ক্লিপবোর্ডে কপি হয়েছে';
 
   @override
   String get chatRetry => 'আবার চেষ্টা করুন';

@@ -49,6 +49,29 @@ const chatMessageSchema = new mongoose.Schema(
 
     alert: { type: mongoose.Schema.Types.ObjectId, ref: 'ClinicalAlert' },
     flaggedByPatient: { type: Boolean, default: false },
+
+    /// The message this one answers. Clinical chat runs over days, so a reply
+    /// arriving hours later has to say what it is replying to.
+    replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'ChatMessage' },
+
+    /// Pinned to the top of the thread. A dosing instruction otherwise scrolls
+    /// away within a day and the patient cannot find it again.
+    pinnedAt: { type: Date },
+    pinnedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+    /// Users who have hidden this message from their own view.
+    ///
+    /// Deliberately never a delete. These messages are part of a medical
+    /// record, and the audit log, immutable prescriptions and citation trail
+    /// all assume the conversation that produced a decision still exists.
+    /// Hiding is per-person and reversible; the record is untouched.
+    hiddenFor: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+
+    /// When the clinic first opened the thread containing this message. Drives
+    /// the patient's "Seen by the clinic" mark — chosen over a typing
+    /// indicator, which would promise a reply within seconds that a clinician
+    /// with a full list cannot keep.
+    seenByClinicAt: { type: Date },
   },
   { timestamps: true },
 );

@@ -12,7 +12,11 @@ import { User, ROLES } from '../models/User.js';
 import { AppointmentWaitlist } from '../models/AppointmentWaitlist.js';
 import { PatientProfile } from '../models/PatientProfile.js';
 import { logger } from '../config/logger.js';
-import { notifyClinicOfAppointmentChange, notifyWaitlistOfFreedSlot } from '../services/notifications.js';
+import {
+  notifyClinicOfAppointmentChange,
+  notifyPatientOfAppointmentChange,
+  notifyWaitlistOfFreedSlot,
+} from '../services/notifications.js';
 import { ACTIVE_STATUSES, isSlotBookable } from '../services/scheduling.js';
 import { paged, pageParams, dateRange } from '../utils/pagination.js';
 
@@ -220,6 +224,12 @@ router.patch(
     await appt.populate(POPULATE);
 
     await notifyClinicOfAppointmentChange(appt, appt.patient?.name ?? 'A patient', 'cancelled');
+    // Only tell the patient when someone else cancelled on them. Announcing
+    // their own action back to them is noise, and noise is what teaches people
+    // to ignore the alert that matters.
+    if (!appt.patient?._id?.equals?.(req.user._id)) {
+      await notifyPatientOfAppointmentChange(appt, 'cancelled', req.body.reason);
+    }
     await offerFreedSlotToWaitlist(appt);
 
     res.json({ appointment: serialise(appt) });
@@ -326,6 +336,17 @@ router.patch(
       { new: true },
     ).populate(POPULATE);
     if (!appt) throw notFound('Appointment not found');
+
+    // A clinician turning an appointment down is exactly the case where a
+    // patient would otherwise travel to one that no longer exists, so it is
+    // told to them directly rather than left to be discovered. There is no
+    // separate "rejected" status in the schema — declining is a cancellation
+    // made by the clinic.
+    if (req.body.status === 'cancelled') {
+      await notifyPatientOfAppointmentChange(appt, 'cancelled', appt.cancellationReason);
+      await offerFreedSlotToWaitlist(appt);
+    }
+
     res.json({ appointment: serialise(appt) });
   }),
 );

@@ -94,6 +94,46 @@ export async function notifyClinicOfAppointmentChange(appointment, patientName, 
 }
 
 /**
+ * Tell the patient their appointment was cancelled, rejected or moved.
+ *
+ * The one notification a patient cannot afford to miss after an emergency
+ * alert: without it they travel to the clinic for an appointment that is no
+ * longer there. Reaches them whether the clinic or they themselves made the
+ * change, because a reschedule confirmed on someone else's screen is not a
+ * reschedule they know about.
+ */
+export async function notifyPatientOfAppointmentChange(appointment, change, reason) {
+  const patientId = appointment.patient?._id ?? appointment.patient;
+  const patient = await User.findById(patientId).select('deviceTokens').lean();
+  if (!patient) return;
+
+  const when = new Date(appointment.scheduledFor).toLocaleString('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Kolkata',
+  });
+
+  const title = {
+    cancelled: 'Your appointment was cancelled',
+    rejected: 'Your appointment could not be confirmed',
+    rescheduled: 'Your appointment was moved',
+  }[change] ?? 'Your appointment changed';
+
+  await deliver({
+    tokens: patient.deviceTokens ?? [],
+    title,
+    // The reason matters: "the doctor is unavailable" and "please come at a
+    // different time" call for different things from the patient.
+    body: reason ? `${when} — ${reason}` : `${when}. Please book another time.`,
+    data: {
+      kind: 'appointment_change_patient',
+      change,
+      appointmentId: appointment._id.toString(),
+    },
+  });
+}
+
+/**
  * Evening summary of the next day's list, for the doctor.
  *
  * Deliberately the evening before rather than the morning of: the point of
