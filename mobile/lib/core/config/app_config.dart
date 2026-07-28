@@ -1,63 +1,38 @@
-import 'dart:io' show Platform;
-
-import 'package:flutter/foundation.dart' show kIsWeb;
-
 /// Central place for environment-dependent configuration.
 ///
-/// The backend listens on port 4000. How the app reaches it depends on where
-/// it is running:
+/// API calls go to the live backend by default, so a plain `flutter build`
+/// produces an app that reaches the real server. Point it elsewhere for local
+/// development without touching this file by passing the URL at build time —
+/// the override always wins:
 ///
-///   * Android emulator — `localhost` is the emulator's own network namespace,
-///     so the host machine is reached via the alias `10.0.2.2`.
-///   * Physical Android device over USB — run `adb reverse tcp:4000 tcp:4000`
-///     first, which tunnels the phone's `localhost:4000` to the development
-///     machine. This is preferred over the LAN IP: it needs no Wi-Fi and no
-///     firewall exception.
-///   * Physical device over Wi-Fi, or a staging server — pass the URL in
-///     explicitly, no code change required:
-///
+///   * Android emulator (host machine on port 4000):
+///       flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000/api/v1
+///   * Physical device over `adb reverse tcp:4000 tcp:4000`:
+///       flutter run --dart-define=API_BASE_URL=http://localhost:4000/api/v1
+///   * Physical device over Wi-Fi / a staging server:
 ///       flutter run --dart-define=API_BASE_URL=http://192.168.1.9:4000/api/v1
-///
-/// The explicit override always wins so that release builds can be pointed at
-/// a real HTTPS backend without touching this file.
 class AppConfig {
   AppConfig._();
 
   static const String _apiPath = '/api/v1';
-  static const int _port = 4000;
+
+  /// The live backend, used whenever no build-time override is supplied. This
+  /// is why release builds no longer fall back to an emulator-only address and
+  /// fail on a real phone with a misleading "no internet" error.
+  static const String _defaultBaseUrl = 'https://clinq.flintdeorient.in$_apiPath';
 
   /// Build-time override. Empty when not supplied.
   static const String _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL');
 
-  /// Set to true when running on a physical Android device reached through
-  /// `adb reverse`, so that `localhost` is used instead of the emulator alias:
-  ///
-  ///     flutter run --dart-define=USE_ADB_REVERSE=true
-  static const bool _useAdbReverse = bool.fromEnvironment('USE_ADB_REVERSE');
-
   /// Base URL for all API calls, already including the `/api/v1` prefix.
-  static String get apiBaseUrl {
-    if (_apiBaseUrlOverride.isNotEmpty) return _apiBaseUrlOverride;
-    return 'http://$_host:$_port$_apiPath';
-  }
+  static String get apiBaseUrl =>
+      _apiBaseUrlOverride.isNotEmpty ? _apiBaseUrlOverride : _defaultBaseUrl;
 
   /// Scheme + host, without the `/api/v1` path — for building absolute URLs
   /// from the relative paths the API returns (e.g. upload raw-image URLs).
   static String get apiOrigin {
     final base = apiBaseUrl;
     return base.endsWith(_apiPath) ? base.substring(0, base.length - _apiPath.length) : base;
-  }
-
-  static String get _host {
-    if (kIsWeb) return 'localhost';
-    try {
-      // On a physical device adb reverse makes localhost the right answer;
-      // only the emulator needs the 10.0.2.2 alias.
-      if (Platform.isAndroid) return _useAdbReverse ? 'localhost' : '10.0.2.2';
-    } catch (_) {
-      // Platform is unavailable on some targets (e.g. tests) — fall back.
-    }
-    return 'localhost';
   }
 
   /// Connection/receive timeouts for Dio.
