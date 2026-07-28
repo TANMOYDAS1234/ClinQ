@@ -28,6 +28,7 @@ class ChatMessage {
     this.senderName,
     this.pinned = false,
     this.replyToId,
+    this.replyPreviewContent,
     this.seenByClinicAt,
     this.attachmentPaths = const [],
   });
@@ -38,6 +39,10 @@ class ChatMessage {
 
   /// The message this one answers, when the sender quoted an earlier turn.
   final String? replyToId;
+
+  /// A text preview of the quoted turn, sent by the server so the reply's quote
+  /// renders even when the original message is not loaded on this side.
+  final String? replyPreviewContent;
 
   /// When the clinic first read this message. Shown to the patient as "Seen by
   /// the clinic" — chosen over a typing indicator, which would promise a reply
@@ -94,6 +99,9 @@ class ChatMessage {
       senderName: json['senderName']?.toString(),
       pinned: json['pinned'] == true,
       replyToId: json['replyToId']?.toString(),
+      replyPreviewContent: json['replyPreview'] is Map
+          ? (json['replyPreview'] as Map)['content']?.toString()
+          : null,
       seenByClinicAt: json['seenByClinicAt'] == null
           ? null
           : DateTime.tryParse(json['seenByClinicAt'].toString()),
@@ -127,6 +135,7 @@ class ChatMessage {
     senderName: senderName,
     pinned: pinned,
     replyToId: replyToId,
+    replyPreviewContent: replyPreviewContent,
     seenByClinicAt: seenByClinicAt,
     attachmentPaths: attachmentPaths,
   );
@@ -147,6 +156,7 @@ class ChatMessage {
     senderName: senderName,
     pinned: value,
     replyToId: replyToId,
+    replyPreviewContent: replyPreviewContent,
     seenByClinicAt: seenByClinicAt,
     attachmentPaths: attachmentPaths,
   );

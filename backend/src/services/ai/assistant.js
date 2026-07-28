@@ -81,6 +81,9 @@ export async function handlePatientMessage({ patientId, sessionId, text, languag
     },
   });
 
+  // Populate the quoted turn so the send response carries its text preview.
+  if (replyTo) await userMessage.populate('replyTo', 'content role');
+
   // Escalate before generating. The clinic learns about a chest-pain message
   // whether or not the model ever responds.
   let alert = null;
@@ -251,6 +254,9 @@ export async function* streamPatientMessage({ patientId, sessionId, text, langua
     },
   });
 
+  // Populate the quoted turn so the send response carries its text preview.
+  if (replyTo) await userMessage.populate('replyTo', 'content role');
+
   // Escalate BEFORE the first token â€” the clinic learns about a chest-pain
   // message whether or not any reply is ever generated.
   let alert = null;
@@ -387,6 +393,8 @@ async function resolveSession({ patientId, sessionId, language, text }) {
 }
 
 function serialiseMessage(m) {
+  const rt = m.replyTo;
+  const rtDoc = rt && typeof rt === 'object' && rt.content != null ? rt : null;
   return {
     id: m._id,
     seq: m.seq,
@@ -395,6 +403,10 @@ function serialiseMessage(m) {
     language: m.language,
     urgency: m.triage?.urgency ?? 'routine',
     isFallback: m.isFallback ?? false,
+    // The quoted turn: its id (so the app can scroll to it) and a text preview
+    // (so the quote renders even when the original is not loaded on this side).
+    replyToId: rt ? (rtDoc ? String(rtDoc._id) : (rt.toString?.() ?? String(rt))) : null,
+    replyPreview: rtDoc ? { content: String(rtDoc.content).slice(0, 160), role: rtDoc.role ?? null } : null,
     createdAt: m.createdAt,
     // Attachment ids, so the app can render the photo the patient sent. The
     // raw bytes are fetched separately from /uploads/:id/raw (owner-only).

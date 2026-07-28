@@ -8,6 +8,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../shared/providers/locale_provider.dart';
 import '../../../shared/widgets/loading_view.dart';
+import '../../../shared/widgets/markdown_text.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/chat_message.dart';
 import 'chat_controller.dart';
@@ -40,6 +41,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   /// The message being answered, shown above the composer until sent or
   /// dismissed. Null when writing a fresh message.
   ChatMessage? _replyingTo;
+
+  /// Which pinned message the top banner is showing. Tapping the banner cycles
+  /// through them, WhatsApp-style, when more than one is pinned.
+  int _pinnedIndex = 0;
 
   /// Whether the list is scrolled far enough from the bottom to warrant the
   /// jump-to-latest button. Reversed lists put "latest" at offset 0, but this
@@ -152,6 +157,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     // before the first token of its reply. Drawing it in that window rendered
     // an empty bubble for a moment, so hold it back until it has text.
     final messages = chatState.messages;
+    final pinnedMsgs = messages.where((m) => m.pinned).toList();
+    final pinnedShown = pinnedMsgs.isEmpty
+        ? null
+        : pinnedMsgs[_pinnedIndex.clamp(0, pinnedMsgs.length - 1)];
     final awaitingFirstToken =
         messages.isNotEmpty && !messages.last.isUser && messages.last.content.isEmpty;
 
@@ -192,6 +201,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                   _errorMessage(context, chatState.error!.code),
                   style: const TextStyle(color: AppColors.danger),
                 ),
+              ),
+            // Pinned message pinned to the top of the thread, WhatsApp-style.
+            if (pinnedShown != null)
+              _PinnedBanner(
+                message: pinnedShown,
+                count: pinnedMsgs.length,
+                onTap: pinnedMsgs.length > 1
+                    ? () => setState(() => _pinnedIndex = (_pinnedIndex + 1) % pinnedMsgs.length)
+                    : null,
+                onUnpin: () {
+                  ref.read(chatControllerProvider.notifier).setPinned(pinnedShown.id, false);
+                  setState(() => _pinnedIndex = 0);
+                },
               ),
             Expanded(
               child: Stack(
@@ -413,6 +435,82 @@ class _JumpToLatestButton extends StatelessWidget {
               Text(
                 label,
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The pinned message shown pinned to the top of the thread. When more than one
+/// is pinned, tapping cycles through them (like WhatsApp's pinned bar).
+class _PinnedBanner extends StatelessWidget {
+  const _PinnedBanner({
+    required this.message,
+    required this.count,
+    required this.onTap,
+    required this.onUnpin,
+  });
+
+  final ChatMessage message;
+  final int count;
+  final VoidCallback? onTap;
+  final VoidCallback onUnpin;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final preview = MarkdownText.toPlainText(message.content);
+
+    return Material(
+      color: scheme.surfaceContainerHighest,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.md, 8, 4, 8),
+          decoration: BoxDecoration(
+            border: Border(
+              left: const BorderSide(color: AppColors.primary, width: 3),
+              bottom: BorderSide(color: scheme.outlineVariant),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.push_pin_rounded, size: 16, color: AppColors.primary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          l10n.chatPinned,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary),
+                        ),
+                        if (count > 1) ...[
+                          const SizedBox(width: 6),
+                          Text('$count', style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+                        ],
+                      ],
+                    ),
+                    Text(
+                      preview,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 18),
+                tooltip: l10n.chatUnpin,
+                onPressed: onUnpin,
               ),
             ],
           ),

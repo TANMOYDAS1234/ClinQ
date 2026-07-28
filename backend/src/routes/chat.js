@@ -145,7 +145,13 @@ router.get(
     // Messages this patient chose to hide stay in the record but leave their view.
     const filter = { session: session._id, hiddenFor: { $ne: req.user._id } };
     const [items, total] = await Promise.all([
-      ChatMessage.find(filter).sort({ seq: 1 }).skip(skip).limit(limit).populate('sender', 'name').lean(),
+      ChatMessage.find(filter)
+        .sort({ seq: 1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('sender', 'name')
+        .populate('replyTo', 'content role')
+        .lean(),
       ChatMessage.countDocuments(filter),
     ]);
 
@@ -235,6 +241,7 @@ router.get(
       .skip(skip)
       .limit(limit)
       .populate('sender', 'name')
+      .populate('replyTo', 'content role')
       .lean();
 
     // Opening the thread is what "seen by the clinic" means. Stamped only on
@@ -407,7 +414,15 @@ function serialiseMessage(m) {
     // Present on clinician turns once populated; null everywhere else.
     senderName: m.sender && typeof m.sender === 'object' ? (m.sender.name ?? null) : null,
     pinned: Boolean(m.pinnedAt),
-    replyToId: m.replyTo ? m.replyTo.toString?.() ?? m.replyTo : null,
+    replyToId: m.replyTo
+      ? (m.replyTo._id ? String(m.replyTo._id) : (m.replyTo.toString?.() ?? String(m.replyTo)))
+      : null,
+    // Text of the quoted turn, so the reply renders its quote on every device
+    // without needing the original message loaded on that side.
+    replyPreview:
+      m.replyTo && typeof m.replyTo === 'object' && m.replyTo.content != null
+        ? { content: String(m.replyTo.content).slice(0, 160), role: m.replyTo.role ?? null }
+        : null,
     seenByClinicAt: m.seenByClinicAt ?? null,
     content: m.content,
     language: m.language,

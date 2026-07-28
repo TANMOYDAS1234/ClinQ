@@ -218,8 +218,10 @@ class ChatMessageBubble extends StatelessWidget {
                 ),
               ),
             // The quoted turn this message answers, so a reply arriving hours
-            // later still says what it is about.
-            if (repliedTo != null)
+            // later still says what it is about. Prefer the locally-loaded
+            // original; fall back to the server-sent preview so the quote shows
+            // on every device even when the original is not loaded here.
+            if (repliedTo != null || message.replyPreviewContent != null)
               Container(
                 margin: const EdgeInsets.only(bottom: 4),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -229,7 +231,7 @@ class ChatMessageBubble extends StatelessWidget {
                   border: Border(left: BorderSide(color: AppColors.primary, width: 3)),
                 ),
                 child: Text(
-                  repliedTo!.content,
+                  repliedTo?.content ?? message.replyPreviewContent!,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
