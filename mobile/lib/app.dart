@@ -9,14 +9,48 @@ import 'l10n/gen/app_localizations.dart';
 import 'shared/providers/locale_provider.dart';
 import 'core/push/push_service.dart';
 import 'features/auth/presentation/auth_controller.dart';
+import 'features/medications/presentation/medications_providers.dart';
 import 'shared/providers/theme_provider.dart';
+import 'shared/services/notification_service.dart';
 import 'shared/widgets/app_lock_gate.dart';
 
-class App extends ConsumerWidget {
+class App extends ConsumerStatefulWidget {
   const App({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<App> createState() => _AppState();
+}
+
+class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Coming back to the app, pull the latest medications and rebuild the
+    // reminders — so a medicine the doctor just prescribed starts reminding
+    // without the patient having to open the Track screen.
+    if (state == AppLifecycleState.resumed) _syncMedsIfPatient();
+  }
+
+  void _syncMedsIfPatient() {
+    final user = ref.read(authControllerProvider).user;
+    if (user?.role == 'patient') {
+      refreshAndScheduleMedicationReminders(ref).catchError((_) {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Register this device for push once someone is signed in, and detach the
     // token on sign-out. A token is only meaningful when the server knows whose
     // device it is, and leaving it attached would send the next person to use a
@@ -27,9 +61,12 @@ class App extends ConsumerWidget {
       if (!wasAuthed && isAuthed) {
         ref.read(pushServiceProvider).start();
         ref.read(callSignalingProvider).start();
+        _syncMedsIfPatient();
       } else if (wasAuthed && !isAuthed) {
         ref.read(pushServiceProvider).stop();
         ref.read(callSignalingProvider).stop();
+        // Clear a departing patient's dose reminders from a shared phone.
+        NotificationService.instance.cancelMedicationReminders();
       }
     });
 

@@ -50,6 +50,29 @@ class ClinicianRepository {
     await _client.postJson('/chat/patients/$patientId/clinician-message', body: {'content': content});
   }
 
+  /// Writes a prescription for a patient. The server mirrors each medicine into
+  /// the patient's tracker (with reminder times derived from its frequency), so
+  /// the patient starts getting dose reminders automatically. [items] entries
+  /// are `{name, strength?, dose?, frequency?, durationDays?, relationToMeal,
+  /// instructions?}`.
+  Future<void> createPrescription({
+    required String patientId,
+    required List<Map<String, dynamic>> items,
+    List<String> diagnosis = const [],
+    String? generalAdvice,
+    DateTime? followUpOn,
+  }) async {
+    await _client.postJson(
+      '/patients/$patientId/prescriptions',
+      body: {
+        'items': items,
+        if (diagnosis.isNotEmpty) 'diagnosis': diagnosis,
+        if (generalAdvice != null && generalAdvice.isNotEmpty) 'generalAdvice': generalAdvice,
+        if (followUpOn != null) 'followUpOn': followUpOn.toIso8601String(),
+      },
+    );
+  }
+
   Future<Paged<PatientListItem>> patients({
     String? riskBand,
     String? search,

@@ -8,6 +8,7 @@ import '../../../shared/widgets/error_view.dart';
 import '../data/medications_repository.dart';
 import '../domain/medication.dart';
 import 'medications_providers.dart';
+import 'widgets/scan_prescription_sheet.dart';
 import 'widgets/adherence_ring_card.dart';
 import 'widgets/mark_dose_sheet.dart';
 import 'widgets/medication_slot_tile.dart';
@@ -15,6 +16,22 @@ import 'widgets/medication_slot_tile.dart';
 /// The "Medications" tab of the Track screen.
 class MedicationsScreen extends ConsumerWidget {
   const MedicationsScreen({super.key});
+
+  void _refreshAll(WidgetRef ref) {
+    // Reloads everything a new medicine affects. Invalidating the list also
+    // re-fires the reminder scheduler via the listener in build().
+    ref.invalidate(todayScheduleProvider);
+    ref.invalidate(medicationAdherenceProvider);
+    ref.invalidate(medicationsListProvider);
+  }
+
+  /// Patients add medicines by scanning Dr.'s prescription only — typing them
+  /// in is the doctor's side (the prescription form). This keeps the patient's
+  /// medicine list faithful to what was actually prescribed.
+  Future<void> _onScan(BuildContext context, WidgetRef ref) async {
+    final added = await showScanPrescriptionSheet(context);
+    if (added == true) _refreshAll(ref);
+  }
 
   Future<void> _handleTap(
     BuildContext context,
@@ -48,10 +65,26 @@ class MedicationsScreen extends ConsumerWidget {
     final scheduleAsync = ref.watch(todayScheduleProvider);
     final adherenceAsync = ref.watch(medicationAdherenceProvider);
 
-    return RefreshIndicator(
+    // Keep on-device reminders in step with the live medication list: whenever
+    // it (re)loads — after a scan, a manual add, or a doctor's prescription —
+    // the daily reminders are rebuilt.
+    ref.watch(medicationsListProvider); // activate the provider
+    ref.listen<AsyncValue<List<Medication>>>(medicationsListProvider, (_, next) {
+      next.whenData(syncMedicationReminders);
+    });
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _onScan(context, ref),
+        icon: const Icon(Icons.document_scanner_outlined),
+        label: const Text('Scan prescription'),
+      ),
+      body: RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(todayScheduleProvider);
         ref.invalidate(medicationAdherenceProvider);
+        ref.invalidate(medicationsListProvider);
         await Future.wait([
           ref.read(todayScheduleProvider.future),
           ref.read(medicationAdherenceProvider.future),
@@ -108,6 +141,7 @@ class MedicationsScreen extends ConsumerWidget {
             ],
           );
         },
+      ),
       ),
     );
   }

@@ -12,6 +12,12 @@
     <!-- Local notifications (appointment/clinic updates). Runtime-requested on
          Android 13+. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Medication reminders are exact alarms so they fire on the minute rather
+         than whenever Doze next wakes. flutter_local_notifications already
+         declares USE_EXACT_ALARM, RECEIVE_BOOT_COMPLETED and VIBRATE plus its
+         boot/schedule receivers; SCHEDULE_EXACT_ALARM (needed on Android 12) is
+         the one it does not, so it is the only one added here. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
 
     <!-- Android 11+ package visibility: required for speech_to_text to see
          the system speech recogniser. -->
@@ -61,6 +67,9 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="clinq_updates" />
+        <!-- Scheduled-notification + boot receivers come from
+             flutter_local_notifications' own manifest, so none are declared
+             here (they would only duplicate/conflict at merge time). -->
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

@@ -50,6 +50,27 @@ class Medication {
   }
 }
 
+/// Result of `POST /medications/scan` — the medicines read from a prescription
+/// photo and created in the tracker. [readable] is false when the photo could
+/// not be read, so the UI can ask for a clearer one.
+class PrescriptionScanResult {
+  const PrescriptionScanResult({required this.readable, required this.created, this.note});
+
+  final bool readable;
+  final List<Medication> created;
+  final String? note;
+
+  factory PrescriptionScanResult.fromJson(Map<String, dynamic> json) {
+    return PrescriptionScanResult(
+      readable: json['readable'] as bool? ?? false,
+      created: (json['created'] as List<dynamic>? ?? const [])
+          .map((e) => Medication.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      note: json['note'] as String?,
+    );
+  }
+}
+
 class MedicationScheduleEntry {
   const MedicationScheduleEntry({required this.time, required this.relationToMeal});
 

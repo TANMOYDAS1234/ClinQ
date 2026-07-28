@@ -1,4 +1,6 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http_parser/http_parser.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../shared/providers/core_providers.dart';
@@ -21,6 +23,65 @@ class MedicationsRepository {
   Future<TodaySchedule> getTodaySchedule() async {
     final json = await _client.getJson('$_base/schedule/today');
     return TodaySchedule.fromJson(json);
+  }
+
+  /// Adds a medicine to the patient's tracker. [schedule] is a list of
+  /// `{time: "HH:mm", relationToMeal}` maps — the daily dose times the reminders
+  /// are built from.
+  Future<Medication> createMedication({
+    required String name,
+    required String form,
+    String? strength,
+    String? dose,
+    required List<Map<String, String>> schedule,
+    String? instructions,
+  }) async {
+    final json = await _client.postJson(
+      _base,
+      body: {
+        'name': name,
+        'form': form,
+        if (strength != null && strength.isNotEmpty) 'strength': strength,
+        if (dose != null && dose.isNotEmpty) 'dose': dose,
+        'schedule': schedule,
+        if (instructions != null && instructions.isNotEmpty) 'instructions': instructions,
+      },
+    );
+    return Medication.fromJson(json['medication'] as Map<String, dynamic>);
+  }
+
+  /// Stops (soft-deletes) a medicine so it drops out of the schedule and its
+  /// reminders stop.
+  Future<void> stopMedication(String id) async {
+    await _client.delete('$_base/$id');
+  }
+
+  /// Uploads a photo of a prescription; the server reads it and creates the
+  /// medicines it finds. Returns what was created (or `readable: false` if the
+  /// photo couldn't be read).
+  Future<PrescriptionScanResult> scanPrescription({required String path, required String filename}) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        path,
+        filename: filename,
+        contentType: MediaType.parse(_imageMime(filename)),
+      ),
+    });
+    final json = await _client.postMultipart('$_base/scan', formData: formData);
+    return PrescriptionScanResult.fromJson(json);
+  }
+
+  static String _imageMime(String filename) {
+    switch (filename.toLowerCase().split('.').last) {
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      case 'heic':
+        return 'image/heic';
+      default:
+        return 'image/jpeg';
+    }
   }
 
   Future<void> logDose({

@@ -1,16 +1,31 @@
 import { Router } from 'express';
+import multer from 'multer';
 import dayjs from 'dayjs';
 import { z } from 'zod';
 import { requireAuth, resolvePatientScope } from '../middleware/auth.js';
 import { validate, q } from '../middleware/validate.js';
-import { asyncHandler, notFound } from '../middleware/errors.js';
+import { asyncHandler, notFound, badRequest } from '../middleware/errors.js';
 import { audit } from '../middleware/audit.js';
 import { Medication, MED_FORMS } from '../models/Medication.js';
 import { MedicationLog } from '../models/MedicationLog.js';
 import { computeAdherence } from '../services/analytics.js';
+import { extractPrescription } from '../services/ai/vision.js';
+import { frequencyToTimes } from '../services/medicationSchedule.js';
+import { AiUnavailableError } from '../services/ai/gemini.js';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth, resolvePatientScope);
+
+// Prescription photo upload for scanning. Kept in memory — the bytes go
+// straight to the vision model and are never persisted.
+const scanUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    if (/^image\//.test(file.mimetype)) cb(null, true);
+    else cb(badRequest('Only image files are allowed'));
+  },
+});
 
 const scheduleSlot = z.object({
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Time must be HH:mm'),
@@ -53,6 +68,63 @@ router.post(
       prescribedBy: req.user.role === 'patient' ? undefined : req.user._id,
     });
     res.status(201).json({ medication: serialise(med) });
+  }),
+);
+
+/**
+ * Scan a prescription photo into medicines.
+ *
+ * The photograph is read by the vision model and every legible medicine is
+ * created in the tracker, with reminder times derived from its frequency — so a
+ * patient photographs a paper prescription and their daily reminders are set
+ * without typing anything. Unreadable photos return `readable: false` so the app
+ * can ask for a clearer one rather than inventing medicines.
+ */
+router.post(
+  '/scan',
+  scanUpload.single('file'),
+  audit('create', 'Medication'),
+  asyncHandler(async (req, res) => {
+    if (!req.file) throw badRequest('Attach a prescription photo');
+
+    let parsed;
+    try {
+      parsed = await extractPrescription({
+        images: [{ mimeType: req.file.mimetype, base64: req.file.buffer.toString('base64') }],
+      });
+    } catch (err) {
+      if (err instanceof AiUnavailableError) {
+        return res.status(503).json({
+          error: { code: 'AI_UNAVAILABLE', message: 'Could not read the prescription right now. Please try again.' },
+        });
+      }
+      throw err;
+    }
+
+    if (!parsed || !parsed.readable || !parsed.items.length) {
+      return res.json({ readable: false, created: [], note: parsed?.note ?? null });
+    }
+
+    const created = [];
+    for (const item of parsed.items) {
+      if (!item?.name) continue;
+      const times = frequencyToTimes(item.frequency);
+      const med = await Medication.create({
+        patient: req.patientId,
+        name: item.name,
+        strength: item.strength,
+        dose: item.dose,
+        form: /insulin/i.test(item.name) ? 'insulin' : 'tablet',
+        schedule: times.map((time) => ({ time, relationToMeal: item.relationToMeal ?? 'any' })),
+        startDate: new Date(),
+        endDate: item.durationDays ? dayjs().add(item.durationDays, 'day').toDate() : undefined,
+        instructions: item.instructions,
+        prescribedBy: req.user.role === 'patient' ? undefined : req.user._id,
+      });
+      created.push(serialise(med));
+    }
+
+    res.status(201).json({ readable: true, created });
   }),
 );
 

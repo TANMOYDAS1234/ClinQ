@@ -174,3 +174,65 @@ Return JSON.`;
     return null;
   }
 }
+
+/**
+ * Reads a photograph of a prescription and extracts its medicines as structured
+ * data, so the patient's reminders can be built from a picture instead of by
+ * hand.
+ *
+ * Deliberately conservative: it transcribes only what is legibly written and
+ * never invents a medicine, dose, or timing. Dose accuracy is the patient's and
+ * doctor's to confirm — the reminders this feeds are about *when* to take a
+ * medicine, and the patient always has the paper prescription to check against.
+ */
+const PRESCRIPTION_SCHEMA = {
+  type: 'object',
+  properties: {
+    readable: { type: 'boolean' },
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          strength: { type: 'string' },
+          dose: { type: 'string' },
+          // "1-0-1", "1-1-1", "OD", "BD", "TDS" — kept as written.
+          frequency: { type: 'string' },
+          durationDays: { type: 'integer' },
+          relationToMeal: { type: 'string', enum: ['before_meal', 'after_meal', 'with_meal', 'any'] },
+          instructions: { type: 'string' },
+        },
+        required: ['name'],
+      },
+    },
+    note: { type: 'string' },
+  },
+  required: ['readable', 'items'],
+};
+
+export async function extractPrescription({ images }) {
+  if (!images?.length) return null;
+
+  const system = `You transcribe photographs of medical prescriptions written by ${env.DOCTOR_DISPLAY_NAME}, a Consultant Diabetologist, into structured medicine data.
+
+Strict rules:
+- Extract ONLY what is clearly legible. Never invent a medicine, dose, strength, or timing. If a field is not written, omit it.
+- "frequency" is how often per day. Keep the notation the prescription uses: Indian "1-0-1" (morning-noon-night), "1-1-1", "0-0-1", "1-0-1-0", or shorthand (OD, BD, TDS, QID) or words (once/twice/thrice daily).
+- "relationToMeal": before_meal (BF / before food / खाली পেটে), after_meal (AF / after food / খাবারের পরে), with_meal, or any.
+- "durationDays": the number of days if written, e.g. "x 5 days" -> 5, "1 week" -> 7.
+- Read only the medicine lines (usually after the ℞ / Rx symbol). Ignore the letterhead, patient details, diagnosis, general advice, and signature.
+- If the photo is blurry, is not a prescription, or the medicines cannot be read, set readable=false and items=[]. Do not guess to be helpful — a wrong medicine name is worse than none.`;
+
+  const prompt = 'Extract every medicine from this prescription photograph as JSON. If it cannot be read, set readable=false and return no items.';
+
+  const result = await generateFromImage({ system, prompt, images, responseSchema: PRESCRIPTION_SCHEMA });
+  const json = result?.json;
+  if (!json) return { readable: false, items: [] };
+  return {
+    readable: json.readable !== false,
+    items: Array.isArray(json.items) ? json.items : [],
+    note: json.note ?? null,
+    modelVersion: result.modelVersion,
+  };
+}

@@ -8,6 +8,7 @@ import { audit } from '../middleware/audit.js';
 import { Prescription } from '../models/Prescription.js';
 import { Medication } from '../models/Medication.js';
 import { User } from '../models/User.js';
+import { frequencyToTimes } from '../services/medicationSchedule.js';
 import { env } from '../config/env.js';
 import { paged, pageParams } from '../utils/pagination.js';
 
@@ -103,31 +104,6 @@ router.post(
     res.status(201).json({ prescription: serialise(await prescription.populate('doctor', 'name')) });
   }),
 );
-
-/**
- * Turns "1-0-1" style frequency into concrete reminder times so a prescribed
- * medicine shows up in the patient's daily schedule without re-entry.
- */
-function frequencyToTimes(frequency) {
-  if (!frequency) return ['08:00'];
-
-  const pattern = frequency.replace(/\s/g, '');
-  const tds = /^(\d)-(\d)-(\d)$/.exec(pattern);
-  if (tds) {
-    const slots = [];
-    if (Number(tds[1]) > 0) slots.push('08:00');
-    if (Number(tds[2]) > 0) slots.push('14:00');
-    if (Number(tds[3]) > 0) slots.push('20:00');
-    return slots.length ? slots : ['08:00'];
-  }
-
-  const lower = frequency.toLowerCase();
-  if (/\b(od|once)\b/.test(lower)) return ['08:00'];
-  if (/\b(bd|bid|twice)\b/.test(lower)) return ['08:00', '20:00'];
-  if (/\b(tds|tid|thrice|three times)\b/.test(lower)) return ['08:00', '14:00', '20:00'];
-  if (/\b(qid|four times)\b/.test(lower)) return ['08:00', '12:00', '16:00', '20:00'];
-  return ['08:00'];
-}
 
 async function syncMedications(prescription, patientId, doctorId) {
   for (const item of prescription.items) {
