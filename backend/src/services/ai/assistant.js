@@ -119,7 +119,10 @@ export async function handlePatientMessage({ patientId, sessionId, text, languag
   const contents = [
     ...history
       .reverse()
-      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      // Never feed the model its own scripted fallback replies: once an
+      // "assistant unavailable" message is in the thread, the model parrots it
+      // for the same prompt (e.g. every "hi") instead of answering.
+      .filter((m) => (m.role === 'user' || m.role === 'assistant') && !m.isFallback)
       .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
     { role: 'user', parts: userParts },
   ];
@@ -277,7 +280,10 @@ export async function* streamPatientMessage({ patientId, sessionId, text, langua
   const contents = [
     ...history
       .reverse()
-      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      // Never feed the model its own scripted fallback replies: once an
+      // "assistant unavailable" message is in the thread, the model parrots it
+      // for the same prompt (e.g. every "hi") instead of answering.
+      .filter((m) => (m.role === 'user' || m.role === 'assistant') && !m.isFallback)
       .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
     { role: 'user', parts: userParts },
   ];

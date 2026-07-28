@@ -13,6 +13,7 @@ import '../../../shared/data/upload_repository.dart';
 import '../../../shared/providers/app_lock_provider.dart';
 import '../../../shared/providers/locale_provider.dart';
 import '../../../shared/providers/preferences_provider.dart';
+import '../../../shared/widgets/fullscreen_photo.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/domain/user.dart';
 import '../../auth/presentation/auth_controller.dart';
@@ -418,6 +419,10 @@ class _Header extends StatelessWidget {
           label: l10n.profileChangePhoto,
           child: GestureDetector(
             onTap: onEditPhoto,
+            // Hold to view the photo full-screen (only when one is set).
+            onLongPress: user?.avatarUrl != null
+                ? () => FullscreenPhoto.show(context, user!.avatarUrl)
+                : null,
             child: Stack(
               children: [
                 UserAvatar(name: name, avatarUrl: user?.avatarUrl, accent: accent, size: 96),

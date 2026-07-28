@@ -18,6 +18,7 @@ class ChatRepository {
     required String text,
     required String language,
     List<String>? attachments,
+    String? replyToId,
   }) async {
     final json = await _client.postJson(
       '/chat/message',
@@ -26,6 +27,7 @@ class ChatRepository {
         'text': text,
         'language': language,
         if (attachments != null && attachments.isNotEmpty) 'attachments': attachments,
+        if (replyToId != null) 'replyTo': replyToId,
       },
     );
     return SendMessageResult.fromJson(json);

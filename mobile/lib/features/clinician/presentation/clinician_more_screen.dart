@@ -12,6 +12,7 @@ import '../../../l10n/gen/app_localizations.dart';
 import '../../../shared/data/upload_repository.dart';
 import '../../../shared/providers/app_lock_provider.dart';
 import '../../../shared/providers/locale_provider.dart';
+import '../../../shared/widgets/fullscreen_photo.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../profile/presentation/widgets/profile_section.dart';
@@ -147,6 +148,7 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
                 label: l10n.profileChangePhoto,
                 child: GestureDetector(
                   onTap: _uploadingAvatar ? null : _changeAvatar,
+                  onLongPress: user?.avatarUrl != null ? () => FullscreenPhoto.show(context, user!.avatarUrl) : null,
                   child: Stack(
                     children: [
                       UserAvatar(name: user?.name ?? '', avatarUrl: user?.avatarUrl, accent: accent, size: 96),
