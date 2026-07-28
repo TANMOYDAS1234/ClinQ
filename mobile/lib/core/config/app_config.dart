@@ -35,6 +35,18 @@ class AppConfig {
     return base.endsWith(_apiPath) ? base.substring(0, base.length - _apiPath.length) : base;
   }
 
+  /// Jitsi server for in-app voice/video calls.
+  ///
+  /// Self-hosted rather than the public `meet.jit.si`: patient consultations
+  /// then stay on the clinic's own infrastructure, and it sidesteps
+  /// meet.jit.si's requirement that a moderator log in before a call can start.
+  /// Point it elsewhere without a code change via
+  ///   --dart-define=JITSI_SERVER=https://meet.example.com
+  static const String _jitsiServerOverride = String.fromEnvironment('JITSI_SERVER');
+  static const String _defaultJitsiServer = 'https://meet.flintdeorient.in';
+  static String get jitsiServerUrl =>
+      _jitsiServerOverride.isNotEmpty ? _jitsiServerOverride : _defaultJitsiServer;
+
   /// Connection/receive timeouts for Dio.
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 20);

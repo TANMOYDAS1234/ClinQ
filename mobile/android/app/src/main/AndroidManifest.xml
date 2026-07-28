@@ -54,6 +54,13 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Channel FCM falls back to when it builds the notification itself
+             (app backgrounded or killed). Without this, a background call ring
+             or clinic alert can be dropped on Android O+ for want of a channel.
+             Must match the id NotificationService creates on the device. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="clinq_updates" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
