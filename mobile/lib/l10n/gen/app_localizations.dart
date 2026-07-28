@@ -1840,6 +1840,18 @@ abstract class AppLocalizations {
   /// **'The clinic is closed on this day'**
   String get apptClosedThatDay;
 
+  /// No description provided for @apptNotifyMeLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify me if a slot opens'**
+  String get apptNotifyMeLater;
+
+  /// No description provided for @apptWaitlistJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll notify you if a slot opens'**
+  String get apptWaitlistJoined;
+
   /// No description provided for @apptReasonLabel.
   ///
   /// In en, this message translates to:

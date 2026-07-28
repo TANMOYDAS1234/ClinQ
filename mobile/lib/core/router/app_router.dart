@@ -51,6 +51,10 @@ class _RouterRefreshNotifier extends ChangeNotifier {
   }
 }
 
+/// The root navigator, so an incoming-call dialog can be shown over whatever
+/// screen is on top from outside the widget tree (a push message handler).
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 bool _isClinician(AuthState s) => s.user?.role == 'doctor' || s.user?.role == 'staff';
 
 String? _redirect(Ref ref, GoRouterState state) {
@@ -94,6 +98,7 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _RouterRefreshNotifier(ref);
 
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     refreshListenable: refreshNotifier,
     redirect: (context, state) => _redirect(ref, state),

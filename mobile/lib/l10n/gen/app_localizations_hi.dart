@@ -918,6 +918,12 @@ class AppLocalizationsHi extends AppLocalizations {
   String get apptClosedThatDay => 'इस दिन क्लिनिक बंद है';
 
   @override
+  String get apptNotifyMeLater => 'स्लॉट खाली होने पर मुझे सूचित करें';
+
+  @override
+  String get apptWaitlistJoined => 'स्लॉट खाली होने पर हम आपको सूचित करेंगे';
+
+  @override
   String get apptReasonLabel => 'विज़िट का कारण (वैकल्पिक)';
 
   @override

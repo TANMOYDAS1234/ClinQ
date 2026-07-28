@@ -67,6 +67,22 @@ async function deliver({ tokens, title, body, data }) {
   }
 }
 
+/**
+ * Rings the other side of a call. The `incoming_call` data payload lets the app
+ * show an accept/decline screen and, on accept, join the same Jitsi room; the
+ * notification is the fallback when the app is closed.
+ */
+export async function notifyIncomingCall({ toUserIds, callerName, room, video }) {
+  const users = await User.find({ _id: { $in: toUserIds } }).select('deviceTokens').lean();
+  const tokens = users.flatMap((u) => u.deviceTokens ?? []);
+  return deliver({
+    tokens,
+    title: `Incoming ${video ? 'video' : 'voice'} call`,
+    body: `${callerName} is calling`,
+    data: { type: 'incoming_call', room, callerName, video: String(Boolean(video)) },
+  });
+}
+
 export async function notifyClinicStaff(alert) {
   const staff = await User.find({ role: { $in: [ROLES.DOCTOR, ROLES.STAFF] }, isActive: true })
     .select('deviceTokens name')

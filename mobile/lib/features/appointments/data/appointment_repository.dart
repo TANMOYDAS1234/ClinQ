@@ -62,6 +62,16 @@ class AppointmentRepository {
     return Appointment.fromJson(json['appointment'] as Map<String, dynamic>);
   }
 
+  /// Ask to be told when a slot frees up on a day that is currently full.
+  /// [dateKey] is `yyyy-MM-dd`; the server records the request and pushes the
+  /// patient the moment a slot on that day opens.
+  Future<void> joinWaitlist({required String clinicId, required String dateKey}) async {
+    await _client.postJson('/appointments/waitlist', body: {
+      'clinicId': clinicId,
+      'date': dateKey,
+    });
+  }
+
   /// Clinician-only: advance the appointment's status (confirm, complete, …)
   /// and optionally attach consultation notes.
   Future<Appointment> setStatus(String id, String status, {String? consultationNotes}) async {

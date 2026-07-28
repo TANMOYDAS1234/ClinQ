@@ -348,6 +348,8 @@
   "apptChooseTime": "Choose a time",
   "apptNoSlots": "No available times on this day",
   "apptClosedThatDay": "The clinic is closed on this day",
+  "apptNotifyMeLater": "Notify me if a slot opens",
+  "apptWaitlistJoined": "We'll notify you if a slot opens",
   "apptReasonLabel": "Reason for visit (optional)",
   "apptReasonHint": "e.g. Follow-up, sugar review",
   "apptConfirmBooking": "Confirm booking",

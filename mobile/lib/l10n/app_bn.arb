@@ -292,6 +292,8 @@
   "apptChooseTime": "একটি সময় বেছে নিন",
   "apptNoSlots": "এই দিনে কোনও সময় উপলব্ধ নেই",
   "apptClosedThatDay": "এই দিনে ক্লিনিক বন্ধ",
+  "apptNotifyMeLater": "স্লট খালি হলে আমাকে জানান",
+  "apptWaitlistJoined": "স্লট খালি হলে আমরা আপনাকে জানাব",
   "apptReasonLabel": "ভিজিটের কারণ (ঐচ্ছিক)",
   "apptReasonHint": "যেমন ফলো-আপ, সুগার পর্যালোচনা",
   "apptConfirmBooking": "বুকিং নিশ্চিত করুন",

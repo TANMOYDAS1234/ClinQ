@@ -139,6 +139,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
           CallButton(
             room: CallService.roomForPatient(widget.patientId),
             displayName: ref.watch(authControllerProvider).user?.name ?? 'Clinic',
+            patientId: widget.patientId,
           ),
         ],
       ),

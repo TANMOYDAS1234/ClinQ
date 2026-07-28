@@ -917,6 +917,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apptClosedThatDay => 'The clinic is closed on this day';
 
   @override
+  String get apptNotifyMeLater => 'Notify me if a slot opens';
+
+  @override
+  String get apptWaitlistJoined => 'We\'ll notify you if a slot opens';
+
+  @override
   String get apptReasonLabel => 'Reason for visit (optional)';
 
   @override

@@ -292,6 +292,8 @@
   "apptChooseTime": "एक समय चुनें",
   "apptNoSlots": "इस दिन कोई समय उपलब्ध नहीं",
   "apptClosedThatDay": "इस दिन क्लिनिक बंद है",
+  "apptNotifyMeLater": "स्लॉट खाली होने पर मुझे सूचित करें",
+  "apptWaitlistJoined": "स्लॉट खाली होने पर हम आपको सूचित करेंगे",
   "apptReasonLabel": "विज़िट का कारण (वैकल्पिक)",
   "apptReasonHint": "जैसे फ़ॉलो-अप, शुगर समीक्षा",
   "apptConfirmBooking": "बुकिंग की पुष्टि करें",

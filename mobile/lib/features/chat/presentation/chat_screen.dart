@@ -214,7 +214,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         // with the assistant, which the doctor reviews as a single thread.
         actions: [
           if (user != null)
-            CallButton(room: CallService.roomForPatient(user.id), displayName: user.name),
+            CallButton(
+              room: CallService.roomForPatient(user.id),
+              displayName: user.name,
+              patientId: user.id,
+            ),
         ],
       ),
       // The Scaffold does not resize for the keyboard; instead the content is
@@ -463,25 +467,20 @@ class _JumpToLatestButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Just the arrow — a compact circular button, no label.
     return Material(
       color: isDark ? AppColors.primaryDark : AppColors.primary,
-      borderRadius: BorderRadius.circular(24),
+      shape: const CircleBorder(),
       elevation: 3,
       child: InkWell(
+        customBorder: const CircleBorder(),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.white),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
-              ),
-            ],
+        child: Tooltip(
+          message: label,
+          child: const SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(Icons.keyboard_arrow_down_rounded, size: 26, color: Colors.white),
           ),
         ),
       ),

@@ -911,6 +911,12 @@ class AppLocalizationsBn extends AppLocalizations {
   String get apptClosedThatDay => 'এই দিনে ক্লিনিক বন্ধ';
 
   @override
+  String get apptNotifyMeLater => 'স্লট খালি হলে আমাকে জানান';
+
+  @override
+  String get apptWaitlistJoined => 'স্লট খালি হলে আমরা আপনাকে জানাব';
+
+  @override
   String get apptReasonLabel => 'ভিজিটের কারণ (ঐচ্ছিক)';
 
   @override

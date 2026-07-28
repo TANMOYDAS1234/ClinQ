@@ -372,7 +372,13 @@ class _SlotGrid extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!anyAvailable) _EmptyNote(icon: Icons.schedule_outlined, text: l10n.apptNoSlots),
+            if (!anyAvailable) ...[
+              _EmptyNote(icon: Icons.schedule_outlined, text: l10n.apptNoSlots),
+              // Every time is taken — let the patient ask to be pushed the
+              // moment one frees up, instead of checking back by hand.
+              _WaitlistButton(clinicId: clinicId, dateKey: dateKey),
+              const SizedBox(height: AppSpacing.sm),
+            ],
             Wrap(
               spacing: AppSpacing.sm,
               runSpacing: AppSpacing.sm,
@@ -436,6 +442,74 @@ class _SlotChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Shown on a fully-booked day: joins the waitlist for that clinic and date so
+/// the server pushes the patient the moment a slot opens. Collapses to a
+/// confirmation once joined, so it cannot be tapped into a duplicate request.
+class _WaitlistButton extends ConsumerStatefulWidget {
+  const _WaitlistButton({required this.clinicId, required this.dateKey});
+
+  final String clinicId;
+  final String dateKey;
+
+  @override
+  ConsumerState<_WaitlistButton> createState() => _WaitlistButtonState();
+}
+
+class _WaitlistButtonState extends ConsumerState<_WaitlistButton> {
+  bool _busy = false;
+  bool _joined = false;
+
+  Future<void> _join() async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(appointmentRepositoryProvider)
+          .joinWaitlist(clinicId: widget.clinicId, dateKey: widget.dateKey);
+      if (!mounted) return;
+      setState(() {
+        _joined = true;
+        _busy = false;
+      });
+      messenger.showSnackBar(SnackBar(content: Text(l10n.apptWaitlistJoined)));
+    } on ApiException {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      messenger.showSnackBar(SnackBar(content: Text(l10n.apptBookingFailed)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (_joined) {
+      return Padding(
+        padding: const EdgeInsets.only(top: AppSpacing.xs),
+        child: Row(
+          children: [
+            const Icon(Icons.notifications_active_rounded, size: 18, color: AppColors.success),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                l10n.apptWaitlistJoined,
+                style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return OutlinedButton.icon(
+      onPressed: _busy ? null : _join,
+      icon: _busy
+          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.notifications_none_rounded, size: 18),
+      label: Text(l10n.apptNotifyMeLater),
     );
   }
 }

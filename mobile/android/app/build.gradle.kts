@@ -46,6 +46,15 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // Jitsi's WebRTC native lib (libjingle_peerconnection_so) aborts in
+    // JNI_OnLoad when loaded from the compressed APK. Extracting native libs to
+    // the filesystem is what makes the in-app call open instead of crashing.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
 }
 
 flutter {
