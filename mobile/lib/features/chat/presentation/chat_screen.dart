@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
+import '../../../core/call/call_button.dart';
+import '../../../core/call/call_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../l10n/gen/app_localizations.dart';
@@ -26,7 +29,15 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObserver {
-  final _scrollController = ScrollController();
+  // A positioned list (not a plain ListView) so a tap on the pinned banner or a
+  // reply quote can jump to that exact message even when it is off-screen.
+  final ItemScrollController _itemScrollController = ItemScrollController();
+  final ItemPositionsListener _itemPositions = ItemPositionsListener.create();
+
+  /// The rows currently rendered (messages + date separators) and their count,
+  /// kept so [_scrollToMessage] can resolve a message id to a list index.
+  List<_Entry> _entries = const [];
+  int _itemCount = 0;
 
   /// Polls for messages the patient did not send — a reply from the clinic.
   ///
@@ -54,7 +65,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
+    _itemPositions.itemPositions.addListener(_onScroll);
     WidgetsBinding.instance.addObserver(this);
     // Resume the patient's ongoing conversation rather than opening blank.
     // Deferred past the first frame because it mutates a provider.
@@ -75,10 +86,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     }
   }
 
+  /// The jump-to-latest button appears once the newest row scrolls out of view.
   void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    final pos = _scrollController.position;
-    final away = pos.maxScrollExtent - pos.pixels > 240;
+    final positions = _itemPositions.itemPositions.value;
+    if (positions.isEmpty || _itemCount == 0) return;
+    final lastVisible = positions.map((p) => p.index).reduce((a, b) => a > b ? a : b);
+    final away = lastVisible < _itemCount - 2;
     if (away != _showJumpToLatest) setState(() => _showJumpToLatest = away);
   }
 
@@ -86,20 +99,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _poll?.cancel();
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
+    _itemPositions.itemPositions.removeListener(_onScroll);
     super.dispose();
   }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
+      if (!_itemScrollController.isAttached || _itemCount == 0) return;
+      _itemScrollController.scrollTo(
+        index: _itemCount - 1,
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
       );
     });
+  }
+
+  /// Jumps to a specific message (from a pinned banner or a reply quote),
+  /// leaving it a third of the way down so it reads as "here it is".
+  void _scrollToMessage(String messageId) {
+    final index = _entries.indexWhere((e) => e.message?.id == messageId);
+    if (index < 0 || !_itemScrollController.isAttached) return;
+    _itemScrollController.scrollTo(
+      index: index,
+      alignment: 0.3,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+    );
   }
 
   /// See [resolveReplyLanguage] — the app's displayed locale wins over the
@@ -137,6 +162,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final chatState = ref.watch(chatControllerProvider);
+    final user = ref.watch(authControllerProvider).user;
     // Watched, not read, so switching language in Profile immediately
     // re-points the speech recogniser at the new locale.
     ref.watch(localeControllerProvider);
@@ -174,6 +200,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     final showGenerating =
         chatState.isSending && (messages.isEmpty || messages.last.isUser || awaitingFirstToken);
 
+    // Kept so a banner/quote tap can resolve a message id to its list index.
+    _entries = entries;
+    _itemCount = entries.length + (showGenerating ? 1 : 0);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -182,6 +212,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         ),
         // No "new chat" action: the patient has one continuous conversation
         // with the assistant, which the doctor reviews as a single thread.
+        actions: [
+          if (user != null)
+            CallButton(room: CallService.roomForPatient(user.id), displayName: user.name),
+        ],
       ),
       // The Scaffold does not resize for the keyboard; instead the content is
       // padded by the keyboard inset below. This keeps the dotted background a
@@ -207,9 +241,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
               _PinnedBanner(
                 message: pinnedShown,
                 count: pinnedMsgs.length,
-                onTap: pinnedMsgs.length > 1
-                    ? () => setState(() => _pinnedIndex = (_pinnedIndex + 1) % pinnedMsgs.length)
-                    : null,
+                // Tap scrolls to the pinned message; with several pinned, it
+                // also advances to the next so repeated taps cycle through them.
+                onTap: () {
+                  _scrollToMessage(pinnedShown.id);
+                  if (pinnedMsgs.length > 1) {
+                    setState(() => _pinnedIndex = (_pinnedIndex + 1) % pinnedMsgs.length);
+                  }
+                },
                 onUnpin: () {
                   ref.read(chatControllerProvider.notifier).setPinned(pinnedShown.id, false);
                   setState(() => _pinnedIndex = 0);
@@ -222,8 +261,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                   ? const LoadingView()
                   : chatState.messages.isEmpty
                   ? ChatEmptyState(onSuggestionTap: _send)
-                  : ListView.builder(
-                      controller: _scrollController,
+                  : ScrollablePositionedList.builder(
+                      itemScrollController: _itemScrollController,
+                      itemPositionsListener: _itemPositions,
                       padding: const EdgeInsets.all(AppSpacing.md),
                       itemCount: entries.length + (showGenerating ? 1 : 0),
                       itemBuilder: (context, index) {
@@ -246,6 +286,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                                 : chatState.messages
                                       .where((m) => m.id == message.replyToId)
                                       .firstOrNull,
+                            // Tapping the reply quote jumps to the message it
+                            // answers, when that message is still in the thread.
+                            onQuoteTap: message.replyToId == null
+                                ? null
+                                : () => _scrollToMessage(message.replyToId!),
                             onReply: () => setState(() => _replyingTo = message),
                             onTogglePin: () => ref
                                 .read(chatControllerProvider.notifier)

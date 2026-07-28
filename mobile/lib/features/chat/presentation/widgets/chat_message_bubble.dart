@@ -25,6 +25,7 @@ class ChatMessageBubble extends StatelessWidget {
     this.onTogglePin,
     this.onHide,
     this.repliedTo,
+    this.onQuoteTap,
   });
 
   final ChatMessage message;
@@ -42,6 +43,9 @@ class ChatMessageBubble extends StatelessWidget {
 
   /// The message being answered, when this one is a reply.
   final ChatMessage? repliedTo;
+
+  /// Jump to the quoted message when its preview is tapped (WhatsApp-style).
+  final VoidCallback? onQuoteTap;
 
   /// Present only on an AI-unavailable fallback reply — lets the patient
   /// resend the question once the service is back.
@@ -222,19 +226,22 @@ class ChatMessageBubble extends StatelessWidget {
             // original; fall back to the server-sent preview so the quote shows
             // on every device even when the original is not loaded here.
             if (repliedTo != null || message.replyPreviewContent != null)
-              Container(
-                margin: const EdgeInsets.only(bottom: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border(left: BorderSide(color: AppColors.primary, width: 3)),
-                ),
-                child: Text(
-                  repliedTo?.content ?? message.replyPreviewContent!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+              GestureDetector(
+                onTap: onQuoteTap,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border(left: BorderSide(color: AppColors.primary, width: 3)),
+                  ),
+                  child: Text(
+                    repliedTo?.content ?? message.replyPreviewContent!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                  ),
                 ),
               ),
             GestureDetector(

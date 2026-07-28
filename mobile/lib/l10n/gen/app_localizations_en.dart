@@ -1013,6 +1013,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get careMessageClinicDesc => 'Chat directly with the clinic team';
 
   @override
+  String get callStart => 'Call';
+
+  @override
+  String get callVideo => 'Video call';
+
+  @override
+  String get callVoice => 'Voice call';
+
+  @override
+  String get callFailed => 'Could not start the call. Please try again.';
+
+  @override
   String get apptToday => 'Today';
 
   @override

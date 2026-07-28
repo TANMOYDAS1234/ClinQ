@@ -1007,6 +1007,18 @@ class AppLocalizationsBn extends AppLocalizations {
   String get careMessageClinicDesc => 'ক্লিনিক টিমের সঙ্গে সরাসরি চ্যাট করুন';
 
   @override
+  String get callStart => 'কল';
+
+  @override
+  String get callVideo => 'ভিডিও কল';
+
+  @override
+  String get callVoice => 'ভয়েস কল';
+
+  @override
+  String get callFailed => 'কল শুরু করা যায়নি। আবার চেষ্টা করুন।';
+
+  @override
   String get apptToday => 'আজ';
 
   @override

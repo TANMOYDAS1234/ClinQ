@@ -1012,6 +1012,18 @@ class AppLocalizationsHi extends AppLocalizations {
   String get careMessageClinicDesc => 'क्लिनिक टीम से सीधे चैट करें';
 
   @override
+  String get callStart => 'कॉल';
+
+  @override
+  String get callVideo => 'वीडियो कॉल';
+
+  @override
+  String get callVoice => 'वॉइस कॉल';
+
+  @override
+  String get callFailed => 'कॉल शुरू नहीं हो सका। कृपया पुनः प्रयास करें।';
+
+  @override
   String get apptToday => 'आज';
 
   @override

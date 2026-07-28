@@ -2026,6 +2026,30 @@ abstract class AppLocalizations {
   /// **'Chat directly with the clinic team'**
   String get careMessageClinicDesc;
 
+  /// No description provided for @callStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Call'**
+  String get callStart;
+
+  /// No description provided for @callVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video call'**
+  String get callVideo;
+
+  /// No description provided for @callVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice call'**
+  String get callVoice;
+
+  /// No description provided for @callFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the call. Please try again.'**
+  String get callFailed;
+
   /// No description provided for @apptToday.
   ///
   /// In en, this message translates to:

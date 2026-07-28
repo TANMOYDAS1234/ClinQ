@@ -32,7 +32,8 @@ android {
         applicationId = "com.akdcare.akd_care"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // Jitsi Meet (jitsi_meet_flutter_sdk 11.x) requires API 26+.
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
