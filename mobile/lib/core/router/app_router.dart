@@ -2,33 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/appointments/domain/clinic.dart';
-import '../../features/appointments/presentation/book_appointment_screen.dart';
 import '../../features/clinician/domain/knowledge_chunk.dart';
-import '../../features/appointments/presentation/my_appointments_screen.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
-import '../../features/care/presentation/care_placeholder_screen.dart';
-import '../../features/care/presentation/care_screen.dart';
 import '../../features/chat/presentation/chat_screen.dart';
 import '../../features/clinician/presentation/alerts_screen.dart';
-import '../../features/clinician/presentation/appointments_admin_screen.dart';
 import '../../features/clinician/presentation/chat_review_detail_screen.dart';
 import '../../features/clinician/presentation/chat_review_screen.dart';
-import '../../features/clinician/presentation/clinic_edit_screen.dart';
 import '../../features/clinician/presentation/clinician_more_screen.dart';
 import '../../features/clinician/presentation/clinician_shell.dart';
-import '../../features/clinician/presentation/clinics_screen.dart';
-import '../../features/clinician/presentation/dashboard_screen.dart' as clinician;
 import '../../features/clinician/presentation/knowledge_edit_screen.dart';
 import '../../features/clinician/presentation/knowledge_screen.dart';
 import '../../features/clinician/presentation/patient_detail_screen.dart';
 import '../../features/clinician/presentation/patient_thread_screen.dart';
 import '../../features/clinician/presentation/patients_screen.dart';
-import '../../features/messaging/presentation/clinic_chat_screen.dart';
 import '../../features/messaging/presentation/clinician_messages_screen.dart';
-import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/onboarding/presentation/language_picker_screen.dart';
 import '../../features/onboarding/presentation/splash_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
@@ -36,8 +25,6 @@ import '../../features/profile/presentation/health_details_screen.dart';
 import '../../features/profile/presentation/notifications_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/shell/presentation/app_shell.dart';
-import '../../features/shell/presentation/track_screen.dart';
-import '../../l10n/gen/app_localizations.dart';
 import '../../shared/providers/locale_provider.dart';
 
 /// Bridges Riverpod state changes into something [GoRouter]'s
@@ -66,8 +53,10 @@ String? _redirect(Ref ref, GoRouterState state) {
   const language = '/language';
   const login = '/login';
   const register = '/register';
-  const home = '/home';
-  const clinicianHome = '/clinician';
+  // Landing tabs after login. The patient app now opens on the Assistant and
+  // the clinician app on Patients (the former Home/Dashboard tabs were removed).
+  const home = '/chat';
+  const clinicianHome = '/clinician/patients';
 
   final isAuthRoute = loc == login || loc == register;
 
@@ -135,69 +124,12 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       ),
 
       // ---- Patient app --------------------------------------------------
+      // Two tabs: the AI/clinic Assistant and Profile.
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => AppShell(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(
-            routes: [GoRoute(path: '/home', builder: (context, state) => const DashboardScreen())],
-          ),
-          StatefulShellBranch(
             routes: [GoRoute(path: '/chat', builder: (context, state) => const ChatScreen())],
-          ),
-          StatefulShellBranch(
-            routes: [GoRoute(path: '/track', builder: (context, state) => const TrackScreen())],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/care',
-                builder: (context, state) => const CareScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'foot',
-                    builder: (context, state) => CarePlaceholderScreen(
-                      title: AppLocalizations.of(context).careFootCare,
-                      icon: Icons.directions_walk_rounded,
-                    ),
-                  ),
-                  GoRoute(
-                    path: 'eye',
-                    builder: (context, state) => CarePlaceholderScreen(
-                      title: AppLocalizations.of(context).careEyeCare,
-                      icon: Icons.visibility_outlined,
-                    ),
-                  ),
-                  GoRoute(
-                    path: 'appointments',
-                    builder: (context, state) => const MyAppointmentsScreen(),
-                    routes: [
-                      GoRoute(
-                        path: 'book',
-                        builder: (context, state) => const BookAppointmentScreen(),
-                      ),
-                    ],
-                  ),
-                  GoRoute(
-                    path: 'messages',
-                    builder: (context, state) => const ClinicChatScreen(),
-                  ),
-                  GoRoute(
-                    path: 'prescriptions',
-                    builder: (context, state) => CarePlaceholderScreen(
-                      title: AppLocalizations.of(context).carePrescriptions,
-                      icon: Icons.receipt_long_outlined,
-                    ),
-                  ),
-                  GoRoute(
-                    path: 'labs',
-                    builder: (context, state) => CarePlaceholderScreen(
-                      title: AppLocalizations.of(context).careLabReports,
-                      icon: Icons.science_outlined,
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ),
           StatefulShellBranch(
             routes: [
@@ -216,15 +148,12 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       ),
 
       // ---- Clinician app (doctor + staff) -------------------------------
+      // Two tabs: Patients (where a patient is opened and prescribed for) and
+      // Profile. Appointments, clinics and knowledge tools remain reachable from
+      // the Profile hub's shortcuts.
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => ClinicianShell(navigationShell: navigationShell),
         branches: [
-          StatefulShellBranch(
-            routes: [GoRoute(path: '/clinician', builder: (context, state) => const clinician.ClinicianDashboardScreen())],
-          ),
-          StatefulShellBranch(
-            routes: [GoRoute(path: '/clinician/appointments', builder: (context, state) => const AppointmentsAdminScreen())],
-          ),
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -234,21 +163,6 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: ':id',
                     builder: (context, state) => PatientDetailScreen(patientId: state.pathParameters['id']!),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/clinician/clinics',
-                builder: (context, state) => const ClinicsScreen(),
-                routes: [
-                  GoRoute(path: 'new', builder: (context, state) => const ClinicEditScreen()),
-                  GoRoute(
-                    path: 'edit',
-                    builder: (context, state) => ClinicEditScreen(clinic: state.extra as Clinic?),
                   ),
                 ],
               ),
