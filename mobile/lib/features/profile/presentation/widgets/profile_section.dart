@@ -34,9 +34,19 @@ class ProfileSection extends StatelessWidget {
         ),
         Container(
           decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            border: Border.all(color: scheme.outlineVariant),
+            color: scheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+            // A single soft shadow, not a stack of them: it lifts the group off
+            // the background just enough to read as a card, without the drop
+            // shadow that makes an interface look like a slide deck.
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 14,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           // Clipped so a row's ripple stays inside the rounded corners.
           clipBehavior: Clip.antiAlias,
@@ -93,7 +103,19 @@ class ProfileRow extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(icon, size: 22, color: accent),
+                // Tinted rounded tile rather than a bare glyph. It gives every
+                // row the same optical left edge regardless of how wide its
+                // icon is, which is most of what makes a settings list look
+                // considered rather than assembled.
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: isDanger ? 0.10 : 0.11),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 19, color: accent),
+                ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
@@ -134,7 +156,17 @@ class ProfileRow extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          Divider(height: 1, thickness: 1, color: scheme.outlineVariant.withValues(alpha: 0.6)),
+          // Indented to start under the text, not the icon tile. A full-bleed
+          // rule cuts the icon column in half and makes the group read as
+          // separate strips rather than one list.
+          Padding(
+            padding: const EdgeInsets.only(left: 64),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: scheme.outlineVariant.withValues(alpha: 0.55),
+            ),
+          ),
       ],
     );
   }

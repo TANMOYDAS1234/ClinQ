@@ -113,19 +113,32 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          minimumSize: const Size.fromHeight(AppSpacing.minTapTarget),
-          textStyle: textTheme.labelLarge,
+          minimumSize: const Size.fromHeight(52),
+          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+          // Flat. A raised primary button under a Material 3 tint picks up a
+          // grey wash on press that reads as a rendering fault.
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(52),
+          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(AppSpacing.minTapTarget),
-          textStyle: textTheme.labelLarge,
+          minimumSize: const Size.fromHeight(52),
+          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+          side: BorderSide(color: colorScheme.outlineVariant, width: 1.4),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
       ),

@@ -163,15 +163,33 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
                         Container(
                           decoration: BoxDecoration(
                             color: scheme.surfaceContainerLowest,
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(18),
                             border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+                            // Matches the settings groups, so the two panels
+                            // read as one product rather than two apps.
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 14,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
                           ),
                           clipBehavior: Clip.antiAlias,
                           child: Column(
                             children: [
                               for (var i = 0; i < items.length; i++) ...[
                                 if (i > 0)
-                                  Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.6)),
+                                  // Indented past the avatar, so the list reads
+                                  // as one column of people rather than a stack
+                                  // of separate strips.
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 76),
+                                    child: Divider(
+                                      height: 1,
+                                      color: scheme.outlineVariant.withValues(alpha: 0.55),
+                                    ),
+                                  ),
                                 _ConversationRow(
                                   patient: items[i],
                                   onTap: () => context.push(
