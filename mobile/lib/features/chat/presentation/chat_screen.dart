@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
-import '../../../core/call/call_button.dart';
-import '../../../core/call/call_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../l10n/gen/app_localizations.dart';
@@ -162,7 +160,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final chatState = ref.watch(chatControllerProvider);
-    final user = ref.watch(authControllerProvider).user;
     // Watched, not read, so switching language in Profile immediately
     // re-points the speech recogniser at the new locale.
     ref.watch(localeControllerProvider);
@@ -212,14 +209,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         ),
         // No "new chat" action: the patient has one continuous conversation
         // with the assistant, which the doctor reviews as a single thread.
-        actions: [
-          if (user != null)
-            CallButton(
-              room: CallService.roomForPatient(user.id),
-              displayName: user.name,
-              patientId: user.id,
-            ),
-        ],
       ),
       // The Scaffold does not resize for the keyboard; instead the content is
       // padded by the keyboard inset below. This keeps the dotted background a

@@ -3,13 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/call/call_button.dart';
-import '../../../core/call/call_service.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../auth/presentation/auth_controller.dart';
 import '../../chat/domain/chat_message.dart';
+
 import '../../chat/presentation/widgets/chat_message_bubble.dart';
 import '../../chat/presentation/widgets/dotted_background.dart';
 import '../data/clinician_repository.dart';
@@ -135,13 +133,6 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
           _patientName ?? 'Conversation',
           style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
         ),
-        actions: [
-          CallButton(
-            room: CallService.roomForPatient(widget.patientId),
-            displayName: ref.watch(authControllerProvider).user?.name ?? 'Clinic',
-            patientId: widget.patientId,
-          ),
-        ],
       ),
       // Matches the patient's screen: a fixed background that never repaints as
       // the keyboard animates.

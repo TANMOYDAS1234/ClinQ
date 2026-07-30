@@ -56,11 +56,6 @@ dependencies:
   # TZDateTime). Pure Dart; local zone is pinned to the clinic's Asia/Kolkata.
   timezone: ^0.10.0
 
-  # In-app voice/video calling (free, self-hostable). One call icon opens a
-  # Jitsi room keyed to the patient↔doctor thread; camera can be toggled in-call
-  # for voice ↔ video. Pinned to 13.x: the WebRTC bundled by 11.x aborts on
-  # init on newer MediaTek/Android 14 devices; 13.x ships a newer WebRTC build.
-  jitsi_meet_flutter_sdk: ^13.0.0
 
   # Scroll straight to a specific message (tap a pinned banner or a reply quote),
   # which a lazy ListView cannot do since off-screen rows are not built.

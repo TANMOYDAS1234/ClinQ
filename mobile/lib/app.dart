@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'core/call/call_signaling.dart';
 import 'core/config/app_config.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -60,11 +59,10 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
       final isAuthed = next.user != null;
       if (!wasAuthed && isAuthed) {
         ref.read(pushServiceProvider).start();
-        ref.read(callSignalingProvider).start();
         _syncMedsIfPatient();
       } else if (wasAuthed && !isAuthed) {
         ref.read(pushServiceProvider).stop();
-        ref.read(callSignalingProvider).stop();
+        // Call signalling is gone with the calling feature — nothing to stop.
         // Clear a departing patient's dose reminders from a shared phone.
         NotificationService.instance.cancelMedicationReminders();
       }

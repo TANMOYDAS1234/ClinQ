@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import mongoose from 'mongoose';
 
 import { isProd } from '../config/env.js';
@@ -12,7 +12,6 @@ import careRoutes from './care.js';
 import appointmentRoutes from './appointments.js';
 import clinicRoutes from './clinics.js';
 import messageRoutes from './messages.js';
-import callRoutes from './calls.js';
 import prescriptionRoutes from './prescriptions.js';
 import dashboardRoutes from './dashboard.js';
 import doctorRoutes from './doctor.js';
@@ -26,7 +25,7 @@ const router = Router();
  * `readyState` alone describes the socket, not whether this process can
  * actually use the database. A deployment whose credentials lack rights on the
  * database keeps a happily open connection and reported `db: "connected"` while
- * every single query failed — a green health check sitting on top of a server
+ * every single query failed â€” a green health check sitting on top of a server
  * that could not serve a login. So the check issues a real read, and answers
  * 503 when the database is reachable but unusable, which is what a load
  * balancer or uptime monitor needs to see.
@@ -66,12 +65,11 @@ router.use('/chat', chatRoutes);
 router.use('/appointments', appointmentRoutes);
 router.use('/clinics', clinicRoutes);
 router.use('/messages', messageRoutes);
-router.use('/calls', callRoutes);
 router.use('/doctor', doctorRoutes);
 router.use('/uploads', uploadRoutes);
 
 // Patient-scoped clinical data. `:patientId` is 'me' for patients, or a real
-// id for clinicians — resolvePatientScope enforces which is allowed.
+// id for clinicians â€” resolvePatientScope enforces which is allowed.
 router.use('/patients/:patientId', trackingRoutes);
 router.use('/patients/:patientId/medications', medicationRoutes);
 router.use('/patients/:patientId', careRoutes);
