@@ -228,7 +228,16 @@ router.get(
         total: 0,
         hasMore: false,
         patient: req.patientUser
-          ? { id: req.patientUser._id, name: req.patientUser.name, phone: req.patientUser.phone }
+          ? {
+              id: req.patientUser._id,
+              name: req.patientUser.name,
+              phone: req.patientUser.phone,
+              // The clinician's conversation header shows the photo the patient
+              // set, so the clinic sees the same face the patient chose.
+              avatarUrl: req.patientUser.avatarAssetId
+                ? `/api/v1/uploads/${req.patientUser.avatarAssetId}/raw` 
+                : null,
+            }
           : null,
       });
     }
@@ -257,7 +266,16 @@ router.get(
       ...paged(items.map(serialiseMessage), { page, limit, total }),
       session: session ? serialiseSession(session) : null,
       patient: req.patientUser
-        ? { id: req.patientUser._id, name: req.patientUser.name, phone: req.patientUser.phone }
+        ? {
+              id: req.patientUser._id,
+              name: req.patientUser.name,
+              phone: req.patientUser.phone,
+              // The clinician's conversation header shows the photo the patient
+              // set, so the clinic sees the same face the patient chose.
+              avatarUrl: req.patientUser.avatarAssetId
+                ? `/api/v1/uploads/${req.patientUser.avatarAssetId}/raw` 
+                : null,
+            }
         : null,
     });
   }),

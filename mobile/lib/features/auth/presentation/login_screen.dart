@@ -3,6 +3,7 @@ import 'package:flutter/services.dart'; // FilteringTextInputFormatter, LengthLi
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -104,15 +105,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             key: _formKey,
             autovalidateMode: _autovalidateMode,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const SizedBox(height: AppSpacing.xxl),
+                // Brand block centred above the form: on first launch this is
+                // the only thing on screen worth looking at, and centring it
+                // stops the eye starting at a form field.
+                const Center(child: AppLogo(size: 76, showShadow: true)),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  AppConfig.appName,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.authLoginSubtitle,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15.5,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.xl),
-                const AppLogo(size: 72, showShadow: true),
-                const SizedBox(height: AppSpacing.lg),
-                Text(l10n.authLoginTitle, style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(height: AppSpacing.xs),
-                Text(l10n.authLoginSubtitle, style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(height: AppSpacing.xl),
+                // The form sits on its own raised card. It separates "who this
+                // app is" from "what you have to do", which a single flat
+                // column runs together.
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.number,
@@ -181,19 +214,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ],
                 const SizedBox(height: AppSpacing.lg),
                 AppButton(label: l10n.authLoginButton, isLoading: _isSubmitting, onPressed: _submit),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.lg),
                 Center(
                   child: Wrap(
                     alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(l10n.authNoAccount, style: Theme.of(context).textTheme.bodyMedium),
                       TextButton(
                         onPressed: () => context.go('/register'),
-                        child: Text(l10n.authGoToRegister),
+                        child: Text(
+                          l10n.authGoToRegister,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: AppSpacing.lg),
               ],
             ),
           ),

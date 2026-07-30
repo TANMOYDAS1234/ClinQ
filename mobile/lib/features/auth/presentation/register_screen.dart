@@ -3,12 +3,14 @@ import 'package:flutter/services.dart'; // FilteringTextInputFormatter, LengthLi
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/auth_validators.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../shared/providers/locale_provider.dart';
 import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/app_logo.dart';
 import '../../../shared/widgets/error_view.dart';
 import 'auth_controller.dart';
 
@@ -114,10 +116,43 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             key: _formKey,
             autovalidateMode: _autovalidateMode,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(l10n.authRegisterSubtitle, style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: AppSpacing.md),
+                // Same brand block as sign-in, so the two screens read as one
+                // product rather than a styled entry and a plain form.
+                const Center(child: AppLogo(size: 64, showShadow: true)),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  AppConfig.appName,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.authRegisterSubtitle,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15.5,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.lg),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                 TextFormField(
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
@@ -309,19 +344,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   isLoading: _isSubmitting,
                   onPressed: _submit,
                 ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.lg),
                 Center(
                   child: Wrap(
                     alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(l10n.authHaveAccount, style: Theme.of(context).textTheme.bodyMedium),
                       TextButton(
                         onPressed: () => context.go('/login'),
-                        child: Text(l10n.authGoToLogin),
+                        child: Text(
+                          l10n.authGoToLogin,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: AppSpacing.lg),
               ],
             ),
           ),

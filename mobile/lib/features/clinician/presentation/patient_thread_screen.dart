@@ -42,6 +42,10 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
   /// Carried so the doctor can call from inside the conversation, which is
   /// where the decision to stop typing and phone someone is actually made.
   String? _patientPhone;
+
+  /// The photo the patient set. Part of recognising who you are talking to,
+  /// so it is read from the thread rather than left as an initial.
+  String? _patientAvatarUrl;
   bool _loading = true;
   bool _sending = false;
   Object? _error;
@@ -92,6 +96,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
         _messages = result.messages;
         _patientName = result.patientName ?? _patientName;
         _patientPhone = result.patientPhone ?? _patientPhone;
+        _patientAvatarUrl = result.patientAvatarUrl ?? _patientAvatarUrl;
         _loading = false;
         _error = null;
       });
@@ -151,7 +156,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
           children: [
             UserAvatar(
               name: _patientName ?? '?',
-              avatarUrl: null,
+              avatarUrl: _patientAvatarUrl,
               accent: AppColors.primary,
               size: 36,
             ),
