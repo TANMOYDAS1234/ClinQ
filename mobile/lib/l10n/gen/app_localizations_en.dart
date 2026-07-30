@@ -318,7 +318,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardErrorTitle => 'Couldn\'t load your dashboard';
 
   @override
-  String get chatTitle => 'Care Team';
+  String get chatTitle => 'Dr. Dey\'s Clinic';
 
   @override
   String get chatFromClinic => 'From the clinic';

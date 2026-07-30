@@ -316,7 +316,7 @@ class AppLocalizationsBn extends AppLocalizations {
   String get dashboardErrorTitle => 'ড্যাশবোর্ড লোড করা গেল না';
 
   @override
-  String get chatTitle => 'পরিচর্যা দল';
+  String get chatTitle => 'ডাঃ দে-র ক্লিনিক';
 
   @override
   String get chatFromClinic => 'ক্লিনিক থেকে';

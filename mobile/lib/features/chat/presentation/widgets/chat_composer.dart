@@ -281,6 +281,11 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                                 style: const TextStyle(fontSize: 16),
                                 decoration: InputDecoration(
                                   hintText: l10n.chatComposerHint,
+                                  // The field grows to 5 lines, and without
+                                  // this the placeholder wrapped with it —
+                                  // opening the screen on a two-line hint and
+                                  // a pill twice the height it needs.
+                                  hintMaxLines: 1,
                                   // Null every border state: the app theme sets
                                   // enabled/focused borders explicitly, which
                                   // otherwise draw a second box inside the pill.

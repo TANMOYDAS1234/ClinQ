@@ -319,7 +319,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get dashboardErrorTitle => 'डैशबोर्ड लोड नहीं हो सका';
 
   @override
-  String get chatTitle => 'देखभाल टीम';
+  String get chatTitle => 'डॉ. डे का क्लिनिक';
 
   @override
   String get chatFromClinic => 'क्लिनिक से';

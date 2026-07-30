@@ -685,7 +685,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatTitle.
   ///
   /// In en, this message translates to:
-  /// **'Care Team'**
+  /// **'Dr. Dey\'s Clinic'**
   String get chatTitle;
 
   /// No description provided for @chatFromClinic.
