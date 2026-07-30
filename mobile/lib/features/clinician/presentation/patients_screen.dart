@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -179,7 +178,6 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
                                     '/clinician/patients/${items[i].id}/thread',
                                     extra: items[i].name,
                                   ),
-                                  onCall: () => _call(context, items[i].phone),
                                 ),
                               ],
                             ],
@@ -197,12 +195,6 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
     );
   }
 
-  Future<void> _call(BuildContext context, String phone) async {
-    final messenger = ScaffoldMessenger.of(context);
-    if (!await launchUrl(Uri(scheme: 'tel', path: phone))) {
-      messenger.showSnackBar(SnackBar(content: Text('Could not start a call to $phone')));
-    }
-  }
 }
 
 /// Brand row. Uses the app's own mark, not a generic medical cross.
@@ -306,11 +298,10 @@ class _SectionBar extends StatelessWidget {
 /// One conversation. Reads top-to-bottom as: who, when, what was last said,
 /// and whether it needs the doctor.
 class _ConversationRow extends StatelessWidget {
-  const _ConversationRow({required this.patient, required this.onTap, required this.onCall});
+  const _ConversationRow({required this.patient, required this.onTap});
 
   final PatientListItem patient;
   final VoidCallback onTap;
-  final VoidCallback onCall;
 
   /// `10:42 AM` today, `Yesterday`, a weekday within the week, else `12 Oct`.
   String _stamp(DateTime at) {
@@ -432,13 +423,6 @@ class _ConversationRow extends StatelessWidget {
                   ],
                 ],
               ),
-            ),
-            // Calling stays one tap from the row: it is what a doctor reaches
-            // for when a message is not enough.
-            IconButton(
-              onPressed: onCall,
-              tooltip: 'Call ${patient.name}',
-              icon: const Icon(Icons.call_rounded, size: 21, color: AppColors.primary),
             ),
           ],
         ),

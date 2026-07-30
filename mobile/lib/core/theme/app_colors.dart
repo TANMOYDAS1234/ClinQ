@@ -20,7 +20,10 @@ class AppColors {
   /// The brighter green, for accents that must read at small sizes.
   static const Color accent = Color(0xFF10B981);
 
-  static const Color surfaceLight = Color(0xFFF5F7FA);
+  /// Near-white, with only a trace of cool to stop it glaring. Deliberately not
+  /// tinted toward the brand green — a clinical screen read all day should be
+  /// neutral paper, not a coloured wash.
+  static const Color surfaceLight = Color(0xFFFBFCFD);
   static const Color surfaceDark = Color(0xFF0F1720);
 
   static const Color danger = Color(0xFFDC2626);

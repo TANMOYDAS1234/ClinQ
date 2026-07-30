@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -10,6 +12,7 @@ import '../../chat/domain/chat_message.dart';
 
 import '../../chat/presentation/widgets/chat_message_bubble.dart';
 import '../../chat/presentation/widgets/dotted_background.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../data/clinician_repository.dart';
 
 /// The clinician's view of a patient's conversation.
@@ -35,6 +38,10 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
 
   List<ChatMessage> _messages = const [];
   String? _patientName;
+
+  /// Carried so the doctor can call from inside the conversation, which is
+  /// where the decision to stop typing and phone someone is actually made.
+  String? _patientPhone;
   bool _loading = true;
   bool _sending = false;
   Object? _error;
@@ -84,6 +91,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
       setState(() {
         _messages = result.messages;
         _patientName = result.patientName ?? _patientName;
+        _patientPhone = result.patientPhone ?? _patientPhone;
         _loading = false;
         _error = null;
       });
@@ -102,6 +110,15 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
       if (!_scrollController.hasClients) return;
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     });
+  }
+
+  Future<void> _call() async {
+    final phone = _patientPhone;
+    if (phone == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    if (!await launchUrl(Uri(scheme: 'tel', path: phone))) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not start a call to $phone')));
+    }
   }
 
   Future<void> _send() async {
@@ -129,10 +146,40 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _patientName ?? 'Conversation',
-          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            UserAvatar(
+              name: _patientName ?? '?',
+              avatarUrl: null,
+              accent: AppColors.primary,
+              size: 36,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _patientName ?? 'Conversation',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
         ),
+        actions: [
+          // Calling belongs here rather than on the inbox row: the decision to
+          // stop typing and phone someone is made while reading the exchange,
+          // not while scanning the list.
+          IconButton(
+            tooltip: 'Call ${_patientName ?? 'patient'}',
+            icon: const Icon(Icons.call_rounded, color: AppColors.primary),
+            onPressed: _patientPhone == null ? null : _call,
+          ),
+        ],
       ),
       // Matches the patient's screen: a fixed background that never repaints as
       // the keyboard animates.

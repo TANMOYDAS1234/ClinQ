@@ -26,17 +26,28 @@ class ClinicianRepository {
   /// Reuses [ChatMessage] rather than a clinician-specific model on purpose:
   /// the doctor is reading the same thread, and a parallel type would let the
   /// two views drift apart.
-  Future<({String? patientName, List<ChatMessage> messages})> patientThread(String patientId) async {
+  Future<({String? patientName, String? patientPhone, List<ChatMessage> messages})> patientThread(
+    String patientId,
+  ) async {
     final json = await _client.getJson('/chat/patients/$patientId/thread', query: {'limit': 100});
     final items = (json['items'] as List? ?? const [])
         .whereType<Map<String, dynamic>>()
+        // Sorted by createdAt, not seq: seq restarts per session, so it cannot
+        // order a history that spans several.
         .map(ChatMessage.fromJson)
         .toList()
-      ..sort((a, b) => a.seq.compareTo(b.seq));
+      ..sort((a, b) {
+        final at = a.createdAt;
+        final bt = b.createdAt;
+        if (at == null || bt == null) return a.seq.compareTo(b.seq);
+        return at.compareTo(bt);
+      });
 
     final patient = json['patient'];
     return (
       patientName: patient is Map ? patient['name']?.toString() : null,
+      // Carried so the clinician can call from inside the conversation.
+      patientPhone: patient is Map ? patient['phone']?.toString() : null,
       messages: items,
     );
   }
