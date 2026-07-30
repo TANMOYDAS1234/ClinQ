@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -11,9 +10,16 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
-import 'widgets/clinician_visuals.dart';
 
-/// The doctor's patient directory: searchable, sortable, risk-segmented.
+/// The clinician's inbox.
+///
+/// Deliberately a conversation list rather than a clinical directory: reaching a
+/// waiting patient is the daily job, and the question the doctor opens the app
+/// to answer is "who is waiting on me", not "who has the worst HbA1c". Risk and
+/// alerts still appear, but as marks on a row, not as the organising principle.
+///
+/// Rows sort unread-first, then by most recent message, so the list orders
+/// itself around that question without the doctor having to filter.
 class PatientsScreen extends ConsumerStatefulWidget {
   const PatientsScreen({super.key});
 
@@ -25,28 +31,15 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
     with WidgetsBindingObserver {
   final _searchController = TextEditingController();
   String _search = '';
-  String _sort = 'risk';
-  String? _riskBand;
   Timer? _debounce;
   Timer? _poll;
 
-  /// How often the list re-reads while the doctor is looking at it.
-  ///
-  /// A patient can change their name or photo at any moment and there is no
-  /// socket or push channel to hear about it, so the list refreshes on a timer
-  /// and on resume rather than waiting for a manual pull. Thirty seconds is
-  /// frequent enough that a change appears while the clinic is still on the
-  /// screen, and light enough to be harmless — the query is indexed and the
-  /// payload is a few rows.
-  static const _pollInterval = Duration(seconds: 30);
+  /// Only unread conversations, when the doctor wants the queue and nothing else.
+  bool _unreadOnly = false;
 
-  static const _bands = [
-    (null, 'All'),
-    ('critical', 'Critical'),
-    ('high', 'High'),
-    ('moderate', 'Moderate'),
-    ('low', 'Low'),
-  ];
+  /// The inbox is only useful if it is current. There is no socket, so it
+  /// re-reads on a timer while on screen and immediately on resume.
+  static const _pollInterval = Duration(seconds: 20);
 
   @override
   void initState() {
@@ -66,8 +59,8 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Coming back from the background is the likeliest moment for the list to
-    // be stale, so refresh immediately rather than waiting out the timer.
+    // Returning from the background is the likeliest moment for a new message
+    // to have arrived, so check at once rather than waiting out the timer.
     if (state == AppLifecycleState.resumed) _refresh();
   }
 
@@ -82,196 +75,121 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
     });
   }
 
-  PatientsQuery get _query => (riskBand: _riskBand, search: _search.isEmpty ? null : _search, sort: _sort);
+  PatientsQuery get _query =>
+      (riskBand: null, search: _search.isEmpty ? null : _search, sort: 'name');
+
+  /// Unread first, then newest message. A patient who has never written sinks
+  /// to the bottom — there is nothing waiting there.
+  List<PatientListItem> _ordered(List<PatientListItem> items) {
+    final list = [...items];
+    list.sort((a, b) {
+      if ((a.unreadCount > 0) != (b.unreadCount > 0)) return a.unreadCount > 0 ? -1 : 1;
+      final at = a.lastMessage?.at;
+      final bt = b.lastMessage?.at;
+      if (at == null && bt == null) return a.name.compareTo(b.name);
+      if (at == null) return 1;
+      if (bt == null) return -1;
+      return bt.compareTo(at);
+    });
+    return list;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final async = ref.watch(patientsProvider(_query));
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text('Patients'),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.sort_rounded),
-            initialValue: _sort,
-            onSelected: (v) => setState(() => _sort = v),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'risk', child: Text('Sort by risk')),
-              PopupMenuItem(value: 'name', child: Text('Sort by name')),
-              PopupMenuItem(value: 'recent', child: Text('Sort by recent activity')),
-            ],
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(104),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: _onSearchChanged,
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: 'Search name or phone',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _search.isEmpty
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.close_rounded),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _search = '');
-                            },
-                          ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: scheme.surface,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const _InboxHeader(),
+            _SearchField(controller: _searchController, onChanged: _onSearchChanged),
+            _SectionBar(
+              unreadOnly: _unreadOnly,
+              onToggleFilter: () => setState(() => _unreadOnly = !_unreadOnly),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async => _refresh(),
+                child: async.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (_, _) => ListView(
+                    children: [
+                      SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                      const Center(child: Text('Could not load messages')),
+                      const SizedBox(height: AppSpacing.sm),
+                      Center(
+                        child: OutlinedButton(onPressed: _refresh, child: const Text('Retry')),
+                      ),
+                    ],
                   ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              SizedBox(
-                height: 38,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                  itemCount: _bands.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
-                  itemBuilder: (context, i) {
-                    final (value, label) = _bands[i];
-                    return ChoiceChip(
-                      label: Text(label),
-                      selected: _riskBand == value,
-                      onSelected: (_) => setState(() => _riskBand = value),
+                  data: (paged) {
+                    var items = _ordered(paged.items);
+                    if (_unreadOnly) items = items.where((p) => p.unreadCount > 0).toList();
+
+                    if (items.isEmpty) {
+                      return ListView(
+                        children: [
+                          SizedBox(height: MediaQuery.of(context).size.height * 0.18),
+                          Icon(
+                            _unreadOnly ? Icons.mark_email_read_outlined : Icons.forum_outlined,
+                            size: 52,
+                            color: scheme.outlineVariant,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Center(
+                            child: Text(
+                              _unreadOnly ? 'Nothing unread' : 'No conversations yet',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+
+                    // One grouped card with hairline dividers, rather than a
+                    // separate floating card per patient — a long inbox of
+                    // detached cards reads as clutter.
+                    return ListView(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        0,
+                        AppSpacing.md,
+                        AppSpacing.lg,
+                      ),
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: scheme.surfaceContainerLowest,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Column(
+                            children: [
+                              for (var i = 0; i < items.length; i++) ...[
+                                if (i > 0)
+                                  Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.6)),
+                                _ConversationRow(
+                                  patient: items[i],
+                                  onTap: () => context.push(
+                                    '/clinician/patients/${items[i].id}/thread',
+                                    extra: items[i].name,
+                                  ),
+                                  onCall: () => _call(context, items[i].phone),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-          ),
-        ),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(patientsProvider(_query)),
-        child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Could not load patients'),
-                const SizedBox(height: AppSpacing.sm),
-                OutlinedButton(onPressed: () => ref.invalidate(patientsProvider(_query)), child: const Text('Retry')),
-              ],
-            ),
-          ),
-          data: (paged) {
-            if (paged.items.isEmpty) {
-              return ListView(
-                children: [
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-                  Icon(Icons.person_search_outlined, size: 56, color: scheme.outlineVariant),
-                  const SizedBox(height: AppSpacing.md),
-                  const Center(child: Text('No patients found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
-                ],
-              );
-            }
-            return ListView.separated(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              itemCount: paged.items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-              itemBuilder: (context, i) => _PatientRow(
-                patient: paged.items[i],
-                onTap: () => context.push('/clinician/patients/${paged.items[i].id}'),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _PatientRow extends StatelessWidget {
-  const _PatientRow({required this.patient, required this.onTap});
-
-  final PatientListItem patient;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final p = patient;
-    final band = riskBandColor(p.riskBand);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-        ),
-        child: Row(
-          children: [
-            // Shows the photo the patient set, falling back to their initial.
-            // The clinic seeing the same face the patient chose is part of
-            // recognising them, so this is not merely decorative.
-            UserAvatar(name: p.name, avatarUrl: p.avatarUrl, accent: band, size: 46),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(p.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
-                  Text(
-                    p.lastReadingValue != null
-                        ? 'Last: ${p.lastReadingValue} mg/dL · ${p.lastReadingAt != null ? DateFormat('d MMM').format(p.lastReadingAt!) : ''}'
-                        : p.phone,
-                    style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                MiniPill(label: riskBandLabel(p.riskBand), color: band),
-                if (p.openAlertCount > 0) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.warning_amber_rounded, size: 14, color: Color(0xFFDC2626)),
-                      const SizedBox(width: 2),
-                      Text('${p.openAlertCount}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-            // Call and message live on the row itself. Opening a patient's
-            // profile to do either cost the doctor a screen each time, on the
-            // two actions taken most often and most urgently.
-            const SizedBox(width: 4),
-            _RowAction(
-              icon: Icons.call_rounded,
-              tooltip: 'Call ${p.name}',
-              onTap: () => _call(context, p.phone),
-            ),
-            _RowAction(
-              icon: Icons.chat_bubble_outline_rounded,
-              tooltip: 'Message ${p.name}',
-              onTap: () => _message(context),
             ),
           ],
         ),
@@ -281,38 +199,272 @@ class _PatientRow extends StatelessWidget {
 
   Future<void> _call(BuildContext context, String phone) async {
     final messenger = ScaffoldMessenger.of(context);
-    final uri = Uri(scheme: 'tel', path: phone);
-    if (!await launchUrl(uri)) {
+    if (!await launchUrl(Uri(scheme: 'tel', path: phone))) {
       messenger.showSnackBar(SnackBar(content: Text('Could not start a call to $phone')));
     }
   }
-
-  /// Straight into the patient's own conversation — not their profile. The
-  /// point of putting this on the row was to remove a screen, not move one.
-  void _message(BuildContext context) {
-    context.push('/clinician/patients/${patient.id}/thread', extra: patient.name);
-  }
 }
 
-/// Compact 40px icon button used for the per-row call/message actions.
-class _RowAction extends StatelessWidget {
-  const _RowAction({required this.icon, required this.tooltip, required this.onTap});
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
+/// Brand row. Uses the app's own mark, not a generic medical cross.
+class _InboxHeader extends StatelessWidget {
+  const _InboxHeader();
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Icon(icon, size: 21, color: AppColors.primary),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.sm),
+      child: Row(
+        children: [
+          Image.asset('assets/images/logo.png', height: 30, errorBuilder: (_, _, _) =>
+              const Icon(Icons.forum_rounded, size: 26, color: AppColors.primary)),
+          const SizedBox(width: 10),
+          const Text(
+            'ClinQ',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SearchField extends StatelessWidget {
+  const _SearchField({required this.controller, required this.onChanged});
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        style: const TextStyle(fontSize: 15.5),
+        decoration: InputDecoration(
+          hintText: 'Search patients or messages…',
+          prefixIcon: Icon(Icons.search_rounded, color: scheme.onSurfaceVariant),
+          filled: true,
+          fillColor: scheme.surfaceContainerHigh.withValues(alpha: 0.55),
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: BorderSide(color: scheme.outlineVariant),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: BorderSide(color: scheme.outlineVariant),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _SectionBar extends StatelessWidget {
+  const _SectionBar({required this.unreadOnly, required this.onToggleFilter});
+
+  final bool unreadOnly;
+  final VoidCallback onToggleFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.lg, AppSpacing.sm, AppSpacing.md),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Patient Messages',
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4),
+            ),
+          ),
+          TextButton(
+            onPressed: onToggleFilter,
+            child: Text(
+              unreadOnly ? 'Show all' : 'Unread',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One conversation. Reads top-to-bottom as: who, when, what was last said,
+/// and whether it needs the doctor.
+class _ConversationRow extends StatelessWidget {
+  const _ConversationRow({required this.patient, required this.onTap, required this.onCall});
+
+  final PatientListItem patient;
+  final VoidCallback onTap;
+  final VoidCallback onCall;
+
+  /// `10:42 AM` today, `Yesterday`, a weekday within the week, else `12 Oct`.
+  String _stamp(DateTime at) {
+    final now = DateTime.now();
+    final day = DateTime(at.year, at.month, at.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final diff = today.difference(day).inDays;
+
+    if (diff == 0) {
+      final h = at.hour % 12 == 0 ? 12 : at.hour % 12;
+      return '$h:${at.minute.toString().padLeft(2, '0')} ${at.hour < 12 ? 'AM' : 'PM'}';
+    }
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) {
+      return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][at.weekday - 1];
+    }
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${at.day} ${months[at.month - 1]}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final msg = patient.lastMessage;
+    final unread = patient.unreadCount > 0;
+    final emergency = msg?.urgency == 'emergency' || msg?.urgency == 'urgent';
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            UserAvatar(
+              name: patient.name,
+              avatarUrl: patient.avatarUrl,
+              accent: emergency ? AppColors.danger : AppColors.primary,
+              size: 48,
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          patient.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 16.5,
+                            // Unread rows carry the weight, so the queue is
+                            // visible without reading a single word.
+                            fontWeight: unread ? FontWeight.w800 : FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (msg != null)
+                        Text(
+                          _stamp(msg.at),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: unread ? AppColors.primary : scheme.onSurfaceVariant,
+                            fontWeight: unread ? FontWeight.w700 : FontWeight.w400,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    msg == null
+                        ? 'No messages yet'
+                        // Say who spoke, so "answered" and "waiting" are
+                        // distinguishable at a glance.
+                        : msg.fromPatient
+                        ? msg.preview
+                        : 'You: ${msg.preview}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      height: 1.35,
+                      color: msg == null
+                          ? scheme.outline
+                          : unread
+                          ? scheme.onSurface
+                          : scheme.onSurfaceVariant,
+                      fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                  if (unread || emergency || patient.openAlertCount > 0) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        if (emergency)
+                          const _Chip(
+                            label: 'Needs attention',
+                            fg: AppColors.danger,
+                            bg: AppColors.dangerBg,
+                            icon: Icons.priority_high_rounded,
+                          ),
+                        if (unread)
+                          _Chip(
+                            label: patient.unreadCount == 1
+                                ? 'New message'
+                                : '${patient.unreadCount} new messages',
+                            fg: AppColors.primary,
+                            bg: AppColors.accentSoft,
+                            icon: Icons.mark_chat_unread_rounded,
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // Calling stays one tap from the row: it is what a doctor reaches
+            // for when a message is not enough.
+            IconButton(
+              onPressed: onCall,
+              tooltip: 'Call ${patient.name}',
+              icon: const Icon(Icons.call_rounded, size: 21, color: AppColors.primary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({required this.label, required this.fg, required this.bg, required this.icon});
+
+  final String label;
+  final Color fg;
+  final Color bg;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: fg),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: fg),
+          ),
+        ],
       ),
     );
   }

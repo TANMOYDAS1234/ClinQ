@@ -121,7 +121,7 @@ router.get(
     ]);
 
     const ids = users.map((u) => u._id);
-    const [lastReadings, alertCounts] = await Promise.all([
+    const [lastReadings, alertCounts, lastMessages, unreadCounts] = await Promise.all([
       GlucoseReading.aggregate([
         { $match: { patient: { $in: ids } } },
         { $sort: { measuredAt: -1 } },
@@ -131,10 +131,34 @@ router.get(
         { $match: { patient: { $in: ids }, status: 'open' } },
         { $group: { _id: '$patient', count: { $sum: 1 } } },
       ]),
+      // Newest turn per patient, whoever wrote it, so the row reads like an
+      // inbox: what was last said and when, not merely that a thread exists.
+      ChatMessage.aggregate([
+        { $match: { patient: { $in: ids } } },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: '$patient',
+            content: { $first: '$content' },
+            role: { $first: '$role' },
+            createdAt: { $first: '$createdAt' },
+            urgency: { $first: '$triage.urgency' },
+          },
+        },
+      ]),
+      // Unread means the patient wrote it and no clinician has opened the
+      // thread since. `seenByClinicAt` is stamped when the thread is read, so
+      // the badge and the patient's "Seen by the clinic" mark cannot disagree.
+      ChatMessage.aggregate([
+        { $match: { patient: { $in: ids }, role: 'user', seenByClinicAt: null } },
+        { $group: { _id: '$patient', count: { $sum: 1 } } },
+      ]),
     ]);
 
     const readingMap = new Map(lastReadings.map((r) => [r._id.toString(), r]));
     const alertMap = new Map(alertCounts.map((a) => [a._id.toString(), a.count]));
+    const messageMap = new Map(lastMessages.map((m) => [m._id.toString(), m]));
+    const unreadMap = new Map(unreadCounts.map((u) => [u._id.toString(), u.count]));
 
     const items = users.map((u) => {
       const id = u._id.toString();
@@ -146,6 +170,20 @@ router.get(
         phone: u.phone,
         // `lean()` skips the schema's toJSON, so build the URL by hand.
         avatarUrl: u.avatarAssetId ? `/api/v1/uploads/${u.avatarAssetId}/raw` : null,
+        // Inbox fields. Null where a patient has never written — the row then
+        // reads as a patient the clinic can start a conversation with, rather
+        // than an empty message.
+        lastMessage: messageMap.get(id)
+          ? {
+              // Trimmed server-side: a 4000-character message has no business
+              // crossing the wire to fill a two-line preview.
+              preview: messageMap.get(id).content.slice(0, 140),
+              role: messageMap.get(id).role,
+              at: messageMap.get(id).createdAt,
+              urgency: messageMap.get(id).urgency ?? 'routine',
+            }
+          : null,
+        unreadCount: unreadMap.get(id) ?? 0,
         riskScore: profile?.riskScore ?? 0,
         riskBand: profile?.riskBand ?? 'low',
         lastReadingAt: reading?.measuredAt ?? null,

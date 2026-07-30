@@ -47,6 +47,35 @@ class ClinicOverview {
 }
 
 /// One row in the doctor's patient directory (`GET /doctor/patients`).
+/// The newest turn in a patient's thread, for the clinician's inbox row.
+class MessagePreview {
+  const MessagePreview({
+    required this.preview,
+    required this.role,
+    required this.at,
+    this.urgency = 'routine',
+  });
+
+  /// Already trimmed server-side — a 4000-character message has no business
+  /// crossing the wire to fill a two-line row.
+  final String preview;
+
+  /// `user` | `assistant` | `clinician`. Lets the row say who spoke last, which
+  /// is the difference between "waiting on you" and "already answered".
+  final String role;
+  final DateTime at;
+  final String urgency;
+
+  bool get fromPatient => role == 'user';
+
+  factory MessagePreview.fromJson(Map<String, dynamic> j) => MessagePreview(
+    preview: j['preview']?.toString() ?? '',
+    role: j['role']?.toString() ?? 'user',
+    at: DateTime.tryParse(j['at']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
+    urgency: j['urgency']?.toString() ?? 'routine',
+  );
+}
+
 class PatientListItem {
   const PatientListItem({
     required this.id,
@@ -55,6 +84,8 @@ class PatientListItem {
     required this.riskScore,
     required this.riskBand,
     this.avatarUrl,
+    this.lastMessage,
+    this.unreadCount = 0,
     this.lastReadingAt,
     this.lastReadingValue,
     this.openAlertCount = 0,
@@ -67,6 +98,12 @@ class PatientListItem {
   /// Relative `/api/v1/uploads/:id/raw` path of the photo the patient set, or
   /// null. Absolute URL and auth header are assembled at render time.
   final String? avatarUrl;
+
+  /// Newest turn in this patient's thread, or null if they have never written.
+  final MessagePreview? lastMessage;
+
+  /// Patient messages no clinician has opened yet. Drives the unread badge.
+  final int unreadCount;
   final int riskScore;
   final String riskBand; // low | moderate | high | critical
   final DateTime? lastReadingAt;
@@ -80,6 +117,10 @@ class PatientListItem {
     riskScore: (j['riskScore'] as num?)?.toInt() ?? 0,
     riskBand: j['riskBand']?.toString() ?? 'low',
     avatarUrl: j['avatarUrl']?.toString(),
+    lastMessage: j['lastMessage'] is Map<String, dynamic>
+        ? MessagePreview.fromJson(j['lastMessage'] as Map<String, dynamic>)
+        : null,
+    unreadCount: (j['unreadCount'] as num?)?.toInt() ?? 0,
     lastReadingAt: DateTime.tryParse(j['lastReadingAt']?.toString() ?? '')?.toLocal(),
     lastReadingValue: j['lastReadingValue'] as num?,
     openAlertCount: (j['openAlertCount'] as num?)?.toInt() ?? 0,

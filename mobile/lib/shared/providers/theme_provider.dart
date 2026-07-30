@@ -32,10 +32,12 @@ class ThemeController extends StateNotifier<ThemeMode> {
         return ThemeMode.light;
       case 'dark':
         return ThemeMode.dark;
-      // Anything else — unset, or a value written by an older build — falls
-      // back to following the device.
+      // Anything else — unset, or a value written by an older build — opens
+      // light. The screens are designed light-first, and a patient whose phone
+      // happens to be in dark mode should not meet a different-looking app than
+      // the one the clinic showed them. "System" is still selectable in Profile.
       default:
-        return ThemeMode.system;
+        return ThemeMode.light;
     }
   }
 

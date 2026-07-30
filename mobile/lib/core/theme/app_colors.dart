@@ -5,9 +5,22 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  static const Color primary = Color(0xFF0F766E); // teal
-  static const Color primaryDark = Color(0xFF14B8A6);
-  static const Color surfaceLight = Color(0xFFF8FAFC);
+  // "Clinical Precision" palette. Deep forest green rather than the previous
+  // teal: it reads as clinical and settled rather than techy, and holds enough
+  // contrast to carry white text on primary buttons without a second tone.
+  static const Color primary = Color(0xFF064E3B);
+
+  /// Lighter counterpart used on dark surfaces, where the deep green would sink
+  /// into the background.
+  static const Color primaryDark = Color(0xFF10B981);
+
+  /// Mint fill behind selected tabs, badges and quiet emphasis.
+  static const Color accentSoft = Color(0xFFD1FAE5);
+
+  /// The brighter green, for accents that must read at small sizes.
+  static const Color accent = Color(0xFF10B981);
+
+  static const Color surfaceLight = Color(0xFFF5F7FA);
   static const Color surfaceDark = Color(0xFF0F1720);
 
   static const Color danger = Color(0xFFDC2626);
