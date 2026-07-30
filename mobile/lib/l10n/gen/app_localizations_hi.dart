@@ -325,6 +325,10 @@ class AppLocalizationsHi extends AppLocalizations {
   String get chatFromClinic => 'क्लिनिक से';
 
   @override
+  String get appLockSubtitle =>
+      'अपने संदेश और स्वास्थ्य रिकॉर्ड देखने के लिए अनलॉक करें।';
+
+  @override
   String get chatTapToStop => 'रोकने के लिए टैप करें';
 
   @override

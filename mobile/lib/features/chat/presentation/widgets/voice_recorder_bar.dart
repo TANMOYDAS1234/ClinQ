@@ -44,9 +44,15 @@ class _VoiceRecorderBarState extends State<VoiceRecorderBar> {
   bool _starting = true;
   String? _path;
 
-  /// Two minutes is generous for "how have you been feeling", and short enough
-  /// that a phone left in a pocket cannot upload an hour of nothing.
-  static const _maxLength = Duration(minutes: 2);
+  /// A ceiling, not a budget.
+  ///
+  /// Deliberately far beyond any real "how have you been feeling", so nobody is
+  /// cut off mid-sentence — but not unlimited. At this bitrate a recording
+  /// reaches the server's 12 MB upload cap (and Gemini's inline-audio limit)
+  /// somewhere past twenty minutes, and an unbounded recording would let a
+  /// patient talk for half an hour and then lose all of it at upload. Being
+  /// stopped at ten minutes is far kinder than that.
+  static const _maxLength = Duration(minutes: 10);
 
   @override
   void initState() {

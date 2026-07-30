@@ -117,8 +117,11 @@ class PatientListItem {
     riskScore: (j['riskScore'] as num?)?.toInt() ?? 0,
     riskBand: j['riskBand']?.toString() ?? 'low',
     avatarUrl: j['avatarUrl']?.toString(),
-    lastMessage: j['lastMessage'] is Map<String, dynamic>
-        ? MessagePreview.fromJson(j['lastMessage'] as Map<String, dynamic>)
+    // `is Map` rather than `is Map<String, dynamic>`: a nested object can decode
+    // as Map<dynamic, dynamic> depending on the path it took, and the stricter
+    // test would drop it silently. Defensive, not a fix for a known bug.
+    lastMessage: j['lastMessage'] is Map
+        ? MessagePreview.fromJson(Map<String, dynamic>.from(j['lastMessage'] as Map))
         : null,
     unreadCount: (j['unreadCount'] as num?)?.toInt() ?? 0,
     lastReadingAt: DateTime.tryParse(j['lastReadingAt']?.toString() ?? '')?.toLocal(),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
 import '../../../../core/theme/app_colors.dart';
@@ -14,7 +14,7 @@ import 'voice_note_player.dart';
 
 /// Renders one turn. Assistant messages whose `urgency` is `emergency` or
 /// `urgent` bypass the normal bubble entirely and render inside the
-/// dedicated safety cards instead — this is intentional and must not be
+/// dedicated safety cards instead â€” this is intentional and must not be
 /// "simplified" back into a plain bubble.
 class ChatMessageBubble extends StatelessWidget {
   const ChatMessageBubble({
@@ -27,7 +27,13 @@ class ChatMessageBubble extends StatelessWidget {
     this.onHide,
     this.repliedTo,
     this.onQuoteTap,
+    this.isClinicianView = false,
   });
+
+  /// True in the clinician's thread. Only affects voice notes: the transcript
+  /// shows there and is hidden on the patient's own recording, where it would
+  /// repeat what they said a second earlier.
+  final bool isClinicianView;
 
   final ChatMessage message;
   final VoidCallback? onFlag;
@@ -39,7 +45,7 @@ class ChatMessageBubble extends StatelessWidget {
   /// Pin or unpin. Null where pinning does not apply.
   final VoidCallback? onTogglePin;
 
-  /// Hide from this reader's own view. Never a delete — see the server route.
+  /// Hide from this reader's own view. Never a delete â€” see the server route.
   final VoidCallback? onHide;
 
   /// The message being answered, when this one is a reply.
@@ -48,7 +54,7 @@ class ChatMessageBubble extends StatelessWidget {
   /// Jump to the quoted message when its preview is tapped (WhatsApp-style).
   final VoidCallback? onQuoteTap;
 
-  /// Present only on an AI-unavailable fallback reply — lets the patient
+  /// Present only on an AI-unavailable fallback reply â€” lets the patient
   /// resend the question once the service is back.
   final VoidCallback? onRetry;
 
@@ -169,15 +175,24 @@ class ChatMessageBubble extends StatelessWidget {
     }
 
     final isUser = message.isUser;
+
+    // Which side of the conversation the reader is on.
+    //
+    // "Mine" is not a property of the message â€” it depends on who is looking.
+    // A patient's turn belongs on the right in their own app and on the left in
+    // the clinic's. Keying alignment off `isUser` alone mirrored the entire
+    // thread for the doctor: the patient's words appeared as though the doctor
+    // had sent them, and the doctor's own replies looked received.
+    final isMine = isClinicianView ? message.isClinician : isUser;
     final scheme = Theme.of(context).colorScheme;
 
     return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.md),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
         child: Column(
-          crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             // Photos the patient attached, shown above their text.
             if (message.attachmentPaths.isNotEmpty)
@@ -250,7 +265,7 @@ class ChatMessageBubble extends StatelessWidget {
               child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               decoration: BoxDecoration(
-                color: isUser
+                color: isMine
                     ? AppColors.primary
                     : isClinician
                     // Tinted, not grey: the doctor's own words carry more
@@ -260,10 +275,10 @@ class ChatMessageBubble extends StatelessWidget {
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
-                  bottomLeft: Radius.circular(isUser ? 20 : 6),
-                  bottomRight: Radius.circular(isUser ? 6 : 20),
+                  bottomLeft: Radius.circular(isMine ? 20 : 6),
+                  bottomRight: Radius.circular(isMine ? 6 : 20),
                 ),
-                border: isUser
+                border: isMine
                     ? null
                     : Border.all(
                         color: isClinician
@@ -273,17 +288,22 @@ class ChatMessageBubble extends StatelessWidget {
               ),
               child: message.voiceNotes.isNotEmpty
                   // A spoken message renders as a player, not as its own
-                  // transcript repeated — the player already shows the words.
+                  // transcript repeated â€” the player already shows the words.
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         for (final note in message.voiceNotes)
-                          VoiceNotePlayer(note: note, onDark: isUser),
+                          VoiceNotePlayer(
+                            note: note,
+                            onDark: isUser,
+                            // The sender never needs their own words read back.
+                            showTranscript: isClinicianView || !isUser,
+                          ),
                       ],
                     )
                   : isUser
-                  // The patient's own text is never Markdown — render it plain.
+                  // The patient's own text is never Markdown â€” render it plain.
                   ? Text(
                       message.content,
                       style: const TextStyle(fontSize: 17, height: 1.5, color: Colors.white),
@@ -293,7 +313,7 @@ class ChatMessageBubble extends StatelessWidget {
                   //
                   // Not selectable: long-press now opens the action sheet, and
                   // text selection would swallow that gesture on assistant
-                  // replies only — the same press doing different things
+                  // replies only â€” the same press doing different things
                   // depending on who spoke. Copy is in the sheet instead.
                   : MarkdownText(
                       data: message.content,
@@ -341,7 +361,7 @@ class ChatMessageBubble extends StatelessWidget {
             if (!isUser && !isClinician) ...[
               if (message.citations != null && message.citations!.isNotEmpty)
                 CitationChips(citations: message.citations!),
-              // A fallback reply is the scripted "service unavailable" text —
+              // A fallback reply is the scripted "service unavailable" text â€”
               // offer to resend the question rather than leaving a dead end.
               if (message.isFallback == true && onRetry != null) ...[
                 const SizedBox(height: 6),

@@ -149,6 +149,7 @@
   "dashboardErrorTitle": "Couldn't load your dashboard",
   "chatTitle": "Dr. Dey's Clinic",
   "chatFromClinic": "From the clinic",
+  "appLockSubtitle": "Unlock to see your messages and health records.",
   "chatTapToStop": "TAP TO STOP",
   "chatRecordVoice": "Record a voice message",
   "chatVoiceSending": "Sending your voice message…",

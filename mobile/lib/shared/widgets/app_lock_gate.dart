@@ -67,34 +67,59 @@ class _AppLockGateState extends ConsumerState<AppLockGate> with WidgetsBindingOb
         widget.child,
         if (lock.enabled && lock.locked)
           // Opaque cover so nothing behind it is visible or interactive.
+          //
+          // Wrapped in Material, not a bare ColoredBox. This overlay sits above
+          // the router rather than inside a Scaffold, so its text had no
+          // Material ancestor — which is what Flutter renders as red glyphs
+          // with yellow double underlines. It looked like a broken design; it
+          // was actually the framework's missing-Material warning.
           Positioned.fill(
-            child: ColoredBox(
+            child: Material(
               color: scheme.surface,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const AppLogo(size: 72, showShadow: true),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      l10n.appLockLocked,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    ElevatedButton.icon(
-                      onPressed: _unlock,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.xl,
-                          vertical: 14,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Spacer(),
+                      const AppLogo(size: 84, showShadow: true),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        l10n.appLockLocked,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                      icon: const Icon(Icons.lock_open_rounded),
-                      label: Text(l10n.appLockUnlock, style: const TextStyle(fontSize: 16)),
-                    ),
-                  ],
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        l10n.appLockSubtitle,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          height: 1.45,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const Spacer(),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _unlock,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                          icon: const Icon(Icons.lock_open_rounded, size: 20),
+                          label: Text(l10n.appLockUnlock),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+                  ),
                 ),
               ),
             ),

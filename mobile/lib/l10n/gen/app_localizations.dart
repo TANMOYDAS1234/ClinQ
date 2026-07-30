@@ -694,6 +694,12 @@ abstract class AppLocalizations {
   /// **'From the clinic'**
   String get chatFromClinic;
 
+  /// No description provided for @appLockSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock to see your messages and health records.'**
+  String get appLockSubtitle;
+
   /// No description provided for @chatTapToStop.
   ///
   /// In en, this message translates to:

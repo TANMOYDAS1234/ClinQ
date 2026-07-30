@@ -324,6 +324,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatFromClinic => 'From the clinic';
 
   @override
+  String get appLockSubtitle =>
+      'Unlock to see your messages and health records.';
+
+  @override
   String get chatTapToStop => 'TAP TO STOP';
 
   @override

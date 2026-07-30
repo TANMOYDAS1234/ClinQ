@@ -35,26 +35,10 @@ class NotificationsScreen extends ConsumerWidget {
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
-                _tile(
-                  context,
-                  accent: accent,
-                  icon: Icons.medication_outlined,
-                  title: l10n.notifMedicationReminders,
-                  subtitle: l10n.notifMedicationRemindersSub,
-                  value: prefs.medicationReminders,
-                  onChanged: controller.setMedicationReminders,
-                ),
-                _divider(scheme),
-                _tile(
-                  context,
-                  accent: accent,
-                  icon: Icons.event_available_outlined,
-                  title: l10n.notifAppointmentAlerts,
-                  subtitle: l10n.notifAppointmentAlertsSub,
-                  value: prefs.appointmentAlerts,
-                  onChanged: controller.setAppointmentAlerts,
-                ),
-                _divider(scheme),
+                // Medication and appointment reminders are deliberately absent:
+                // the app no longer sends either, and a switch that controls
+                // nothing is worse than no switch — a patient turns it on and
+                // believes they will be reminded.
                 _tile(
                   context,
                   accent: accent,
@@ -106,6 +90,4 @@ class NotificationsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _divider(ColorScheme scheme) =>
-      Divider(height: 1, thickness: 1, color: scheme.outlineVariant.withValues(alpha: 0.6));
 }

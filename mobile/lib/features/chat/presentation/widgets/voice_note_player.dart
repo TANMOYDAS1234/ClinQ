@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -14,13 +17,24 @@ import '../../domain/chat_message.dart';
 /// patient would otherwise be shut out of their own conversation. The audio
 /// carries tone; the text carries the content.
 class VoiceNotePlayer extends ConsumerStatefulWidget {
-  const VoiceNotePlayer({super.key, required this.note, required this.onDark});
+  const VoiceNotePlayer({
+    super.key,
+    required this.note,
+    required this.onDark,
+    this.showTranscript = true,
+  });
 
   final VoiceNote note;
 
   /// True inside the patient's own (deep green) bubble, where the controls have
   /// to invert to stay legible.
   final bool onDark;
+
+  /// Hidden on the patient's own recording — they know what they just said, so
+  /// repeating it back is noise. Kept on the clinician's side, where it is the
+  /// only way to skim a thread without playing every clip, and the only way a
+  /// deaf reader gets the content at all.
+  final bool showTranscript;
 
   @override
   ConsumerState<VoiceNotePlayer> createState() => _VoiceNotePlayerState();
@@ -29,6 +43,9 @@ class VoiceNotePlayer extends ConsumerStatefulWidget {
 class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
   AudioPlayer? _player;
   bool _loading = false;
+
+  /// Whether the full transcript is shown, or the first three lines.
+  bool _transcriptExpanded = false;
   Duration _position = Duration.zero;
   Duration? _duration;
 
@@ -58,14 +75,25 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
 
     setState(() => _loading = true);
     try {
-      final headers = ref.read(imageAuthHeaderProvider).valueOrNull;
+      // Downloaded, not streamed. just_audio needs the bearer token, and on
+      // Android a header-bearing URL is served through a local proxy that is
+      // unreliable over HTTPS — which is why playback silently did nothing.
+      // Dio already carries and refreshes the token, and a voice note is small
+      // enough that fetching it first is imperceptible.
+      final dir = await getTemporaryDirectory();
+      final cached = File('${dir.path}/vn_${widget.note.url.hashCode}.m4a');
+      if (!await cached.exists()) {
+        // Absolute URL, not the relative path. `note.url` already begins with
+        // /api/v1, and Dio's baseUrl ends with it — passing the path made the
+        // request go to /api/v1/api/v1/uploads/... which 404s, so the player
+        // simply never started. apiOrigin is the host without the suffix.
+        await ref
+            .read(apiClientProvider)
+            .downloadToFile('${AppConfig.apiOrigin}${widget.note.url}', cached.path);
+      }
+
       final player = AudioPlayer();
-      // Uploads are owner-protected, so the bearer token travels with the
-      // request exactly as it does for images.
-      final duration = await player.setUrl(
-        '${AppConfig.apiOrigin}${widget.note.url}',
-        headers: headers,
-      );
+      final duration = await player.setFilePath(cached.path);
 
       player.positionStream.listen((p) {
         if (mounted) setState(() => _position = p);
@@ -157,16 +185,42 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
             ),
           ],
         ),
-        if (widget.note.transcript != null && widget.note.transcript!.isNotEmpty) ...[
+        if (widget.showTranscript &&
+            widget.note.transcript != null &&
+            widget.note.transcript!.isNotEmpty) ...[
           const SizedBox(height: 8),
+          // Collapsed to a single line. A ten-minute note transcribes to
+          // hundreds of words, and a thread of those is unreadable — one line
+          // says what the message is about, and the rest is a tap away.
+          // Truncated rather than summarised on purpose: a summary of someone
+          // describing symptoms is exactly where a dropped detail does harm.
           Text(
             widget.note.transcript!,
+            maxLines: _transcriptExpanded ? null : 1,
+            overflow: _transcriptExpanded ? null : TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 15.5,
               height: 1.45,
               color: widget.onDark ? Colors.white : scheme.onSurface,
             ),
           ),
+          // Threshold roughly one line at this width; below it the toggle would
+          // be offering to expand text already fully visible.
+          if (widget.note.transcript!.length > 38)
+            GestureDetector(
+              onTap: () => setState(() => _transcriptExpanded = !_transcriptExpanded),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  _transcriptExpanded ? 'Show less' : 'Show more',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: widget.onDark ? Colors.white70 : AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
         ],
       ],
     );

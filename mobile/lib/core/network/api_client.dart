@@ -173,6 +173,18 @@ class ApiClient {
     await _run(() => _dio.delete(path, data: body));
   }
 
+  /// Downloads an owner-protected file to [savePath].
+  ///
+  /// Used for voice notes rather than streaming them: `just_audio` needs an
+  /// Authorization header, and on Android it serves header-bearing URLs through
+  /// a local proxy that is unreliable over HTTPS. Fetching through Dio — which
+  /// already carries the token and refreshes it — sidesteps that entirely, and
+  /// a voice note is small enough that the wait is imperceptible. Replays are
+  /// then instant and work offline.
+  Future<void> downloadToFile(String path, String savePath) async {
+    await _run(() => _dio.download(path, savePath));
+  }
+
   Future<Map<String, dynamic>> postMultipart(
     String path, {
     required FormData formData,

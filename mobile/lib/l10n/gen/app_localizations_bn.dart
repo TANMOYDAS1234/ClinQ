@@ -322,6 +322,10 @@ class AppLocalizationsBn extends AppLocalizations {
   String get chatFromClinic => 'ক্লিনিক থেকে';
 
   @override
+  String get appLockSubtitle =>
+      'আপনার বার্তা ও স্বাস্থ্য তথ্য দেখতে আনলক করুন।';
+
+  @override
   String get chatTapToStop => 'থামাতে ট্যাপ করুন';
 
   @override

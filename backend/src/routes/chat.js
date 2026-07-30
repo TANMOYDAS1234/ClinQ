@@ -301,7 +301,14 @@ router.post(
   requireAuth,
   requireClinician,
   resolvePatientScope,
-  validate({ body: z.object({ content: z.string().trim().min(1).max(4000) }) }),
+  validate({
+    body: z.object({
+      content: z.string().trim().min(1).max(4000),
+      // A clinician can reply with a voice note too — faster between patients,
+      // and the patient hears reassurance that text cannot carry.
+      attachments: z.array(z.string()).max(5).default([]),
+    }),
+  }),
   audit('create', 'ChatMessage'),
   asyncHandler(async (req, res) => {
     let session = await ChatSession.findOne({ patient: req.patientId, isArchived: false }).sort({
@@ -328,6 +335,7 @@ router.post(
       sender: req.user._id,
       content: req.body.content,
       language: session.language,
+      attachments: req.body.attachments,
     });
 
     await ChatSession.findByIdAndUpdate(session._id, {

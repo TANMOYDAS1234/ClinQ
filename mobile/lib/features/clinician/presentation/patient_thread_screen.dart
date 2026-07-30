@@ -6,12 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../shared/data/upload_repository.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../chat/domain/chat_message.dart';
 
 import '../../chat/presentation/widgets/chat_message_bubble.dart';
 import '../../chat/presentation/widgets/dotted_background.dart';
+import '../../chat/presentation/widgets/voice_recorder_bar.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/clinician_repository.dart';
 
@@ -48,6 +50,10 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
   String? _patientAvatarUrl;
   bool _loading = true;
   bool _sending = false;
+
+  /// True while the doctor is recording a reply, which swaps the composer for
+  /// [VoiceRecorderBar] — same treatment as the patient's side.
+  bool _recording = false;
   Object? _error;
 
   /// Keeps the conversation live while the clinician has it open, so a message
@@ -110,10 +116,24 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
     }
   }
 
+  /// Pins the thread to the newest message.
+  ///
+  /// Jumped twice, a beat apart. On the first frame after a load the list has
+  /// only built the rows it can see, so `maxScrollExtent` is an underestimate —
+  /// jumping to it lands partway up and leaves the doctor scrolling down to
+  /// find the message they opened the thread to read. The second jump runs once
+  /// the remaining rows have been laid out and the extent is real.
   void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    void jump() {
       if (!_scrollController.hasClients) return;
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      jump();
+      Future.delayed(const Duration(milliseconds: 120), () {
+        if (mounted) jump();
+      });
     });
   }
 
@@ -123,6 +143,38 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
     final messenger = ScaffoldMessenger.of(context);
     if (!await launchUrl(Uri(scheme: 'tel', path: phone))) {
       messenger.showSnackBar(SnackBar(content: Text('Could not start a call to $phone')));
+    }
+  }
+
+  /// Records a reply instead of typing it.
+  ///
+  /// A doctor between patients can say in fifteen seconds what would take a
+  /// minute to thumb-type, and the patient hears their actual voice — which
+  /// carries reassurance that text does not. Uploaded and transcribed the same
+  /// way as the patient's, so the thread stays readable either way.
+  Future<void> _sendVoiceNote(String path) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _sending = true);
+    try {
+      final asset = await ref.read(uploadRepositoryProvider).uploadImage(
+        path: path,
+        filename: path.split(RegExp(r'[/\\]')).last,
+        kind: UploadKind.voiceNote,
+      );
+      await ref.read(clinicianRepositoryProvider).messagePatient(
+        patientId: widget.patientId,
+        content: asset.transcript?.trim().isNotEmpty == true
+            ? asset.transcript!.trim()
+            // The recording still reaches the patient even if the words could
+            // not be made out; only the readable copy is missing.
+            : 'Voice message',
+        attachments: [asset.id],
+      );
+      await _load();
+    } on ApiException {
+      messenger.showSnackBar(const SnackBar(content: Text('Could not send. Please try again.')));
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
   }
 
@@ -194,12 +246,23 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
           child: Column(
             children: [
               Expanded(child: _body()),
-              _Composer(
-                controller: _controller,
-                focusNode: _focusNode,
-                sending: _sending,
-                onSend: _send,
-              ),
+              // Recording replaces the composer, as on the patient's side.
+              if (_recording)
+                VoiceRecorderBar(
+                  onCancel: () => setState(() => _recording = false),
+                  onSend: (path, _) {
+                    setState(() => _recording = false);
+                    _sendVoiceNote(path);
+                  },
+                )
+              else
+                _Composer(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  sending: _sending,
+                  onSend: _send,
+                  onRecord: () => setState(() => _recording = true),
+                ),
             ],
           ),
         ),
@@ -248,7 +311,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
       padding: const EdgeInsets.all(AppSpacing.md),
       itemCount: _messages.length,
       itemBuilder: (context, i) => RepaintBoundary(
-        child: ChatMessageBubble(message: _messages[i]),
+        child: ChatMessageBubble(message: _messages[i], isClinicianView: true),
       ),
     );
   }
@@ -277,7 +340,13 @@ class _Composer extends StatelessWidget {
     required this.focusNode,
     required this.sending,
     required this.onSend,
+    required this.onRecord,
   });
+
+  /// Starts a voice reply. A doctor between patients can say in fifteen seconds
+  /// what would take a minute to thumb-type, and the patient hears an actual
+  /// voice — which carries reassurance that text does not.
+  final VoidCallback onRecord;
 
   final TextEditingController controller;
 
@@ -320,8 +389,12 @@ class _Composer extends StatelessWidget {
                     border: Border.all(color: scheme.outlineVariant),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: TextField(
+                    padding: const EdgeInsets.only(left: 18, right: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: TextField(
                       controller: controller,
                       focusNode: focusNode,
                       minLines: 1,
@@ -330,6 +403,7 @@ class _Composer extends StatelessWidget {
                       style: const TextStyle(fontSize: 16),
                       decoration: const InputDecoration(
                         hintText: 'Reply to this patient…',
+                        hintMaxLines: 1,
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
@@ -338,6 +412,15 @@ class _Composer extends StatelessWidget {
                         contentPadding: EdgeInsets.symmetric(vertical: 15),
                       ),
                       onSubmitted: (_) => onSend(),
+                    ),
+                        ),
+                        // Speak instead of typing, same as the patient has.
+                        IconButton(
+                          tooltip: 'Record a voice reply',
+                          onPressed: sending ? null : onRecord,
+                          icon: Icon(Icons.mic_none_rounded, color: scheme.onSurfaceVariant),
+                        ),
+                      ],
                     ),
                   ),
                   ),

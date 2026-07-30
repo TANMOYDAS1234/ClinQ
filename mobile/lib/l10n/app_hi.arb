@@ -99,6 +99,7 @@
   "dashboardErrorTitle": "डैशबोर्ड लोड नहीं हो सका",
   "chatTitle": "डॉ. डे का क्लिनिक",
   "chatFromClinic": "क्लिनिक से",
+  "appLockSubtitle": "अपने संदेश और स्वास्थ्य रिकॉर्ड देखने के लिए अनलॉक करें।",
   "chatTapToStop": "रोकने के लिए टैप करें",
   "chatRecordVoice": "वॉइस मैसेज रिकॉर्ड करें",
   "chatVoiceSending": "आपका वॉइस मैसेज भेजा जा रहा है…",

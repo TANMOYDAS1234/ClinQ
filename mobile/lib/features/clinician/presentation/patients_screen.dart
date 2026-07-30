@@ -38,7 +38,12 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
 
   /// The inbox is only useful if it is current. There is no socket, so it
   /// re-reads on a timer while on screen and immediately on resume.
-  static const _pollInterval = Duration(seconds: 20);
+  ///
+  /// Matched to the conversation screens rather than the twenty seconds a list
+  /// view would normally justify: this is the screen a doctor sits on while
+  /// waiting for a patient to reply, and a message that takes twenty seconds to
+  /// appear reads as the app being broken.
+  static const _pollInterval = Duration(seconds: 3);
 
   @override
   void initState() {

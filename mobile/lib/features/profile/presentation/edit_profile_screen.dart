@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/auth_validators.dart';
 import '../../../l10n/gen/app_localizations.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
 
 /// Edits the fields `PATCH /auth/me` accepts.
@@ -138,21 +139,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
             const SizedBox(height: AppSpacing.sm),
+            // UserAvatar, not a hand-rolled initial disc: this screen drew its
+            // own and so never showed the photo the user had set — on either
+            // panel, since both share it. UserAvatar already handles the bearer
+            // token these owner-protected images need.
             Center(
-              child: Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.16),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: accent.withValues(alpha: 0.35), width: 2),
-                ),
-                child: Center(
-                  child: Text(
-                    (name.isNotEmpty ? name[0] : '?').toUpperCase(),
-                    style: TextStyle(fontSize: 38, fontWeight: FontWeight.w800, color: accent),
-                  ),
-                ),
+              child: UserAvatar(
+                name: name,
+                avatarUrl: user?.avatarUrl,
+                accent: accent,
+                size: 96,
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
