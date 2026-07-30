@@ -10,6 +10,7 @@ import 'chat_attachment_thumbs.dart';
 import 'citation_chips.dart';
 import 'emergency_card.dart';
 import 'urgent_card.dart';
+import 'voice_note_player.dart';
 
 /// Renders one turn. Assistant messages whose `urgency` is `emergency` or
 /// `urgent` bypass the normal bubble entirely and render inside the
@@ -270,7 +271,18 @@ class ChatMessageBubble extends StatelessWidget {
                             : scheme.outlineVariant,
                       ),
               ),
-              child: isUser
+              child: message.voiceNotes.isNotEmpty
+                  // A spoken message renders as a player, not as its own
+                  // transcript repeated — the player already shows the words.
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final note in message.voiceNotes)
+                          VoiceNotePlayer(note: note, onDark: isUser),
+                      ],
+                    )
+                  : isUser
                   // The patient's own text is never Markdown — render it plain.
                   ? Text(
                       message.content,

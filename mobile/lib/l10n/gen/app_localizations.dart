@@ -700,6 +700,30 @@ abstract class AppLocalizations {
   /// **'TAP TO STOP'**
   String get chatTapToStop;
 
+  /// No description provided for @chatRecordVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a voice message'**
+  String get chatRecordVoice;
+
+  /// No description provided for @chatVoiceSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending your voice message…'**
+  String get chatVoiceSending;
+
+  /// No description provided for @chatVoiceFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send your voice message. Please try again.'**
+  String get chatVoiceFailed;
+
+  /// No description provided for @chatVoiceUnclear.
+  ///
+  /// In en, this message translates to:
+  /// **'I could not make out the recording. Please try again, or type your message.'**
+  String get chatVoiceUnclear;
+
   /// No description provided for @chatReply.
   ///
   /// In en, this message translates to:

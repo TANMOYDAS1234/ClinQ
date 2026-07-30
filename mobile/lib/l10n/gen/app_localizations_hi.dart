@@ -328,6 +328,20 @@ class AppLocalizationsHi extends AppLocalizations {
   String get chatTapToStop => 'रोकने के लिए टैप करें';
 
   @override
+  String get chatRecordVoice => 'वॉइस मैसेज रिकॉर्ड करें';
+
+  @override
+  String get chatVoiceSending => 'आपका वॉइस मैसेज भेजा जा रहा है…';
+
+  @override
+  String get chatVoiceFailed =>
+      'वॉइस मैसेज नहीं भेजा जा सका। कृपया फिर कोशिश करें।';
+
+  @override
+  String get chatVoiceUnclear =>
+      'रिकॉर्डिंग समझ नहीं आई। फिर कोशिश करें, या टाइप करके भेजें।';
+
+  @override
   String get chatReply => 'उत्तर दें';
 
   @override

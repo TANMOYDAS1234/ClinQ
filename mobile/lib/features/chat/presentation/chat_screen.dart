@@ -6,9 +6,11 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../l10n/gen/app_localizations.dart';
+import '../../../shared/data/upload_repository.dart';
 import '../../../shared/providers/locale_provider.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../../shared/widgets/markdown_text.dart';
@@ -156,6 +158,39 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     final uri = Uri(scheme: 'tel', path: AppConfig.clinicPhoneNumber);
     if (!await launchUrl(uri)) {
       messenger.showSnackBar(SnackBar(content: Text(l10n.commonSomethingWentWrong)));
+    }
+  }
+
+  /// Uploads a finished recording, then sends it as a message.
+  ///
+  /// The upload returns the transcript, which becomes the message text. That
+  /// ordering matters: the deterministic triage engine reads text, so a patient
+  /// who *says* "chest pain" has to reach the same escalation as one who typed
+  /// it. Sending the audio with no text would route a spoken emergency past the
+  /// rules entirely.
+  Future<void> _sendVoiceNote(String path) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    try {
+      final asset = await ref.read(uploadRepositoryProvider).uploadImage(
+        path: path,
+        filename: path.split(RegExp(r'[/\\]')).last,
+        kind: UploadKind.voiceNote,
+      );
+
+      final transcript = asset.transcript?.trim();
+      if (transcript == null || transcript.isEmpty) {
+        // The recording is stored and the clinic can still play it, but with no
+        // words there is nothing for triage to assess or the assistant to
+        // answer — so say so rather than sending a message that reads empty.
+        messenger.showSnackBar(SnackBar(content: Text(l10n.chatVoiceUnclear)));
+        return;
+      }
+
+      await _send(transcript, [asset.id]);
+    } on ApiException {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.chatVoiceFailed)));
     }
   }
 
@@ -395,6 +430,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
               ),
             ChatComposer(
               onSend: _send,
+              onSendVoiceNote: _sendVoiceNote,
               isSending: chatState.isSending,
               languageCode: language,
             ),

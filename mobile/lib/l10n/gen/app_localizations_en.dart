@@ -327,6 +327,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatTapToStop => 'TAP TO STOP';
 
   @override
+  String get chatRecordVoice => 'Record a voice message';
+
+  @override
+  String get chatVoiceSending => 'Sending your voice message…';
+
+  @override
+  String get chatVoiceFailed =>
+      'Could not send your voice message. Please try again.';
+
+  @override
+  String get chatVoiceUnclear =>
+      'I could not make out the recording. Please try again, or type your message.';
+
+  @override
   String get chatReply => 'Reply';
 
   @override

@@ -13,6 +13,22 @@ import 'triage.dart';
 /// re-fetched via `GET /chat/sessions/:id/messages` will not have them, but
 /// still carries `urgency` (a real per-message field), which is what
 /// drives the emergency banner regardless of source.
+/// A recording the patient spoke instead of typing.
+///
+/// [transcript] is produced server-side at upload, so it exists even on a phone
+/// with no speech recogniser — and it is what the triage engine and the
+/// assistant actually read. Shown under the player so the thread stays
+/// skimmable, and so a deaf patient or a doctor in a noisy clinic is not shut
+/// out of the conversation.
+class VoiceNote {
+  const VoiceNote({required this.url, this.transcript});
+
+  /// Relative `/api/v1/uploads/:id/raw` path. Auth header is attached at play
+  /// time, the same as protected images.
+  final String url;
+  final String? transcript;
+}
+
 class ChatMessage {
   const ChatMessage({
     required this.id,
@@ -31,7 +47,12 @@ class ChatMessage {
     this.replyPreviewContent,
     this.seenByClinicAt,
     this.attachmentPaths = const [],
+    this.voiceNotes = const [],
   });
+
+  /// Recordings attached to this turn. Kept separate from [attachmentPaths]
+  /// because a voice note renders as a player, not a thumbnail.
+  final List<VoiceNote> voiceNotes;
 
   /// Kept at the top of the thread. A dosing instruction otherwise scrolls out
   /// of reach within a day.
@@ -106,18 +127,42 @@ class ChatMessage {
           ? null
           : DateTime.tryParse(json['seenByClinicAt'].toString()),
       attachmentPaths: _parseAttachments(json['attachments']),
+      voiceNotes: _parseVoiceNotes(json['attachments']),
     );
   }
 
-  /// Attachments arrive as `[{id, url}]`; keep the relative url.
+  /// Attachments arrive as `[{id, url, kind, mimeType, transcript}]`.
+  ///
+  /// Photos and voice notes are split here rather than in the widget tree: a
+  /// recording and a foot photograph want completely different rendering, and
+  /// deciding that once keeps every consumer from re-sniffing mime types.
   static List<String> _parseAttachments(dynamic raw) {
     if (raw is! List) return const [];
     return raw
+        .where((a) => a is! Map || !_isAudio(a))
         .map((a) => a is Map ? a['url']?.toString() : a?.toString())
         .whereType<String>()
         .where((s) => s.isNotEmpty)
         .toList();
   }
+
+  static List<VoiceNote> _parseVoiceNotes(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .where(_isAudio)
+        .map(
+          (a) => VoiceNote(
+            url: a['url']?.toString() ?? '',
+            transcript: a['transcript']?.toString(),
+          ),
+        )
+        .where((v) => v.url.isNotEmpty)
+        .toList();
+  }
+
+  static bool _isAudio(Map a) =>
+      a['kind'] == 'voice_note' || (a['mimeType']?.toString().startsWith('audio/') ?? false);
 
   /// Returns a copy with new [content] — used to grow a streaming reply as
   /// tokens arrive, keeping every other field.
@@ -138,6 +183,7 @@ class ChatMessage {
     replyPreviewContent: replyPreviewContent,
     seenByClinicAt: seenByClinicAt,
     attachmentPaths: attachmentPaths,
+    voiceNotes: voiceNotes,
   );
 
   /// Returns a copy with [pinned] flipped, so the thread reorders immediately
@@ -159,6 +205,7 @@ class ChatMessage {
     replyPreviewContent: replyPreviewContent,
     seenByClinicAt: seenByClinicAt,
     attachmentPaths: attachmentPaths,
+    voiceNotes: voiceNotes,
   );
 
   ChatMessage copyWith({List<Citation>? citations, Triage? triage}) {
@@ -175,6 +222,7 @@ class ChatMessage {
       triage: triage ?? this.triage,
       senderName: senderName,
       attachmentPaths: attachmentPaths,
+    voiceNotes: voiceNotes,
     );
   }
 }

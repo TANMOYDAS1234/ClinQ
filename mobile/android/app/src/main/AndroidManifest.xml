@@ -1,12 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <!-- Voice input for the AI assistant. Speech is recognised on-device and
-         converted to text before sending; no audio leaves the phone. -->
+    <!-- Voice messages. The recording is uploaded to the clinic's own server,
+         stored with the conversation, and transcribed there so the assistant
+         can answer it and the triage rules can assess it. Audio does leave the
+         phone — this note used to say otherwise, from when the mic only
+         dictated on-device, and that is no longer how it works. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- In-app video calls (Jitsi). RECORD_AUDIO above doubles for call audio. -->
+    <!-- Photographs of feet, prescriptions and reports (image_picker). -->
     <uses-permission android:name="android.permission.CAMERA"/>
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
     <!-- Optional biometric app lock (local_auth). -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <!-- Local notifications (appointment/clinic updates). Runtime-requested on

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -9,22 +9,31 @@ import '../../../../l10n/gen/app_localizations.dart';
 import '../../../../shared/data/upload_repository.dart';
 import 'animated_gradient_border.dart';
 import 'chat_attachment_strip.dart';
-import 'mic_button.dart';
+import 'voice_recorder_bar.dart';
 
-/// Bottom composer, styled like a modern AI assistant input: a rounded pill
-/// with an animated gradient border (Gemini-style) holding the attach button,
-/// the growing text field and the dictation mic, with a circular send button
-/// alongside.
+/// Bottom composer: a rounded pill with an animated gradient border holding the
+/// attach button, the growing text field and the voice-note mic, with a
+/// circular send button alongside.
+///
+/// The mic records rather than dictates. Speaking is faster than typing Bengali
+/// on a phone, and the clinic hears tone — breathlessness, distress — that a
+/// transcript discards. The words still arrive as text (transcribed
+/// server-side), so triage and the assistant read them exactly as before.
 class ChatComposer extends ConsumerStatefulWidget {
   const ChatComposer({
     super.key,
     required this.onSend,
+    required this.onSendVoiceNote,
     required this.isSending,
     required this.languageCode,
   });
 
   /// Called with the message text and the ids of any uploaded attachments.
   final void Function(String text, List<String> attachmentIds) onSend;
+
+  /// Called with a finished recording's local path. The screen uploads it,
+  /// which is where the transcript comes back from.
+  final void Function(String path) onSendVoiceNote;
   final bool isSending;
 
   /// Drives the speech recogniser's locale.
@@ -44,11 +53,10 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
   final List<PendingAttachment> _attachments = [];
   bool _hasText = false;
   bool _focused = false;
-  bool _listening = false;
 
-  /// Field contents before the current dictated utterance. Null when not
-  /// dictating. See [_onTranscript].
-  String? _dictationBase;
+  /// True while a voice note is being recorded, which swaps the whole bar for
+  /// [VoiceRecorderBar].
+  bool _recording = false;
 
   @override
   void initState() {
@@ -88,7 +96,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
 
     if (text.isEmpty) {
       // The server requires non-empty text even with a photo, so a caption is
-      // always needed — say so rather than failing silently.
+      // always needed â€” say so rather than failing silently.
       if (_attachments.isNotEmpty) _snack(l10n.chatAttachNeedsText);
       return;
     }
@@ -101,40 +109,6 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
     widget.onSend(text, ids);
     _controller.clear();
     setState(_attachments.clear);
-  }
-
-  /// Renders the live transcript as the patient speaks.
-  ///
-  /// [_dictationBase] holds everything in the field before the current
-  /// utterance began. Each revision is drawn after it, replacing the previous
-  /// guess rather than stacking on it — otherwise "how are you" would arrive as
-  /// "how how are how are you". When an utterance is committed it becomes the
-  /// new base, so the next one appends after it. Typed text is never
-  /// overwritten.
-  void _onTranscript(String words, bool isFinal) {
-    final base = _dictationBase ??= _controller.text.trimRight();
-    final text = words.isEmpty ? base : (base.isEmpty ? words : '$base $words');
-
-    // Set text and caret together — assigning `.text` alone resets the
-    // selection to the start, which fights the user on every partial.
-    _controller.value = TextEditingValue(
-      text: text,
-      selection: TextSelection.collapsed(offset: text.length),
-    );
-
-    if (isFinal) _dictationBase = text;
-  }
-
-  void _onListeningChanged(bool listening) {
-    // Drop the base when dictation ends so the next session re-reads whatever
-    // is in the field, including anything typed by hand in between.
-    if (!listening) _dictationBase = null;
-    setState(() => _listening = listening);
-  }
-
-  void _onMicUnavailable(String reason) {
-    final l10n = AppLocalizations.of(context);
-    _snack(reason == 'denied' ? l10n.voicePermissionTitle : l10n.voiceUnavailable);
   }
 
   Future<void> _pickAttachment() async {
@@ -215,6 +189,19 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
     final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
 
+    // Recording takes over the whole bar. Leaving the text field visible
+    // alongside would suggest both are live, and a patient talking at a screen
+    // that still shows a cursor cannot tell which one is listening.
+    if (_recording) {
+      return VoiceRecorderBar(
+        onCancel: () => setState(() => _recording = false),
+        onSend: (path, _) {
+          setState(() => _recording = false);
+          widget.onSendVoiceNote(path);
+        },
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
@@ -241,8 +228,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                 children: [
                   Expanded(
                     child: AnimatedGradientBorder(
-                      active: _focused || _listening,
-                      listening: _listening,
+                      active: _focused,
                       radius: 26,
                       // The whole pill focuses the field, not just the glyphs
                       // of the text area inside it. Tapping the padding either
@@ -282,7 +268,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                                 decoration: InputDecoration(
                                   hintText: l10n.chatComposerHint,
                                   // The field grows to 5 lines, and without
-                                  // this the placeholder wrapped with it —
+                                  // this the placeholder wrapped with it â€”
                                   // opening the screen on a two-line hint and
                                   // a pill twice the height it needs.
                                   hintMaxLines: 1,
@@ -305,11 +291,20 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                             const SizedBox(width: 2),
                             Padding(
                               padding: const EdgeInsets.only(right: 6, bottom: 4),
-                              child: MicButton(
-                                languageCode: widget.languageCode,
-                                onTranscript: _onTranscript,
-                                onListeningChanged: _onListeningChanged,
-                                onUnavailable: _onMicUnavailable,
+                              // The mic now records a voice note rather than
+                              // dictating into the field. Speaking is the
+                              // point for patients who find typing Bengali on
+                              // a phone slow, and the clinic hears tone â€”
+                              // breathlessness, distress â€” that a transcript
+                              // alone throws away. The words still arrive as
+                              // text, transcribed server-side, so triage and
+                              // the assistant read them exactly as before.
+                              child: IconButton(
+                                tooltip: l10n.chatRecordVoice,
+                                onPressed: widget.isSending
+                                    ? null
+                                    : () => setState(() => _recording = true),
+                                icon: Icon(Icons.mic_none_rounded, color: scheme.onSurfaceVariant),
                               ),
                             ),
                           ],
@@ -327,22 +322,6 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                 ],
               ),
             ),
-            // Only while dictating. Speech UIs fail when the user cannot tell
-            // whether the mic is still listening, so the state is named and the
-            // way out of it is stated outright.
-            if (_listening)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Text(
-                  l10n.chatTapToStop,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                    color: AppColors.danger,
-                  ),
-                ),
-              ),
           ],
         ),
       ),

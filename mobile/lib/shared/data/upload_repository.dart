@@ -15,6 +15,7 @@ class MediaAsset {
     this.width,
     this.height,
     this.url,
+    this.transcript,
   });
 
   final String id;
@@ -25,6 +26,11 @@ class MediaAsset {
   final int? height;
   final String? url;
 
+  /// Words spoken in a voice note, transcribed server-side at upload. Null for
+  /// anything else. Sent on as the message text so the assistant answers what
+  /// was actually said, and so triage assesses it.
+  final String? transcript;
+
   factory MediaAsset.fromJson(Map<String, dynamic> json) => MediaAsset(
     id: json['id']?.toString() ?? '',
     kind: json['kind']?.toString() ?? 'other',
@@ -33,6 +39,7 @@ class MediaAsset {
     width: (json['width'] as num?)?.toInt(),
     height: (json['height'] as num?)?.toInt(),
     url: json['url']?.toString(),
+    transcript: json['transcript']?.toString(),
   );
 }
 
@@ -46,6 +53,7 @@ class UploadKind {
   static const String prescriptionPdf = 'prescription_pdf';
   static const String mealPhoto = 'meal_photo';
   static const String avatar = 'avatar';
+  static const String voiceNote = 'voice_note';
   static const String other = 'other';
 }
 
@@ -69,6 +77,10 @@ class UploadRepository {
     'image/webp',
     'image/heic',
     'application/pdf',
+    // Voice notes. Android records AAC in an MP4 container.
+    'audio/mp4',
+    'audio/m4a',
+    'audio/aac',
   };
 
   Future<MediaAsset> uploadImage({
@@ -101,6 +113,10 @@ class UploadRepository {
         return 'image/heic';
       case 'pdf':
         return 'application/pdf';
+      case 'm4a':
+      case 'aac':
+      case 'mp4':
+        return 'audio/mp4';
       default:
         return 'image/jpeg';
     }

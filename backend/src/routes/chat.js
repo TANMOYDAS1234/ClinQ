@@ -151,6 +151,7 @@ router.get(
         .limit(limit)
         .populate('sender', 'name')
         .populate('replyTo', 'content role')
+        .populate('attachments', 'kind mimeType transcript')
         .lean(),
       ChatMessage.countDocuments(filter),
     ]);
@@ -251,6 +252,7 @@ router.get(
       .limit(limit)
       .populate('sender', 'name')
       .populate('replyTo', 'content role')
+        .populate('attachments', 'kind mimeType transcript')
       .lean();
 
     // Opening the thread is what "seen by the clinic" means. Stamped only on
@@ -448,10 +450,21 @@ function serialiseMessage(m) {
     redFlags: m.triage?.redFlags ?? [],
     citations: (m.citations ?? []).map((c) => ({ id: c.chunk, title: c.title })),
     isFallback: m.isFallback ?? false,
-    attachments: (m.attachments ?? []).map((a) => ({
-      id: a.toString?.() ?? a,
-      url: `/api/v1/uploads/${a.toString?.() ?? a}/raw`,
-    })),
+    // Populated attachments carry kind and mimeType so the client knows whether
+    // to draw a thumbnail or an audio player; an unpopulated id still yields a
+    // usable url, which is what the streaming path sends before it reloads.
+    attachments: (m.attachments ?? []).map((a) => {
+      const id = (a?._id ?? a).toString?.() ?? a;
+      return {
+        id,
+        url: `/api/v1/uploads/${id}/raw`,
+        kind: a?.kind ?? null,
+        mimeType: a?.mimeType ?? null,
+        // Shown under a voice note so the thread stays skimmable without
+        // playing every clip — and readable at all for a deaf patient.
+        transcript: a?.transcript ?? null,
+      };
+    }),
     createdAt: m.createdAt,
   };
 }

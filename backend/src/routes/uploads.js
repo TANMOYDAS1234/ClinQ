@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
+import { transcribeVoiceNote } from '../services/ai/transcribe.js';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
@@ -16,7 +17,26 @@ import { logger } from '../config/logger.js';
 
 const router = Router();
 
-const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf']);
+const IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
+
+/**
+ * Voice notes. Android records AAC in an MP4 container, which browsers and
+ * recorders label inconsistently — all four spellings below are the same file,
+ * so all four are accepted rather than rejecting a patient's recording over a
+ * header string.
+ */
+const AUDIO_MIME = new Set([
+  'audio/mp4',
+  'audio/m4a',
+  'audio/x-m4a',
+  'audio/aac',
+  'audio/mpeg',
+  'audio/ogg',
+  'audio/wav',
+  'audio/webm',
+]);
+
+const ALLOWED_MIME = new Set([...IMAGE_MIME, ...AUDIO_MIME, 'application/pdf']);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -28,6 +48,23 @@ const upload = multer({
     cb(null, true);
   },
 });
+
+/** File extension for a stored voice note, so the served file plays natively. */
+function audioExtension(mime) {
+  switch (mime) {
+    case 'audio/mpeg':
+      return 'mp3';
+    case 'audio/ogg':
+      return 'ogg';
+    case 'audio/wav':
+      return 'wav';
+    case 'audio/webm':
+      return 'webm';
+    // audio/mp4, m4a, x-m4a and aac are all AAC-in-MP4.
+    default:
+      return 'm4a';
+  }
+}
 
 async function uploadRoot() {
   const dir = path.resolve(process.cwd(), env.UPLOAD_DIR);
@@ -41,7 +78,16 @@ router.post(
   upload.single('file'),
   validate({
     body: z.object({
-      kind: z.enum(['foot_photo', 'retinal_report', 'lab_report', 'prescription_pdf', 'meal_photo', 'avatar', 'other']),
+      kind: z.enum([
+        'foot_photo',
+        'retinal_report',
+        'lab_report',
+        'prescription_pdf',
+        'meal_photo',
+        'avatar',
+        'voice_note',
+        'other',
+      ]),
       patientId: z.string().optional(),
     }),
   }),
@@ -55,7 +101,11 @@ router.post(
 
     const root = await uploadRoot();
     const isPdf = req.file.mimetype === 'application/pdf';
-    const ext = isPdf ? 'pdf' : 'webp';
+    // Audio is stored byte-for-byte. Re-encoding would cost quality on a
+    // recording a clinician may need to listen to closely, and `sharp` would
+    // throw on it besides.
+    const isAudio = AUDIO_MIME.has(req.file.mimetype);
+    const ext = isPdf ? 'pdf' : isAudio ? audioExtension(req.file.mimetype) : 'webp';
     const key = `${new Date().toISOString().slice(0, 7)}/${crypto.randomUUID()}.${ext}`;
     const fullPath = path.join(root, key);
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
@@ -65,7 +115,7 @@ router.post(
     let buffer = req.file.buffer;
     let mimeType = req.file.mimetype;
 
-    if (!isPdf) {
+    if (!isPdf && !isAudio) {
       // Normalise to WebP: strips EXIF (which can carry GPS location of a
       // patient's home) and keeps clinical photos to a sane size.
       const image = sharp(req.file.buffer, { failOn: 'none' }).rotate();
@@ -77,6 +127,14 @@ router.post(
         .toBuffer();
       mimeType = 'image/webp';
     }
+
+    // Transcribed here, once, rather than on every read. Awaited on purpose:
+    // the client sends the message immediately after the upload returns, and a
+    // transcript that arrived later would miss triage entirely — the rule
+    // engine reads text, so a spoken "chest pain" has to be text before the
+    // message is assessed.
+    let transcript = null;
+    if (isAudio) transcript = await transcribeVoiceNote(buffer, mimeType);
 
     await fs.writeFile(fullPath, buffer);
 
@@ -90,6 +148,7 @@ router.post(
       sizeBytes: buffer.length,
       width,
       height,
+      transcript,
     });
 
     res.status(201).json({
@@ -99,6 +158,9 @@ router.post(
       sizeBytes: asset.sizeBytes,
       width: asset.width,
       height: asset.height,
+      // Returned so the client can send the spoken words as the message text,
+      // which is what the assistant answers and what triage assesses.
+      transcript: asset.transcript ?? null,
       url: `/api/v1/uploads/${asset._id}/raw`,
       createdAt: asset.createdAt,
     });

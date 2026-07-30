@@ -19,10 +19,24 @@ const mediaAssetSchema = new mongoose.Schema(
         'prescription_pdf',
         'meal_photo',
         'avatar',
+        // A recording the patient spoke instead of typing. Kept as uploaded so
+        // the clinic hears exactly what was said, tone included.
+        'voice_note',
         'other',
       ],
       required: true,
       index: true,
+    },
+
+    /// Words spoken in a `voice_note`, transcribed once at upload.
+    ///
+    /// Stored rather than derived on read: the triage engine and the assistant
+    /// both need text, the doctor needs it to skim a thread without playing
+    /// every clip, and re-transcribing on each read would spend a model call to
+    /// recompute something that cannot change.
+    transcript: {
+      type: String,
+      maxlength: 8000,
     },
 
     storageKey: { type: String, required: true }, // path relative to UPLOAD_DIR

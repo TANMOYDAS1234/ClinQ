@@ -325,6 +325,19 @@ class AppLocalizationsBn extends AppLocalizations {
   String get chatTapToStop => 'থামাতে ট্যাপ করুন';
 
   @override
+  String get chatRecordVoice => 'ভয়েস মেসেজ রেকর্ড করুন';
+
+  @override
+  String get chatVoiceSending => 'আপনার ভয়েস মেসেজ পাঠানো হচ্ছে…';
+
+  @override
+  String get chatVoiceFailed => 'ভয়েস মেসেজ পাঠানো যায়নি। আবার চেষ্টা করুন।';
+
+  @override
+  String get chatVoiceUnclear =>
+      'রেকর্ডিংটি বোঝা যায়নি। আবার চেষ্টা করুন, বা লিখে পাঠান।';
+
+  @override
   String get chatReply => 'উত্তর দিন';
 
   @override
