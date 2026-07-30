@@ -56,6 +56,11 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
   bool _recording = false;
   Object? _error;
 
+  /// Whether the newest message has scrolled out of view. Same affordance the
+  /// patient has: on a long thread, reading back and then returning to the
+  /// bottom otherwise means a lot of dragging.
+  bool _showJumpToLatest = false;
+
   /// Keeps the conversation live while the clinician has it open, so a message
   /// the patient sends appears without reopening the screen. Same interval as
   /// the patient's side, for the same reason: no socket or push channel exists.
@@ -68,6 +73,14 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
     _patientName = widget.patientName;
     _load();
     _poll = Timer.periodic(_pollInterval, (_) => _pollForUpdates());
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    final away = pos.maxScrollExtent - pos.pixels > 240;
+    if (away != _showJumpToLatest) setState(() => _showJumpToLatest = away);
   }
 
   @override
@@ -245,7 +258,36 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
         child: _KeyboardInset(
           child: Column(
             children: [
-              Expanded(child: _body()),
+              Expanded(
+                child: Stack(
+                  children: [
+                    _body(),
+                    if (_showJumpToLatest)
+                      Positioned(
+                        right: AppSpacing.md,
+                        bottom: AppSpacing.md,
+                        child: Material(
+                          color: AppColors.primary,
+                          shape: const CircleBorder(),
+                          elevation: 3,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _scrollToBottom,
+                            child: const SizedBox(
+                              width: 46,
+                              height: 46,
+                              child: Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: Colors.white,
+                                size: 26,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               // Recording replaces the composer, as on the patient's side.
               if (_recording)
                 VoiceRecorderBar(

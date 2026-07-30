@@ -199,7 +199,7 @@ class ChatMessageBubble extends StatelessWidget {
               ChatAttachmentThumbs(paths: message.attachmentPaths),
             // Name the human. A patient must never have to guess whether the
             // words they are reading came from their doctor or from software.
-            if (isClinician) ...[
+            if (isClinician && !isMine) ...[
               Padding(
                 padding: const EdgeInsets.only(left: 4, bottom: 5),
                 child: Row(
@@ -296,17 +296,17 @@ class ChatMessageBubble extends StatelessWidget {
                         for (final note in message.voiceNotes)
                           VoiceNotePlayer(
                             note: note,
-                            onDark: isUser,
+                            onDark: isMine,
                             // The sender never needs their own words read back.
-                            showTranscript: isClinicianView || !isUser,
+                            showTranscript: !isMine,
                           ),
                       ],
                     )
-                  : isUser
+                  : (isUser || isClinician)
                   // The patient's own text is never Markdown â€” render it plain.
                   ? Text(
                       message.content,
-                      style: const TextStyle(fontSize: 17, height: 1.5, color: Colors.white),
+                      style: TextStyle(fontSize: 17, height: 1.5, color: isMine ? Colors.white : scheme.onSurface),
                     )
                   // Assistant replies carry **bold** and `- ` bullets; render
                   // them rather than showing the raw marks.
@@ -323,7 +323,7 @@ class ChatMessageBubble extends StatelessWidget {
                         // 1.5 gives Bengali conjuncts and Devanagari matras room
                         // to breathe; 1.4 clips their upper marks at this size.
                         height: 1.5,
-                        color: scheme.onSurface,
+                        color: isMine ? Colors.white : scheme.onSurface,
                       ),
                     ),
             ),
@@ -342,7 +342,7 @@ class ChatMessageBubble extends StatelessWidget {
                     // Only on the patient's own turns, and only once a person
                     // from the clinic has opened the thread. Says their message
                     // was read without implying a reply is seconds away.
-                    if (isUser && message.seenByClinicAt != null) ...[
+                    if (isMine && !isClinicianView && message.seenByClinicAt != null) ...[
                       const SizedBox(width: 6),
                       Icon(Icons.done_all_rounded, size: 15, color: AppColors.primary),
                       const SizedBox(width: 3),
