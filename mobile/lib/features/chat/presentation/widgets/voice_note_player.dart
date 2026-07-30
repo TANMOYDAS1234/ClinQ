@@ -127,7 +127,11 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final fg = widget.onDark ? Colors.white : AppColors.primary;
-    final track = widget.onDark ? Colors.white24 : AppColors.primary.withValues(alpha: 0.18);
+    // Same hue as the play glyph, half strength — so the unplayed part of the
+    // waveform reads as the same control rather than as grey filler.
+    final track = widget.onDark
+        ? Colors.white.withValues(alpha: 0.45)
+        : AppColors.primary.withValues(alpha: 0.42);
 
     final playing = _player?.playing ?? false;
     final total = _duration;
@@ -141,6 +145,7 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
       children: [
         Row(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Material(
               color: widget.onDark ? Colors.white24 : AppColors.accentSoft,
@@ -164,27 +169,31 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
+            // Waveform sits beside the button, not stacked above a timestamp.
+            // With the clock in the same column the pair centred as a block, so
+            // the bars floated above the button's middle instead of running
+            // through it. The clock moved below the whole row.
             SizedBox(
-              width: 122,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _Waveform(progress: progress, colour: fg, track: track),
-                  const SizedBox(height: 5),
-                  Text(
-                    total == null ? '' : '${_clock(_position)} / ${_clock(total)}',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: widget.onDark ? Colors.white70 : scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
+              width: 132,
+              child: _Waveform(progress: progress, colour: fg, track: track),
             ),
           ],
         ),
+        if (total != null) ...[
+          const SizedBox(height: 5),
+          Padding(
+            // Indented past the play button so it sits under the waveform.
+            padding: const EdgeInsets.only(left: 52),
+            child: Text(
+              '${_clock(_position)} / ${_clock(total)}',
+              style: TextStyle(
+                fontSize: 11.5,
+                color: widget.onDark ? Colors.white70 : scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
         if (widget.showTranscript &&
             widget.note.transcript != null &&
             widget.note.transcript!.isNotEmpty) ...[
@@ -240,28 +249,34 @@ class _Waveform extends StatelessWidget {
   final Color colour;
   final Color track;
 
+  /// Taller and with more spread than a decorative squiggle: the short bars
+  /// were barely visible against the bubble, so the control read as an empty
+  /// strip rather than as audio.
   static const _heights = <double>[
-    7, 12, 18, 10, 22, 15, 9, 20, 26, 14, 8, 17, 23, 11, 19, 13, 25, 9, 16, 21, 12, 7,
+    10, 17, 26, 14, 31, 21, 12, 28, 36, 19, 11, 24, 33, 15, 27, 18, 35, 13, 22, 30, 16, 10,
   ];
 
   @override
   Widget build(BuildContext context) {
     final filled = (_heights.length * progress).round();
     return SizedBox(
-      height: 26,
+      height: 36,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           for (var i = 0; i < _heights.length; i++) ...[
             Container(
-              width: 3,
+              width: 3.5,
               height: _heights[i],
               decoration: BoxDecoration(
+                // Unplayed bars are the same green as the play glyph, just
+                // faded — at 0.18 they read as grey and looked unrelated to
+                // the button beside them.
                 color: i < filled ? colour : track,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            if (i != _heights.length - 1) const SizedBox(width: 2.4),
+            if (i != _heights.length - 1) const SizedBox(width: 2.2),
           ],
         ],
       ),
