@@ -694,17 +694,11 @@ abstract class AppLocalizations {
   /// **'From the clinic'**
   String get chatFromClinic;
 
-  /// No description provided for @chatCopy.
+  /// No description provided for @chatTapToStop.
   ///
   /// In en, this message translates to:
-  /// **'Copy'**
-  String get chatCopy;
-
-  /// No description provided for @chatCopied.
-  ///
-  /// In en, this message translates to:
-  /// **'Copied to clipboard'**
-  String get chatCopied;
+  /// **'TAP TO STOP'**
+  String get chatTapToStop;
 
   /// No description provided for @chatReply.
   ///
@@ -975,6 +969,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Help me understand my eye report'**
   String get chatSuggestionEye;
+
+  /// No description provided for @chatCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get chatCopy;
+
+  /// No description provided for @chatCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get chatCopied;
 
   /// No description provided for @chatRetry.
   ///

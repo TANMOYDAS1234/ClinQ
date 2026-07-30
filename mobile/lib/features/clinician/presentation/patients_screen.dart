@@ -215,8 +215,13 @@ class _InboxHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.sm),
       child: Row(
         children: [
-          Image.asset('assets/images/logo.png', height: 30, errorBuilder: (_, _, _) =>
-              const Icon(Icons.forum_rounded, size: 26, color: AppColors.primary)),
+          // The app's own emblem, not a generic medical cross.
+          Image.asset(
+            'assets/brand/logo_emblem.png',
+            height: 30,
+            errorBuilder: (_, _, _) =>
+                const Icon(Icons.forum_rounded, size: 26, color: AppColors.primary),
+          ),
           const SizedBox(width: 10),
           const Text(
             'ClinQ',

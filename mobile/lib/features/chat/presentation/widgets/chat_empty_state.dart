@@ -32,8 +32,10 @@ class ChatEmptyState extends StatelessWidget {
           child: Container(
             width: 88,
             height: 88,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
+            decoration: const BoxDecoration(
+              // Flat mint rather than a tint of primary: a translucent green
+              // over the dotted background picked up the dots and looked dirty.
+              color: AppColors.accentSoft,
               shape: BoxShape.circle,
             ),
             child: const Icon(

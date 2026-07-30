@@ -324,10 +324,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatFromClinic => 'From the clinic';
 
   @override
-  String get chatCopy => 'Copy';
-
-  @override
-  String get chatCopied => 'Copied to clipboard';
+  String get chatTapToStop => 'TAP TO STOP';
 
   @override
   String get chatReply => 'Reply';
@@ -473,6 +470,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatSuggestionEye => 'Help me understand my eye report';
+
+  @override
+  String get chatCopy => 'Copy';
+
+  @override
+  String get chatCopied => 'Copied to clipboard';
 
   @override
   String get chatRetry => 'Try again';

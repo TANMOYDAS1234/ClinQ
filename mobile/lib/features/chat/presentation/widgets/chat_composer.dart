@@ -322,6 +322,22 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                 ],
               ),
             ),
+            // Only while dictating. Speech UIs fail when the user cannot tell
+            // whether the mic is still listening, so the state is named and the
+            // way out of it is stated outright.
+            if (_listening)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  l10n.chatTapToStop,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: AppColors.danger,
+                  ),
+                ),
+              ),
           ],
         ),
       ),

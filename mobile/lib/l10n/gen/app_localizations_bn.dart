@@ -322,10 +322,7 @@ class AppLocalizationsBn extends AppLocalizations {
   String get chatFromClinic => 'ক্লিনিক থেকে';
 
   @override
-  String get chatCopy => 'কপি';
-
-  @override
-  String get chatCopied => 'ক্লিপবোর্ডে কপি হয়েছে';
+  String get chatTapToStop => 'থামাতে ট্যাপ করুন';
 
   @override
   String get chatReply => 'উত্তর দিন';
@@ -468,6 +465,12 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get chatSuggestionEye => 'আমার চোখের রিপোর্ট বুঝতে সাহায্য করুন';
+
+  @override
+  String get chatCopy => 'কপি';
+
+  @override
+  String get chatCopied => 'ক্লিপবোর্ডে কপি হয়েছে';
 
   @override
   String get chatRetry => 'আবার চেষ্টা করুন';

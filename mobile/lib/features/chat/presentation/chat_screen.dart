@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../l10n/gen/app_localizations.dart';
@@ -143,6 +145,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     if (error != null) messenger.showSnackBar(SnackBar(content: Text(error)));
   }
 
+  /// Dials the clinic through the phone's own dialer.
+  ///
+  /// Deliberately not an in-app call: a patient who has stopped typing to ring
+  /// the clinic is usually worried, and a normal phone call is the path that
+  /// works with no data, no permissions and nothing to go wrong in between.
+  Future<void> _callClinic() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
+    final uri = Uri(scheme: 'tel', path: AppConfig.clinicPhoneNumber);
+    if (!await launchUrl(uri)) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.commonSomethingWentWrong)));
+    }
+  }
+
   Future<void> _send(String text, [List<String> attachments = const []]) async {
     final replyTo = _replyingTo;
     if (replyTo != null) setState(() => _replyingTo = null);
@@ -203,12 +219,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: Text(
           l10n.chatTitle,
           style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
         ),
         // No "new chat" action: the patient has one continuous conversation
         // with the assistant, which the doctor reviews as a single thread.
+        //
+        // Calling the clinic sits here instead. It dials through the phone
+        // rather than in-app: when someone is frightened enough to stop typing
+        // and call, a normal phone call is the thing that always works —
+        // no data, no permissions, no app in the middle.
+        actions: [
+          IconButton(
+            tooltip: l10n.chatCallClinic,
+            icon: const Icon(Icons.call_rounded),
+            onPressed: _callClinic,
+          ),
+        ],
       ),
       // The Scaffold does not resize for the keyboard; instead the content is
       // padded by the keyboard inset below. This keeps the dotted background a
