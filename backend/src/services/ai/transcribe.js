@@ -1,3 +1,9 @@
+import { spawn } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { writeFile, readFile, unlink } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import ffmpegPath from 'ffmpeg-static';
 import { generate } from './gemini.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../config/logger.js';
@@ -21,12 +27,71 @@ Rules:
 - If the audio is silent or unintelligible, return exactly: [unclear]`;
 
 /**
+ * Audio containers gemini-2.5-flash accepts inline. The phone records AAC in an
+ * MP4 container (audio/mp4 · m4a), which is NOT one of these — sending it as-is
+ * makes Gemini reject the request, and every note comes back "could not make
+ * out the recording". Anything outside this set is transcoded first.
+ */
+const GEMINI_AUDIO_MIME = new Set([
+  'audio/wav',
+  'audio/mp3',
+  'audio/mpeg',
+  'audio/aiff',
+  'audio/aac',
+  'audio/ogg',
+  'audio/flac',
+]);
+
+/**
+ * Transcodes any recording to 16 kHz mono FLAC — a format Gemini reads reliably
+ * and small enough to upload inline. Speech is fully intelligible at 16 kHz
+ * mono, and FLAC is lossless, so nothing a clinician might need is lost. The
+ * stored file is left untouched (still the original m4a) for playback.
+ */
+async function transcodeForGemini(buffer) {
+  if (!ffmpegPath) throw new Error('ffmpeg binary unavailable');
+
+  const base = join(tmpdir(), `vn-${randomUUID()}`);
+  const inPath = `${base}.in`;
+  const outPath = `${base}.flac`;
+  await writeFile(inPath, buffer);
+
+  try {
+    await new Promise((resolve, reject) => {
+      const ff = spawn(ffmpegPath, ['-y', '-i', inPath, '-ac', '1', '-ar', '16000', outPath]);
+      let stderr = '';
+      ff.stderr.on('data', (d) => {
+        stderr += d.toString();
+      });
+      ff.on('error', reject);
+      ff.on('close', (code) =>
+        code === 0 ? resolve() : reject(new Error(`ffmpeg exited ${code}: ${stderr.slice(-300)}`)),
+      );
+    });
+    return await readFile(outPath);
+  } finally {
+    await unlink(inPath).catch(() => {});
+    await unlink(outPath).catch(() => {});
+  }
+}
+
+/**
  * @param {Buffer} buffer raw audio bytes as uploaded
  * @param {string} mimeType the recording's content type
  * @returns {Promise<string|null>} spoken words, or null when nothing usable
  */
 export async function transcribeVoiceNote(buffer, mimeType) {
   try {
+    let audioBuffer = buffer;
+    let audioMime = mimeType;
+
+    // The reason voice notes never transcribed: the m4a container Gemini can't
+    // read. Convert to FLAC first when the format isn't one it accepts.
+    if (!GEMINI_AUDIO_MIME.has(mimeType)) {
+      audioBuffer = await transcodeForGemini(buffer);
+      audioMime = 'audio/flac';
+    }
+
     const result = await generate({
       system: SYSTEM,
       contents: [
@@ -34,7 +99,7 @@ export async function transcribeVoiceNote(buffer, mimeType) {
           role: 'user',
           parts: [
             { text: 'Transcribe this voice message.' },
-            { inlineData: { mimeType, data: buffer.toString('base64') } },
+            { inlineData: { mimeType: audioMime, data: audioBuffer.toString('base64') } },
           ],
         },
       ],
@@ -50,7 +115,7 @@ export async function transcribeVoiceNote(buffer, mimeType) {
     // Never fatal. A failed transcription costs the assistant its answer, but
     // the recording is already stored and the clinic can still listen to it —
     // losing the message entirely would be far worse.
-    logger.error({ err }, 'voice note transcription failed');
+    logger.error({ err: err?.message }, 'voice note transcription failed');
     return null;
   }
 }
