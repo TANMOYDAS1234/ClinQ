@@ -94,12 +94,9 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
     final l10n = AppLocalizations.of(context);
     final text = _controller.text.trim();
 
-    if (text.isEmpty) {
-      // The server requires non-empty text even with a photo, so a caption is
-      // always needed â€” say so rather than failing silently.
-      if (_attachments.isNotEmpty) _snack(l10n.chatAttachNeedsText);
-      return;
-    }
+    // A photo (or several) can be sent with no caption at all — block only when
+    // there is genuinely nothing to send.
+    if (text.isEmpty && _attachments.isEmpty) return;
     if (_attachments.any((a) => a.isUploading)) {
       _snack(l10n.chatAttachUploading);
       return;

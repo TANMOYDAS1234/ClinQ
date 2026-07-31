@@ -16,7 +16,6 @@ import '../../chat/presentation/widgets/dotted_background.dart';
 import '../../chat/presentation/widgets/voice_recorder_bar.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/clinician_repository.dart';
-import 'write_prescription_screen.dart';
 
 /// The clinician's view of a patient's conversation.
 ///
@@ -198,22 +197,34 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
   Future<void> _sendImage() async {
     final source = await _pickImageSource();
     if (source == null) return;
-    final XFile? file = await ImagePicker().pickImage(source: source, maxWidth: 2000, imageQuality: 85);
-    if (file == null || !mounted) return;
+    final picker = ImagePicker();
+    // Gallery allows picking several at once; the camera takes one.
+    final List<XFile> files;
+    if (source == ImageSource.gallery) {
+      files = await picker.pickMultiImage(maxWidth: 2000, imageQuality: 85);
+    } else {
+      final f = await picker.pickImage(source: ImageSource.camera, maxWidth: 2000, imageQuality: 85);
+      files = f == null ? const [] : [f];
+    }
+    if (files.isEmpty || !mounted) return;
 
     setState(() => _sending = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final asset = await ref.read(uploadRepositoryProvider).uploadImage(
-        path: file.path,
-        filename: file.name,
-        kind: UploadKind.other,
-      );
-      final caption = _controller.text.trim();
+      final ids = <String>[];
+      for (final file in files.take(5)) {
+        final asset = await ref.read(uploadRepositoryProvider).uploadImage(
+          path: file.path,
+          filename: file.name,
+          kind: UploadKind.other,
+        );
+        ids.add(asset.id);
+      }
+      // Caption is optional — photos can go on their own.
       await ref.read(clinicianRepositoryProvider).messagePatient(
         patientId: widget.patientId,
-        content: caption.isEmpty ? 'Photo' : caption,
-        attachments: [asset.id],
+        content: _controller.text.trim(),
+        attachments: ids,
       );
       _controller.clear();
       await _load();
@@ -298,13 +309,6 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
           ],
         ),
         actions: [
-          // Write a prescription for this patient without leaving the
-          // conversation — the server mirrors it into their reminders.
-          IconButton(
-            tooltip: 'Write prescription',
-            icon: const Icon(Icons.edit_note_rounded, color: AppColors.primary),
-            onPressed: () => showWritePrescription(context, widget.patientId, _patientName ?? 'Patient'),
-          ),
           // Calling belongs here rather than on the inbox row: the decision to
           // stop typing and phone someone is made while reading the exchange,
           // not while scanning the list.

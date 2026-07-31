@@ -38,15 +38,21 @@ router.post(
   requireAuth,
   chatLimiter,
   validate({
-    body: z.object({
-      sessionId: z.string().optional(),
-      text: z.string().trim().min(1, 'Message cannot be empty').max(4000),
-      language: z.enum(['en', 'bn', 'hi']).optional(),
-      attachments: z.array(z.string()).max(5).default([]),
-      // The earlier turn this message answers, so a reply that lands hours
-      // later still says what it is about.
-      replyTo: z.string().optional(),
-    }),
+    body: z
+      .object({
+        sessionId: z.string().optional(),
+        // Optional so a photo (or several) can be sent with no caption.
+        text: z.string().trim().max(4000).optional().default(''),
+        language: z.enum(['en', 'bn', 'hi']).optional(),
+        attachments: z.array(z.string()).max(5).default([]),
+        // The earlier turn this message answers, so a reply that lands hours
+        // later still says what it is about.
+        replyTo: z.string().optional(),
+      })
+      .refine((b) => b.text.trim().length > 0 || b.attachments.length > 0, {
+        message: 'Add a message or attach a photo',
+        path: ['text'],
+      }),
   }),
   audit('create', 'ChatMessage'),
   asyncHandler(async (req, res) => {
@@ -73,15 +79,21 @@ router.post(
   requireAuth,
   chatLimiter,
   validate({
-    body: z.object({
-      sessionId: z.string().optional(),
-      text: z.string().trim().min(1, 'Message cannot be empty').max(4000),
-      language: z.enum(['en', 'bn', 'hi']).optional(),
-      attachments: z.array(z.string()).max(5).default([]),
-      // The earlier turn this message answers, so a reply that lands hours
-      // later still says what it is about.
-      replyTo: z.string().optional(),
-    }),
+    body: z
+      .object({
+        sessionId: z.string().optional(),
+        // Optional so a photo (or several) can be sent with no caption.
+        text: z.string().trim().max(4000).optional().default(''),
+        language: z.enum(['en', 'bn', 'hi']).optional(),
+        attachments: z.array(z.string()).max(5).default([]),
+        // The earlier turn this message answers, so a reply that lands hours
+        // later still says what it is about.
+        replyTo: z.string().optional(),
+      })
+      .refine((b) => b.text.trim().length > 0 || b.attachments.length > 0, {
+        message: 'Add a message or attach a photo',
+        path: ['text'],
+      }),
   }),
   audit('create', 'ChatMessage'),
   asyncHandler(async (req, res) => {
@@ -304,12 +316,18 @@ router.post(
   requireClinician,
   resolvePatientScope,
   validate({
-    body: z.object({
-      content: z.string().trim().min(1).max(4000),
-      // A clinician can reply with a voice note too — faster between patients,
-      // and the patient hears reassurance that text cannot carry.
-      attachments: z.array(z.string()).max(5).default([]),
-    }),
+    body: z
+      .object({
+        // Optional so the clinician can send photos (or a voice note) alone.
+        content: z.string().trim().max(4000).optional().default(''),
+        // A clinician can reply with a voice note too — faster between patients,
+        // and the patient hears reassurance that text cannot carry.
+        attachments: z.array(z.string()).max(5).default([]),
+      })
+      .refine((b) => b.content.trim().length > 0 || b.attachments.length > 0, {
+        message: 'Add a message or attach a photo',
+        path: ['content'],
+      }),
   }),
   audit('create', 'ChatMessage'),
   asyncHandler(async (req, res) => {

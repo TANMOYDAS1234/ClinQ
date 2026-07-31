@@ -9,7 +9,6 @@ import '../../../core/theme/app_spacing.dart';
 import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
 import 'widgets/clinician_visuals.dart';
-import 'write_prescription_screen.dart';
 
 /// A patient's full clinical picture for the clinician: risk, health score,
 /// adherence, glucose control, HbA1c history, recent alerts and the same
@@ -25,17 +24,6 @@ class PatientDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Patient')),
-      floatingActionButton: async.maybeWhen(
-        data: (p) => FloatingActionButton.extended(
-          onPressed: () async {
-            final written = await showWritePrescription(context, p.id, p.name);
-            if (written == true) ref.invalidate(patientSummaryProvider(patientId));
-          },
-          icon: const Icon(Icons.edit_note_rounded),
-          label: const Text('Prescribe'),
-        ),
-        orElse: () => null,
-      ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(

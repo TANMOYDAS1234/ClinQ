@@ -4,10 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/providers/core_providers.dart';
+import '../../../auth/presentation/auth_controller.dart';
 
-/// Auth header for the owner-only `/uploads/:id/raw` image endpoint. Read once
-/// and cached; the token rarely changes within a session.
-final _imageAuthHeaderProvider = FutureProvider<Map<String, String>>((ref) async {
+/// Auth header for the owner-only `/uploads/:id/raw` image endpoint.
+///
+/// Re-read whenever the signed-in user changes, and never cached across
+/// sessions: a globally-cached header could hold an empty token captured before
+/// login (leaving the sender's own photos broken while everyone else's loaded)
+/// or a stale one after a token refresh.
+final _imageAuthHeaderProvider = FutureProvider.autoDispose<Map<String, String>>((ref) async {
+  ref.watch(authControllerProvider);
   final token = await ref.watch(secureStoreProvider).readAccessToken();
   return token == null ? {} : {'Authorization': 'Bearer $token'};
 });

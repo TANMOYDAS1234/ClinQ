@@ -77,7 +77,8 @@ class UploadRepository {
     'image/webp',
     'image/heic',
     'application/pdf',
-    // Voice notes. Android records AAC in an MP4 container.
+    // Voice notes. Recorded as 16 kHz mono WAV (older builds used AAC/m4a).
+    'audio/wav',
     'audio/mp4',
     'audio/m4a',
     'audio/aac',

@@ -51,10 +51,10 @@ class ChatController extends StateNotifier<ChatState> {
     List<String>? attachments,
     String? replyToId,
   }) async {
-    // The server requires non-empty text even when files are attached, so a
-    // photo can never be sent on its own.
-    if (text.trim().isEmpty || state.isSending) return;
     final trimmed = text.trim();
+    // A photo-only message (empty text) is allowed as long as something is
+    // attached; block only when there is nothing at all to send.
+    if ((trimmed.isEmpty && (attachments == null || attachments.isEmpty)) || state.isSending) return;
 
     // Echo the patient's message instantly so tapping send feels immediate; the
     // server's saved copy replaces it once the reply returns.

@@ -26,13 +26,25 @@ class MarkdownText extends StatelessWidget {
   /// selection handles, which render correctly for Bengali and Devanagari.
   final bool selectable;
 
-  /// Strips the Markdown marks so copied/selected text is clean prose, not
-  /// literal `**` and `- `.
+  /// Strips the Markdown marks so copied/selected text — and message previews —
+  /// read as clean prose, not literal `**`, `#`, `` ` `` or `- `.
   static String toPlainText(String data) => data
+      // Bold, then italic (italic's look-behind keeps it off the ** it leaves).
       .replaceAllMapped(RegExp(r'(\*\*|__)(.+?)\1'), (m) => m.group(2)!)
       .replaceAllMapped(RegExp(r'(?<!\*)(\*|_)(?!\s)(.+?)\1'), (m) => m.group(2)!)
+      .replaceAllMapped(RegExp(r'~~(.+?)~~'), (m) => m.group(1)!)
+      .replaceAllMapped(RegExp(r'`([^`]+)`'), (m) => m.group(1)!)
+      // [text](url) -> text
+      .replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)'), (m) => m.group(1)!)
+      // Leading #, >, and heading/quote marks.
+      .replaceAll(RegExp(r'^\s{0,3}#{1,6}\s*', multiLine: true), '')
+      .replaceAll(RegExp(r'^\s{0,3}>\s?', multiLine: true), '')
       .replaceAll(RegExp(r'^\s*[-*]\s+', multiLine: true), '• ')
       .trim();
+
+  /// [toPlainText] collapsed to a single line — for list previews, where a
+  /// message's line breaks would otherwise stack up two ragged lines.
+  static String toPreview(String data) => toPlainText(data).replaceAll(RegExp(r'\s+'), ' ').trim();
 
   static final _bullet = RegExp(r'^\s*[-*•]\s+(.*)$');
   // Bold first (**x** / __x__), then italic (*x* / _x_).

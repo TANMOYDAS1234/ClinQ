@@ -46,13 +46,12 @@ class _VoiceRecorderBarState extends State<VoiceRecorderBar> {
 
   /// A ceiling, not a budget.
   ///
-  /// Deliberately far beyond any real "how have you been feeling", so nobody is
-  /// cut off mid-sentence — but not unlimited. At this bitrate a recording
-  /// reaches the server's 12 MB upload cap (and Gemini's inline-audio limit)
-  /// somewhere past twenty minutes, and an unbounded recording would let a
-  /// patient talk for half an hour and then lose all of it at upload. Being
-  /// stopped at ten minutes is far kinder than that.
-  static const _maxLength = Duration(minutes: 10);
+  /// Uncompressed 16 kHz mono WAV is ~1.9 MB per minute, so a note reaches the
+  /// server's 12 MB upload cap around six minutes. Stopping at five keeps even
+  /// the longest note safely uploadable rather than letting a patient talk on
+  /// and then lose all of it at upload — and five minutes is far beyond any real
+  /// "how have you been feeling".
+  static const _maxLength = Duration(minutes: 5);
 
   @override
   void initState() {
@@ -76,12 +75,16 @@ class _VoiceRecorderBarState extends State<VoiceRecorderBar> {
       }
 
       final dir = await getTemporaryDirectory();
-      final path = '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final path = '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.wav';
 
       await _recorder.start(
-        // AAC in MP4: plays natively on both platforms, and is small enough
-        // that a two-minute note uploads on a weak mobile connection.
-        const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 64000, sampleRate: 44100),
+        // WAV/PCM at 16 kHz mono. Unlike the AAC-in-MP4 (m4a) it used to record —
+        // which the transcription model cannot read and which needs a fragile
+        // server-side conversion — WAV is accepted directly, and PCM needs no
+        // hardware codec so it records on every Android version. 16 kHz mono is
+        // ample for speech and keeps a few-minute note well under the upload cap.
+        // This is what makes a voice note both transcribe AND play back.
+        const RecordConfig(encoder: AudioEncoder.wav, sampleRate: 16000, numChannels: 1),
         path: path,
       );
 

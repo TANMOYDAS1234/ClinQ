@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/markdown_text.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
@@ -404,8 +405,8 @@ class _ConversationRow extends StatelessWidget {
                         // Say who spoke, so "answered" and "waiting" are
                         // distinguishable at a glance.
                         : msg.fromPatient
-                        ? msg.preview
-                        : 'You: ${msg.preview}',
+                        ? MarkdownText.toPreview(msg.preview)
+                        : 'You: ${MarkdownText.toPreview(msg.preview)}',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
