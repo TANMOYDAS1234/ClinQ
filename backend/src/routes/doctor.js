@@ -35,7 +35,16 @@ router.get(
     const dayStart = dayjs().startOf('day').toDate();
     const dayEnd = dayjs().endOf('day').toDate();
 
-    const [patientCount, activeToday, alertCounts, appointmentsToday, riskGroups] = await Promise.all([
+    const [
+      patientCount,
+      activeToday,
+      alertCounts,
+      appointmentsToday,
+      completedToday,
+      pendingReviews,
+      unreadMessages,
+      riskGroups,
+    ] = await Promise.all([
       User.countDocuments({ role: ROLES.PATIENT, isActive: true }),
       GlucoseReading.distinct('patient', { measuredAt: { $gte: dayStart } }).then((ids) => ids.length),
       ClinicalAlert.aggregate([
@@ -46,6 +55,15 @@ router.get(
         scheduledFor: { $gte: dayStart, $lte: dayEnd },
         status: { $nin: ['cancelled'] },
       }),
+      // Today's finished consultations — the "Completed" headline.
+      Appointment.countDocuments({
+        scheduledFor: { $gte: dayStart, $lte: dayEnd },
+        status: 'completed',
+      }),
+      // Conversations flagged for the doctor to read — the "Pending" headline.
+      ChatSession.countDocuments({ flaggedForReview: true, isArchived: false }),
+      // Patient messages no one at the clinic has opened yet — "New messages".
+      ChatMessage.countDocuments({ role: 'user', seenByClinicAt: null }),
       PatientProfile.aggregate([{ $group: { _id: '$riskBand', count: { $sum: 1 } } }]),
     ]);
 
@@ -62,6 +80,9 @@ router.get(
         total: alertCounts.reduce((s, a) => s + a.count, 0),
       },
       appointmentsToday,
+      completedToday,
+      pendingReviews,
+      unreadMessages,
       riskDistribution: {
         low: byRisk.low ?? 0,
         moderate: byRisk.moderate ?? 0,

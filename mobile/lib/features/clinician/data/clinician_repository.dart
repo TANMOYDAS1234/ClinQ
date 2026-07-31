@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../shared/models/paged.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../chat/domain/chat_message.dart';
+import '../domain/appointment.dart';
 import '../domain/chat_review.dart';
 import '../domain/clinician_models.dart';
 import '../domain/knowledge_chunk.dart';
@@ -19,6 +20,25 @@ class ClinicianRepository {
   Future<ClinicOverview> overview() async {
     final json = await _client.getJson('/doctor/overview');
     return ClinicOverview.fromJson(json);
+  }
+
+  /// Today's clinic diary, earliest first. The API sorts newest-first and has no
+  /// "today" filter of its own, so we pass an explicit day range and re-sort
+  /// ascending for a top-to-bottom schedule.
+  Future<List<Appointment>> appointmentsToday() async {
+    final now = DateTime.now();
+    final from = DateTime(now.year, now.month, now.day);
+    final to = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+    final json = await _client.getJson('/appointments', query: {
+      'from': from.toUtc().toIso8601String(),
+      'to': to.toUtc().toIso8601String(),
+      'limit': 200,
+    });
+    return (json['items'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(Appointment.fromJson)
+        .toList()
+      ..sort((a, b) => a.scheduledFor.compareTo(b.scheduledFor));
   }
 
   /// The patient's own conversation, as the patient sees it.

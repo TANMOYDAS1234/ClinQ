@@ -399,50 +399,65 @@ class _ConversationRow extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 3),
-                  Text(
-                    msg == null
-                        ? 'No messages yet'
-                        // Say who spoke, so "answered" and "waiting" are
-                        // distinguishable at a glance.
-                        : msg.fromPatient
-                        ? MarkdownText.toPreview(msg.preview)
-                        : 'You: ${MarkdownText.toPreview(msg.preview)}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      height: 1.35,
-                      color: msg == null
-                          ? scheme.outline
-                          : unread
-                          ? scheme.onSurface
-                          : scheme.onSurfaceVariant,
-                      fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                  if (unread || emergency || patient.openAlertCount > 0) ...[
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        if (emergency)
-                          const _Chip(
-                            label: 'Needs attention',
-                            fg: AppColors.danger,
-                            bg: AppColors.dangerBg,
-                            icon: Icons.priority_high_rounded,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          msg == null
+                              ? 'No messages yet'
+                              // Say who spoke, so "answered" and "waiting" are
+                              // distinguishable at a glance.
+                              : msg.fromPatient
+                              ? MarkdownText.toPreview(msg.preview)
+                              : 'You: ${MarkdownText.toPreview(msg.preview)}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            height: 1.35,
+                            color: msg == null
+                                ? scheme.outline
+                                : unread
+                                ? scheme.onSurface
+                                : scheme.onSurfaceVariant,
+                            fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
                           ),
-                        if (unread)
-                          _Chip(
-                            label: patient.unreadCount == 1
-                                ? 'New message'
-                                : '${patient.unreadCount} new messages',
-                            fg: AppColors.primary,
-                            bg: AppColors.accentSoft,
-                            icon: Icons.mark_chat_unread_rounded,
+                        ),
+                      ),
+                      // WhatsApp-style unread count: a green disc with just the
+                      // number, on the right of the preview line. Expands to a
+                      // pill for two digits, "99+" beyond.
+                      if (unread) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          constraints: const BoxConstraints(minWidth: 22),
+                          height: 22,
+                          padding: const EdgeInsets.symmetric(horizontal: 7),
+                          alignment: Alignment.center,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.all(Radius.circular(11)),
                           ),
+                          child: Text(
+                            patient.unreadCount > 99 ? '99+' : '${patient.unreadCount}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
                       ],
+                    ],
+                  ),
+                  if (emergency) ...[
+                    const SizedBox(height: 8),
+                    const _Chip(
+                      label: 'Needs attention',
+                      fg: AppColors.danger,
+                      bg: AppColors.dangerBg,
+                      icon: Icons.priority_high_rounded,
                     ),
                   ],
                 ],

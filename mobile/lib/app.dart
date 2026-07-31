@@ -89,10 +89,10 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
       // locked. `child` is the router's current page.
       builder: (context, child) {
         final mq = MediaQuery.of(context);
-        // Trim the whole app's text ~10% smaller, but still ride on the device's
-        // own font-size setting (composed, not replaced) and clamped so it can
-        // never become unreadably small or huge.
-        final scale = (mq.textScaler.scale(1) * 0.9).clamp(0.8, 1.3);
+        // One uniform, slightly-smaller text size across the whole app. Trimmed
+        // ~13% and capped at 1.0 so a device set to large fonts can't blow the
+        // layout up, while staying comfortably readable (not tiny).
+        final scale = (mq.textScaler.scale(1) * 0.87).clamp(0.83, 1.0);
         return MediaQuery(
           data: mq.copyWith(textScaler: TextScaler.linear(scale)),
           child: AppLockGate(child: child ?? const SizedBox.shrink()),

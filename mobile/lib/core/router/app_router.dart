@@ -8,8 +8,10 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/chat/presentation/chat_screen.dart';
 import '../../features/clinician/presentation/alerts_screen.dart';
+import '../../features/clinician/presentation/appointments_admin_screen.dart';
 import '../../features/clinician/presentation/chat_review_detail_screen.dart';
 import '../../features/clinician/presentation/chat_review_screen.dart';
+import '../../features/clinician/presentation/clinician_dashboard_screen.dart';
 import '../../features/clinician/presentation/clinician_more_screen.dart';
 import '../../features/clinician/presentation/clinician_shell.dart';
 import '../../features/clinician/presentation/knowledge_edit_screen.dart';
@@ -55,7 +57,7 @@ String? _redirect(Ref ref, GoRouterState state) {
   // Landing tabs after login. The patient app now opens on the Assistant and
   // the clinician app on Patients (the former Home/Dashboard tabs were removed).
   const home = '/chat';
-  const clinicianHome = '/clinician/patients';
+  const clinicianHome = '/clinician/dashboard';
 
   final isAuthRoute = loc == login || loc == register;
 
@@ -99,6 +101,7 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       // Clinical-alert triage, chat review and knowledge curation are pushed
       // over the clinician shell from several places, so they live at the root.
       GoRoute(path: '/clinician/alerts', builder: (context, state) => const AlertsScreen()),
+      GoRoute(path: '/clinician/appointments', builder: (context, state) => const AppointmentsAdminScreen()),
       GoRoute(path: '/clinician/chat-review', builder: (context, state) => const ChatReviewScreen()),
       GoRoute(
         path: '/clinician/chat-review/:id',
@@ -155,6 +158,14 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => ClinicianShell(navigationShell: navigationShell),
         branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/clinician/dashboard',
+                builder: (context, state) => const ClinicianDashboardScreen(),
+              ),
+            ],
+          ),
           StatefulShellBranch(
             routes: [
               GoRoute(

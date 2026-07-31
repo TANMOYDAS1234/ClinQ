@@ -4,6 +4,9 @@ class ClinicOverview {
     required this.patientCount,
     required this.activeToday,
     required this.appointmentsToday,
+    required this.completedToday,
+    required this.pendingReviews,
+    required this.unreadMessages,
     required this.emergencyAlerts,
     required this.urgentAlerts,
     required this.warningAlerts,
@@ -17,6 +20,16 @@ class ClinicOverview {
   final int patientCount;
   final int activeToday;
   final int appointmentsToday;
+
+  /// Today's finished consultations — the "Completed" headline tile.
+  final int completedToday;
+
+  /// Conversations flagged for the doctor to read — the "Pending" tile.
+  final int pendingReviews;
+
+  /// Patient messages the clinic has not opened yet — the "New Messages" alert.
+  final int unreadMessages;
+
   final int emergencyAlerts;
   final int urgentAlerts;
   final int warningAlerts;
@@ -26,6 +39,9 @@ class ClinicOverview {
   final int riskHigh;
   final int riskCritical;
 
+  /// Open alerts that need immediate eyes — the "High Priority" alert count.
+  int get highPriorityAlerts => emergencyAlerts + urgentAlerts;
+
   factory ClinicOverview.fromJson(Map<String, dynamic> j) {
     final alerts = j['openAlerts'] as Map<String, dynamic>? ?? const {};
     final risk = j['riskDistribution'] as Map<String, dynamic>? ?? const {};
@@ -34,6 +50,9 @@ class ClinicOverview {
       patientCount: n(j['patientCount']),
       activeToday: n(j['activeToday']),
       appointmentsToday: n(j['appointmentsToday']),
+      completedToday: n(j['completedToday']),
+      pendingReviews: n(j['pendingReviews']),
+      unreadMessages: n(j['unreadMessages']),
       emergencyAlerts: n(alerts['emergency']),
       urgentAlerts: n(alerts['urgent']),
       warningAlerts: n(alerts['warning']),

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/models/paged.dart';
 import '../data/clinician_repository.dart';
+import '../domain/appointment.dart';
 import '../domain/chat_review.dart';
 import '../domain/clinician_models.dart';
 import '../domain/knowledge_chunk.dart';
@@ -10,6 +11,11 @@ import '../domain/patient_summary.dart';
 /// Dashboard headline numbers.
 final overviewProvider = FutureProvider.autoDispose<ClinicOverview>((ref) {
   return ref.watch(clinicianRepositoryProvider).overview();
+});
+
+/// Today's clinic diary for the dashboard schedule.
+final appointmentsTodayProvider = FutureProvider.autoDispose<List<Appointment>>((ref) {
+  return ref.watch(clinicianRepositoryProvider).appointmentsToday();
 });
 
 typedef PatientsQuery = ({String? riskBand, String? search, String sort});

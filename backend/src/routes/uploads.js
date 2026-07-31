@@ -11,6 +11,7 @@ import { validate } from '../middleware/validate.js';
 import { asyncHandler, badRequest, notFound, forbidden } from '../middleware/errors.js';
 import { audit } from '../middleware/audit.js';
 import { MediaAsset } from '../models/MediaAsset.js';
+import { ChatMessage } from '../models/ChatMessage.js';
 import { ROLES } from '../models/User.js';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
@@ -191,7 +192,19 @@ router.get(
 
     const isOwner = asset.owner.toString() === req.user._id.toString();
     const isClinician = req.user.role !== ROLES.PATIENT;
-    if (!isOwner && !isClinician) throw forbidden('You do not have access to this file');
+    let allowed = isOwner || isClinician;
+
+    // A patient can also view a file that appears in their OWN chat thread — a
+    // photo or voice note the clinic sent them. This covers files still owned by
+    // the clinician from before uploads were owned by the patient, so older
+    // received images stop showing as broken boxes without a data migration.
+    // Scoped to the patient's own messages, so it never exposes another
+    // patient's media.
+    if (!allowed && req.user.role === ROLES.PATIENT) {
+      allowed = await ChatMessage.exists({ patient: req.user._id, attachments: asset._id });
+    }
+
+    if (!allowed) throw forbidden('You do not have access to this file');
 
     req.patientId = asset.owner;
 
