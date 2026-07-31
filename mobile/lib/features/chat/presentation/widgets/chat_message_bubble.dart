@@ -282,12 +282,15 @@ class ChatMessageBubble extends StatelessWidget {
                   bottomLeft: Radius.circular(isMine ? 20 : 6),
                   bottomRight: Radius.circular(isMine ? 6 : 20),
                 ),
+                // Barely-there outline. A heavy stroke round every bubble read
+                // as clutter over the wallpaper; the fill alone carries the
+                // shape now, with just a whisper of an edge.
                 border: isMine
                     ? null
                     : Border.all(
                         color: isClinician
-                            ? AppColors.primary.withValues(alpha: 0.35)
-                            : scheme.outlineVariant,
+                            ? AppColors.primary.withValues(alpha: 0.10)
+                            : scheme.outlineVariant.withValues(alpha: 0.20),
                       ),
               ),
               child: message.voiceNotes.isNotEmpty

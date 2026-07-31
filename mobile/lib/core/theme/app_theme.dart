@@ -151,17 +151,19 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark ? colorScheme.surfaceContainerHigh : Colors.white,
+        // Roomier fields — the old height read as cramped/narrow on the auth
+        // screens. Taller with a touch more side padding.
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.md,
+          horizontal: 18,
+          vertical: 19,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
+          borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.45)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
+          borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.45)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),

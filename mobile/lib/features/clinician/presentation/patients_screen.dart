@@ -170,7 +170,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
                           decoration: BoxDecoration(
                             color: scheme.surfaceContainerLowest,
                             borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+                            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.22)),
                             // Matches the settings groups, so the two panels
                             // read as one product rather than two apps.
                             boxShadow: [
@@ -193,7 +193,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
                                     padding: const EdgeInsets.only(left: 76),
                                     child: Divider(
                                       height: 1,
-                                      color: scheme.outlineVariant.withValues(alpha: 0.55),
+                                      color: scheme.outlineVariant.withValues(alpha: 0.22),
                                     ),
                                   ),
                                 _ConversationRow(
@@ -272,11 +272,11 @@ class _SearchField extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
-            borderSide: BorderSide(color: scheme.outlineVariant),
+            borderSide: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.35)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
-            borderSide: BorderSide(color: scheme.outlineVariant),
+            borderSide: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.35)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
