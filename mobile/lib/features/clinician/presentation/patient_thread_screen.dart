@@ -16,6 +16,7 @@ import '../../chat/presentation/widgets/dotted_background.dart';
 import '../../chat/presentation/widgets/voice_recorder_bar.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/clinician_repository.dart';
+import 'write_prescription_screen.dart';
 
 /// The clinician's view of a patient's conversation.
 ///
@@ -241,6 +242,13 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
           ],
         ),
         actions: [
+          // Write a prescription for this patient without leaving the
+          // conversation — the server mirrors it into their reminders.
+          IconButton(
+            tooltip: 'Write prescription',
+            icon: const Icon(Icons.edit_note_rounded, color: AppColors.primary),
+            onPressed: () => showWritePrescription(context, widget.patientId, _patientName ?? 'Patient'),
+          ),
           // Calling belongs here rather than on the inbox row: the decision to
           // stop typing and phone someone is made while reading the exchange,
           // not while scanning the list.

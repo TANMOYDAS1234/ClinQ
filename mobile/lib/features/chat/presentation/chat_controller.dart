@@ -127,13 +127,36 @@ class ChatController extends StateNotifier<ChatState> {
     try {
       final paged = await _repository.getSessionMessages(id, limit: 100);
       final messages = [...paged.items]..sort((a, b) => a.seq.compareTo(b.seq));
-      // Only touch state when something actually arrived, so a poll that found
-      // nothing does not fight the patient's own scrolling.
-      if (messages.length <= state.messages.length) return;
+      // Replace whenever anything changed — a new clinician reply, a message
+      // whose content grew, or attachments that only came back fully described
+      // on a re-fetch — not just when the count grew. The count-only check left
+      // a doctor's reply invisible and a just-sent voice note stuck rendering as
+      // a broken image (the send response omits the attachment's kind, the poll
+      // has it), because neither changed the length.
+      if (!_messagesDiffer(messages, state.messages)) return;
       state = state.copyWith(messages: messages);
     } on ApiException {
       // Ignored on purpose — the next tick retries.
     }
+  }
+
+  /// True when [next] carries anything the current [current] does not — a
+  /// different count, a changed id/content, or a differing attachment/voice-note
+  /// count on any turn. Kept coarse so an unchanged poll never rebuilds the list
+  /// (and never fights the patient's scrolling).
+  static bool _messagesDiffer(List<ChatMessage> next, List<ChatMessage> current) {
+    if (next.length != current.length) return true;
+    for (var i = 0; i < next.length; i++) {
+      final a = next[i];
+      final b = current[i];
+      if (a.id != b.id ||
+          a.content != b.content ||
+          a.voiceNotes.length != b.voiceNotes.length ||
+          a.attachmentPaths.length != b.attachmentPaths.length) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<void> openSession(String sessionId) async {

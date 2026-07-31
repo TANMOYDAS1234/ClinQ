@@ -83,6 +83,9 @@ export async function handlePatientMessage({ patientId, sessionId, text, languag
 
   // Populate the quoted turn so the send response carries its text preview.
   if (replyTo) await userMessage.populate('replyTo', 'content role');
+  // Populate so serialiseMessage can tell a voice note from a photo — otherwise
+  // the just-sent recording renders as a broken image thumbnail.
+  if (attachments.length) await userMessage.populate('attachments', 'kind mimeType transcript');
 
   // Escalate before generating. The clinic learns about a chest-pain message
   // whether or not the model ever responds.
@@ -256,6 +259,9 @@ export async function* streamPatientMessage({ patientId, sessionId, text, langua
 
   // Populate the quoted turn so the send response carries its text preview.
   if (replyTo) await userMessage.populate('replyTo', 'content role');
+  // Populate so serialiseMessage can tell a voice note from a photo — otherwise
+  // the just-sent recording renders as a broken image thumbnail.
+  if (attachments.length) await userMessage.populate('attachments', 'kind mimeType transcript');
 
   // Escalate BEFORE the first token â€” the clinic learns about a chest-pain
   // message whether or not any reply is ever generated.
@@ -408,11 +414,20 @@ function serialiseMessage(m) {
     replyToId: rt ? (rtDoc ? String(rtDoc._id) : (rt.toString?.() ?? String(rt))) : null,
     replyPreview: rtDoc ? { content: String(rtDoc.content).slice(0, 160), role: rtDoc.role ?? null } : null,
     createdAt: m.createdAt,
-    // Attachment ids, so the app can render the photo the patient sent. The
-    // raw bytes are fetched separately from /uploads/:id/raw (owner-only).
-    attachments: (m.attachments ?? []).map((a) => ({
-      id: a.toString?.() ?? a,
-      url: `/api/v1/uploads/${a.toString?.() ?? a}/raw`,
-    })),
+    // Attachments carry kind/mimeType/transcript so the app can tell a voice
+    // note from a photo — without them a recording is drawn as a (broken) image
+    // thumbnail instead of a player. Needs the message's attachments populated;
+    // falls back to id+url when they are not.
+    attachments: (m.attachments ?? []).map((a) => {
+      const id = (a?._id ?? a).toString?.() ?? a;
+      const populated = a && typeof a === 'object' && ('kind' in a || 'mimeType' in a);
+      return {
+        id,
+        url: `/api/v1/uploads/${id}/raw`,
+        kind: populated ? (a.kind ?? null) : null,
+        mimeType: populated ? (a.mimeType ?? null) : null,
+        transcript: populated ? (a.transcript ?? null) : null,
+      };
+    }),
   };
 }
