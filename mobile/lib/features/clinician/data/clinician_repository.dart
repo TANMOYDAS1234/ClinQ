@@ -35,7 +35,7 @@ class ClinicianRepository {
     })
   >
   patientThread(String patientId) async {
-    final json = await _client.getJson('/chat/patients/$patientId/thread', query: {'limit': 100});
+    final json = await _client.getJson('/chat/patients/$patientId/thread', query: {'limit': 200});
     final items = (json['items'] as List? ?? const [])
         .whereType<Map<String, dynamic>>()
         // Sorted by createdAt, not seq: seq restarts per session, so it cannot

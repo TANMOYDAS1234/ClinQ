@@ -125,14 +125,17 @@ class ChatController extends StateNotifier<ChatState> {
     if (id == null || state.isSending || state.isLoadingHistory) return;
 
     try {
-      final paged = await _repository.getSessionMessages(id, limit: 100);
+      final paged = await _repository.getSessionMessages(id, limit: 200);
       final messages = [...paged.items]..sort((a, b) => a.seq.compareTo(b.seq));
-      // Replace whenever anything changed — a new clinician reply, a message
-      // whose content grew, or attachments that only came back fully described
-      // on a re-fetch — not just when the count grew. The count-only check left
-      // a doctor's reply invisible and a just-sent voice note stuck rendering as
-      // a broken image (the send response omits the attachment's kind, the poll
-      // has it), because neither changed the length.
+      // NEVER shrink the visible thread. A message the patient just sent that the
+      // server has not echoed back on this exact poll — or a transient short
+      // read — must not wipe what is on screen. Dropping this guard is what made
+      // sent text, voice and photos flash up and then vanish a second later.
+      if (messages.length < state.messages.length) return;
+      // Otherwise replace when anything changed — a new clinician reply, or a
+      // message whose content/attachments came back fuller — so a doctor's reply
+      // appears live and nothing renders stale. Unchanged polls do nothing, so
+      // the list never rebuilds under the patient's scrolling.
       if (!_messagesDiffer(messages, state.messages)) return;
       state = state.copyWith(messages: messages);
     } on ApiException {

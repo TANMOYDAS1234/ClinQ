@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/network/api_exception.dart';
@@ -192,6 +192,62 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
     }
   }
 
+  /// Sends a photo to the patient — the doctor's version of the patient's
+  /// attach button. Uploads it, then sends it as a message with the text in the
+  /// box as its caption (or a default, so the message is never empty).
+  Future<void> _sendImage() async {
+    final source = await _pickImageSource();
+    if (source == null) return;
+    final XFile? file = await ImagePicker().pickImage(source: source, maxWidth: 2000, imageQuality: 85);
+    if (file == null || !mounted) return;
+
+    setState(() => _sending = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final asset = await ref.read(uploadRepositoryProvider).uploadImage(
+        path: file.path,
+        filename: file.name,
+        kind: UploadKind.other,
+      );
+      final caption = _controller.text.trim();
+      await ref.read(clinicianRepositoryProvider).messagePatient(
+        patientId: widget.patientId,
+        content: caption.isEmpty ? 'Photo' : caption,
+        attachments: [asset.id],
+      );
+      _controller.clear();
+      await _load();
+    } on ApiException {
+      messenger.showSnackBar(const SnackBar(content: Text('Could not send the photo. Please try again.')));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<ImageSource?> _pickImageSource() {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take photo'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _sending) return;
@@ -312,6 +368,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
                   sending: _sending,
                   onSend: _send,
                   onRecord: () => setState(() => _recording = true),
+                  onAttach: _sendImage,
                 ),
             ],
           ),
@@ -391,12 +448,17 @@ class _Composer extends StatelessWidget {
     required this.sending,
     required this.onSend,
     required this.onRecord,
+    required this.onAttach,
   });
 
   /// Starts a voice reply. A doctor between patients can say in fifteen seconds
   /// what would take a minute to thumb-type, and the patient hears an actual
   /// voice — which carries reassurance that text does not.
   final VoidCallback onRecord;
+
+  /// Attach a photo to send the patient — same affordance the patient has, for
+  /// sending back a marked-up report, a diagram, or a photographed note.
+  final VoidCallback onAttach;
 
   final TextEditingController controller;
 
@@ -463,6 +525,12 @@ class _Composer extends StatelessWidget {
                       ),
                       onSubmitted: (_) => onSend(),
                     ),
+                        ),
+                        // Attach a photo, same affordance as the patient has.
+                        IconButton(
+                          tooltip: 'Attach a photo',
+                          onPressed: sending ? null : onAttach,
+                          icon: Icon(Icons.attach_file_rounded, color: scheme.onSurfaceVariant),
                         ),
                         // Speak instead of typing, same as the patient has.
                         IconButton(

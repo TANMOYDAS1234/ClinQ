@@ -244,10 +244,12 @@ router.get(
     }
 
     const { page, limit, skip } = q(req);
-    // Ordered by time, not seq: seq restarts per session, so it cannot order a
-    // history that spans several.
+    // Newest first so a long history returns its most RECENT page, not its
+    // oldest — the clinic was missing the latest messages on any thread past the
+    // limit. Ordered by time, not seq: seq restarts per session, so it cannot
+    // order a history that spans several. The app re-sorts ascending to display.
     const items = await ChatMessage.find({ patient: req.patientId, hiddenFor: { $ne: req.user._id } })
-      .sort({ createdAt: 1 })
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .populate('sender', 'name')
