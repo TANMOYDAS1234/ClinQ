@@ -12,7 +12,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../chat/domain/chat_message.dart';
 
 import '../../chat/presentation/widgets/chat_message_bubble.dart';
-import '../../chat/presentation/widgets/dotted_background.dart';
+import '../../../shared/widgets/chat_background.dart';
 import '../../chat/presentation/widgets/voice_recorder_bar.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/clinician_repository.dart';
@@ -324,7 +324,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
       // Matches the patient's screen: a fixed background that never repaints as
       // the keyboard animates.
       resizeToAvoidBottomInset: false,
-      body: DottedBackground(
+      body: ChatBackground(
         child: _KeyboardInset(
           child: Column(
             children: [

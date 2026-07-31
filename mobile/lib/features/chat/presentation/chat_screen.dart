@@ -20,7 +20,7 @@ import 'chat_controller.dart';
 import 'widgets/chat_composer.dart';
 import 'widgets/chat_empty_state.dart';
 import 'widgets/chat_message_bubble.dart';
-import 'widgets/dotted_background.dart';
+import '../../../shared/widgets/chat_background.dart';
 import 'widgets/generating_bubble.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -283,7 +283,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       // fixed, full-screen layer that never repaints as the keyboard animates —
       // which was a real source of the input/attach lag.
       resizeToAvoidBottomInset: false,
-      body: DottedBackground(
+      body: ChatBackground(
         child: _KeyboardInset(
           child: Column(
           children: [
