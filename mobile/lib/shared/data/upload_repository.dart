@@ -114,6 +114,8 @@ class UploadRepository {
         return 'image/heic';
       case 'pdf':
         return 'application/pdf';
+      case 'wav':
+        return 'audio/wav';
       case 'm4a':
       case 'aac':
       case 'mp4':

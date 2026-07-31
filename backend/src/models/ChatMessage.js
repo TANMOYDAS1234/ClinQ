@@ -13,7 +13,9 @@ const chatMessageSchema = new mongoose.Schema(
     // audit can attribute clinical advice to a named person.
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
-    content: { type: String, required: true, maxlength: 20000 },
+    // Not required: a message may be a photo (or voice note) with no caption.
+    // The route validation guarantees a turn always has text or an attachment.
+    content: { type: String, default: '', maxlength: 20000 },
     language: { type: String, enum: ['en', 'bn', 'hi'], default: 'en' },
 
     attachments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'MediaAsset' }],

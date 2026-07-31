@@ -505,10 +505,16 @@ class _Composer extends StatelessWidget {
                     border: Border.all(color: scheme.outlineVariant),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.only(left: 18, right: 4),
+                    padding: const EdgeInsets.only(left: 4, right: 4),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        // Attach on the LEFT, matching the patient's composer.
+                        IconButton(
+                          tooltip: 'Attach a photo',
+                          onPressed: sending ? null : onAttach,
+                          icon: Icon(Icons.attach_file_rounded, color: scheme.onSurfaceVariant),
+                        ),
                         Expanded(
                           child: TextField(
                       controller: controller,
@@ -529,12 +535,6 @@ class _Composer extends StatelessWidget {
                       ),
                       onSubmitted: (_) => onSend(),
                     ),
-                        ),
-                        // Attach a photo, same affordance as the patient has.
-                        IconButton(
-                          tooltip: 'Attach a photo',
-                          onPressed: sending ? null : onAttach,
-                          icon: Icon(Icons.attach_file_rounded, color: scheme.onSurfaceVariant),
                         ),
                         // Speak instead of typing, same as the patient has.
                         IconButton(

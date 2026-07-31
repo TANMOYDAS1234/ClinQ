@@ -225,6 +225,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
           next.messages.isNotEmpty &&
           previous.messages.last.content.length != next.messages.last.content.length;
       if (lengthChanged || contentGrew) _scrollToBottom();
+      // Let the error banner clear itself after a few seconds instead of
+      // sitting there until the next message.
+      if (previous?.error == null && next.error != null) {
+        Future.delayed(const Duration(seconds: 4), () {
+          if (mounted) ref.read(chatControllerProvider.notifier).dismissError();
+        });
+      }
     });
 
     // The assistant's bubble is created when the `meta` event lands, which is

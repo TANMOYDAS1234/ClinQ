@@ -101,6 +101,12 @@ class ChatController extends StateNotifier<ChatState> {
     }
   }
 
+  /// Clears the error banner, so it fades on its own rather than sitting there
+  /// until the next message. Safe to call when there is no error.
+  void dismissError() {
+    if (state.error != null) state = state.copyWith(clearError: true);
+  }
+
   /// Resend the most recent question. Used by the "Try again" action on an
   /// AI-unavailable fallback reply.
   ///

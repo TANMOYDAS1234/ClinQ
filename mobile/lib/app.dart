@@ -87,7 +87,17 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
       routerConfig: router,
       // The lock gate sits above every route, so it covers the whole app when
       // locked. `child` is the router's current page.
-      builder: (context, child) => AppLockGate(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) {
+        final mq = MediaQuery.of(context);
+        // Trim the whole app's text ~10% smaller, but still ride on the device's
+        // own font-size setting (composed, not replaced) and clamped so it can
+        // never become unreadably small or huge.
+        final scale = (mq.textScaler.scale(1) * 0.9).clamp(0.8, 1.3);
+        return MediaQuery(
+          data: mq.copyWith(textScaler: TextScaler.linear(scale)),
+          child: AppLockGate(child: child ?? const SizedBox.shrink()),
+        );
+      },
     );
   }
 }

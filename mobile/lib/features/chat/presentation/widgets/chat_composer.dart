@@ -139,31 +139,42 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
     );
     if (source == null || !mounted) return;
 
-    final XFile? picked;
+    // Gallery allows selecting several photos at once; the camera takes one.
+    // Downscale before upload: a modern phone camera produces 8-12 MB files
+    // that would trip the server's 12 MB cap over mobile data.
+    final List<XFile> files;
     try {
-      picked = await _picker.pickImage(
-        source: source,
-        // Downscale before upload: a modern phone camera produces 8-12 MB
-        // files that would trip the server's 12 MB cap over mobile data.
-        maxWidth: 2000,
-        maxHeight: 2000,
-        imageQuality: 85,
-      );
+      if (source == ImageSource.gallery) {
+        files = await _picker.pickMultiImage(maxWidth: 2000, maxHeight: 2000, imageQuality: 85);
+      } else {
+        final one = await _picker.pickImage(
+          source: ImageSource.camera,
+          maxWidth: 2000,
+          maxHeight: 2000,
+          imageQuality: 85,
+        );
+        files = one == null ? const [] : [one];
+      }
     } catch (_) {
       _snack(l10n.chatAttachFailed);
       return;
     }
-    if (picked == null || !mounted) return;
+    if (files.isEmpty || !mounted) return;
 
-    if (await picked.length() > UploadRepository.maxBytes) {
-      if (mounted) _snack(l10n.chatAttachTooLarge);
-      return;
+    // Only take as many as there are free slots left.
+    for (final picked in files.take(_maxAttachments - _attachments.length)) {
+      if (await picked.length() > UploadRepository.maxBytes) {
+        if (mounted) _snack(l10n.chatAttachTooLarge);
+        continue;
+      }
+      if (!mounted) return;
+      await _uploadOne(picked, l10n);
     }
-    if (!mounted) return;
+  }
 
+  Future<void> _uploadOne(XFile picked, AppLocalizations l10n) async {
     final index = _attachments.length;
-    setState(() => _attachments.add(PendingAttachment(localPath: picked!.path)));
-
+    setState(() => _attachments.add(PendingAttachment(localPath: picked.path)));
     try {
       final asset = await ref
           .read(uploadRepositoryProvider)
