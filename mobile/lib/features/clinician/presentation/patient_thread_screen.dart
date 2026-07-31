@@ -173,6 +173,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
         path: path,
         filename: path.split(RegExp(r'[/\\]')).last,
         kind: UploadKind.voiceNote,
+        patientId: widget.patientId,
       );
       await ref.read(clinicianRepositoryProvider).messagePatient(
         patientId: widget.patientId,
@@ -217,6 +218,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
           path: file.path,
           filename: file.name,
           kind: UploadKind.other,
+          patientId: widget.patientId,
         );
         ids.add(asset.id);
       }

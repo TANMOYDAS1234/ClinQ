@@ -179,15 +179,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         kind: UploadKind.voiceNote,
       );
 
-      final transcript = asset.transcript?.trim();
-      if (transcript == null || transcript.isEmpty) {
-        // The recording is stored and the clinic can still play it, but with no
-        // words there is nothing for triage to assess or the assistant to
-        // answer — so say so rather than sending a message that reads empty.
-        messenger.showSnackBar(SnackBar(content: Text(l10n.chatVoiceUnclear)));
-        return;
-      }
-
+      // Send the recording even when transcription came back empty. Blocking on
+      // an empty transcript is exactly what stopped voice notes from sending at
+      // all. The audio is stored and the clinic can always play it; when there
+      // ARE words they become the message text so triage and the assistant can
+      // read them.
+      final transcript = asset.transcript?.trim() ?? '';
       await _send(transcript, [asset.id]);
     } on ApiException {
       messenger.showSnackBar(SnackBar(content: Text(l10n.chatVoiceFailed)));

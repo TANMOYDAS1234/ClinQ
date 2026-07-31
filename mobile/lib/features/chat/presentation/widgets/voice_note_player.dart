@@ -81,7 +81,11 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
       // Dio already carries and refreshes the token, and a voice note is small
       // enough that fetching it first is imperceptible.
       final dir = await getTemporaryDirectory();
-      final cached = File('${dir.path}/vn_${widget.note.url.hashCode}.m4a');
+      // Cache under the real extension. ExoPlayer chooses its extractor partly
+      // from the file name, so a server-side MP3 saved as `.m4a` was handed to
+      // the MP4 extractor and silently failed. Notes now arrive as audio/mpeg.
+      final ext = _extForMime(widget.note.mimeType);
+      final cached = File('${dir.path}/vn_${widget.note.url.hashCode}.$ext');
       if (!await cached.exists()) {
         // Absolute URL, not the relative path. `note.url` already begins with
         // /api/v1, and Dio's baseUrl ends with it — passing the path made the
@@ -114,6 +118,26 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
       await player.play();
     } catch (_) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// File extension for a cached recording, chosen from its content type so the
+  /// player's decoder is selected correctly. Notes are stored as MP3 now; the
+  /// other cases keep older or fallback recordings playable.
+  static String _extForMime(String? mime) {
+    switch (mime) {
+      case 'audio/mpeg':
+        return 'mp3';
+      case 'audio/wav':
+        return 'wav';
+      case 'audio/ogg':
+        return 'ogg';
+      case 'audio/webm':
+        return 'webm';
+      case 'audio/aac':
+        return 'aac';
+      default:
+        return 'm4a';
     }
   }
 

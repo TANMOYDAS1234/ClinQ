@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
-import { transcribeVoiceNote } from '../services/ai/transcribe.js';
+import { transcribeVoiceNote, transcodeToMp3 } from '../services/ai/transcribe.js';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
@@ -101,14 +101,7 @@ router.post(
 
     const root = await uploadRoot();
     const isPdf = req.file.mimetype === 'application/pdf';
-    // Audio is stored byte-for-byte. Re-encoding would cost quality on a
-    // recording a clinician may need to listen to closely, and `sharp` would
-    // throw on it besides.
     const isAudio = AUDIO_MIME.has(req.file.mimetype);
-    const ext = isPdf ? 'pdf' : isAudio ? audioExtension(req.file.mimetype) : 'webp';
-    const key = `${new Date().toISOString().slice(0, 7)}/${crypto.randomUUID()}.${ext}`;
-    const fullPath = path.join(root, key);
-    await fs.mkdir(path.dirname(fullPath), { recursive: true });
 
     let width = null;
     let height = null;
@@ -127,6 +120,27 @@ router.post(
         .toBuffer();
       mimeType = 'image/webp';
     }
+
+    if (isAudio) {
+      // Re-encode every recording to MP3 — one format for storage, playback and
+      // transcription. The device's own codec (AAC-in-MP4, or a WAV the player
+      // mislabelled) is exactly what broke playback and transcription before;
+      // MP3 is decoded natively by both the phone player and Gemini. If the
+      // encode ever fails we keep the original bytes so a note is never lost.
+      try {
+        buffer = await transcodeToMp3(req.file.buffer);
+        mimeType = 'audio/mpeg';
+      } catch (err) {
+        logger.error({ err: err?.message }, 'voice note MP3 transcode failed; storing original');
+      }
+    }
+
+    // Extension follows the FINAL mime, so an MP3 note serves as MP3 (and plays)
+    // while a rare fallback still serves in its own container.
+    const ext = isPdf ? 'pdf' : isAudio ? audioExtension(mimeType) : 'webp';
+    const key = `${new Date().toISOString().slice(0, 7)}/${crypto.randomUUID()}.${ext}`;
+    const fullPath = path.join(root, key);
+    await fs.mkdir(path.dirname(fullPath), { recursive: true });
 
     // Transcribed here, once, rather than on every read. Awaited on purpose:
     // the client sends the message immediately after the upload returns, and a

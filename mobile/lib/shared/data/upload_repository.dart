@@ -88,10 +88,14 @@ class UploadRepository {
     required String path,
     required String filename,
     String kind = UploadKind.other,
+    // When a clinician sends a file to a patient, the file must be owned by the
+    // PATIENT — otherwise the patient gets a 403 on it and sees a broken box.
+    String? patientId,
   }) async {
     final mimeType = _mimeTypeFor(filename);
     final formData = FormData.fromMap({
       'kind': kind,
+      if (patientId != null) 'patientId': patientId,
       'file': await MultipartFile.fromFile(
         path,
         filename: filename,

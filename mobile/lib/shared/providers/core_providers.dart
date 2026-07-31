@@ -23,6 +23,12 @@ final secureStoreProvider = Provider<SecureStore>((ref) => SecureStore());
 /// appearing half an hour in. [apiClientProvider] invalidates this whenever the
 /// token is rotated, so the next read picks up the live one.
 final imageAuthHeaderProvider = FutureProvider<Map<String, String>>((ref) async {
+  // Re-read on every auth change — a fresh sign-in, a sign-out, or replaceUser
+  // after a profile edit. Without this the header could stay cached as the empty
+  // map captured before sign-in, so a just-uploaded avatar never appeared (it
+  // fell back to the initial) until the token happened to rotate. Watching auth
+  // is what makes the new photo show up instantly.
+  ref.watch(authControllerProvider);
   final token = await ref.watch(secureStoreProvider).readAccessToken();
   return token == null ? {} : {'Authorization': 'Bearer $token'};
 });

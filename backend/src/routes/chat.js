@@ -367,6 +367,13 @@ router.post(
 
     await notifyPatientOfClinicianReply(req.patientId, req.user, req.body.content);
 
+    // Populate so the doctor's own copy comes back knowing a voice note from a
+    // photo (kind/mimeType) — otherwise their just-sent recording renders as a
+    // broken thumbnail instead of a player until the thread reloads.
+    if (message.attachments?.length) {
+      await message.populate('attachments', 'kind mimeType transcript');
+    }
+
     res.status(201).json({
       sessionId: session._id,
       message: { ...serialiseMessage(message), senderName: req.user.name },

@@ -76,6 +76,53 @@ async function transcodeForGemini(buffer) {
 }
 
 /**
+ * Re-encodes any recording to MP3 (mono, ~64 kbps). This is the format the note
+ * is *stored and served* in, and picking MP3 fixes both ends of voice at once:
+ *
+ * - Playback: MP3 is natively decodable by the phone's player (ExoPlayer). The
+ *   old path stored the raw recording and the player mislabelled it, so it
+ *   silently refused to start. An .mp3 file just plays.
+ * - Transcription: MP3 is one of the containers Gemini reads directly, so no
+ *   second conversion is needed before triage.
+ *
+ * Mono at a modest bitrate keeps a five-minute note small while leaving speech
+ * fully intelligible for a clinician listening back.
+ */
+export async function transcodeToMp3(buffer) {
+  if (!ffmpegPath) throw new Error('ffmpeg binary unavailable');
+
+  const base = join(tmpdir(), `vn-${randomUUID()}`);
+  const inPath = `${base}.in`;
+  const outPath = `${base}.mp3`;
+  await writeFile(inPath, buffer);
+
+  try {
+    await new Promise((resolve, reject) => {
+      const ff = spawn(ffmpegPath, [
+        '-y',
+        '-i', inPath,
+        '-ac', '1',
+        '-b:a', '64k',
+        '-c:a', 'libmp3lame',
+        outPath,
+      ]);
+      let stderr = '';
+      ff.stderr.on('data', (d) => {
+        stderr += d.toString();
+      });
+      ff.on('error', reject);
+      ff.on('close', (code) =>
+        code === 0 ? resolve() : reject(new Error(`ffmpeg exited ${code}: ${stderr.slice(-300)}`)),
+      );
+    });
+    return await readFile(outPath);
+  } finally {
+    await unlink(inPath).catch(() => {});
+    await unlink(outPath).catch(() => {});
+  }
+}
+
+/**
  * @param {Buffer} buffer raw audio bytes as uploaded
  * @param {string} mimeType the recording's content type
  * @returns {Promise<string|null>} spoken words, or null when nothing usable

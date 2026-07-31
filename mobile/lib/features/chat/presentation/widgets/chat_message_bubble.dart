@@ -260,6 +260,10 @@ class ChatMessageBubble extends StatelessWidget {
                   ),
                 ),
               ),
+            // Skip the text bubble entirely for a photo-only message. With no
+            // words and no voice note there is nothing to put in it, and an
+            // empty rounded box read as a bug ("why the empty section").
+            if (message.voiceNotes.isNotEmpty || message.content.trim().isNotEmpty)
             GestureDetector(
               onLongPress: () => _showActions(context),
               child: Container(

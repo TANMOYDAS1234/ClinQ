@@ -182,7 +182,7 @@ void main() {
     testWidgets('shows the mic and send together; send fires only with text', (tester) async {
       var sent = 0;
       await tester.pumpWidget(
-        harness(ChatComposer(onSend: (_, _) => sent++, isSending: false, languageCode: 'en')),
+        harness(ChatComposer(onSend: (_, _) => sent++, onSendVoiceNote: (_) {}, isSending: false, languageCode: 'en')),
       );
       await tester.pumpAndSettle();
 
@@ -206,7 +206,7 @@ void main() {
 
     testWidgets('draws no inner border inside the pill', (tester) async {
       await tester.pumpWidget(
-        harness(ChatComposer(onSend: (_, _) {}, isSending: false, languageCode: 'en')),
+        harness(ChatComposer(onSend: (_, _) {}, onSendVoiceNote: (_) {}, isSending: false, languageCode: 'en')),
       );
       await tester.pumpAndSettle();
 
@@ -235,7 +235,7 @@ void main() {
     testWidgets('whitespace alone does not arm the send button', (tester) async {
       var sent = 0;
       await tester.pumpWidget(
-        harness(ChatComposer(onSend: (_, _) => sent++, isSending: false, languageCode: 'en')),
+        harness(ChatComposer(onSend: (_, _) => sent++, onSendVoiceNote: (_) {}, isSending: false, languageCode: 'en')),
       );
       await tester.pumpAndSettle();
 
@@ -250,7 +250,7 @@ void main() {
     testWidgets('sends trimmed text and clears the field', (tester) async {
       String? sent;
       await tester.pumpWidget(
-        harness(ChatComposer(onSend: (t, _) => sent = t, isSending: false, languageCode: 'en')),
+        harness(ChatComposer(onSend: (t, _) => sent = t, onSendVoiceNote: (_) {}, isSending: false, languageCode: 'en')),
       );
       await tester.pumpAndSettle();
 
@@ -265,7 +265,7 @@ void main() {
 
     testWidgets('the attach button is live, and disabled only while sending', (tester) async {
       await tester.pumpWidget(
-        harness(ChatComposer(onSend: (_, _) {}, isSending: false, languageCode: 'en')),
+        harness(ChatComposer(onSend: (_, _) {}, onSendVoiceNote: (_) {}, isSending: false, languageCode: 'en')),
       );
       await tester.pumpAndSettle();
 
@@ -278,7 +278,7 @@ void main() {
       expect(attach.onPressed, isNotNull, reason: 'attach must be wired, not a dead icon');
 
       await tester.pumpWidget(
-        harness(ChatComposer(onSend: (_, _) {}, isSending: true, languageCode: 'en')),
+        harness(ChatComposer(onSend: (_, _) {}, onSendVoiceNote: (_) {}, isSending: true, languageCode: 'en')),
       );
       await tester.pump();
 
@@ -295,7 +295,7 @@ void main() {
       List<String>? ids;
       await tester.pumpWidget(
         harness(
-          ChatComposer(onSend: (_, a) => ids = a, isSending: false, languageCode: 'en'),
+          ChatComposer(onSend: (_, a) => ids = a, onSendVoiceNote: (_) {}, isSending: false, languageCode: 'en'),
         ),
       );
       await tester.pumpAndSettle();
@@ -311,7 +311,7 @@ void main() {
     testWidgets('while sending, shows a spinner and blocks re-send', (tester) async {
       var sent = 0;
       await tester.pumpWidget(
-        harness(ChatComposer(onSend: (_, _) => sent++, isSending: true, languageCode: 'en')),
+        harness(ChatComposer(onSend: (_, _) => sent++, onSendVoiceNote: (_) {}, isSending: true, languageCode: 'en')),
       );
       await tester.pump();
 
