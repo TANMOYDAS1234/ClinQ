@@ -480,10 +480,10 @@ class _Composer extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        border: Border(top: BorderSide(color: scheme.outlineVariant)),
-      ),
+      // Transparent bar so the chat wallpaper shows behind the composer,
+      // WhatsApp-style, instead of a solid strip hiding it. The input pill keeps
+      // its own fill so typing stays readable.
+      color: Colors.transparent,
       child: SafeArea(
         top: false,
         child: Padding(
