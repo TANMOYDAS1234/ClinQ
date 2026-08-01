@@ -85,7 +85,7 @@ export async function handlePatientMessage({ patientId, sessionId, text, languag
   if (replyTo) await userMessage.populate('replyTo', 'content role');
   // Populate so serialiseMessage can tell a voice note from a photo — otherwise
   // the just-sent recording renders as a broken image thumbnail.
-  if (attachments.length) await userMessage.populate('attachments', 'kind mimeType transcript');
+  if (attachments.length) await userMessage.populate('attachments', 'kind mimeType transcript originalName sizeBytes');
 
   // Escalate before generating. The clinic learns about a chest-pain message
   // whether or not the model ever responds.
@@ -261,7 +261,7 @@ export async function* streamPatientMessage({ patientId, sessionId, text, langua
   if (replyTo) await userMessage.populate('replyTo', 'content role');
   // Populate so serialiseMessage can tell a voice note from a photo — otherwise
   // the just-sent recording renders as a broken image thumbnail.
-  if (attachments.length) await userMessage.populate('attachments', 'kind mimeType transcript');
+  if (attachments.length) await userMessage.populate('attachments', 'kind mimeType transcript originalName sizeBytes');
 
   // Escalate BEFORE the first token â€” the clinic learns about a chest-pain
   // message whether or not any reply is ever generated.
@@ -426,6 +426,8 @@ function serialiseMessage(m) {
         url: `/api/v1/uploads/${id}/raw`,
         kind: populated ? (a.kind ?? null) : null,
         mimeType: populated ? (a.mimeType ?? null) : null,
+        name: populated ? (a.originalName ?? null) : null,
+        sizeBytes: populated ? (a.sizeBytes ?? null) : null,
         transcript: populated ? (a.transcript ?? null) : null,
       };
     }),

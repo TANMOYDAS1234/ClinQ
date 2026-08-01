@@ -7,6 +7,7 @@ import '../../../../l10n/gen/app_localizations.dart';
 import '../../../../shared/widgets/markdown_text.dart';
 import '../../domain/chat_message.dart';
 import 'chat_attachment_thumbs.dart';
+import 'chat_document_card.dart';
 import 'citation_chips.dart';
 import 'emergency_card.dart';
 import 'urgent_card.dart';
@@ -197,6 +198,12 @@ class ChatMessageBubble extends StatelessWidget {
             // Photos the patient attached, shown above their text.
             if (message.attachmentPaths.isNotEmpty)
               ChatAttachmentThumbs(paths: message.attachmentPaths),
+            // Documents (PDF, Office, text…) as tappable file cards.
+            for (final doc in message.documents)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: ChatDocumentCard(doc: doc, onDark: false),
+              ),
             // Name the human. A patient must never have to guess whether the
             // words they are reading came from their doctor or from software.
             if (isClinician && !isMine) ...[

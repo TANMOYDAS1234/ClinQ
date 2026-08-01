@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,6 +17,9 @@ import '../../../shared/widgets/chat_background.dart';
 import '../../chat/presentation/widgets/voice_recorder_bar.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/clinician_repository.dart';
+
+/// What the doctor's attach button offers.
+enum _DoctorAttach { camera, gallery, document }
 
 /// The clinician's view of a patient's conversation.
 ///
@@ -196,9 +200,14 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
   /// attach button. Uploads it, then sends it as a message with the text in the
   /// box as its caption (or a default, so the message is never empty).
   Future<void> _sendImage() async {
-    final source = await _pickImageSource();
-    if (source == null) return;
+    final choice = await _pickAttachSource();
+    if (choice == null || !mounted) return;
+    if (choice == _DoctorAttach.document) {
+      await _sendDocuments();
+      return;
+    }
     final picker = ImagePicker();
+    final source = choice == _DoctorAttach.camera ? ImageSource.camera : ImageSource.gallery;
     // Gallery allows picking several at once; the camera takes one.
     final List<XFile> files;
     if (source == ImageSource.gallery) {
@@ -237,8 +246,8 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
     }
   }
 
-  Future<ImageSource?> _pickImageSource() {
-    return showModalBottomSheet<ImageSource>(
+  Future<_DoctorAttach?> _pickAttachSource() {
+    return showModalBottomSheet<_DoctorAttach>(
       context: context,
       showDragHandle: true,
       builder: (ctx) => SafeArea(
@@ -248,17 +257,69 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
               title: const Text('Take photo'),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              onTap: () => Navigator.pop(ctx, _DoctorAttach.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
               title: const Text('Choose from gallery'),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              onTap: () => Navigator.pop(ctx, _DoctorAttach.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: const Text('Document'),
+              subtitle: const Text('PDF, Word, Excel, text…'),
+              onTap: () => Navigator.pop(ctx, _DoctorAttach.document),
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// Sends one or more documents (PDF / Office / text) to the patient, owned by
+  /// the patient so they can open them.
+  Future<void> _sendDocuments() async {
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.custom,
+        allowedExtensions: const ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'],
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not pick the file.')));
+      }
+      return;
+    }
+    final picked = result?.files.where((f) => f.path != null).take(5).toList() ?? const [];
+    if (picked.isEmpty || !mounted) return;
+
+    setState(() => _sending = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final ids = <String>[];
+      for (final f in picked) {
+        final asset = await ref.read(uploadRepositoryProvider).uploadImage(
+          path: f.path!,
+          filename: f.name,
+          kind: UploadKind.other,
+          patientId: widget.patientId,
+        );
+        ids.add(asset.id);
+      }
+      await ref.read(clinicianRepositoryProvider).messagePatient(
+        patientId: widget.patientId,
+        content: _controller.text.trim(),
+        attachments: ids,
+      );
+      _controller.clear();
+      await _load();
+    } on ApiException {
+      messenger.showSnackBar(const SnackBar(content: Text('Could not send the file. Please try again.')));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   Future<void> _send() async {

@@ -35,6 +35,19 @@ class VoiceNote {
   final String? mimeType;
 }
 
+/// A document (PDF, Office file, text…) shared in the thread. Rendered as a
+/// named file card, not a thumbnail — tapping downloads and opens it with the
+/// phone's own viewer.
+class DocumentAttachment {
+  const DocumentAttachment({required this.url, required this.name, this.mimeType, this.sizeBytes});
+
+  /// Relative `/api/v1/uploads/:id/raw` path; auth header is added on download.
+  final String url;
+  final String name;
+  final String? mimeType;
+  final int? sizeBytes;
+}
+
 class ChatMessage {
   const ChatMessage({
     required this.id,
@@ -54,11 +67,15 @@ class ChatMessage {
     this.seenByClinicAt,
     this.attachmentPaths = const [],
     this.voiceNotes = const [],
+    this.documents = const [],
   });
 
   /// Recordings attached to this turn. Kept separate from [attachmentPaths]
   /// because a voice note renders as a player, not a thumbnail.
   final List<VoiceNote> voiceNotes;
+
+  /// Documents attached to this turn, rendered as file cards.
+  final List<DocumentAttachment> documents;
 
   /// Kept at the top of the thread. A dosing instruction otherwise scrolls out
   /// of reach within a day.
@@ -134,6 +151,7 @@ class ChatMessage {
           : DateTime.tryParse(json['seenByClinicAt'].toString()),
       attachmentPaths: _parseAttachments(json['attachments']),
       voiceNotes: _parseVoiceNotes(json['attachments']),
+      documents: _parseDocuments(json['attachments']),
     );
   }
 
@@ -145,10 +163,27 @@ class ChatMessage {
   static List<String> _parseAttachments(dynamic raw) {
     if (raw is! List) return const [];
     return raw
-        .where((a) => a is! Map || !_isAudio(a))
+        .where((a) => a is! Map || (!_isAudio(a) && !_isDocument(a)))
         .map((a) => a is Map ? a['url']?.toString() : a?.toString())
         .whereType<String>()
         .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  static List<DocumentAttachment> _parseDocuments(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .where(_isDocument)
+        .map(
+          (a) => DocumentAttachment(
+            url: a['url']?.toString() ?? '',
+            name: (a['name']?.toString().trim().isNotEmpty ?? false) ? a['name'].toString() : 'Document',
+            mimeType: a['mimeType']?.toString(),
+            sizeBytes: (a['sizeBytes'] as num?)?.toInt(),
+          ),
+        )
+        .where((d) => d.url.isNotEmpty)
         .toList();
   }
 
@@ -171,6 +206,12 @@ class ChatMessage {
   static bool _isAudio(Map a) =>
       a['kind'] == 'voice_note' || (a['mimeType']?.toString().startsWith('audio/') ?? false);
 
+  /// A document (not an image, not audio) — a PDF, Office file, text or CSV.
+  static bool _isDocument(Map a) {
+    final m = a['mimeType']?.toString() ?? '';
+    return m.startsWith('application/') || m.startsWith('text/');
+  }
+
   /// Returns a copy with new [content] — used to grow a streaming reply as
   /// tokens arrive, keeping every other field.
   ChatMessage withContent(String content) => ChatMessage(
@@ -191,6 +232,7 @@ class ChatMessage {
     seenByClinicAt: seenByClinicAt,
     attachmentPaths: attachmentPaths,
     voiceNotes: voiceNotes,
+    documents: documents,
   );
 
   /// Returns a copy with [pinned] flipped, so the thread reorders immediately
@@ -213,6 +255,7 @@ class ChatMessage {
     seenByClinicAt: seenByClinicAt,
     attachmentPaths: attachmentPaths,
     voiceNotes: voiceNotes,
+    documents: documents,
   );
 
   ChatMessage copyWith({List<Citation>? citations, Triage? triage}) {
@@ -230,6 +273,7 @@ class ChatMessage {
       senderName: senderName,
       attachmentPaths: attachmentPaths,
     voiceNotes: voiceNotes,
+    documents: documents,
     );
   }
 }

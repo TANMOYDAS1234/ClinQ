@@ -70,6 +70,10 @@ dependencies:
   record: ^6.2.1
   just_audio: ^0.10.6
   path_provider: ^2.1.6
+  # Documents in chat: pick any file, and open a downloaded one with the phone's
+  # own viewer (PDF/Office/etc.).
+  file_picker: ^8.1.4
+  open_filex: ^4.5.0
 
 dev_dependencies:
   flutter_test:

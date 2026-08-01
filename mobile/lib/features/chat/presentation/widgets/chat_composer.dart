@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -10,6 +11,9 @@ import '../../../../shared/data/upload_repository.dart';
 import 'animated_gradient_border.dart';
 import 'chat_attachment_strip.dart';
 import 'voice_recorder_bar.dart';
+
+/// What the attach button's bottom sheet offers.
+enum _AttachChoice { camera, gallery, document }
 
 /// Bottom composer: a rounded pill with an animated gradient border holding the
 /// attach button, the growing text field and the voice-note mic, with a
@@ -115,7 +119,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
       return;
     }
 
-    final source = await showModalBottomSheet<ImageSource>(
+    final choice = await showModalBottomSheet<_AttachChoice>(
       context: context,
       builder: (sheetContext) => SafeArea(
         child: Column(
@@ -125,23 +129,36 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
               leading: const Icon(Icons.photo_camera_outlined),
               title: Text(l10n.chatAttachCamera, style: const TextStyle(fontSize: 16)),
               minTileHeight: AppSpacing.minTapTarget + 8,
-              onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
+              onTap: () => Navigator.of(sheetContext).pop(_AttachChoice.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
               title: Text(l10n.chatAttachGallery, style: const TextStyle(fontSize: 16)),
               minTileHeight: AppSpacing.minTapTarget + 8,
-              onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
+              onTap: () => Navigator.of(sheetContext).pop(_AttachChoice.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: const Text('Document', style: TextStyle(fontSize: 16)),
+              subtitle: const Text('PDF, Word, Excel, text…'),
+              minTileHeight: AppSpacing.minTapTarget + 8,
+              onTap: () => Navigator.of(sheetContext).pop(_AttachChoice.document),
             ),
           ],
         ),
       ),
     );
-    if (source == null || !mounted) return;
+    if (choice == null || !mounted) return;
+
+    if (choice == _AttachChoice.document) {
+      await _pickDocuments(l10n);
+      return;
+    }
 
     // Gallery allows selecting several photos at once; the camera takes one.
     // Downscale before upload: a modern phone camera produces 8-12 MB files
     // that would trip the server's 12 MB cap over mobile data.
+    final source = choice == _AttachChoice.camera ? ImageSource.camera : ImageSource.gallery;
     final List<XFile> files;
     try {
       if (source == ImageSource.gallery) {
@@ -186,6 +203,51 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
     } on ApiException {
       if (!mounted) return;
       if (index < _attachments.length && _attachments[index].localPath == picked.path) {
+        setState(() => _attachments[index] = _attachments[index].copyWith(failed: true));
+      }
+      _snack(l10n.chatAttachFailed);
+    }
+  }
+
+  /// Pick one or more documents (PDF / Office / text) and upload each, alongside
+  /// any photos already staged.
+  Future<void> _pickDocuments(AppLocalizations l10n) async {
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.custom,
+        allowedExtensions: const ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'],
+      );
+    } catch (_) {
+      if (mounted) _snack(l10n.chatAttachFailed);
+      return;
+    }
+    if (result == null || !mounted) return;
+    for (final f in result.files.take(_maxAttachments - _attachments.length)) {
+      final path = f.path;
+      if (path == null) continue;
+      if (f.size > UploadRepository.maxBytes) {
+        if (mounted) _snack(l10n.chatAttachTooLarge);
+        continue;
+      }
+      if (!mounted) return;
+      await _uploadDocument(path, f.name, l10n);
+    }
+  }
+
+  Future<void> _uploadDocument(String path, String name, AppLocalizations l10n) async {
+    final index = _attachments.length;
+    setState(() => _attachments.add(PendingAttachment(localPath: path, documentName: name)));
+    try {
+      final asset = await ref.read(uploadRepositoryProvider).uploadImage(path: path, filename: name);
+      if (!mounted) return;
+      if (index < _attachments.length && _attachments[index].localPath == path) {
+        setState(() => _attachments[index] = _attachments[index].copyWith(assetId: asset.id));
+      }
+    } on ApiException {
+      if (!mounted) return;
+      if (index < _attachments.length && _attachments[index].localPath == path) {
         setState(() => _attachments[index] = _attachments[index].copyWith(failed: true));
       }
       _snack(l10n.chatAttachFailed);

@@ -37,18 +37,60 @@ const AUDIO_MIME = new Set([
   'audio/webm',
 ]);
 
-const ALLOWED_MIME = new Set([...IMAGE_MIME, ...AUDIO_MIME, 'application/pdf']);
+/**
+ * Documents a patient or clinician can share in chat — PDFs, Office files, plain
+ * text and CSV. Stored byte-for-byte and served for download; never re-encoded.
+ */
+const DOCUMENT_MIME = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation', // pptx
+  'text/plain',
+  'text/csv',
+]);
+
+const ALLOWED_MIME = new Set([...IMAGE_MIME, ...AUDIO_MIME, ...DOCUMENT_MIME]);
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: env.MAX_UPLOAD_MB * 1024 * 1024, files: 1 },
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_MIME.has(file.mimetype)) {
-      return cb(badRequest(`Unsupported file type: ${file.mimetype}. Upload a JPEG, PNG, WebP or PDF.`));
+      return cb(badRequest(`Unsupported file type: ${file.mimetype}. Upload an image, PDF, document or voice note.`));
     }
     cb(null, true);
   },
 });
+
+/** File extension for a stored document, so a download keeps its real type. */
+function documentExtension(mime) {
+  switch (mime) {
+    case 'application/pdf':
+      return 'pdf';
+    case 'application/msword':
+      return 'doc';
+    case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+      return 'docx';
+    case 'application/vnd.ms-excel':
+      return 'xls';
+    case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+      return 'xlsx';
+    case 'application/vnd.ms-powerpoint':
+      return 'ppt';
+    case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+      return 'pptx';
+    case 'text/csv':
+      return 'csv';
+    case 'text/plain':
+      return 'txt';
+    default:
+      return 'bin';
+  }
+}
 
 /** File extension for a stored voice note, so the served file plays natively. */
 function audioExtension(mime) {
@@ -101,7 +143,7 @@ router.post(
     if (req.body.patientId && req.user.role !== ROLES.PATIENT) owner = req.body.patientId;
 
     const root = await uploadRoot();
-    const isPdf = req.file.mimetype === 'application/pdf';
+    const isDocument = DOCUMENT_MIME.has(req.file.mimetype);
     const isAudio = AUDIO_MIME.has(req.file.mimetype);
 
     let width = null;
@@ -109,7 +151,7 @@ router.post(
     let buffer = req.file.buffer;
     let mimeType = req.file.mimetype;
 
-    if (!isPdf && !isAudio) {
+    if (!isDocument && !isAudio) {
       // Normalise to WebP: strips EXIF (which can carry GPS location of a
       // patient's home) and keeps clinical photos to a sane size.
       const image = sharp(req.file.buffer, { failOn: 'none' }).rotate();
@@ -138,7 +180,7 @@ router.post(
 
     // Extension follows the FINAL mime, so an MP3 note serves as MP3 (and plays)
     // while a rare fallback still serves in its own container.
-    const ext = isPdf ? 'pdf' : isAudio ? audioExtension(mimeType) : 'webp';
+    const ext = isDocument ? documentExtension(mimeType) : isAudio ? audioExtension(mimeType) : 'webp';
     const key = `${new Date().toISOString().slice(0, 7)}/${crypto.randomUUID()}.${ext}`;
     const fullPath = path.join(root, key);
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
@@ -170,6 +212,8 @@ router.post(
       id: asset._id,
       kind: asset.kind,
       mimeType: asset.mimeType,
+      // The original filename, so a document shows its real name in chat.
+      name: asset.originalName ?? null,
       sizeBytes: asset.sizeBytes,
       width: asset.width,
       height: asset.height,

@@ -9,18 +9,24 @@ import '../../../../l10n/gen/app_localizations.dart';
 /// One photo queued for sending. [assetId] is null until `POST /uploads`
 /// returns, which is what the spinner overlay indicates.
 class PendingAttachment {
-  const PendingAttachment({required this.localPath, this.assetId, this.failed = false});
+  const PendingAttachment({required this.localPath, this.assetId, this.failed = false, this.documentName});
 
   final String localPath;
   final String? assetId;
   final bool failed;
 
+  /// Non-null when this is a document (PDF/Office/text) rather than a photo — the
+  /// strip then shows a named file chip instead of an image thumbnail.
+  final String? documentName;
+
   bool get isUploading => assetId == null && !failed;
+  bool get isDocument => documentName != null;
 
   PendingAttachment copyWith({String? assetId, bool? failed}) => PendingAttachment(
     localPath: localPath,
     assetId: assetId ?? this.assetId,
     failed: failed ?? this.failed,
+    documentName: documentName,
   );
 }
 
@@ -55,16 +61,33 @@ class ChatAttachmentStrip extends StatelessWidget {
                   width: 72,
                   height: 72,
                   color: scheme.surfaceContainerHighest,
-                  child: Image.file(
-                    File(a.localPath),
-                    fit: BoxFit.cover,
-                    // A picked file can vanish (cache eviction, permission
-                    // revoked); a broken image must not take down the composer.
-                    errorBuilder: (_, _, _) => Icon(
-                      Icons.broken_image_outlined,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
+                  padding: a.isDocument ? const EdgeInsets.all(6) : EdgeInsets.zero,
+                  child: a.isDocument
+                      // A document shows a file chip, not a photo thumbnail.
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.insert_drive_file_rounded, color: AppColors.primary, size: 26),
+                            const SizedBox(height: 4),
+                            Text(
+                              a.documentName!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 9.5, height: 1.1, color: scheme.onSurfaceVariant),
+                            ),
+                          ],
+                        )
+                      : Image.file(
+                          File(a.localPath),
+                          fit: BoxFit.cover,
+                          // A picked file can vanish (cache eviction, permission
+                          // revoked); a broken image must not take down the composer.
+                          errorBuilder: (_, _, _) => Icon(
+                            Icons.broken_image_outlined,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
                 ),
               ),
               if (a.isUploading)

@@ -163,7 +163,7 @@ router.get(
         .limit(limit)
         .populate('sender', 'name')
         .populate('replyTo', 'content role')
-        .populate('attachments', 'kind mimeType transcript')
+        .populate('attachments', 'kind mimeType transcript originalName sizeBytes')
         .lean(),
       ChatMessage.countDocuments(filter),
     ]);
@@ -266,7 +266,7 @@ router.get(
       .limit(limit)
       .populate('sender', 'name')
       .populate('replyTo', 'content role')
-        .populate('attachments', 'kind mimeType transcript')
+        .populate('attachments', 'kind mimeType transcript originalName sizeBytes')
       .lean();
 
     // Opening the thread is what "seen by the clinic" means. Stamped only on
@@ -371,7 +371,7 @@ router.post(
     // photo (kind/mimeType) — otherwise their just-sent recording renders as a
     // broken thumbnail instead of a player until the thread reloads.
     if (message.attachments?.length) {
-      await message.populate('attachments', 'kind mimeType transcript');
+      await message.populate('attachments', 'kind mimeType transcript originalName sizeBytes');
     }
 
     res.status(201).json({
@@ -495,6 +495,9 @@ function serialiseMessage(m) {
         url: `/api/v1/uploads/${id}/raw`,
         kind: a?.kind ?? null,
         mimeType: a?.mimeType ?? null,
+        // Filename + size, so a shared document renders as a named file card.
+        name: a?.originalName ?? null,
+        sizeBytes: a?.sizeBytes ?? null,
         // Shown under a voice note so the thread stays skimmable without
         // playing every clip — and readable at all for a deaf patient.
         transcript: a?.transcript ?? null,

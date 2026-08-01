@@ -116,8 +116,21 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
         _loading = false;
       });
       await player.play();
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      // Surface the failure instead of a dead button that does nothing, and drop
+      // the half-written cache file so a retry re-downloads a clean copy.
+      try {
+        final dir = await getTemporaryDirectory();
+        final ext = _extForMime(widget.note.mimeType);
+        final f = File('${dir.path}/vn_${widget.note.url.hashCode}.$ext');
+        if (await f.exists()) await f.delete();
+      } catch (_) {}
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not play this recording')),
+        );
+      }
     }
   }
 

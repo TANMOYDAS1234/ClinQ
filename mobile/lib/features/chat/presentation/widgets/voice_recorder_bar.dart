@@ -75,16 +75,16 @@ class _VoiceRecorderBarState extends State<VoiceRecorderBar> {
       }
 
       final dir = await getTemporaryDirectory();
-      final path = '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+      final path = '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
       await _recorder.start(
-        // WAV/PCM at 16 kHz mono. Unlike the AAC-in-MP4 (m4a) it used to record —
-        // which the transcription model cannot read and which needs a fragile
-        // server-side conversion — WAV is accepted directly, and PCM needs no
-        // hardware codec so it records on every Android version. 16 kHz mono is
-        // ample for speech and keeps a few-minute note well under the upload cap.
-        // This is what makes a voice note both transcribe AND play back.
-        const RecordConfig(encoder: AudioEncoder.wav, sampleRate: 16000, numChannels: 1),
+        // AAC mono — the hardware AAC encoder is the single most reliable path on
+        // Android and produces a small, always-valid file. (The `record`
+        // package's WAV writer was producing files that uploaded fine but could
+        // not be decoded for playback.) The server transcodes this to MP3 for
+        // storage/playback and reads it for transcription, so the device format
+        // only needs to record cleanly, which AAC does everywhere.
+        const RecordConfig(encoder: AudioEncoder.aacLc, numChannels: 1),
         path: path,
       );
 
