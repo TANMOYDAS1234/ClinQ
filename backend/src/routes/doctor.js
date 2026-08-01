@@ -12,6 +12,7 @@ import { Appointment } from '../models/Appointment.js';
 import { GlucoseReading } from '../models/GlucoseReading.js';
 import { ChatSession } from '../models/ChatSession.js';
 import { ChatMessage } from '../models/ChatMessage.js';
+import { MediaAsset } from '../models/MediaAsset.js';
 import { KnowledgeChunk } from '../models/KnowledgeChunk.js';
 import { Hba1cRecord } from '../models/Hba1cRecord.js';
 import { FootAssessment } from '../models/FootAssessment.js';
@@ -164,6 +165,7 @@ router.get(
             role: { $first: '$role' },
             createdAt: { $first: '$createdAt' },
             urgency: { $first: '$triage.urgency' },
+            attachments: { $first: '$attachments' },
           },
         },
       ]),
@@ -180,6 +182,17 @@ router.get(
     const alertMap = new Map(alertCounts.map((a) => [a._id.toString(), a.count]));
     const messageMap = new Map(lastMessages.map((m) => [m._id.toString(), m]));
     const unreadMap = new Map(unreadCounts.map((u) => [u._id.toString(), u.count]));
+
+    // Which of those newest messages are voice notes, so the inbox preview can
+    // read "Voice message" rather than a spoken transcript. (Patient voice notes
+    // keep their transcript as the message content, because triage reads it.)
+    const lastAttachmentIds = lastMessages.flatMap((m) => m.attachments ?? []);
+    const voiceAssetIds = new Set(
+      (await MediaAsset.find({ _id: { $in: lastAttachmentIds }, kind: 'voice_note' })
+        .select('_id')
+        .lean()).map((a) => a._id.toString()),
+    );
+    const isVoiceMessage = (m) => (m?.attachments ?? []).some((a) => voiceAssetIds.has(a.toString()));
 
     const items = users.map((u) => {
       const id = u._id.toString();
@@ -198,7 +211,9 @@ router.get(
           ? {
               // Trimmed server-side: a 4000-character message has no business
               // crossing the wire to fill a two-line preview.
-              preview: messageMap.get(id).content.slice(0, 140),
+              preview: isVoiceMessage(messageMap.get(id))
+                ? '🎤 Voice message'
+                : messageMap.get(id).content.slice(0, 140),
               role: messageMap.get(id).role,
               at: messageMap.get(id).createdAt,
               urgency: messageMap.get(id).urgency ?? 'routine',

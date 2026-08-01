@@ -181,11 +181,10 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
       );
       await ref.read(clinicianRepositoryProvider).messagePatient(
         patientId: widget.patientId,
-        content: asset.transcript?.trim().isNotEmpty == true
-            ? asset.transcript!.trim()
-            // The recording still reaches the patient even if the words could
-            // not be made out; only the readable copy is missing.
-            : 'Voice message',
+        // WhatsApp-style: the message text is just a marker, not the transcript —
+        // so the thread, the inbox preview and the patient's push notification
+        // all read "Voice message" rather than the spoken words.
+        content: 'Voice message',
         attachments: [asset.id],
       );
       await _load();

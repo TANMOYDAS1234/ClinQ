@@ -308,12 +308,7 @@ class ChatMessageBubble extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         for (final note in message.voiceNotes)
-                          VoiceNotePlayer(
-                            note: note,
-                            onDark: isMine,
-                            // The sender never needs their own words read back.
-                            showTranscript: !isMine,
-                          ),
+                          VoiceNotePlayer(note: note, onDark: isMine),
                       ],
                     )
                   : (isUser || isClinician)

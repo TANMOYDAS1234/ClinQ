@@ -69,6 +69,9 @@ dependencies:
   firebase_messaging: ^16.4.3
   record: ^6.2.1
   just_audio: ^0.10.6
+  # Voice-note playback. Simpler/more reliable for local files than just_audio,
+  # which failed to play server-verified MP3s on device.
+  audioplayers: ^6.1.0
   path_provider: ^2.1.6
   # Documents in chat: pick any file, and open a downloaded one with the phone's
   # own viewer (PDF/Office/etc.).
