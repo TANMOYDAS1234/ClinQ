@@ -185,6 +185,24 @@ router.patch(
   }),
 );
 
+/**
+ * Delete (deactivate) the signed-in user's own account.
+ *
+ * Deactivates rather than physically erasing: a clinic record must not silently
+ * vanish, and both login and every patient/overview listing already exclude
+ * inactive accounts — so the account disappears from the app and can no longer
+ * sign in. (This is also what removes a throwaway/test account from the clinic.)
+ */
+router.delete(
+  '/me',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    req.user.isActive = false;
+    await req.user.save();
+    res.status(204).end();
+  }),
+);
+
 router.patch(
   '/me/profile',
   requireAuth,

@@ -173,16 +173,21 @@ class ApiClient {
     await _run(() => _dio.delete(path, data: body));
   }
 
-  /// Downloads an owner-protected file to [savePath].
+  /// Fetches an owner-protected file's raw bytes.
   ///
-  /// Used for voice notes rather than streaming them: `just_audio` needs an
-  /// Authorization header, and on Android it serves header-bearing URLs through
-  /// a local proxy that is unreliable over HTTPS. Fetching through Dio — which
-  /// already carries the token and refreshes it — sidesteps that entirely, and
-  /// a voice note is small enough that the wait is imperceptible. Replays are
-  /// then instant and work offline.
-  Future<void> downloadToFile(String path, String savePath) async {
-    await _run(() => _dio.download(path, savePath));
+  /// Used for voice notes and documents rather than `just_audio` streaming or
+  /// `Dio.download`: the player and any external viewer need the Authorization
+  /// header, and on Android a header-bearing URL is served through a local proxy
+  /// that is unreliable over HTTPS. This goes through the NORMAL request path, so
+  /// the token is attached AND a 401 refreshes-and-retries correctly. That last
+  /// part is why `download` was wrong: its retry after a token refresh re-issues
+  /// through `fetch`, which does not re-save the file — leaving a 0-byte
+  /// download that then fails to decode. The caller writes the bytes to disk.
+  Future<List<int>> getBytes(String path) async {
+    final response = await _run(
+      () => _dio.get<List<int>>(path, options: Options(responseType: ResponseType.bytes)),
+    );
+    return response.data ?? const <int>[];
   }
 
   Future<Map<String, dynamic>> postMultipart(

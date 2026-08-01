@@ -37,10 +37,12 @@ class _ChatDocumentCardState extends ConsumerState<ChatDocumentCard> {
       // Keep the real filename so the opener matches it to the right app.
       final safe = widget.doc.name.replaceAll(RegExp(r'[^\w.\-]'), '_');
       final cached = File('${dir.path}/doc_${widget.doc.url.hashCode}_$safe');
-      if (!await cached.exists()) {
-        await ref
+      if (!await cached.exists() || await cached.length() == 0) {
+        final bytes = await ref
             .read(apiClientProvider)
-            .downloadToFile('${AppConfig.apiOrigin}${widget.doc.url}', cached.path);
+            .getBytes('${AppConfig.apiOrigin}${widget.doc.url}');
+        if (bytes.isEmpty) throw Exception('empty document download');
+        await cached.writeAsBytes(bytes, flush: true);
       }
       final res = await OpenFilex.open(cached.path);
       if (res.type != ResultType.done && mounted) {

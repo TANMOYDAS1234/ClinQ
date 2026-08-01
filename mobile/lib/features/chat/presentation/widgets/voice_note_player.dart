@@ -86,14 +86,17 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
       // the MP4 extractor and silently failed. Notes now arrive as audio/mpeg.
       final ext = _extForMime(widget.note.mimeType);
       final cached = File('${dir.path}/vn_${widget.note.url.hashCode}.$ext');
-      if (!await cached.exists()) {
-        // Absolute URL, not the relative path. `note.url` already begins with
-        // /api/v1, and Dio's baseUrl ends with it — passing the path made the
-        // request go to /api/v1/api/v1/uploads/... which 404s, so the player
-        // simply never started. apiOrigin is the host without the suffix.
-        await ref
+      // Re-fetch when the cache is missing OR empty — a prior failed attempt
+      // could have left a 0-byte file that would never decode. Absolute URL, not
+      // the relative path: `note.url` already begins with /api/v1 and Dio's
+      // baseUrl ends with it, so apiOrigin (the host without the suffix) + url is
+      // the right address.
+      if (!await cached.exists() || await cached.length() == 0) {
+        final bytes = await ref
             .read(apiClientProvider)
-            .downloadToFile('${AppConfig.apiOrigin}${widget.note.url}', cached.path);
+            .getBytes('${AppConfig.apiOrigin}${widget.note.url}');
+        if (bytes.isEmpty) throw Exception('empty audio download');
+        await cached.writeAsBytes(bytes, flush: true);
       }
 
       final player = AudioPlayer();
