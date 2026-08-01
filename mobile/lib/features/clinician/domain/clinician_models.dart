@@ -73,6 +73,7 @@ class MessagePreview {
     required this.role,
     required this.at,
     this.urgency = 'routine',
+    this.mediaType,
   });
 
   /// Already trimmed server-side — a 4000-character message has no business
@@ -85,6 +86,10 @@ class MessagePreview {
   final DateTime at;
   final String urgency;
 
+  /// `voice` | `photo` | `pdf` | `document` | `file` when the newest turn is
+  /// media, so the row can draw a subtle icon before the label. Null for text.
+  final String? mediaType;
+
   bool get fromPatient => role == 'user';
 
   factory MessagePreview.fromJson(Map<String, dynamic> j) => MessagePreview(
@@ -92,6 +97,7 @@ class MessagePreview {
     role: j['role']?.toString() ?? 'user',
     at: DateTime.tryParse(j['at']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
     urgency: j['urgency']?.toString() ?? 'routine',
+    mediaType: j['mediaType']?.toString(),
   );
 }
 

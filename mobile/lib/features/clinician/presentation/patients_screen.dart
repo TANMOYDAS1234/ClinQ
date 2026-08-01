@@ -403,14 +403,33 @@ class _ConversationRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
-                        child: Text(
-                          msg == null
-                              ? 'No messages yet'
-                              // Say who spoke, so "answered" and "waiting" are
-                              // distinguishable at a glance.
-                              : msg.fromPatient
-                              ? MarkdownText.toPreview(msg.preview)
-                              : 'You: ${MarkdownText.toPreview(msg.preview)}',
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              if (msg == null)
+                                const TextSpan(text: 'No messages yet')
+                              else ...[
+                                // Say who spoke, so "answered" and "waiting" are
+                                // distinguishable at a glance.
+                                if (!msg.fromPatient) const TextSpan(text: 'You: '),
+                                // A subtle monochrome icon for a media turn —
+                                // premium, not a cheap emoji.
+                                if (msg.mediaType != null)
+                                  WidgetSpan(
+                                    alignment: PlaceholderAlignment.middle,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 4),
+                                      child: Icon(
+                                        _mediaIcon(msg.mediaType!),
+                                        size: 15,
+                                        color: unread ? scheme.onSurface : scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                TextSpan(text: MarkdownText.toPreview(msg.preview)),
+                              ],
+                            ],
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -467,6 +486,23 @@ class _ConversationRow extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Subtle inbox-preview icon for a media turn — a monochrome Material glyph, not
+/// an emoji, so the row reads as premium.
+IconData _mediaIcon(String type) {
+  switch (type) {
+    case 'voice':
+      return Icons.mic_none_rounded;
+    case 'photo':
+      return Icons.photo_camera_rounded;
+    case 'pdf':
+      return Icons.picture_as_pdf_rounded;
+    case 'document':
+      return Icons.description_rounded;
+    default:
+      return Icons.attach_file_rounded;
   }
 }
 

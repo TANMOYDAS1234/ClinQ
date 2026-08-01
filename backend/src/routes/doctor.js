@@ -184,38 +184,52 @@ router.get(
     const unreadMap = new Map(unreadCounts.map((u) => [u._id.toString(), u.count]));
 
     // The kind/mime of every newest-message attachment, so a media-only turn
-    // previews as its TYPE ("Voice message" / "Photo" / "PDF" / "Document")
-    // instead of a blank line or a spoken transcript.
+    // previews as its TYPE — with plain text plus a `mediaType` the app renders
+    // as a subtle icon (no emoji) — instead of a blank line or a transcript.
     const lastAttachmentIds = lastMessages.flatMap((m) => m.attachments ?? []);
     const assetMap = new Map(
       (await MediaAsset.find({ _id: { $in: lastAttachmentIds } })
         .select('_id kind mimeType')
         .lean()).map((a) => [a._id.toString(), a]),
     );
-    const previewFor = (m) => {
+    // Returns { preview, mediaType } where mediaType is voice|photo|pdf|document|
+    // file|null. A voice note always reads as a voice message; a caption
+    // otherwise wins; media with no caption falls back to a plain type label.
+    const mediaInfo = (m) => {
       const atts = (m?.attachments ?? []).map((a) => assetMap.get(a.toString())).filter(Boolean);
-      // A voice note always reads as a voice message (its content may be a
-      // transcript kept only for triage).
       if (atts.some((a) => a.kind === 'voice_note' || (a.mimeType || '').startsWith('audio/'))) {
-        return '🎤 Voice message';
+        return { preview: 'Voice message', mediaType: 'voice' };
       }
-      // A caption otherwise wins.
-      const text = (m?.content || '').trim();
-      if (text) return text.slice(0, 140);
-      // Media with no caption → label by type.
       const doc = atts.find(
         (a) => (a.mimeType || '').startsWith('application/') || (a.mimeType || '').startsWith('text/'),
       );
-      if (doc) return doc.mimeType === 'application/pdf' ? '📄 PDF document' : '📄 Document';
-      if (atts.some((a) => (a.mimeType || '').startsWith('image/'))) return '📷 Photo';
-      if (atts.length) return '📎 Attachment';
-      return '';
+      let mediaType = null;
+      if (doc) mediaType = doc.mimeType === 'application/pdf' ? 'pdf' : 'document';
+      else if (atts.some((a) => (a.mimeType || '').startsWith('image/'))) mediaType = 'photo';
+      else if (atts.length) mediaType = 'file';
+
+      const text = (m?.content || '').trim();
+      if (text) return { preview: text.slice(0, 140), mediaType };
+      switch (mediaType) {
+        case 'pdf':
+          return { preview: 'PDF document', mediaType };
+        case 'document':
+          return { preview: 'Document', mediaType };
+        case 'photo':
+          return { preview: 'Photo', mediaType };
+        case 'file':
+          return { preview: 'Attachment', mediaType };
+        default:
+          return { preview: '', mediaType: null };
+      }
     };
 
     const items = users.map((u) => {
       const id = u._id.toString();
       const profile = profileMap.get(id);
       const reading = readingMap.get(id);
+      const lastMsg = messageMap.get(id);
+      const media = lastMsg ? mediaInfo(lastMsg) : null;
       return {
         id: u._id,
         name: u.name,
@@ -225,15 +239,16 @@ router.get(
         // Inbox fields. Null where a patient has never written — the row then
         // reads as a patient the clinic can start a conversation with, rather
         // than an empty message.
-        lastMessage: messageMap.get(id)
+        lastMessage: lastMsg
           ? {
               // Trimmed server-side: a 4000-character message has no business
-              // crossing the wire to fill a two-line preview. Media-only turns
-              // preview as their type rather than a blank line.
-              preview: previewFor(messageMap.get(id)),
-              role: messageMap.get(id).role,
-              at: messageMap.get(id).createdAt,
-              urgency: messageMap.get(id).urgency ?? 'routine',
+              // crossing the wire to fill a two-line preview. `mediaType` lets
+              // the app draw a subtle icon for a media-only turn.
+              preview: media.preview,
+              mediaType: media.mediaType,
+              role: lastMsg.role,
+              at: lastMsg.createdAt,
+              urgency: lastMsg.urgency ?? 'routine',
             }
           : null,
         unreadCount: unreadMap.get(id) ?? 0,
