@@ -183,16 +183,34 @@ router.get(
     const messageMap = new Map(lastMessages.map((m) => [m._id.toString(), m]));
     const unreadMap = new Map(unreadCounts.map((u) => [u._id.toString(), u.count]));
 
-    // Which of those newest messages are voice notes, so the inbox preview can
-    // read "Voice message" rather than a spoken transcript. (Patient voice notes
-    // keep their transcript as the message content, because triage reads it.)
+    // The kind/mime of every newest-message attachment, so a media-only turn
+    // previews as its TYPE ("Voice message" / "Photo" / "PDF" / "Document")
+    // instead of a blank line or a spoken transcript.
     const lastAttachmentIds = lastMessages.flatMap((m) => m.attachments ?? []);
-    const voiceAssetIds = new Set(
-      (await MediaAsset.find({ _id: { $in: lastAttachmentIds }, kind: 'voice_note' })
-        .select('_id')
-        .lean()).map((a) => a._id.toString()),
+    const assetMap = new Map(
+      (await MediaAsset.find({ _id: { $in: lastAttachmentIds } })
+        .select('_id kind mimeType')
+        .lean()).map((a) => [a._id.toString(), a]),
     );
-    const isVoiceMessage = (m) => (m?.attachments ?? []).some((a) => voiceAssetIds.has(a.toString()));
+    const previewFor = (m) => {
+      const atts = (m?.attachments ?? []).map((a) => assetMap.get(a.toString())).filter(Boolean);
+      // A voice note always reads as a voice message (its content may be a
+      // transcript kept only for triage).
+      if (atts.some((a) => a.kind === 'voice_note' || (a.mimeType || '').startsWith('audio/'))) {
+        return '🎤 Voice message';
+      }
+      // A caption otherwise wins.
+      const text = (m?.content || '').trim();
+      if (text) return text.slice(0, 140);
+      // Media with no caption → label by type.
+      const doc = atts.find(
+        (a) => (a.mimeType || '').startsWith('application/') || (a.mimeType || '').startsWith('text/'),
+      );
+      if (doc) return doc.mimeType === 'application/pdf' ? '📄 PDF document' : '📄 Document';
+      if (atts.some((a) => (a.mimeType || '').startsWith('image/'))) return '📷 Photo';
+      if (atts.length) return '📎 Attachment';
+      return '';
+    };
 
     const items = users.map((u) => {
       const id = u._id.toString();
@@ -210,10 +228,9 @@ router.get(
         lastMessage: messageMap.get(id)
           ? {
               // Trimmed server-side: a 4000-character message has no business
-              // crossing the wire to fill a two-line preview.
-              preview: isVoiceMessage(messageMap.get(id))
-                ? '🎤 Voice message'
-                : messageMap.get(id).content.slice(0, 140),
+              // crossing the wire to fill a two-line preview. Media-only turns
+              // preview as their type rather than a blank line.
+              preview: previewFor(messageMap.get(id)),
               role: messageMap.get(id).role,
               at: messageMap.get(id).createdAt,
               urgency: messageMap.get(id).urgency ?? 'routine',
