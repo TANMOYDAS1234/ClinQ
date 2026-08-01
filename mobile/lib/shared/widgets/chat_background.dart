@@ -22,21 +22,22 @@ class ChatBackground extends StatelessWidget {
     if (Theme.of(context).brightness == Brightness.dark) {
       return ColoredBox(color: scheme.surface, child: RepaintBoundary(child: child));
     }
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Image.asset(
-            'assets/images/chat_bg.png',
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => ColoredBox(color: scheme.surface),
-          ),
+    // Tiled, not stretched — the doodles repeat small and dense like a
+    // messaging-app wallpaper (scale shrinks each tile), and faded to ~30% over
+    // the surface so the pattern reads as a faint watermark and the message
+    // bubbles clearly stand out on top. A missing asset just shows the surface.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        image: const DecorationImage(
+          image: AssetImage('assets/images/chat_bg.jpg'),
+          repeat: ImageRepeat.repeat,
+          scale: 3.0,
+          opacity: 0.30,
+          filterQuality: FilterQuality.medium,
         ),
-        // Only a whisper of a wash: message bubbles are opaque, so text never
-        // sits on the pattern — the artwork just needs to stay gentle in the
-        // gaps, not disappear.
-        Positioned.fill(child: ColoredBox(color: Colors.white.withValues(alpha: 0.12))),
-        RepaintBoundary(child: child),
-      ],
+      ),
+      child: RepaintBoundary(child: child),
     );
   }
 }
