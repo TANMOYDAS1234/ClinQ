@@ -8,12 +8,12 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../../shared/widgets/user_avatar.dart';
-import '../domain/appointment.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
 
-/// The doctor's home: clinic pulse at a glance — headline counts, the alerts
-/// that need attention, and today's schedule. Every number is live: pulled from
+/// The doctor's home: the clinic at a glance — headline counts, the alerts that
+/// need attention, the clinic's risk pulse, and a ranked "needs attention"
+/// worklist of the patients to deal with next. Every number is live: pulled from
 /// the API and refreshed on a timer, on resume, and on pull-to-refresh, so it is
 /// never stale while the doctor is looking at it.
 class ClinicianDashboardScreen extends ConsumerStatefulWidget {
@@ -50,7 +50,7 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
 
   void _refresh() {
     ref.invalidate(overviewProvider);
-    ref.invalidate(appointmentsTodayProvider);
+    ref.invalidate(attentionPatientsProvider);
   }
 
   @override
@@ -60,7 +60,7 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
     // loading, and reading the last value keeps the screen from flashing a
     // spinner every 20 seconds.
     final overview = ref.watch(overviewProvider).valueOrNull;
-    final appts = ref.watch(appointmentsTodayProvider).valueOrNull;
+    final patients = ref.watch(attentionPatientsProvider).valueOrNull;
     final loading = overview == null && ref.watch(overviewProvider).isLoading;
 
     return Scaffold(
@@ -79,20 +79,13 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
                         padding: const EdgeInsets.fromLTRB(
                             AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xl),
                         children: [
-                          if (overview != null)
-                            _StatsRow(
-                              overview: overview,
-                              // Count completed from the same list the schedule
-                              // shows, so the headline and the diary always agree
-                              // (and it works before the backend redeploy too).
-                              completed: appts != null
-                                  ? appts.where((a) => a.isCompleted).length
-                                  : overview.completedToday,
-                            ),
+                          if (overview != null) _StatsRow(overview: overview),
                           const SizedBox(height: AppSpacing.lg),
                           if (overview != null) _ActiveAlerts(overview: overview),
                           const SizedBox(height: AppSpacing.lg),
-                          _ScheduleSection(appointments: appts ?? const []),
+                          if (overview != null) _ClinicPulse(overview: overview),
+                          const SizedBox(height: AppSpacing.lg),
+                          _NeedsAttention(patients: patients ?? const []),
                         ],
                       ),
                     ),
@@ -152,10 +145,9 @@ class _DashboardHeader extends ConsumerWidget {
 // ---- Headline stats -------------------------------------------------------
 
 class _StatsRow extends StatelessWidget {
-  const _StatsRow({required this.overview, required this.completed});
+  const _StatsRow({required this.overview});
 
   final ClinicOverview overview;
-  final int completed;
 
   @override
   Widget build(BuildContext context) {
@@ -189,9 +181,9 @@ class _StatsRow extends StatelessWidget {
           _divider(scheme),
           Expanded(
             child: _Stat(
-              value: completed,
-              label: 'Completed',
-              icon: Icons.check_circle_rounded,
+              value: overview.activeToday,
+              label: 'Active\nToday',
+              icon: Icons.monitor_heart_rounded,
             ),
           ),
         ],
@@ -360,260 +352,303 @@ class _AlertPill extends StatelessWidget {
   }
 }
 
-// ---- Daily schedule -------------------------------------------------------
+// ---- Clinic pulse ---------------------------------------------------------
 
-class _ScheduleSection extends StatelessWidget {
-  const _ScheduleSection({required this.appointments});
+/// One segment of the risk-distribution bar.
+class _RiskSeg {
+  const _RiskSeg(this.label, this.count, this.color);
+  final String label;
+  final int count;
+  final Color color;
+}
 
-  final List<Appointment> appointments;
+/// A premium at-a-glance strip: the clinic's risk profile as a segmented bar,
+/// plus a couple of live activity numbers. All from the one overview call.
+class _ClinicPulse extends StatelessWidget {
+  const _ClinicPulse({required this.overview});
+
+  final ClinicOverview overview;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final segs = <_RiskSeg>[
+      _RiskSeg('Low', overview.riskLow, AppColors.success),
+      _RiskSeg('Moderate', overview.riskModerate, AppColors.warning),
+      _RiskSeg('High', overview.riskHigh, const Color(0xFFEA580C)),
+      _RiskSeg('Critical', overview.riskCritical, AppColors.danger),
+    ];
+    final total = segs.fold<int>(0, (s, e) => s + e.count);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionTitle('Clinic Pulse'),
+        const SizedBox(height: AppSpacing.sm),
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.35)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Patient risk profile',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 9),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  height: 10,
+                  child: total == 0
+                      ? ColoredBox(color: scheme.surfaceContainerHighest)
+                      : Row(
+                          children: [
+                            for (final s in segs)
+                              if (s.count > 0) Expanded(flex: s.count, child: ColoredBox(color: s.color)),
+                          ],
+                        ),
+                ),
+              ),
+              const SizedBox(height: 11),
+              Wrap(
+                spacing: 14,
+                runSpacing: 7,
+                children: [for (final s in segs) _legend(s.color, s.label, s.count, scheme)],
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.4)),
+              ),
+              Row(
+                children: [
+                  _pulseStat(Icons.monitor_heart_rounded, overview.activeToday, 'active today', scheme),
+                  const SizedBox(width: 22),
+                  _pulseStat(Icons.notifications_active_rounded, overview.totalOpenAlerts, 'open alerts', scheme),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _legend(Color color, String label, int count, ColorScheme scheme) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 9, height: 9, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 6),
+        Text('$label $count', style: TextStyle(fontSize: 12.5, color: scheme.onSurface)),
+      ],
+    );
+  }
+
+  Widget _pulseStat(IconData icon, int value, String label, ColorScheme scheme) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 17, color: AppColors.primary),
+        const SizedBox(width: 6),
+        Text('$value', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary)),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+      ],
+    );
+  }
+}
+
+// ---- Needs attention ------------------------------------------------------
+
+/// One patient that needs the doctor now, with why and how urgent.
+class _Attention {
+  const _Attention(this.patient, this.tier, this.color, this.reason);
+  final PatientListItem patient;
+  final int tier; // 1 = most urgent
+  final Color color;
+  final String reason;
+}
+
+/// The doctor's worklist: patients ranked by how much they need attention right
+/// now — abnormal glucose and emergencies first, then open alerts and urgent
+/// messages, then high risk, then unanswered messages. Tap opens the thread.
+class _NeedsAttention extends StatelessWidget {
+  const _NeedsAttention({required this.patients});
+
+  final List<PatientListItem> patients;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final items = <_Attention>[];
+    for (final p in patients) {
+      final a = _attentionFor(p);
+      if (a != null) items.add(a);
+    }
+    items.sort((a, b) => a.tier.compareTo(b.tier));
+    final top = items.take(6).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.primary),
-            const SizedBox(width: 8),
-            const _SectionTitle('Daily Schedule'),
+            const _SectionTitle('Needs Attention'),
             const Spacer(),
-            InkWell(
-              onTap: () => context.push('/clinician/appointments'),
-              borderRadius: BorderRadius.circular(8),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            if (items.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(color: AppColors.danger, borderRadius: BorderRadius.circular(11)),
                 child: Text(
-                  'View Full Calendar',
-                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.primary),
+                  '${items.length}',
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white),
                 ),
               ),
-            ),
           ],
         ),
-        const SizedBox(height: AppSpacing.md),
-        if (appointments.isEmpty)
+        const SizedBox(height: AppSpacing.sm),
+        if (top.isEmpty)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl, horizontal: AppSpacing.md),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.35)),
             ),
             child: Column(
               children: [
-                Icon(Icons.event_available_rounded, size: 34, color: scheme.onSurfaceVariant),
+                Icon(Icons.check_circle_rounded, size: 34, color: AppColors.success),
                 const SizedBox(height: 10),
-                Text('No appointments scheduled today',
-                    style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant)),
+                const Text('All caught up', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 3),
+                Text(
+                  'No patients need attention right now',
+                  style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                ),
               ],
             ),
           )
         else
-          for (var i = 0; i < appointments.length; i++)
-            _ScheduleRow(
-              appt: appointments[i],
-              isFirst: i == 0,
-              isLast: i == appointments.length - 1,
+          Container(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.35)),
             ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                for (var i = 0; i < top.length; i++) ...[
+                  if (i > 0)
+                    Divider(height: 1, indent: 60, color: scheme.outlineVariant.withValues(alpha: 0.3)),
+                  _AttentionRow(item: top[i]),
+                ],
+              ],
+            ),
+          ),
       ],
     );
   }
+
+  _Attention? _attentionFor(PatientListItem p) {
+    final v = p.lastReadingValue;
+    final urgency = p.lastMessage?.urgency;
+    const orange = Color(0xFFEA580C);
+
+    // Tier 1 — clinical red flags.
+    if (v != null && (v >= 250 || v <= 70)) {
+      return _Attention(p, 1, AppColors.danger, 'Glucose ${v.round()} mg/dL');
+    }
+    if (urgency == 'emergency') return _Attention(p, 1, AppColors.danger, 'Emergency flagged');
+
+    // Tier 2 — needs review.
+    if (p.openAlertCount > 0) {
+      return _Attention(
+          p, 2, orange, p.openAlertCount == 1 ? '1 open alert' : '${p.openAlertCount} open alerts');
+    }
+    if (urgency == 'urgent') return _Attention(p, 2, orange, 'Urgent message');
+    if (p.riskBand == 'critical') return _Attention(p, 2, AppColors.danger, 'Critical risk');
+
+    // Tier 3 — elevated risk.
+    if (p.riskBand == 'high') return _Attention(p, 3, AppColors.warning, 'High risk');
+
+    // Tier 4 — waiting for a reply.
+    if (p.unreadCount > 0) {
+      return _Attention(
+          p, 4, AppColors.primary, p.unreadCount == 1 ? '1 new message' : '${p.unreadCount} new messages');
+    }
+    return null;
+  }
 }
 
-class _ScheduleRow extends StatelessWidget {
-  const _ScheduleRow({required this.appt, required this.isFirst, required this.isLast});
+class _AttentionRow extends StatelessWidget {
+  const _AttentionRow({required this.item});
 
-  final Appointment appt;
-  final bool isFirst;
-  final bool isLast;
+  final _Attention item;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final line = scheme.outlineVariant;
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Timeline rail: a dot on a connecting line.
-          SizedBox(
-            width: 26,
-            child: Column(
-              children: [
-                Expanded(child: Container(width: 2, color: isFirst ? Colors.transparent : line)),
-                _dot(),
-                Expanded(child: Container(width: 2, color: isLast ? Colors.transparent : line)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: appt.isInProgress ? _activeCard(context, scheme) : _plainItem(context, scheme),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _dot() {
-    if (appt.isInProgress) {
-      return Container(
-        width: 16,
-        height: 16,
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          shape: BoxShape.circle,
-          border: Border.all(color: AppColors.accentSoft, width: 3),
-        ),
-      );
-    }
-    final color = appt.isCompleted ? AppColors.accent.withValues(alpha: 0.55) : AppColors.primary;
-    return Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle));
-  }
-
-  // The current patient — a filled card with the primary action.
-  Widget _activeCard(BuildContext context, ColorScheme scheme) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.30)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(_time(appt.scheduledFor),
-                  style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
-              const SizedBox(width: 10),
-              const _StatusChip(label: 'IN PROGRESS', fg: Colors.white, bg: AppColors.primary),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(appt.patientName,
-              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
-          if (appt.reason != null) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(appt.mode == 'teleconsult' ? Icons.videocam_rounded : Icons.science_outlined,
-                    size: 15, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(appt.reason!,
-                      style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant)),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: () =>
-                  context.push('/clinician/patients/${appt.patientId}/thread', extra: appt.patientName),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              ),
-              child: const Text('Open Chart', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Completed or upcoming — a lighter row.
-  Widget _plainItem(BuildContext context, ColorScheme scheme) {
-    final done = appt.isCompleted;
-    final muted = scheme.onSurfaceVariant;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    final p = item.patient;
+    return InkWell(
+      onTap: () => context.push('/clinician/patients/${p.id}/thread', extra: p.name),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              _time(appt.scheduledFor),
-              style: TextStyle(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
-                color: done ? muted : scheme.onSurface,
-                decoration: done ? TextDecoration.lineThrough : null,
+            Container(width: 4, color: item.color),
+            const SizedBox(width: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: UserAvatar(name: p.name, avatarUrl: p.avatarUrl, accent: item.color, size: 42),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      p.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(color: item.color, shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            item.reason,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: item.color),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
+            Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
             const SizedBox(width: 10),
-            if (done)
-              _StatusChip(label: 'COMPLETED', fg: muted, bg: scheme.surfaceContainerHighest)
-            else if (appt.isCancelled)
-              const _StatusChip(label: 'CANCELLED', fg: AppColors.danger, bg: AppColors.dangerBg),
           ],
         ),
-        const SizedBox(height: 3),
-        Text(
-          appt.patientName,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: done ? muted : scheme.onSurface),
-        ),
-        if (appt.reason != null) ...[
-          const SizedBox(height: 2),
-          Text(appt.reason!, style: TextStyle(fontSize: 14, color: muted)),
-        ],
-        // "Prep" only for a visit still to come.
-        if (appt.isUpcoming) ...[
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => context.push('/clinician/patients/${appt.patientId}'),
-              icon: const Icon(Icons.visibility_outlined, size: 17),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                backgroundColor: AppColors.accentSoft.withValues(alpha: 0.5),
-                side: BorderSide.none,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              ),
-              label: const Text('Prep', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  static String _time(DateTime t) {
-    final h = t.hour;
-    final m = t.minute.toString().padLeft(2, '0');
-    final period = h < 12 ? 'AM' : 'PM';
-    final h12 = h % 12 == 0 ? 12 : h % 12;
-    return '$h12:$m $period';
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.fg, required this.bg});
-
-  final String label;
-  final Color fg;
-  final Color bg;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: fg, letterSpacing: 0.4),
       ),
     );
   }

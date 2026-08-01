@@ -39,6 +39,12 @@ class NotificationService {
   bool _ready = false;
   int _id = 0;
 
+  /// Invoked when the user taps a notification this service showed, with that
+  /// notification's payload. Set by the push layer so a tap can open the right
+  /// conversation. The payload is the FCM data map as JSON, or `med:<id>` for a
+  /// medication reminder.
+  void Function(String payload)? onNotificationTap;
+
   /// Medication reminder ids live in a reserved range so cancelling/replacing
   /// the whole set never touches the ids [show] hands out.
   static const int _medIdBase = 700000;
@@ -63,7 +69,15 @@ class NotificationService {
     if (_ready) return;
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: android);
-    await _plugin.initialize(settings);
+    await _plugin.initialize(
+      settings,
+      // A tap on a notification we showed (a foreground push, or a med reminder)
+      // routes through the push layer, which opens the relevant conversation.
+      onDidReceiveNotificationResponse: (resp) {
+        final payload = resp.payload;
+        if (payload != null && payload.isNotEmpty) onNotificationTap?.call(payload);
+      },
+    );
 
     final android_ = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await android_?.createNotificationChannel(_channel);
@@ -83,8 +97,10 @@ class NotificationService {
     _ready = true;
   }
 
-  /// Show a notification now. Keep [title]/[body] short and specific.
-  Future<void> show({required String title, required String body}) async {
+  /// Show a notification now. Keep [title]/[body] short and specific. [payload]
+  /// (an FCM data map as JSON) is handed back to [onNotificationTap] on tap, so
+  /// the app can open the conversation the notification is about.
+  Future<void> show({required String title, required String body, String? payload}) async {
     await init();
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -96,7 +112,7 @@ class NotificationService {
       ),
     );
     _id = (_id + 1) % 100000;
-    await _plugin.show(_id, title, body, details);
+    await _plugin.show(_id, title, body, details, payload: payload);
   }
 
   /// Rebuilds the full set of daily medication reminders from [reminders].

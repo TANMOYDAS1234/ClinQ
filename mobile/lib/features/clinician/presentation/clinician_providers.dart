@@ -13,9 +13,17 @@ final overviewProvider = FutureProvider.autoDispose<ClinicOverview>((ref) {
   return ref.watch(clinicianRepositoryProvider).overview();
 });
 
-/// Today's clinic diary for the dashboard schedule.
+/// Today's clinic diary (kept for the appointments admin screen).
 final appointmentsTodayProvider = FutureProvider.autoDispose<List<Appointment>>((ref) {
   return ref.watch(clinicianRepositoryProvider).appointmentsToday();
+});
+
+/// Patients for the dashboard's "Needs Attention" worklist. Pulled risk-first
+/// from the directory; the dashboard ranks the ones actually needing action
+/// (alerts, unread, abnormal glucose, high risk) on the client.
+final attentionPatientsProvider = FutureProvider.autoDispose<List<PatientListItem>>((ref) async {
+  final paged = await ref.watch(clinicianRepositoryProvider).patients(sort: 'risk', limit: 100);
+  return paged.items;
 });
 
 typedef PatientsQuery = ({String? riskBand, String? search, String sort});

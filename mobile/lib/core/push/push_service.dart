@@ -1,10 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/auth/presentation/auth_controller.dart';
 import '../../shared/providers/core_providers.dart';
+import '../../shared/services/notification_service.dart';
+import '../router/app_router.dart';
 
 /// Registers this device for push and keeps its token current on the server.
 ///
@@ -17,6 +21,8 @@ class PushService {
 
   final Ref _ref;
   StreamSubscription<String>? _tokenRefresh;
+  StreamSubscription<RemoteMessage>? _onMessage;
+  StreamSubscription<RemoteMessage>? _onOpened;
 
   /// Called once the user is signed in — a token is only useful when the
   /// server knows whose device it belongs to.
@@ -44,6 +50,73 @@ class PushService {
     // followed rather than read once at startup.
     _tokenRefresh?.cancel();
     _tokenRefresh = messaging.onTokenRefresh.listen(_register);
+
+    _wireNotificationHandlers();
+  }
+
+  /// Wires the three ways a notification reaches a signed-in app: foreground
+  /// (Android won't show it, so we do), a tap that resumed the app, and a tap
+  /// that cold-started it. Re-runnable — subscriptions are replaced, not stacked.
+  void _wireNotificationHandlers() {
+    NotificationService.instance.onNotificationTap = _routeFromPayload;
+
+    // Foreground: FCM does not display a notification while the app is open, so
+    // surface it ourselves and carry the routing data as the tap payload.
+    _onMessage?.cancel();
+    _onMessage = FirebaseMessaging.onMessage.listen((m) {
+      final n = m.notification;
+      if (n == null) return;
+      NotificationService.instance.show(
+        title: n.title ?? 'ClinQ',
+        body: n.body ?? '',
+        payload: jsonEncode(m.data),
+      );
+    });
+
+    // A tap that brought the app back from the background.
+    _onOpened?.cancel();
+    _onOpened = FirebaseMessaging.onMessageOpenedApp.listen((m) => _routeFromData(m.data));
+
+    // A tap that cold-started the app from a terminated state. Delayed a beat so
+    // the post-login route settles before the conversation is pushed on top.
+    FirebaseMessaging.instance.getInitialMessage().then((m) {
+      if (m != null) {
+        Future.delayed(const Duration(milliseconds: 700), () => _routeFromData(m.data));
+      }
+    });
+  }
+
+  void _routeFromPayload(String payload) {
+    // Medication reminders carry a "med:<id>" payload, not routable JSON.
+    if (payload.startsWith('med:')) return;
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is Map) {
+        _routeFromData(decoded.map((k, v) => MapEntry(k.toString(), v)));
+      }
+    } catch (_) {
+      // Not a routable payload — ignore rather than crash on a tap.
+    }
+  }
+
+  /// Opens the conversation a notification is about. A patient only ever gets a
+  /// clinician reply, so their tap opens their own chat; a clinician's tap opens
+  /// the patient thread the alert or message named (or the alert list if none).
+  void _routeFromData(Map<String, dynamic> data) {
+    final user = _ref.read(authControllerProvider).user;
+    if (user == null) return;
+    final router = _ref.read(appRouterProvider);
+
+    if (user.role == 'patient') {
+      router.go('/chat');
+      return;
+    }
+    final patientId = data['patientId']?.toString();
+    if (patientId != null && patientId.isNotEmpty) {
+      router.push('/clinician/patients/$patientId/thread');
+    } else {
+      router.push('/clinician/alerts');
+    }
   }
 
   Future<void> _register(String token) async {
@@ -62,6 +135,11 @@ class PushService {
   Future<void> stop() async {
     await _tokenRefresh?.cancel();
     _tokenRefresh = null;
+    await _onMessage?.cancel();
+    _onMessage = null;
+    await _onOpened?.cancel();
+    _onOpened = null;
+    NotificationService.instance.onNotificationTap = null;
     try {
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null) {
