@@ -100,7 +100,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          // Narrower side padding so the fields run wider across the screen.
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.lg),
           child: Form(
             key: _formKey,
             autovalidateMode: _autovalidateMode,
@@ -137,7 +138,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 // app is" from "what you have to do", which a single flat
                 // column runs together.
                 Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.md),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surfaceContainerLowest,
                     borderRadius: BorderRadius.circular(20),
