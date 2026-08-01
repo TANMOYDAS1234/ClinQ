@@ -36,6 +36,9 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
   Duration _position = Duration.zero;
   Duration? _duration;
 
+  /// The downloaded file, kept so a finished note can be reloaded and replayed.
+  String? _cachedPath;
+
   @override
   void dispose() {
     _player?.dispose();
@@ -50,12 +53,14 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
       switch (existing.state) {
         case PlayerState.playing:
           await existing.pause();
-        case PlayerState.completed:
-          // Restart a finished clip rather than doing nothing.
-          await existing.seek(Duration.zero);
+        case PlayerState.paused:
           await existing.resume();
         default:
-          await existing.resume();
+          // Finished or stopped: reload the file and play from the start, so a
+          // note can be replayed as many times as you like. A plain resume()
+          // would do nothing here because the source was freed on completion —
+          // reloading is what makes replay reliable.
+          if (_cachedPath != null) await existing.play(DeviceFileSource(_cachedPath!));
       }
       return;
     }
@@ -67,6 +72,7 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
       // arrive as audio/mpeg (MP3); older/fallback formats keep their own.
       final ext = _extForMime(widget.note.mimeType);
       final cached = File('${dir.path}/vn_${widget.note.url.hashCode}.$ext');
+      _cachedPath = cached.path;
       // Re-fetch when the cache is missing OR empty — a prior failed attempt
       // could have left a 0-byte file that would never decode.
       if (!await cached.exists() || await cached.length() == 0) {
@@ -78,6 +84,9 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
       }
 
       final player = AudioPlayer();
+      // Keep the source ready after a clip finishes rather than releasing it, so
+      // the bar resets cleanly and a replay starts instantly.
+      await player.setReleaseMode(ReleaseMode.stop);
       player.onPositionChanged.listen((p) {
         if (mounted) setState(() => _position = p);
       });
@@ -86,6 +95,11 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
       });
       player.onPlayerStateChanged.listen((_) {
         if (mounted) setState(() {});
+      });
+      // Reset the waveform to the start when the clip ends, so it reads as ready
+      // to play again.
+      player.onPlayerComplete.listen((_) {
+        if (mounted) setState(() => _position = Duration.zero);
       });
 
       await player.play(DeviceFileSource(cached.path));
