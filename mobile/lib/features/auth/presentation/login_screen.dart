@@ -151,15 +151,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     children: [
                 TextFormField(
                   controller: _phoneController,
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.phone,
                   autofillHints: const [AutofillHints.telephoneNumber],
                   // +91 is fixed and the patient types only the 10 national
-                  // digits, so the field is locked to at most 10 digits.
+                  // digits. maxLength caps the length; a SECOND length limiter on
+                  // top of it made the cursor jump when editing a full field, so
+                  // only digitsOnly is kept here.
                   maxLength: 10,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(10),
-                  ],
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: InputDecoration(
                     labelText: l10n.authPhoneLabel,
                     hintText: l10n.authPhoneHint,
