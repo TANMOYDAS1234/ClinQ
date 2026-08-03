@@ -140,17 +140,28 @@ router.post(
   requireAuth,
   validate({ body: z.object({ token: z.string().min(10).max(500) }) }),
   asyncHandler(async (req, res) => {
+    // A device belongs to whoever signed in on it LAST. Detach this token from
+    // every OTHER account first, then attach it here — so a shared phone (or one
+    // person testing both the patient and doctor roles) never keeps receiving a
+    // previous user's notifications.
+    await User.updateMany(
+      { _id: { $ne: req.user._id }, deviceTokens: req.body.token },
+      { $pull: { deviceTokens: req.body.token } },
+    );
     await User.updateOne({ _id: req.user._id }, { $addToSet: { deviceTokens: req.body.token } });
     res.status(204).end();
   }),
 );
 
+// No requireAuth on purpose: sign-out clears the session BEFORE this fires, so a
+// requireAuth version 401s and the token lingers on the account — the exact bug
+// that made a signed-out/next user keep getting the previous user's pushes.
+// Unregistering a device by its own token is safe, so remove it from everyone.
 router.delete(
   '/device-token',
-  requireAuth,
-  validate({ body: z.object({ token: z.string() }) }),
+  validate({ body: z.object({ token: z.string().min(10).max(500) }) }),
   asyncHandler(async (req, res) => {
-    await User.updateOne({ _id: req.user._id }, { $pull: { deviceTokens: req.body.token } });
+    await User.updateMany({ deviceTokens: req.body.token }, { $pull: { deviceTokens: req.body.token } });
     res.status(204).end();
   }),
 );
