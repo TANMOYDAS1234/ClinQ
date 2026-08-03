@@ -8,7 +8,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../l10n/gen/app_localizations.dart';
 import '../../../../shared/data/upload_repository.dart';
-import 'animated_gradient_border.dart';
 import 'chat_attachment_strip.dart';
 import 'voice_recorder_bar.dart';
 
@@ -297,23 +296,24 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
-                    child: AnimatedGradientBorder(
-                      active: _focused,
-                      radius: 26,
-                      // The whole pill focuses the field, not just the glyphs
-                      // of the text area inside it. Tapping the padding either
-                      // side used to do nothing, which read as the keyboard
-                      // needing two taps to open.
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          if (!_focusNode.hasFocus) _focusNode.requestFocus();
-                        },
-                        child: Container(
+                    // The whole pill focuses the field, not just the glyphs of
+                    // the text area inside it — tapping the padding either side
+                    // used to read as the keyboard needing two taps to open.
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        if (!_focusNode.hasFocus) _focusNode.requestFocus();
+                      },
+                      child: Container(
                         constraints: const BoxConstraints(minHeight: 52),
                         decoration: BoxDecoration(
                           color: scheme.surface,
                           borderRadius: BorderRadius.circular(26),
+                          // A plain static border, exactly like the doctor's
+                          // composer. The rotating gradient used to repaint every
+                          // frame as the keyboard slid up, which made the open
+                          // stutter.
+                          border: Border.all(color: scheme.outlineVariant),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
@@ -381,7 +381,6 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                         ),
                         ),
                       ),
-                    ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   _SendButton(
