@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../shared/data/upload_repository.dart';
@@ -371,6 +372,13 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
           ],
         ),
         actions: [
+          // The patient's full record — clinical summary, prescribe, dietician,
+          // test reports — opens from here; the chat is where the doctor is.
+          IconButton(
+            tooltip: 'Patient record & prescribe',
+            icon: const Icon(Icons.assignment_ind_outlined, color: AppColors.primary),
+            onPressed: () => context.push('/clinician/patients/${widget.patientId}', extra: _patientName),
+          ),
           // Calling belongs here rather than on the inbox row: the decision to
           // stop typing and phone someone is made while reading the exchange,
           // not while scanning the list.

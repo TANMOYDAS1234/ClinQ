@@ -32,9 +32,9 @@ class ClinicianShell extends StatelessWidget {
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.forum_outlined),
-            selectedIcon: Icon(Icons.forum_rounded),
-            label: 'Messages',
+            icon: Icon(Icons.groups_outlined),
+            selectedIcon: Icon(Icons.groups_rounded),
+            label: 'Patients',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),
