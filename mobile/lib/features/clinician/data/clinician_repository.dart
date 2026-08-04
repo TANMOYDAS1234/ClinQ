@@ -133,6 +133,13 @@ class ClinicianRepository {
         .toList();
   }
 
+  /// Creates a dietician account (the doctor onboarding one directly). Returns
+  /// the new dietician so it can be assigned right away.
+  Future<({String id, String name})> addDietician({required String name, required String phone, required String password}) async {
+    final json = await _client.postJson('/doctor/dieticians', body: {'name': name, 'phone': phone, 'password': password});
+    return (id: json['id']?.toString() ?? '', name: json['name']?.toString() ?? '');
+  }
+
   /// Assign the patient's dietician and food-log review cadence. A null
   /// [dieticianId] unassigns; a null [reviewIntervalDays] clears the cadence.
   Future<void> assignDietician(String patientId, {String? dieticianId, int? reviewIntervalDays}) async {

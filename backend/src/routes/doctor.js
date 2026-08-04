@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import { z } from 'zod';
 import { requireAuth, requireClinician } from '../middleware/auth.js';
 import { validate, q } from '../middleware/validate.js';
-import { asyncHandler, notFound } from '../middleware/errors.js';
+import { asyncHandler, notFound, conflict } from '../middleware/errors.js';
 import { audit } from '../middleware/audit.js';
 import { User, ROLES } from '../models/User.js';
 import { PatientProfile } from '../models/PatientProfile.js';
@@ -685,6 +685,40 @@ router.get(
         avatarAssetId: d.avatarAssetId ? String(d.avatarAssetId) : null,
       })),
     });
+  }),
+);
+
+/** Create a dietician account the doctor can then assign to patients. */
+router.post(
+  '/dieticians',
+  validate({
+    body: z.object({
+      name: z.string().trim().min(2).max(120),
+      phone: z
+        .string()
+        .trim()
+        .transform((v) => v.replace(/[\s\-()]/g, ''))
+        .pipe(z.string().regex(/^\+?[1-9]\d{7,14}$/, 'Enter a valid phone number')),
+      password: z.string().min(8, 'At least 8 characters').max(128),
+    }),
+  }),
+  audit('create', 'User'),
+  asyncHandler(async (req, res) => {
+    const { name, phone, password } = req.body;
+    if (await User.exists({ phone })) throw conflict('An account with this phone number already exists');
+    const user = new User({
+      name,
+      phone,
+      role: ROLES.DIETICIAN,
+      consent: {
+        termsAcceptedAt: new Date(),
+        dataProcessingAcceptedAt: new Date(),
+        aiDisclaimerAcceptedAt: new Date(),
+      },
+    });
+    await user.setPassword(password);
+    await user.save();
+    res.status(201).json({ id: String(user._id), name: user.name, phone: user.phone });
   }),
 );
 

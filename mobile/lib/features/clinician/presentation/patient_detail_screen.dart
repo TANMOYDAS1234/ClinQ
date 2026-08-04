@@ -6,7 +6,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../shared/widgets/authed_image.dart';
+import '../../../shared/widgets/auto_refresh.dart';
 import '../data/clinician_repository.dart';
 import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
@@ -45,7 +47,9 @@ class PatientDetailScreen extends ConsumerWidget {
             ],
           ),
         ),
-        data: (p) => RefreshIndicator(
+        data: (p) => AutoRefresh(
+          onTick: (r) => r.invalidate(patientSummaryProvider(patientId)),
+          child: RefreshIndicator(
           onRefresh: () async => ref.invalidate(patientSummaryProvider(patientId)),
           child: ListView(
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -94,6 +98,7 @@ class PatientDetailScreen extends ConsumerWidget {
               ],
               const SizedBox(height: AppSpacing.xl),
             ],
+          ),
           ),
         ),
       ),
@@ -378,10 +383,6 @@ class _DieticianSection extends ConsumerWidget {
       return;
     }
     if (!context.mounted) return;
-    if (options.isEmpty) {
-      messenger.showSnackBar(const SnackBar(content: Text('No dieticians yet — ask one to sign up with the clinic code.')));
-      return;
-    }
 
     String? selectedId = summary.assignedDieticianId;
     int cadence = summary.reviewIntervalDays ?? 3;
@@ -399,6 +400,12 @@ class _DieticianSection extends ConsumerWidget {
             children: [
               const Text('Assign dietician', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: AppSpacing.sm),
+              if (options.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text('No dieticians yet — add one below.',
+                      style: TextStyle(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+                ),
               for (final d in options)
                 RadioListTile<String>(
                   contentPadding: EdgeInsets.zero,
@@ -407,6 +414,22 @@ class _DieticianSection extends ConsumerWidget {
                   onChanged: (v) => setSheet(() => selectedId = v),
                   title: Text(d.name),
                 ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () async {
+                    final created = await _addDieticianForm(ctx, repo);
+                    if (created != null) {
+                      try {
+                        options = await repo.dieticians();
+                      } catch (_) {}
+                      setSheet(() => selectedId = created.id);
+                    }
+                  },
+                  icon: const Icon(Icons.person_add_alt_1_rounded),
+                  label: const Text('Add a new dietician'),
+                ),
+              ),
               const SizedBox(height: AppSpacing.sm),
               const Text('Review the food log every', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
@@ -463,6 +486,68 @@ class _DieticianSection extends ConsumerWidget {
       ref.invalidate(patientSummaryProvider(patientId));
       messenger.showSnackBar(const SnackBar(content: Text('Dietician updated')));
     }
+  }
+
+  /// A small inline form to create a dietician account. Returns the new
+  /// dietician (id + name), or null if cancelled.
+  Future<({String id, String name})?> _addDieticianForm(BuildContext ctx, ClinicianRepository repo) {
+    final name = TextEditingController();
+    final phone = TextEditingController();
+    final password = TextEditingController();
+    return showDialog<({String id, String name})?>(
+      context: ctx,
+      builder: (dctx) {
+        bool saving = false;
+        String? error;
+        return StatefulBuilder(
+          builder: (dctx, setD) => AlertDialog(
+            title: const Text('Add dietician'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Name')),
+                TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone (e.g. +9198…)')),
+                TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Temporary password (8+ chars)')),
+                if (error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: saving ? null : () => Navigator.pop(dctx), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        if (name.text.trim().length < 2 || phone.text.trim().isEmpty || password.text.length < 8) {
+                          setD(() => error = 'Enter a name, phone, and an 8+ character password.');
+                          return;
+                        }
+                        setD(() {
+                          saving = true;
+                          error = null;
+                        });
+                        try {
+                          final d = await repo.addDietician(name: name.text.trim(), phone: phone.text.trim(), password: password.text);
+                          if (dctx.mounted) Navigator.pop(dctx, d);
+                        } on ApiException catch (e) {
+                          setD(() {
+                            saving = false;
+                            error = e.message;
+                          });
+                        }
+                      },
+                child: saving
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Create'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 
