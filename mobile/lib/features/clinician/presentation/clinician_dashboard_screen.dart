@@ -85,6 +85,8 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
                           const SizedBox(height: AppSpacing.lg),
                           if (overview != null) _ClinicPulse(overview: overview),
                           const SizedBox(height: AppSpacing.lg),
+                          if (overview != null) _NutritionCard(overview: overview),
+                          const SizedBox(height: AppSpacing.lg),
                           _NeedsAttention(patients: patients ?? const []),
                         ],
                       ),
@@ -652,6 +654,52 @@ class _AttentionRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _NutritionCard extends StatelessWidget {
+  const _NutritionCard({required this.overview});
+
+  final ClinicOverview overview;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionTitle('Nutrition'),
+        const SizedBox(height: AppSpacing.sm),
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              _stat(Icons.restaurant_menu_rounded, overview.dietPatients, 'with dietician', scheme),
+              const SizedBox(width: 22),
+              _stat(Icons.photo_camera_back_outlined, overview.foodLogsToday, 'meals logged today', scheme),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _stat(IconData icon, int value, String label, ColorScheme scheme) => Flexible(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 17, color: AppColors.primary),
+            const SizedBox(width: 6),
+            Text('$value', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary)),
+            const SizedBox(width: 4),
+            Flexible(child: Text(label, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant))),
+          ],
+        ),
+      );
 }
 
 class _SectionTitle extends StatelessWidget {

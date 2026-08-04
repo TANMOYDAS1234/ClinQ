@@ -16,6 +16,8 @@ import { MediaAsset } from '../models/MediaAsset.js';
 import { KnowledgeChunk } from '../models/KnowledgeChunk.js';
 import { Hba1cRecord } from '../models/Hba1cRecord.js';
 import { FootAssessment } from '../models/FootAssessment.js';
+import { LabResult } from '../models/LabResult.js';
+import { FoodLog } from '../models/FoodLog.js';
 import { acknowledgeAlert, resolveAlert } from '../services/alerts.js';
 import { computeAdherence, glucoseTrends, computeHealthScore } from '../services/analytics.js';
 import { buildPatientContext } from '../services/patientContext.js';
@@ -71,6 +73,11 @@ router.get(
     const bySeverity = Object.fromEntries(alertCounts.map((a) => [a._id, a.count]));
     const byRisk = Object.fromEntries(riskGroups.map((r) => [r._id ?? 'low', r.count]));
 
+    const [dietPatients, foodLogsToday] = await Promise.all([
+      PatientProfile.countDocuments({ assignedDietician: { $ne: null } }),
+      FoodLog.countDocuments({ createdAt: { $gte: dayStart } }),
+    ]);
+
     res.json({
       patientCount,
       activeToday,
@@ -89,6 +96,10 @@ router.get(
         moderate: byRisk.moderate ?? 0,
         high: byRisk.high ?? 0,
         critical: byRisk.critical ?? 0,
+      },
+      nutrition: {
+        dietPatients,
+        foodLogsToday,
       },
     });
   }),
@@ -277,7 +288,7 @@ router.get(
     if (!patient) throw notFound('Patient not found');
     req.patientId = patient._id;
 
-    const [profile, healthScore, trends, adherence, alerts, latestHba1c, footAssessments, context] =
+    const [profile, healthScore, trends, adherence, alerts, latestHba1c, footAssessments, context, labResults] =
       await Promise.all([
         PatientProfile.findOne({ user: patient._id }).populate('assignedDietician', 'name phone').lean(),
         computeHealthScore(patient._id, { days: 30 }),
@@ -287,6 +298,7 @@ router.get(
         Hba1cRecord.find({ patient: patient._id }).sort({ testedOn: -1 }).limit(6).lean(),
         FootAssessment.find({ patient: patient._id }).sort({ assessedAt: -1 }).limit(5).lean(),
         buildPatientContext(patient._id),
+        LabResult.find({ patient: patient._id }).sort({ createdAt: -1 }).limit(20).lean(),
       ]);
 
     res.json({
@@ -311,6 +323,13 @@ router.get(
         assessedAt: f.assessedAt,
         site: f.site,
         finalRiskLevel: f.finalRiskLevel,
+      })),
+      labResults: labResults.map((r) => ({
+        id: String(r._id),
+        testName: r.testName,
+        note: r.note ?? '',
+        photoUrl: r.photo ? `/api/v1/uploads/${r.photo}/raw` : null,
+        createdAt: r.createdAt,
       })),
       alerts: alerts.map(serialiseAlert),
       // The same summary the AI assistant sees — useful for the doctor to

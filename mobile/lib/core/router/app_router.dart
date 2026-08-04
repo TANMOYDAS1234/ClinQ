@@ -11,6 +11,7 @@ import '../../features/chat/presentation/chat_screen.dart';
 import '../../features/medications/presentation/medications_screen.dart';
 import '../../features/medications/presentation/reminder_times_screen.dart';
 import '../../features/foodlog/presentation/food_log_screen.dart';
+import '../../features/labtests/presentation/lab_tests_screen.dart';
 import '../../features/clinician/presentation/alerts_screen.dart';
 import '../../features/clinician/presentation/appointments_admin_screen.dart';
 import '../../features/clinician/presentation/clinic_edit_screen.dart';
@@ -205,6 +206,7 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(path: 'edit', builder: (context, state) => const EditProfileScreen()),
                   GoRoute(path: 'health', builder: (context, state) => const HealthDetailsScreen()),
                   GoRoute(path: 'notifications', builder: (context, state) => const NotificationsScreen()),
+                  GoRoute(path: 'tests', builder: (context, state) => const LabTestsScreen()),
                 ],
               ),
             ],

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/authed_image.dart';
 import '../data/clinician_repository.dart';
 import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
@@ -59,6 +60,16 @@ class PatientDetailScreen extends ConsumerWidget {
                 const _SectionTitle('HbA1c history'),
                 const SizedBox(height: AppSpacing.sm),
                 _Hba1cList(points: p.hba1cHistory),
+              ],
+              if (p.labResults.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.lg),
+                const _SectionTitle('Test reports'),
+                const SizedBox(height: AppSpacing.sm),
+                for (final r in p.labResults.take(12))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: _LabReportRow(report: r),
+                  ),
               ],
               if (p.alerts.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.lg),
@@ -452,6 +463,53 @@ class _DieticianSection extends ConsumerWidget {
       ref.invalidate(patientSummaryProvider(patientId));
       messenger.showSnackBar(const SnackBar(content: Text('Dietician updated')));
     }
+  }
+}
+
+class _LabReportRow extends StatelessWidget {
+  const _LabReportRow({required this.report});
+
+  final LabReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (report.photoUrl != null)
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: AuthedImage(path: report.photoUrl!, width: 52, height: 52, radius: 10),
+            ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text(report.testName, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
+                    if (report.createdAt != null)
+                      Text(DateFormat('d MMM').format(report.createdAt!), style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                  ],
+                ),
+                if (report.note.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(report.note, style: const TextStyle(fontSize: 13)),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

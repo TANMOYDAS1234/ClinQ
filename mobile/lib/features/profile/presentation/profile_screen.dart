@@ -285,6 +285,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 onTap: () => context.push('/profile/health'),
               ),
               ProfileRow(
+                icon: Icons.biotech_outlined,
+                title: 'My tests & reports',
+                onTap: () => context.push('/profile/tests'),
+              ),
+              ProfileRow(
                 icon: Icons.notifications_none_rounded,
                 title: l10n.profileNotifications,
                 showDivider: false,

@@ -15,6 +15,8 @@ class ClinicOverview {
     required this.riskModerate,
     required this.riskHigh,
     required this.riskCritical,
+    this.dietPatients = 0,
+    this.foodLogsToday = 0,
   });
 
   final int patientCount;
@@ -39,12 +41,17 @@ class ClinicOverview {
   final int riskHigh;
   final int riskCritical;
 
+  /// Patients a doctor has assigned to a dietician, and meals logged today.
+  final int dietPatients;
+  final int foodLogsToday;
+
   /// Open alerts that need immediate eyes — the "High Priority" alert count.
   int get highPriorityAlerts => emergencyAlerts + urgentAlerts;
 
   factory ClinicOverview.fromJson(Map<String, dynamic> j) {
     final alerts = j['openAlerts'] as Map<String, dynamic>? ?? const {};
     final risk = j['riskDistribution'] as Map<String, dynamic>? ?? const {};
+    final nutrition = j['nutrition'] as Map<String, dynamic>? ?? const {};
     int n(dynamic v) => (v as num?)?.toInt() ?? 0;
     return ClinicOverview(
       patientCount: n(j['patientCount']),
@@ -61,6 +68,8 @@ class ClinicOverview {
       riskModerate: n(risk['moderate']),
       riskHigh: n(risk['high']),
       riskCritical: n(risk['critical']),
+      dietPatients: n(nutrition['dietPatients']),
+      foodLogsToday: n(nutrition['foodLogsToday']),
     );
   }
 }

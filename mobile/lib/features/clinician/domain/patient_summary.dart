@@ -12,6 +12,24 @@ class Hba1cPoint {
   );
 }
 
+/// A test report the patient uploaded against a doctor-advised test.
+class LabReport {
+  const LabReport({required this.id, required this.testName, required this.note, this.photoUrl, this.createdAt});
+  final String id;
+  final String testName;
+  final String note;
+  final String? photoUrl;
+  final DateTime? createdAt;
+
+  factory LabReport.fromJson(Map<String, dynamic> j) => LabReport(
+    id: j['id']?.toString() ?? '',
+    testName: j['testName']?.toString() ?? '',
+    note: j['note']?.toString() ?? '',
+    photoUrl: (j['photoUrl'] == null || j['photoUrl'].toString().isEmpty) ? null : j['photoUrl'].toString(),
+    createdAt: DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal(),
+  );
+}
+
 /// The full clinical picture for one patient (`GET /doctor/patients/:id/summary`).
 /// Only the fields the clinician UI renders are pulled out; the raw analytics
 /// blobs are large and screen-specific.
@@ -34,6 +52,7 @@ class PatientSummary {
     this.timeInRangePercent,
     this.estimatedHba1c,
     this.hba1cHistory = const [],
+    this.labResults = const [],
     this.alerts = const [],
     this.aiContext,
     this.assignedDieticianId,
@@ -62,6 +81,7 @@ class PatientSummary {
   final double? estimatedHba1c;
 
   final List<Hba1cPoint> hba1cHistory;
+  final List<LabReport> labResults;
   final List<ClinicalAlert> alerts;
   final String? aiContext;
 
@@ -95,6 +115,7 @@ class PatientSummary {
           ? (profile['assignedDietician'] as Map)['name']?.toString()
           : null,
       reviewIntervalDays: (profile['dietReviewIntervalDays'] as num?)?.toInt(),
+      labResults: (j['labResults'] as List?)?.whereType<Map<String, dynamic>>().map(LabReport.fromJson).toList() ?? const [],
       healthScore: (health['score'] as num?)?.toInt(),
       healthBand: health['band']?.toString(),
       adherencePercent: (adherence['percentage'] as num?)?.toInt(),
