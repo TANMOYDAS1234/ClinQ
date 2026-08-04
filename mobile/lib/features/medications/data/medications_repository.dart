@@ -56,6 +56,13 @@ class MedicationsRepository {
     await _client.delete('$_base/$id');
   }
 
+  /// Overrides a medicine's reminder times by hand. Each entry is
+  /// `{time: "HH:mm", relationToMeal}`. The server marks it customised so a later
+  /// meal-time change won't move it.
+  Future<void> updateSchedule(String id, List<Map<String, String>> schedule) async {
+    await _client.patchJson('$_base/$id', body: {'schedule': schedule});
+  }
+
   /// Uploads a photo of a prescription; the server reads it and creates the
   /// medicines it finds. Returns what was created (or `readable: false` if the
   /// photo couldn't be read).

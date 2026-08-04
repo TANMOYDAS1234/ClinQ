@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/citation.dart';
 
-/// Shown under an assistant reply "when `citations` is non-empty".
+/// Shown under an assistant reply "when `citations` is non-empty". When [onTap]
+/// is given, each pill is tappable — tapping asks the assistant about that topic.
 class CitationChips extends StatelessWidget {
-  const CitationChips({super.key, required this.citations});
+  const CitationChips({super.key, required this.citations, this.onTap});
 
   final List<Citation> citations;
+  final ValueChanged<Citation>? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -23,20 +25,38 @@ class CitationChips extends StatelessWidget {
         spacing: AppSpacing.sm,
         runSpacing: AppSpacing.xs,
         children: citations.map((c) {
+          final pill = Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: scheme.outlineVariant),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(c.title, style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                ),
+                if (onTap != null) ...[
+                  const SizedBox(width: 6),
+                  Icon(Icons.north_east_rounded, size: 14, color: scheme.onSurfaceVariant),
+                ],
+              ],
+            ),
+          );
           return Tooltip(
             message: c.source,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              decoration: BoxDecoration(
-                color: scheme.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: scheme.outlineVariant),
-              ),
-              child: Text(
-                c.title,
-                style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
-              ),
-            ),
+            child: onTap == null
+                ? pill
+                : Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => onTap!(c),
+                      child: pill,
+                    ),
+                  ),
           );
         }).toList(),
       ),

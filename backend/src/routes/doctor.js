@@ -279,7 +279,7 @@ router.get(
 
     const [profile, healthScore, trends, adherence, alerts, latestHba1c, footAssessments, context] =
       await Promise.all([
-        PatientProfile.findOne({ user: patient._id }).lean(),
+        PatientProfile.findOne({ user: patient._id }).populate('assignedDietician', 'name phone').lean(),
         computeHealthScore(patient._id, { days: 30 }),
         glucoseTrends(patient._id, { days: 90 }),
         computeAdherence(patient._id, { days: 30 }),
@@ -645,5 +645,71 @@ const serialiseChunk = (c) => ({
   approvedAt: c.approvedAt ?? null,
   updatedAt: c.updatedAt,
 });
+
+// ---------------------------------------------------------------------------
+// Dietician assignment
+// ---------------------------------------------------------------------------
+
+/** Dieticians the doctor can assign a patient to. */
+router.get(
+  '/dieticians',
+  asyncHandler(async (req, res) => {
+    const items = await User.find({ role: ROLES.DIETICIAN, isActive: true })
+      .select('name phone avatarAssetId')
+      .sort({ name: 1 })
+      .lean();
+    res.json({
+      items: items.map((d) => ({
+        id: String(d._id),
+        name: d.name,
+        phone: d.phone,
+        avatarAssetId: d.avatarAssetId ? String(d.avatarAssetId) : null,
+      })),
+    });
+  }),
+);
+
+/**
+ * Assign (or clear) a patient's dietician and how often the food log should be
+ * reviewed. `dieticianId: null` unassigns; `reviewIntervalDays: null` clears the
+ * cadence.
+ */
+router.patch(
+  '/patients/:id/dietician',
+  validate({
+    body: z.object({
+      dieticianId: z.string().nullable().optional(),
+      reviewIntervalDays: z.number().int().min(1).max(30).nullable().optional(),
+    }),
+  }),
+  audit('update', 'PatientProfile'),
+  asyncHandler(async (req, res) => {
+    const { dieticianId, reviewIntervalDays } = req.body;
+    const update = {};
+
+    if (dieticianId !== undefined) {
+      if (dieticianId) {
+        const d = await User.findOne({ _id: dieticianId, role: ROLES.DIETICIAN, isActive: true }).select('_id').lean();
+        if (!d) throw notFound('Dietician not found');
+        update.assignedDietician = d._id;
+      } else {
+        update.assignedDietician = null;
+      }
+    }
+    if (reviewIntervalDays !== undefined) update.dietReviewIntervalDays = reviewIntervalDays;
+
+    const profile = await PatientProfile.findOneAndUpdate({ user: req.params.id }, { $set: update }, { new: true })
+      .populate('assignedDietician', 'name phone')
+      .lean();
+    if (!profile) throw notFound('Patient not found');
+
+    res.json({
+      assignedDietician: profile.assignedDietician
+        ? { id: String(profile.assignedDietician._id), name: profile.assignedDietician.name, phone: profile.assignedDietician.phone }
+        : null,
+      reviewIntervalDays: profile.dietReviewIntervalDays ?? null,
+    });
+  }),
+);
 
 export default router;

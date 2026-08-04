@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/providers/preferences_provider.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../shared/widgets/empty_view.dart';
 import '../../../shared/widgets/error_view.dart';
@@ -70,11 +72,25 @@ class MedicationsScreen extends ConsumerWidget {
     // the daily reminders are rebuilt.
     ref.watch(medicationsListProvider); // activate the provider
     ref.listen<AsyncValue<List<Medication>>>(medicationsListProvider, (_, next) {
-      next.whenData(syncMedicationReminders);
+      if (ref.read(appPreferencesProvider).medicationReminders) {
+        next.whenData(syncMedicationReminders);
+      }
     });
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('Medicines'),
+        actions: [
+          IconButton(
+            tooltip: 'Reminder times',
+            onPressed: () => context.push('/medications/reminders'),
+            icon: const Icon(Icons.schedule_rounded),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _onScan(context, ref),
         icon: const Icon(Icons.document_scanner_outlined),

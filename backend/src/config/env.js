@@ -44,6 +44,11 @@ const schema = z.object({
   CLINIC_EMERGENCY_PHONE: z.string().default('+91-0000000000'),
   DOCTOR_DISPLAY_NAME: z.string().default('Dr. Amit Kumar Dey'),
 
+  // Anyone who registers with this exact code becomes a dietician instead of a
+  // patient. Change it per clinic; keep it private (shared only with dieticians
+  // the doctor is onboarding).
+  DIETICIAN_INVITE_CODE: z.string().min(4).default('CLINQ-DIET-2026'),
+
   // Clinic wall-clock timezone. All appointment slot times are computed in this
   // zone, so the schedule is correct no matter what timezone the server runs in
   // (a VPS is often UTC). India is a single zone.

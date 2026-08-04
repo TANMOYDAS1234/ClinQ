@@ -14,6 +14,7 @@ import '../../../shared/data/upload_repository.dart';
 import '../../../shared/providers/locale_provider.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../../shared/widgets/markdown_text.dart';
+import '../../appointments/data/clinic_repository.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/chat_message.dart';
 import 'chat_controller.dart';
@@ -155,7 +156,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   Future<void> _callClinic() async {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context);
-    final uri = Uri(scheme: 'tel', path: AppConfig.clinicPhoneNumber);
+    final phone = ref.read(clinicPhoneProvider).valueOrNull ?? AppConfig.clinicPhoneNumber;
+    final uri = Uri(scheme: 'tel', path: phone);
     if (!await launchUrl(uri)) {
       messenger.showSnackBar(SnackBar(content: Text(l10n.commonSomethingWentWrong)));
     }
@@ -342,6 +344,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                         return RepaintBoundary(
                           child: ChatMessageBubble(
                             message: message,
+                            // Tapping a source pill asks the assistant about
+                            // that topic — the citation becomes a question.
+                            onCitationTap: (c) => _send(c.title),
                             repliedTo: message.replyToId == null
                                 ? null
                                 : chatState.messages

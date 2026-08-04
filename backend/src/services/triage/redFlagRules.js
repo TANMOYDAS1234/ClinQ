@@ -24,6 +24,10 @@ export const RED_FLAG_RULES = Object.freeze([
       /বুক\s*ধড়ফড়/,
       /(सीने|छाती|सिने)\s*में\s*(दर्द|जलन|भारीपन|दबाव)/,
       /दिल\s*का\s*दौरा/,
+      // Romanized Bengali / Hindi (native words typed in English letters).
+      /\bbuke?\s*(betha|byatha|batha|chap|jontrona|bhar)\b/i,
+      /\b(chhati|seene|sine|sina)\s*(me|mein)?\s*(dard|jalan|dabav|bhaaripan)\b/i,
+      /\b(dil|heart)\s*ka\s*(daura|dauda)\b/i,
     ],
   },
   {
@@ -39,6 +43,9 @@ export const RED_FLAG_RULES = Object.freeze([
       /দম\s*(বন্ধ|আটকে)/,
       /(सांस|साँस)\s*(लेने\s*में\s*)?(तकलीफ|दिक्कत|परेशानी|फूल)/,
       /दम\s*घुट/,
+      // Romanized Bengali / Hindi.
+      /\b(sans|saans|shwas|shash)\b[^.!?]{0,15}\b(koshto|kosto|kasto|takleef|taklif|dikkat|nite)\b/i,
+      /\b(dom|dam)\s*(bondho|bondo|atke|ghut|band)\b/i,
     ],
   },
   {
@@ -68,6 +75,8 @@ export const RED_FLAG_RULES = Object.freeze([
       /\bnot\s+waking\s+up\b/i,
       /(অজ্ঞান|জ্ঞান\s*হারা|সংজ্ঞাহীন|খিঁচুনি|মূর্ছা)/,
       /(बेहोश|होश\s*नहीं|मूर्छा|दौरा\s*पड़|मिर्गी|ऐंठन)/,
+      // Romanized Bengali / Hindi.
+      /\b(oggan|ogyan|agyan|behosh|behos|gyan\s*hara|murcha|khichuni|khichoni|mirgi)\b/i,
     ],
   },
   {
@@ -240,6 +249,8 @@ export const RED_FLAG_RULES = Object.freeze([
       /\b(high|raised)\s+(blood\s*pressure|bp)\b/i,
       /(প্রেসার|রক্তচাপ|বিপি)[^।.!?]{0,20}(বেশি|বেড়ে|হাই|বৃদ্ধি)/,
       /(बीपी|ब्लड\s*प्रेशर|रक्तचाप)[^।.!?]{0,20}(ज्यादा|ज़्यादा|बढ़|हाई|तेज)/,
+      // Romanized Bengali / Hindi.
+      /\b(pressure|preshar|bp|roktochap)\b[^.!?]{0,15}\b(besi|beshi|beri|barche|bere|zyada|jyada|high|hai)\b/i,
     ],
   },
   {
@@ -252,6 +263,8 @@ export const RED_FLAG_RULES = Object.freeze([
       /\b(high|low)\s+(blood\s*)?(sugar|glucose)\b/i,
       /(সুগার|গ্লুকোজ)[^।.!?]{0,20}(বেশি|বেড়ে|কম|কমে|হাই|লো)/,
       /(शुगर|शक्कर|ग्लूकोज)[^।.!?]{0,20}(ज्यादा|ज़्यादा|बढ़|कम|हाई|लो)/,
+      // Romanized Bengali / Hindi.
+      /\b(sugar|chini|glucose)\b[^.!?]{0,15}\b(besi|beshi|beri|onek|kom|kome|kome|zyada|jyada|barche|bere|high|hai|low|lo)\b/i,
     ],
   },
   {
@@ -332,6 +345,8 @@ export const RED_FLAG_RULES = Object.freeze([
       /\b(overdose)\b[^.!?]{0,30}\b(myself|on\s+purpose|intentional)/i,
       /(আত্মহত্যা|মরে\s*যেতে\s*চাই|বাঁচতে\s*চাই\s*না)/,
       /(आत्महत्या|खुदकुशी|मरना\s*चाहता|जीना\s*नहीं\s*चाहता)/,
+      // Romanized Bengali / Hindi.
+      /\b(atmohotta|atmahatya|khudkushi|marna\s*chahta|jina\s*nahi|more\s*jete\s*chai|bachte\s*chai\s*na)\b/i,
     ],
   },
 ]);

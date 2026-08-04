@@ -89,6 +89,14 @@ async function main() {
     language: 'en',
   });
 
+  await upsertUser({
+    name: 'Priya Nutritionist',
+    phone: '+919830000003',
+    password: 'Diet@1234',
+    role: ROLES.DIETICIAN,
+    language: 'en',
+  });
+
   // ---- Clinics + weekly availability -------------------------------------
   const clinics = await seedClinics(doctor);
 

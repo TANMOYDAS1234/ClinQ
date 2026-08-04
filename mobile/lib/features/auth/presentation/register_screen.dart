@@ -28,6 +28,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _inviteController = TextEditingController();
 
   /// Errors stay hidden until the first submit attempt. `onUserInteraction`
   /// validates the *whole* form as soon as any single field is touched, so
@@ -50,6 +51,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _inviteController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
@@ -91,6 +93,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     '${_dateOfBirth!.month.toString().padLeft(2, '0')}-'
                     '${_dateOfBirth!.day.toString().padLeft(2, '0')}',
           gender: _gender,
+          inviteCode: _inviteController.text.trim().isEmpty ? null : _inviteController.text.trim(),
           // Deliberately not sent from this screen — diabetes type is no
           // longer collected at signup. The server therefore applies its
           // `.default('type2')`, so it must be confirmed with the patient
@@ -326,6 +329,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ],
                   validator: (v) => v == null ? l10n.authGenderRequired : null,
                   onChanged: (v) => setState(() => _gender = v),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                TextFormField(
+                  controller: _inviteController,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: const InputDecoration(
+                    labelText: 'Clinic code (optional)',
+                    helperText: 'Only for clinic staff / dietician onboarding',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                  ),
                 ),
                 if (_errorMessage != null) ...[
                   const SizedBox(height: AppSpacing.md),

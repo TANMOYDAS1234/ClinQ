@@ -17,6 +17,14 @@ const patientProfileSchema = new mongoose.Schema(
     diagnosedOn: Date,
 
     heightCm: { type: Number, min: 50, max: 250 },
+
+    // The patient's usual meal times, used to anchor medicine reminders so
+    // "before breakfast" fires relative to when THEY eat. Sensible defaults.
+    mealTimes: {
+      breakfast: { type: String, default: '08:00', match: [/^([01]\d|2[0-3]):[0-5]\d$/, 'time must be HH:mm'] },
+      lunch: { type: String, default: '13:30', match: [/^([01]\d|2[0-3]):[0-5]\d$/, 'time must be HH:mm'] },
+      dinner: { type: String, default: '20:30', match: [/^([01]\d|2[0-3]):[0-5]\d$/, 'time must be HH:mm'] },
+    },
     baselineWeightKg: { type: Number, min: 10, max: 400 },
 
     // Personalised targets; the triage engine falls back to clinic defaults
@@ -68,6 +76,13 @@ const patientProfileSchema = new mongoose.Schema(
     lastRiskComputedAt: Date,
 
     assignedDoctor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+
+    // Nutrition care. The doctor assigns a dietician and how often they should
+    // review this patient's food log (in days); null = no recurring review set.
+    assignedDietician: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+    dietReviewIntervalDays: { type: Number, min: 1, max: 30, default: null },
+    lastDietReviewAt: Date,
+
     notes: { type: String, maxlength: 4000 },
   },
   { timestamps: true },

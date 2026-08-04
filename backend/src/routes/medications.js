@@ -10,7 +10,8 @@ import { Medication, MED_FORMS } from '../models/Medication.js';
 import { MedicationLog } from '../models/MedicationLog.js';
 import { computeAdherence } from '../services/analytics.js';
 import { extractPrescription } from '../services/ai/vision.js';
-import { frequencyToTimes } from '../services/medicationSchedule.js';
+import { buildSchedule } from '../services/medicationSchedule.js';
+import { PatientProfile } from '../models/PatientProfile.js';
 import { AiUnavailableError } from '../services/ai/gemini.js';
 
 const router = Router({ mergeParams: true });
@@ -105,22 +106,32 @@ router.post(
       return res.json({ readable: false, created: [], note: parsed?.note ?? null });
     }
 
+    const profile = await PatientProfile.findOne({ user: req.patientId }).select('mealTimes').lean();
+    const mealTimes = profile?.mealTimes;
     const created = [];
     for (const item of parsed.items) {
       if (!item?.name) continue;
-      const times = frequencyToTimes(item.frequency);
-      const med = await Medication.create({
-        patient: req.patientId,
-        name: item.name,
-        strength: item.strength,
-        dose: item.dose,
-        form: /insulin/i.test(item.name) ? 'insulin' : 'tablet',
-        schedule: times.map((time) => ({ time, relationToMeal: item.relationToMeal ?? 'any' })),
-        startDate: new Date(),
-        endDate: item.durationDays ? dayjs().add(item.durationDays, 'day').toDate() : undefined,
-        instructions: item.instructions,
-        prescribedBy: req.user.role === 'patient' ? undefined : req.user._id,
-      });
+      // Upsert by name so re-scanning the same prescription (or a medicine the
+      // patient already takes) updates that medicine rather than duplicating it.
+      const med = await Medication.findOneAndUpdate(
+        { patient: req.patientId, name: item.name, isActive: true },
+        {
+          $set: {
+            patient: req.patientId,
+            name: item.name,
+            strength: item.strength,
+            dose: item.dose,
+            form: /insulin/i.test(item.name) ? 'insulin' : 'tablet',
+            schedule: buildSchedule(item.frequency, mealTimes, item.relationToMeal ?? 'any'),
+            startDate: new Date(),
+            endDate: item.durationDays ? dayjs().add(item.durationDays, 'day').toDate() : undefined,
+            instructions: item.instructions,
+            prescribedBy: req.user.role === 'patient' ? undefined : req.user._id,
+            isActive: true,
+          },
+        },
+        { upsert: true, setDefaultsOnInsert: true, new: true },
+      );
       created.push(serialise(med));
     }
 
@@ -133,9 +144,16 @@ router.patch(
   validate({ body: medicationSchema.partial().extend({ isActive: z.boolean().optional() }) }),
   audit('update', 'Medication'),
   asyncHandler(async (req, res) => {
+    const update = { ...req.body };
+    // A hand-set schedule is a manual override — stop a later meal-time change
+    // from moving it, and drop the meal-slot anchor on those entries.
+    if (Array.isArray(update.schedule)) {
+      update.timesCustomized = true;
+      update.schedule = update.schedule.map((s) => ({ time: s.time, relationToMeal: s.relationToMeal ?? 'any' }));
+    }
     const med = await Medication.findOneAndUpdate(
       { _id: req.params.id, patient: req.patientId },
-      { $set: req.body },
+      { $set: update },
       { new: true, runValidators: true },
     );
     if (!med) throw notFound('Medication not found');

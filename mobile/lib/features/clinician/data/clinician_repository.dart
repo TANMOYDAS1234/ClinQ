@@ -107,6 +107,7 @@ class ClinicianRepository {
     required String patientId,
     required List<Map<String, dynamic>> items,
     List<String> diagnosis = const [],
+    List<String> labTestsAdvised = const [],
     String? generalAdvice,
     DateTime? followUpOn,
   }) async {
@@ -115,9 +116,29 @@ class ClinicianRepository {
       body: {
         'items': items,
         if (diagnosis.isNotEmpty) 'diagnosis': diagnosis,
+        if (labTestsAdvised.isNotEmpty) 'labTestsAdvised': labTestsAdvised,
         if (generalAdvice != null && generalAdvice.isNotEmpty) 'generalAdvice': generalAdvice,
         if (followUpOn != null) 'followUpOn': followUpOn.toIso8601String(),
       },
+    );
+  }
+
+  /// Dieticians the doctor can assign a patient to.
+  Future<List<({String id, String name})>> dieticians() async {
+    final json = await _client.getJson('/doctor/dieticians');
+    final items = json['items'] as List? ?? const [];
+    return items
+        .whereType<Map<String, dynamic>>()
+        .map((d) => (id: d['id']?.toString() ?? '', name: d['name']?.toString() ?? ''))
+        .toList();
+  }
+
+  /// Assign the patient's dietician and food-log review cadence. A null
+  /// [dieticianId] unassigns; a null [reviewIntervalDays] clears the cadence.
+  Future<void> assignDietician(String patientId, {String? dieticianId, int? reviewIntervalDays}) async {
+    await _client.patchJson(
+      '/doctor/patients/$patientId/dietician',
+      body: {'dieticianId': dieticianId, 'reviewIntervalDays': reviewIntervalDays},
     );
   }
 

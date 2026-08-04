@@ -6,6 +6,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'shared/providers/locale_provider.dart';
+import 'shared/providers/preferences_provider.dart';
 import 'core/push/push_service.dart';
 import 'features/auth/presentation/auth_controller.dart';
 import 'features/medications/presentation/medications_providers.dart';
@@ -43,7 +44,7 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
 
   void _syncMedsIfPatient() {
     final user = ref.read(authControllerProvider).user;
-    if (user?.role == 'patient') {
+    if (user?.role == 'patient' && ref.read(appPreferencesProvider).medicationReminders) {
       refreshAndScheduleMedicationReminders(ref).catchError((_) {});
     }
   }

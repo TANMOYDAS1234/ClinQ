@@ -31,6 +31,9 @@ const medicationSchema = new mongoose.Schema(
     schedule: [
       {
         time: { type: String, required: true, match: [/^([01]\d|2[0-3]):[0-5]\d$/, 'time must be HH:mm'] },
+        // The meal slot this dose is anchored to, so its time can be re-derived
+        // when the patient changes their meal times. Absent for a manual time.
+        slot: { type: String, enum: ['morning', 'noon', 'afternoon', 'night'] },
         relationToMeal: {
           type: String,
           enum: ['before_meal', 'after_meal', 'with_meal', 'any'],
@@ -48,6 +51,9 @@ const medicationSchema = new mongoose.Schema(
     startDate: { type: Date, default: Date.now },
     endDate: Date,
     isActive: { type: Boolean, default: true, index: true },
+    // True once the patient overrides a reminder time by hand — a later
+    // meal-time change then leaves this medicine's schedule untouched.
+    timesCustomized: { type: Boolean, default: false },
 
     prescribedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     prescription: { type: mongoose.Schema.Types.ObjectId, ref: 'Prescription' },

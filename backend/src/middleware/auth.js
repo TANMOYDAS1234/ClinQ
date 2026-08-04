@@ -27,6 +27,7 @@ export const requireRole =
   };
 
 export const requireClinician = requireRole(ROLES.DOCTOR, ROLES.STAFF);
+export const requireDietician = requireRole(ROLES.DIETICIAN);
 
 /**
  * Resolves which patient a request is operating on and enforces access.

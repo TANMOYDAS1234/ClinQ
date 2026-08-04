@@ -5,6 +5,7 @@ export const ROLES = Object.freeze({
   PATIENT: 'patient',
   DOCTOR: 'doctor',
   STAFF: 'staff',
+  DIETICIAN: 'dietician',
 });
 
 export const LANGUAGES = Object.freeze(['en', 'bn', 'hi']);

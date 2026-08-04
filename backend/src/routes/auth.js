@@ -9,6 +9,9 @@ import { validate } from '../middleware/validate.js';
 import { asyncHandler, unauthorized, conflict } from '../middleware/errors.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { logger } from '../config/logger.js';
+import { env } from '../config/env.js';
+import { Medication } from '../models/Medication.js';
+import { recomputeSchedule } from '../services/medicationSchedule.js';
 
 const router = Router();
 
@@ -36,6 +39,9 @@ const registerSchema = z.object({
   dateOfBirth: z.coerce.date().optional(),
   gender: z.enum(['male', 'female', 'other', 'undisclosed']).default('undisclosed'),
   diabetesType: z.enum(['type1', 'type2', 'gestational', 'prediabetes', 'none']).default('type2'),
+  // A dietician onboarding code turns this sign-up into a dietician account
+  // instead of a patient. Anything else (or empty) registers a patient.
+  inviteCode: z.string().trim().max(64).optional(),
 });
 
 router.post(
@@ -43,11 +49,16 @@ router.post(
   authLimiter,
   validate({ body: registerSchema }),
   asyncHandler(async (req, res) => {
-    const { name, phone, password, email, language, dateOfBirth, gender, diabetesType } = req.body;
+    const { name, phone, password, email, language, dateOfBirth, gender, diabetesType, inviteCode } = req.body;
 
     if (await User.exists({ phone })) {
       throw conflict('An account with this phone number already exists');
     }
+
+    // Public sign-up is a patient by default; the private dietician code is the
+    // only way to self-register a non-patient account.
+    const isDietician = Boolean(inviteCode) && inviteCode === env.DIETICIAN_INVITE_CODE;
+    const role = isDietician ? ROLES.DIETICIAN : ROLES.PATIENT;
 
     const user = new User({
       name,
@@ -56,7 +67,7 @@ router.post(
       language,
       dateOfBirth,
       gender,
-      role: ROLES.PATIENT,
+      role,
       consent: {
         termsAcceptedAt: new Date(),
         dataProcessingAcceptedAt: new Date(),
@@ -66,14 +77,15 @@ router.post(
     await user.setPassword(password);
     await user.save();
 
-    // Every patient gets a clinical profile up front, so downstream code never
-    // has to handle a missing one.
-    const doctor = await User.findOne({ role: ROLES.DOCTOR }).select('_id').lean();
-    await PatientProfile.create({
-      user: user._id,
-      diabetesType,
-      assignedDoctor: doctor?._id,
-    });
+    // Only patients get a clinical profile; a dietician has no diabetes record.
+    if (!isDietician) {
+      const doctor = await User.findOne({ role: ROLES.DOCTOR }).select('_id').lean();
+      await PatientProfile.create({
+        user: user._id,
+        diabetesType,
+        assignedDoctor: doctor?._id,
+      });
+    }
 
     const accessToken = signAccessToken(user);
     const refreshToken = await issueRefreshToken(user, { req });
@@ -236,6 +248,14 @@ router.patch(
         })
         .partial()
         .optional(),
+      mealTimes: z
+        .object({
+          breakfast: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+          lunch: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+          dinner: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+        })
+        .partial()
+        .optional(),
     }),
   }),
   asyncHandler(async (req, res) => {
@@ -244,6 +264,18 @@ router.patch(
       { $set: flattenForUpdate(req.body) },
       { new: true, upsert: true },
     ).lean();
+
+    // When meal times change, re-derive reminder times for every active medicine
+    // the patient has NOT hand-overridden, so "before breakfast" tracks the new
+    // breakfast time automatically.
+    if (req.body.mealTimes) {
+      const meds = await Medication.find({ patient: req.user._id, isActive: true, timesCustomized: { $ne: true } });
+      for (const med of meds) {
+        med.schedule = recomputeSchedule(med.schedule, profile.mealTimes);
+        await med.save();
+      }
+    }
+
     res.json({ profile });
   }),
 );

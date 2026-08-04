@@ -8,7 +8,8 @@ import { audit } from '../middleware/audit.js';
 import { Prescription } from '../models/Prescription.js';
 import { Medication } from '../models/Medication.js';
 import { User } from '../models/User.js';
-import { frequencyToTimes } from '../services/medicationSchedule.js';
+import { buildSchedule } from '../services/medicationSchedule.js';
+import { PatientProfile } from '../models/PatientProfile.js';
 import { env } from '../config/env.js';
 import { paged, pageParams } from '../utils/pagination.js';
 
@@ -106,8 +107,9 @@ router.post(
 );
 
 async function syncMedications(prescription, patientId, doctorId) {
+  const profile = await PatientProfile.findOne({ user: patientId }).select('mealTimes').lean();
+  const mealTimes = profile?.mealTimes;
   for (const item of prescription.items) {
-    const times = frequencyToTimes(item.frequency);
     await Medication.findOneAndUpdate(
       { patient: patientId, name: item.name, isActive: true },
       {
@@ -117,7 +119,7 @@ async function syncMedications(prescription, patientId, doctorId) {
           strength: item.strength,
           dose: item.dose,
           form: /insulin/i.test(item.name) ? 'insulin' : 'tablet',
-          schedule: times.map((time) => ({ time, relationToMeal: item.relationToMeal })),
+          schedule: buildSchedule(item.frequency, mealTimes, item.relationToMeal),
           startDate: prescription.issuedOn,
           endDate: item.durationDays
             ? dayjs(prescription.issuedOn).add(item.durationDays, 'day').toDate()

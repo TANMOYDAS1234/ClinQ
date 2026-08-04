@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../data/clinician_repository.dart';
 import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
 import 'widgets/clinician_visuals.dart';
@@ -24,6 +25,13 @@ class PatientDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Patient')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/clinician/patients/$patientId/prescribe', extra: async.valueOrNull?.name),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.edit_document),
+        label: const Text('Prescribe'),
+      ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
@@ -44,6 +52,8 @@ class PatientDetailScreen extends ConsumerWidget {
               _Header(summary: p),
               const SizedBox(height: AppSpacing.md),
               _MetricsGrid(summary: p),
+              const SizedBox(height: AppSpacing.lg),
+              _DieticianSection(summary: p, patientId: patientId),
               if (p.hba1cHistory.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.lg),
                 const _SectionTitle('HbA1c history'),
@@ -292,6 +302,156 @@ class _Hba1cList extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Shows the patient's assigned dietician + food-log review cadence, and lets
+/// the doctor assign, change, or clear it.
+class _DieticianSection extends ConsumerWidget {
+  const _DieticianSection({required this.summary, required this.patientId});
+
+  final PatientSummary summary;
+  final String patientId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final name = summary.assignedDieticianName;
+    final cadence = summary.reviewIntervalDays;
+    final assigned = name != null && name.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(11)),
+            child: const Icon(Icons.restaurant_menu_rounded, size: 20, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('DIETICIAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
+                const SizedBox(height: 2),
+                Text(assigned ? name : 'Not assigned', style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                if (assigned && cadence != null)
+                  Text('Reviews food log every $cadence day${cadence == 1 ? '' : 's'}',
+                      style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          TextButton(onPressed: () => _openAssign(context, ref), child: Text(assigned ? 'Change' : 'Assign')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openAssign(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final repo = ref.read(clinicianRepositoryProvider);
+
+    List<({String id, String name})> options;
+    try {
+      options = await repo.dieticians();
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(content: Text('Could not load dieticians')));
+      return;
+    }
+    if (!context.mounted) return;
+    if (options.isEmpty) {
+      messenger.showSnackBar(const SnackBar(content: Text('No dieticians yet — ask one to sign up with the clinic code.')));
+      return;
+    }
+
+    String? selectedId = summary.assignedDieticianId;
+    int cadence = summary.reviewIntervalDays ?? 3;
+
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Assign dietician', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: AppSpacing.sm),
+              for (final d in options)
+                RadioListTile<String>(
+                  contentPadding: EdgeInsets.zero,
+                  value: d.id,
+                  groupValue: selectedId,
+                  onChanged: (v) => setSheet(() => selectedId = v),
+                  title: Text(d.name),
+                ),
+              const SizedBox(height: AppSpacing.sm),
+              const Text('Review the food log every', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final (days, label) in const [(1, 'Daily'), (3, 'Every 3 days'), (7, 'Weekly')])
+                    ChoiceChip(
+                      label: Text(label),
+                      selected: cadence == days,
+                      onSelected: (_) => setSheet(() => cadence = days),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                children: [
+                  if (summary.assignedDieticianId != null)
+                    TextButton(
+                      style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+                      onPressed: () async {
+                        try {
+                          await repo.assignDietician(patientId, dieticianId: null, reviewIntervalDays: null);
+                          if (ctx.mounted) Navigator.pop(ctx, true);
+                        } catch (_) {
+                          if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Could not save')));
+                        }
+                      },
+                      child: const Text('Unassign'),
+                    ),
+                  const Spacer(),
+                  FilledButton(
+                    onPressed: selectedId == null
+                        ? null
+                        : () async {
+                            try {
+                              await repo.assignDietician(patientId, dieticianId: selectedId, reviewIntervalDays: cadence);
+                              if (ctx.mounted) Navigator.pop(ctx, true);
+                            } catch (_) {
+                              if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Could not save')));
+                            }
+                          },
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (saved == true) {
+      ref.invalidate(patientSummaryProvider(patientId));
+      messenger.showSnackBar(const SnackBar(content: Text('Dietician updated')));
+    }
   }
 }
 

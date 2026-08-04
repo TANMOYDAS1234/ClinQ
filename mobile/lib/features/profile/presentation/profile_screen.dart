@@ -15,6 +15,7 @@ import '../../../shared/providers/locale_provider.dart';
 import '../../../shared/providers/preferences_provider.dart';
 import '../../../shared/widgets/fullscreen_photo.dart';
 import '../../../shared/widgets/user_avatar.dart';
+import '../../appointments/data/clinic_repository.dart';
 import '../../auth/domain/user.dart';
 import '../../auth/presentation/auth_controller.dart';
 import 'widgets/profile_section.dart';
@@ -159,7 +160,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _callClinic() async {
-    await launchUrl(Uri(scheme: 'tel', path: AppConfig.clinicPhoneNumber));
+    final phone = ref.read(clinicPhoneProvider).valueOrNull ?? AppConfig.clinicPhoneNumber;
+    await launchUrl(Uri(scheme: 'tel', path: phone));
   }
 
   Future<void> _confirmLogout() async {

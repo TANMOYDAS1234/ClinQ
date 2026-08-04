@@ -28,6 +28,7 @@ class AuthRepository {
     String? dateOfBirth,
     String? gender,
     String? diabetesType,
+    String? inviteCode,
   }) async {
     final json = await _client.postJson(
       '/auth/register',
@@ -40,6 +41,7 @@ class AuthRepository {
         if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
         if (gender != null) 'gender': gender,
         if (diabetesType != null) 'diabetesType': diabetesType,
+        if (inviteCode != null && inviteCode.isNotEmpty) 'inviteCode': inviteCode,
       },
     );
     return _resultFromJson(json);
@@ -93,6 +95,7 @@ class AuthRepository {
     String? diagnosedOn,
     List<String>? allergies,
     Map<String, String>? emergencyContact,
+    Map<String, String>? mealTimes,
   }) async {
     await _client.patchJson(
       '/auth/me/profile',
@@ -101,6 +104,7 @@ class AuthRepository {
         if (diagnosedOn != null) 'diagnosedOn': diagnosedOn,
         if (allergies != null) 'allergies': allergies,
         if (emergencyContact != null) 'emergencyContact': emergencyContact,
+        if (mealTimes != null) 'mealTimes': mealTimes,
       },
     );
   }

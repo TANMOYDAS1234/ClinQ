@@ -6,7 +6,7 @@ const chatMessageSchema = new mongoose.Schema(
     patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
 
     seq: { type: Number, required: true },
-    role: { type: String, enum: ['user', 'assistant', 'system', 'clinician'], required: true },
+    role: { type: String, enum: ['user', 'assistant', 'system', 'clinician', 'dietician'], required: true },
 
     // Set only on `clinician` turns: which clinician wrote it, so the patient
     // reads "Dr. Amit Kumar Dey" rather than an anonymous clinic voice, and an

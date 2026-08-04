@@ -133,6 +133,7 @@ class _ClinicEditScreenState extends ConsumerState<ClinicEditScreen> {
         await repo.create(body);
       }
       ref.invalidate(clinicsProvider);
+      ref.invalidate(clinicPhoneProvider); // so every "Call clinic" picks up the new number at once
       messenger.showSnackBar(const SnackBar(content: Text('Clinic saved')));
       navigator.pop();
     } on ApiException catch (e) {

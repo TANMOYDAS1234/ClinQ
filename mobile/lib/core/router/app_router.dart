@@ -2,13 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/appointments/domain/clinic.dart';
 import '../../features/clinician/domain/knowledge_chunk.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/chat/presentation/chat_screen.dart';
+import '../../features/medications/presentation/medications_screen.dart';
+import '../../features/medications/presentation/reminder_times_screen.dart';
+import '../../features/foodlog/presentation/food_log_screen.dart';
 import '../../features/clinician/presentation/alerts_screen.dart';
 import '../../features/clinician/presentation/appointments_admin_screen.dart';
+import '../../features/clinician/presentation/clinic_edit_screen.dart';
+import '../../features/clinician/presentation/clinics_screen.dart';
 import '../../features/clinician/presentation/chat_review_detail_screen.dart';
 import '../../features/clinician/presentation/chat_review_screen.dart';
 import '../../features/clinician/presentation/clinician_dashboard_screen.dart';
@@ -19,6 +25,10 @@ import '../../features/clinician/presentation/knowledge_screen.dart';
 import '../../features/clinician/presentation/patient_detail_screen.dart';
 import '../../features/clinician/presentation/patient_thread_screen.dart';
 import '../../features/clinician/presentation/patients_screen.dart';
+import '../../features/clinician/presentation/prescribe_screen.dart';
+import '../../features/dietician/presentation/dietician_patients_screen.dart';
+import '../../features/dietician/presentation/dietician_patient_screen.dart';
+import '../../features/dietician/presentation/dietician_chat_screen.dart';
 import '../../features/onboarding/presentation/language_picker_screen.dart';
 import '../../features/onboarding/presentation/splash_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
@@ -44,6 +54,7 @@ class _RouterRefreshNotifier extends ChangeNotifier {
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 bool _isClinician(AuthState s) => s.user?.role == 'doctor' || s.user?.role == 'staff';
+bool _isDietician(AuthState s) => s.user?.role == 'dietician';
 
 String? _redirect(Ref ref, GoRouterState state) {
   final authState = ref.read(authControllerProvider);
@@ -58,6 +69,7 @@ String? _redirect(Ref ref, GoRouterState state) {
   // the clinician app on Patients (the former Home/Dashboard tabs were removed).
   const home = '/chat';
   const clinicianHome = '/clinician/dashboard';
+  const dieticianHome = '/dietician/patients';
 
   final isAuthRoute = loc == login || loc == register;
 
@@ -76,10 +88,15 @@ String? _redirect(Ref ref, GoRouterState state) {
   // Authenticated. Doctors and staff live in the clinician area; patients in
   // the main app. Each is kept out of the other's tree.
   final inClinicianArea = loc.startsWith('/clinician');
+  final inDieticianArea = loc.startsWith('/dietician');
   if (_isClinician(authState)) {
     return inClinicianArea ? null : clinicianHome;
   }
-  if (inClinicianArea) return home;
+  if (_isDietician(authState)) {
+    return inDieticianArea ? null : dieticianHome;
+  }
+  // A patient must never linger in a clinician or dietician area.
+  if (inClinicianArea || inDieticianArea) return home;
   if (loc == splash || loc == language || isAuthRoute) return home;
   return null;
 }
@@ -102,6 +119,12 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       // over the clinician shell from several places, so they live at the root.
       GoRoute(path: '/clinician/alerts', builder: (context, state) => const AlertsScreen()),
       GoRoute(path: '/clinician/appointments', builder: (context, state) => const AppointmentsAdminScreen()),
+      GoRoute(path: '/clinician/clinics', builder: (context, state) => const ClinicsScreen()),
+      GoRoute(path: '/clinician/clinics/new', builder: (context, state) => const ClinicEditScreen()),
+      GoRoute(
+        path: '/clinician/clinics/edit',
+        builder: (context, state) => ClinicEditScreen(clinic: state.extra as Clinic?),
+      ),
       GoRoute(path: '/clinician/chat-review', builder: (context, state) => const ChatReviewScreen()),
       GoRoute(
         path: '/clinician/chat-review/:id',
@@ -126,14 +149,52 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           patientName: state.extra as String?,
         ),
       ),
+      GoRoute(
+        path: '/clinician/patients/:id/prescribe',
+        builder: (context, state) => PrescribeScreen(
+          patientId: state.pathParameters['id']!,
+          patientName: state.extra as String?,
+        ),
+      ),
+
+      // ---- Dietician app ------------------------------------------------
+      GoRoute(path: '/dietician/patients', builder: (context, state) => const DieticianPatientsScreen()),
+      GoRoute(
+        path: '/dietician/patients/:id',
+        builder: (context, state) => DieticianPatientScreen(
+          patientId: state.pathParameters['id']!,
+          patientName: state.extra as String?,
+        ),
+      ),
+      GoRoute(
+        path: '/dietician/patients/:id/chat',
+        builder: (context, state) => DieticianChatScreen(
+          patientId: state.pathParameters['id']!,
+          patientName: state.extra as String?,
+        ),
+      ),
 
       // ---- Patient app --------------------------------------------------
-      // Two tabs: the AI/clinic Assistant and Profile.
+      // Three tabs: the AI/clinic Assistant, Medicines, and Profile.
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => AppShell(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(
             routes: [GoRoute(path: '/chat', builder: (context, state) => const ChatScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/medications',
+                builder: (context, state) => const MedicationsScreen(),
+                routes: [
+                  GoRoute(path: 'reminders', builder: (context, state) => const ReminderTimesScreen()),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/food-log', builder: (context, state) => const FoodLogScreen())],
           ),
           StatefulShellBranch(
             routes: [

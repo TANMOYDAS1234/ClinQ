@@ -81,6 +81,7 @@ class AuthController extends StateNotifier<AuthState> {
     String? dateOfBirth,
     String? gender,
     String? diabetesType,
+    String? inviteCode,
   }) async {
     _busy = true;
     try {
@@ -93,6 +94,7 @@ class AuthController extends StateNotifier<AuthState> {
         dateOfBirth: dateOfBirth,
         gender: gender,
         diabetesType: diabetesType,
+        inviteCode: inviteCode,
       );
       state = AuthState.authenticated(result.user);
       return null;

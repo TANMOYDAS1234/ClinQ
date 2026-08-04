@@ -8,6 +8,7 @@ import '../../../../shared/widgets/markdown_text.dart';
 import '../../domain/chat_message.dart';
 import 'chat_attachment_thumbs.dart';
 import 'chat_document_card.dart';
+import '../../domain/citation.dart';
 import 'citation_chips.dart';
 import 'emergency_card.dart';
 import 'urgent_card.dart';
@@ -28,6 +29,7 @@ class ChatMessageBubble extends StatelessWidget {
     this.onHide,
     this.repliedTo,
     this.onQuoteTap,
+    this.onCitationTap,
     this.isClinicianView = false,
   });
 
@@ -54,6 +56,9 @@ class ChatMessageBubble extends StatelessWidget {
 
   /// Jump to the quoted message when its preview is tapped (WhatsApp-style).
   final VoidCallback? onQuoteTap;
+
+  /// Tapping a citation pill asks the assistant about that topic.
+  final ValueChanged<Citation>? onCitationTap;
 
   /// Present only on an AI-unavailable fallback reply â€” lets the patient
   /// resend the question once the service is back.
@@ -160,7 +165,9 @@ class ChatMessageBubble extends StatelessWidget {
     // Safety cards represent a triage verdict about the patient's own message.
     // A clinician's reply is a person talking, so it never renders as one even
     // if the turn inherited an urgency from the conversation.
-    final isClinician = message.isClinician;
+    // A dietician turn is rendered exactly like a clinician's — a clinic person
+    // speaking, never the AI — so fold the two together here.
+    final isClinician = message.isClinician || message.isDietician;
 
     if (!message.isUser && !isClinician && message.isEmergency) {
       return Padding(
@@ -369,7 +376,7 @@ class ChatMessageBubble extends StatelessWidget {
             // and the disclaimer would actively misrepresent it.
             if (!isUser && !isClinician) ...[
               if (message.citations != null && message.citations!.isNotEmpty)
-                CitationChips(citations: message.citations!),
+                CitationChips(citations: message.citations!, onTap: onCitationTap),
               // A fallback reply is the scripted "service unavailable" text â€”
               // offer to resend the question rather than leaving a dead end.
               if (message.isFallback == true && onRetry != null) ...[

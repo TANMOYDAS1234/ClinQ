@@ -36,6 +36,9 @@ class PatientSummary {
     this.hba1cHistory = const [],
     this.alerts = const [],
     this.aiContext,
+    this.assignedDieticianId,
+    this.assignedDieticianName,
+    this.reviewIntervalDays,
   });
 
   final String id;
@@ -62,6 +65,10 @@ class PatientSummary {
   final List<ClinicalAlert> alerts;
   final String? aiContext;
 
+  final String? assignedDieticianId;
+  final String? assignedDieticianName;
+  final int? reviewIntervalDays;
+
   factory PatientSummary.fromJson(Map<String, dynamic> j) {
     final patient = j['patient'] as Map<String, dynamic>? ?? const {};
     final profile = j['profile'] as Map<String, dynamic>? ?? const {};
@@ -81,6 +88,13 @@ class PatientSummary {
       diabetesType: profile['diabetesType']?.toString(),
       riskBand: profile['riskBand']?.toString(),
       riskScore: (profile['riskScore'] as num?)?.toInt(),
+      assignedDieticianId: profile['assignedDietician'] is Map
+          ? (profile['assignedDietician'] as Map)['_id']?.toString()
+          : profile['assignedDietician']?.toString(),
+      assignedDieticianName: profile['assignedDietician'] is Map
+          ? (profile['assignedDietician'] as Map)['name']?.toString()
+          : null,
+      reviewIntervalDays: (profile['dietReviewIntervalDays'] as num?)?.toInt(),
       healthScore: (health['score'] as num?)?.toInt(),
       healthBand: health['band']?.toString(),
       adherencePercent: (adherence['percentage'] as num?)?.toInt(),

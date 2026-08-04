@@ -113,6 +113,10 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
     try {
       await ref.read(clinicianRepositoryProvider).acknowledgeAlert(a.id);
       ref.invalidate(alertsProvider(_query));
+      // Push the change to the dashboard now instead of waiting for its 20s
+      // poll — the open-alert counts and worklist update in real time.
+      ref.invalidate(overviewProvider);
+      ref.invalidate(attentionPatientsProvider);
     } on ApiException {
       messenger.showSnackBar(const SnackBar(content: Text('Could not update. Please try again.')));
     }
@@ -140,6 +144,9 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
     try {
       await ref.read(clinicianRepositoryProvider).resolveAlert(a.id, notes: notes.isEmpty ? null : notes);
       ref.invalidate(alertsProvider(_query));
+      // Reflect the resolve on the dashboard immediately (open alerts, worklist).
+      ref.invalidate(overviewProvider);
+      ref.invalidate(attentionPatientsProvider);
     } on ApiException {
       messenger.showSnackBar(const SnackBar(content: Text('Could not update. Please try again.')));
     }
@@ -203,17 +210,34 @@ class _AlertCard extends StatelessWidget {
               Text(a.detail!, style: TextStyle(fontSize: 13.5, height: 1.4, color: scheme.onSurface), maxLines: 4, overflow: TextOverflow.ellipsis),
             ],
             if (!a.isResolved) ...[
-              const Divider(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.md),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  if (a.status == 'open')
-                    TextButton(onPressed: onAcknowledge, child: const Text('Acknowledge')),
-                  const SizedBox(width: AppSpacing.sm),
-                  FilledButton.tonal(
-                    style: FilledButton.styleFrom(backgroundColor: AppColors.success.withValues(alpha: 0.14), foregroundColor: AppColors.success),
-                    onPressed: onResolve,
-                    child: const Text('Resolve'),
+                  if (a.status == 'open') ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: onAcknowledge,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(44),
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                        ),
+                        child: const Text('Acknowledge'),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                  ],
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: onResolve,
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(44),
+                        backgroundColor: AppColors.success,
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                      label: const Text('Resolve'),
+                    ),
                   ),
                 ],
               ),

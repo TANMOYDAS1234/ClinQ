@@ -5,6 +5,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../shared/providers/preferences_provider.dart';
+import '../../../shared/services/notification_service.dart';
+import '../../medications/presentation/medications_providers.dart';
 
 /// Notification preference toggles. They record intent — push delivery to the
 /// device is still being set up server-side, which the note makes plain.
@@ -35,10 +37,25 @@ class NotificationsScreen extends ConsumerWidget {
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
-                // Medication and appointment reminders are deliberately absent:
-                // the app no longer sends either, and a switch that controls
-                // nothing is worse than no switch — a patient turns it on and
-                // believes they will be reminded.
+                // Medicine reminders are real, on-device alarms scheduled from
+                // the dose schedule; this switch arms or silences them. (Only
+                // appointment reminders stay absent — that feature is gone.)
+                _tile(
+                  context,
+                  accent: accent,
+                  icon: Icons.medication_outlined,
+                  title: 'Medicine reminders',
+                  subtitle: 'Alarm before each dose',
+                  value: prefs.medicationReminders,
+                  onChanged: (v) {
+                    controller.setMedicationReminders(v);
+                    if (v) {
+                      refreshAndScheduleMedicationReminders(ref).catchError((_) {});
+                    } else {
+                      NotificationService.instance.cancelMedicationReminders();
+                    }
+                  },
+                ),
                 _tile(
                   context,
                   accent: accent,

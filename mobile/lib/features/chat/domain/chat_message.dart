@@ -127,6 +127,10 @@ class ChatMessage {
   /// patient is never unsure whether they are reading their doctor or an AI.
   bool get isClinician => role == 'clinician';
 
+  /// `dietician` is the assigned dietician speaking into this thread. It is
+  /// rendered exactly like a clinician turn — a clinic person, not the AI.
+  bool get isDietician => role == 'dietician';
+
   bool get isEmergency => urgency == 'emergency';
   bool get isUrgent => urgency == 'urgent';
 

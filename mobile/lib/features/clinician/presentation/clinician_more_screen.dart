@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/network/api_exception.dart';
@@ -14,6 +13,8 @@ import '../../../shared/providers/app_lock_provider.dart';
 import '../../../shared/providers/locale_provider.dart';
 import '../../../shared/widgets/fullscreen_photo.dart';
 import '../../../shared/widgets/user_avatar.dart';
+import '../../appointments/data/clinic_repository.dart';
+import '../../appointments/domain/clinic.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../profile/presentation/widgets/profile_section.dart';
 import '../../profile/presentation/widgets/theme_selector.dart';
@@ -120,6 +121,57 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
     if (ok == true) await ref.read(authControllerProvider.notifier).logout();
   }
 
+  /// Reads and updates the clinic's public phone number — the one every
+  /// "Call clinic" button dials — right here, without a separate screen.
+  Future<void> _editClinicNumber() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final repo = ref.read(clinicRepositoryProvider);
+
+    final List<Clinic> clinics;
+    try {
+      clinics = await repo.list();
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(content: Text('Could not load the clinic. Check your connection.')));
+      return;
+    }
+    if (!mounted) return;
+
+    final Clinic? clinic = clinics.isNotEmpty ? clinics.first : null;
+    final controller = TextEditingController(text: clinic?.phone ?? '');
+    final saved = await showDialog<String?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clinic phone number'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.phone,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Number patients call',
+            hintText: '+91 98300 00000',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (saved == null || saved.isEmpty || !mounted) return;
+
+    try {
+      if (clinic != null) {
+        await repo.update(clinic.id, {'phone': saved});
+      } else {
+        await repo.create({'name': 'Clinic', 'phone': saved});
+      }
+      ref.invalidate(clinicPhoneProvider);
+      messenger.showSnackBar(const SnackBar(content: Text('Clinic number updated')));
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(content: Text('Could not update the number. Please try again.')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -131,6 +183,7 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
     final currentLocale = ref.watch(localeControllerProvider);
     final lockEnabled = ref.watch(appLockProvider).enabled;
     final roleLabel = user?.role == 'doctor' ? 'Doctor' : 'Clinic staff';
+    final clinicPhone = ref.watch(clinicPhoneProvider).valueOrNull ?? AppConfig.clinicPhoneNumber;
 
     return Scaffold(
       appBar: AppBar(
@@ -249,10 +302,14 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
           const SizedBox(height: AppSpacing.lg),
 
           // ---- Clinic --------------------------------------------------
+          _label(l10n.profileClinic, scheme),
+          _ClinicPhoneCard(phone: clinicPhone, onEdit: _editClinicNumber),
+          const SizedBox(height: AppSpacing.lg),
+
+          // ---- App -----------------------------------------------------
           ProfileSection(
-            label: l10n.profileClinic,
+            label: 'App',
             children: [
-              ProfileRow(icon: Icons.phone_outlined, title: l10n.profileCallClinic, trailingIcon: Icons.open_in_new_rounded, onTap: () => launchUrl(Uri(scheme: 'tel', path: AppConfig.clinicPhoneNumber))),
               ProfileRow(
                 icon: Icons.info_outline_rounded,
                 title: l10n.profileAbout,
@@ -292,6 +349,103 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.8, color: scheme.onSurfaceVariant),
     ),
   );
+}
+
+/// A premium, tappable card for the clinic's public phone number — the one
+/// every "Call clinic" button dials. The number is the hero, set beside an
+/// emerald identity chip with an Edit affordance; tapping anywhere edits it.
+class _ClinicPhoneCard extends StatelessWidget {
+  const _ClinicPhoneCard({required this.phone, required this.onEdit});
+
+  final String phone;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = isDark ? AppColors.primaryDark : AppColors.primary;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: accent.withValues(alpha: 0.22)),
+        boxShadow: [
+          BoxShadow(color: accent.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4)),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onEdit,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              // Tinted icon tile in the app's own settings-icon style (the same
+              // treatment as the App lock and menu rows), not a loud gradient.
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.11),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.phone_outlined, color: accent, size: 23),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              // Label + the number as the hero.
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'CLINIC PHONE NUMBER',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.7,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      phone,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, height: 1.1, color: scheme.onSurface),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'The number patients call',
+                      style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              // Edit affordance.
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.edit_rounded, size: 15, color: accent),
+                    const SizedBox(width: 5),
+                    Text('Edit', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: accent)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _LangChip extends StatelessWidget {

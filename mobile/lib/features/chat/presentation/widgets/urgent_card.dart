@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../l10n/gen/app_localizations.dart';
+import '../../../appointments/data/clinic_repository.dart';
 
 /// Rendered when `triage.urgency == "urgent"` — one step below the
 /// emergency card, amber rather than red, still surfaces "Call clinic".
-class UrgentCard extends StatelessWidget {
+class UrgentCard extends ConsumerWidget {
   const UrgentCard({super.key, required this.content});
 
   final String content;
 
-  Future<void> _callClinic() async {
-    final uri = Uri(scheme: 'tel', path: AppConfig.clinicPhoneNumber);
-    await launchUrl(uri);
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    // The clinic's own number once the doctor has set one; the built-in number
+    // until then, so this button always has something to dial.
+    final clinicPhone = ref.watch(clinicPhoneProvider).valueOrNull ?? AppConfig.clinicPhoneNumber;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -65,7 +65,7 @@ class UrgentCard extends StatelessWidget {
             width: double.infinity,
             height: AppSpacing.minTapTarget,
             child: OutlinedButton.icon(
-              onPressed: _callClinic,
+              onPressed: () => launchUrl(Uri(scheme: 'tel', path: clinicPhone)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.warning,
                 side: const BorderSide(color: AppColors.warning, width: 1.5),
