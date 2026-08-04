@@ -108,7 +108,9 @@ class PushService {
     final router = _ref.read(appRouterProvider);
 
     if (user.role == 'patient') {
-      router.go('/chat');
+      // A prescription update opens Medicines; everything else opens the chat.
+      final kind = data['kind']?.toString();
+      router.go(kind == 'prescription' ? '/medications' : '/chat');
       return;
     }
     final patientId = data['patientId']?.toString();

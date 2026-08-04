@@ -8,6 +8,7 @@ import { audit } from '../middleware/audit.js';
 import { Prescription } from '../models/Prescription.js';
 import { Medication } from '../models/Medication.js';
 import { User } from '../models/User.js';
+import { notifyPatientOfPrescription } from '../services/notifications.js';
 import { buildSchedule } from '../services/medicationSchedule.js';
 import { PatientProfile } from '../models/PatientProfile.js';
 import { env } from '../config/env.js';
@@ -101,6 +102,9 @@ router.post(
     if (syncToMedications) {
       await syncMedications(prescription, req.patientId, req.user._id);
     }
+
+    // Let the patient know at once so their Medicines tab and reminders refresh.
+    notifyPatientOfPrescription(req.patientId, req.user).catch(() => {});
 
     res.status(201).json({ prescription: serialise(await prescription.populate('doctor', 'name')) });
   }),

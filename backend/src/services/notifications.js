@@ -109,6 +109,17 @@ export async function notifyPatientOfClinicianReply(patientId, clinician, conten
   });
 }
 
+/** The doctor issued or updated a prescription — medicines and reminders changed. */
+export async function notifyPatientOfPrescription(patientId, doctor) {
+  const patient = await User.findById(patientId).select('deviceTokens').lean();
+  await deliver({
+    tokens: patient?.deviceTokens ?? [],
+    title: `${doctor?.name ?? 'Your doctor'} updated your prescription`,
+    body: 'Open Medicines to see your updated medicines and reminders.',
+    data: { kind: 'prescription' },
+  });
+}
+
 /**
  * A patient has booked, moved or cancelled an appointment.
  *
