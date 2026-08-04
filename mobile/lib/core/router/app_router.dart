@@ -157,6 +157,13 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           patientName: state.extra as String?,
         ),
       ),
+      // The patient record (clinical summary + Prescribe / dietician / tests).
+      // Top-level so it opens as a full page from the chat thread instead of a
+      // blank scaffold inside the shell.
+      GoRoute(
+        path: '/clinician/patients/:id',
+        builder: (context, state) => PatientDetailScreen(patientId: state.pathParameters['id']!),
+      ),
 
       // ---- Dietician app ------------------------------------------------
       GoRoute(path: '/dietician/patients', builder: (context, state) => const DieticianPatientsScreen()),
@@ -234,12 +241,6 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/clinician/patients',
                 builder: (context, state) => const PatientsScreen(),
-                routes: [
-                  GoRoute(
-                    path: ':id',
-                    builder: (context, state) => PatientDetailScreen(patientId: state.pathParameters['id']!),
-                  ),
-                ],
               ),
             ],
           ),
