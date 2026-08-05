@@ -167,6 +167,15 @@ class ApiClient {
     return _asMap(response.data);
   }
 
+  /// For endpoints that replace a whole document rather than merge fields.
+  Future<Map<String, dynamic>> putJson(
+    String path, {
+    Object? body,
+  }) async {
+    final response = await _run(() => _dio.put(path, data: body));
+    return _asMap(response.data);
+  }
+
   /// [body] is optional because most deletes identify the resource by path,
   /// but a few — detaching a device token, for one — name it in the payload.
   Future<void> delete(String path, {Map<String, dynamic>? body}) async {

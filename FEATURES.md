@@ -8,7 +8,7 @@ one you land in is decided by your account role at login.
 | --- | --- | --- |
 | Patient | `patient` | Assistant tab (`/chat`) |
 | Doctor / clinic staff | `doctor`, `staff` | Home (`/clinician/dashboard`) |
-| Dietician | `dietician` | My patients (`/dietician/patients`) |
+| Dietician | `dietician` | Dashboard (`/dietician/dashboard`) |
 
 ---
 
@@ -87,6 +87,8 @@ labelled with who is talking — a patient never has to guess who replied.
 - **Log a meal** — what you ate, when, and an optional photo.
 - Day-by-day history.
 - The dietician sees this log and reviews it on a set interval.
+- The diet plan they write for you arrives in your Assistant thread, so it sits
+  with everything else the clinic has told you rather than in a second inbox.
 
 ### Tab 4 — Profile (`/profile`)
 
@@ -212,9 +214,25 @@ A true inbox, not a directory:
 
 ## Dietician panel
 
-No bottom bar — a dietician's job is one list deep.
+Two tabs: **Dashboard · Patients**. Two, not three — the dashboard says what
+needs doing today and the patient list is everyone; anything more would be
+navigation for its own sake.
 
-### My patients (`/dietician/patients`)
+### Tab 1 — Dashboard (`/dietician/dashboard`)
+
+The dietician's day, ordered by what is actionable rather than what looks
+impressive. Counts and lists come from a single endpoint, so a number never
+disagrees with the list under it.
+
+| Section | What it shows |
+| --- | --- |
+| **Counts** | My patients · Reviews due · Plans to send. The last two turn amber and orange when they are not zero. |
+| **Reviews due** | Patients whose food-log review interval has elapsed, each with how long it has been — *"12 days ago"*, or *"Never reviewed"*. Tap to open them. |
+| **Waiting for a diet plan** | Patients with no plan, or a plan that was written but never sent. A plan the patient has not received is still work outstanding. |
+| **All caught up** | Shown only when *both* worklists are genuinely empty. A green tick over outstanding work is worse than no tick. |
+| **Latest meals logged** | The most recent meals across all assigned patients, with the photo, the patient's name and the time. Tap to open that patient. |
+
+### Tab 2 — My patients (`/dietician/patients`)
 
 - Only patients a doctor has assigned to this dietician. The backend enforces
   it; an unassigned patient is not reachable even by URL.
@@ -230,9 +248,47 @@ No bottom bar — a dietician's job is one list deep.
 | **Header** | Name, age, sex, risk band. |
 | **Facts** | Diabetes type, height, weight, and the review interval in days. |
 | **Allergies** | Called out separately — the one thing a diet plan must not get wrong. |
+| **Diet plan** | The plan summary card (below). Sits above everything else: the plan is what the dietician is here to produce, and the rest of the screen is input to it. |
 | **Current medicines** | With a count, so a plan is built around what the patient is actually taking. |
 | **Food log** | The patient's meals, with photos, day by day. |
 | | **Message patient** — opens the nutrition chat. |
+
+### Diet plan (`/dietician/patients/:id/diet`)
+
+Chat guidance is easy to write and easy to lose — two hundred messages later,
+*"so what am I supposed to eat at breakfast?"* has no answer the patient can
+find. The plan is the durable form of the same advice: one document per patient,
+edited in place, always current. Never auto-generated — the assistant may
+explain a plan the dietician wrote, but prescribing what a diabetic eats is a
+clinical act.
+
+**On the patient screen**, a summary card shows the goal, a chip per meal with
+its time, how many foods are on the avoid list, and — the part that matters
+most — whether the patient has actually been sent it: *Not sent yet*, *Edited
+since it was last sent* (amber border), or *Sent 4 Aug · Ritu Sen*. A
+finished-looking plan the patient has never seen is a draft, and the card says
+so instead of looking done.
+
+**In the editor:**
+
+| Field | Notes |
+| --- | --- |
+| **Goal** | What the plan is for, in the patient's terms — *"bring fasting sugar under 130 without cutting rice completely"*. |
+| **Meals** | Add as many as the day needs. Suggested chips (Breakfast, Mid-morning, Lunch, Evening snack, Dinner) get the first plan started in a few taps, plus **Other** for anything else. Meal name and time are free text on purpose: an Indian day is not breakfast/lunch/dinner, and *"before namaz"* has to be sayable. |
+| **Items** | One line per item, each separately editable — fixing *"2 rotis"* does not mean retyping the meal. Plus an optional note per meal. |
+| **Best avoided** | Chips, kept out of the meal cards deliberately: a patient scanning for *"can I have this?"* should have one place to look. |
+| **Anything else** | Water, cooking oil, eating out, fasting days. |
+
+**Save** and **Send to patient** are separate buttons. A dietician halfway
+through moving a portion from lunch to dinner should not be notifying the
+patient twice. Sending pushes the plan into the patient's care thread as
+readable plain text — headings, bullets, and a closing line inviting them to say
+if something does not suit them. Plain text rather than a custom card so it
+survives translation, can be copied, and still makes sense if the patient
+screenshots it for whoever does the cooking at home. Sending also marks the
+food-log review done for that cycle and notifies the patient. If there are
+unsaved edits on screen, they are saved first — the plan the patient receives is
+always the one the dietician is looking at.
 
 ### Nutrition chat (`/dietician/patients/:id/chat`)
 

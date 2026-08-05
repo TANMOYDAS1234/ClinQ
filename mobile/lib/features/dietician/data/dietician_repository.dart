@@ -12,6 +12,27 @@ class DieticianRepository {
 
   final ApiClient _client;
 
+  Future<DietDashboard> dashboard() async {
+    return DietDashboard.fromJson(await _client.getJson('/dietician/dashboard'));
+  }
+
+  Future<DietPlan?> dietPlan(String patientId) async {
+    final json = await _client.getJson('/dietician/patients/$patientId/diet');
+    final plan = json['plan'];
+    return plan is Map<String, dynamic> ? DietPlan.fromJson(plan) : null;
+  }
+
+  Future<DietPlan> saveDietPlan(String patientId, DietPlan plan) async {
+    final json = await _client.putJson('/dietician/patients/$patientId/diet', body: plan.toJson());
+    return DietPlan.fromJson(json['plan'] as Map<String, dynamic>? ?? const {});
+  }
+
+  /// Pushes the saved plan into the patient's care thread. Separate from saving
+  /// on purpose: a dietician mid-edit should not be notifying the patient.
+  Future<void> sendDietPlan(String patientId) async {
+    await _client.postJson('/dietician/patients/$patientId/diet/send');
+  }
+
   Future<List<DietPatient>> patients() async {
     final json = await _client.getJson('/dietician/patients');
     final items = json['items'] as List? ?? const [];

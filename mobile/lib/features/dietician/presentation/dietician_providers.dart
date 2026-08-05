@@ -4,6 +4,17 @@ import '../../foodlog/domain/food_log.dart';
 import '../data/dietician_repository.dart';
 import '../domain/diet_models.dart';
 
+/// The dietician's day at a glance: counts, reviews due, plans not yet sent,
+/// and the latest meals their patients logged.
+final dietDashboardProvider = FutureProvider.autoDispose<DietDashboard>(
+  (ref) => ref.watch(dieticianRepositoryProvider).dashboard(),
+);
+
+/// One patient's diet plan. Null until a dietician writes one.
+final dietPlanProvider = FutureProvider.autoDispose.family<DietPlan?, String>(
+  (ref, id) => ref.watch(dieticianRepositoryProvider).dietPlan(id),
+);
+
 /// The dietician's assigned-patient worklist.
 final dietPatientsProvider = FutureProvider.autoDispose<List<DietPatient>>(
   (ref) => ref.watch(dieticianRepositoryProvider).patients(),

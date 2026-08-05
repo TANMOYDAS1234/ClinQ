@@ -28,9 +28,12 @@ import '../../features/clinician/presentation/patient_detail_screen.dart';
 import '../../features/clinician/presentation/patient_thread_screen.dart';
 import '../../features/clinician/presentation/patients_screen.dart';
 import '../../features/clinician/presentation/prescribe_screen.dart';
+import '../../features/dietician/presentation/diet_plan_screen.dart';
+import '../../features/dietician/presentation/dietician_dashboard_screen.dart';
 import '../../features/dietician/presentation/dietician_patients_screen.dart';
 import '../../features/dietician/presentation/dietician_patient_screen.dart';
 import '../../features/dietician/presentation/dietician_chat_screen.dart';
+import '../../features/dietician/presentation/dietician_shell.dart';
 import '../../features/onboarding/presentation/language_picker_screen.dart';
 import '../../features/onboarding/presentation/splash_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
@@ -72,7 +75,7 @@ String? _redirect(Ref ref, GoRouterState state) {
   // the clinician app on Patients (the former Home/Dashboard tabs were removed).
   const home = '/chat';
   const clinicianHome = '/clinician/dashboard';
-  const dieticianHome = '/dietician/patients';
+  const dieticianHome = '/dietician/dashboard';
 
   final isAuthRoute = loc == login || loc == register;
 
@@ -169,10 +172,19 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       ),
 
       // ---- Dietician app ------------------------------------------------
-      GoRoute(path: '/dietician/patients', builder: (context, state) => const DieticianPatientsScreen()),
+      // A patient, their diet plan and the nutrition chat sit outside the shell:
+      // they are pushed on top of whichever tab you came from, so going back
+      // returns you to the dashboard or the list, whichever it was.
       GoRoute(
         path: '/dietician/patients/:id',
         builder: (context, state) => DieticianPatientScreen(
+          patientId: state.pathParameters['id']!,
+          patientName: state.extra as String?,
+        ),
+      ),
+      GoRoute(
+        path: '/dietician/patients/:id/diet',
+        builder: (context, state) => DietPlanScreen(
           patientId: state.pathParameters['id']!,
           patientName: state.extra as String?,
         ),
@@ -183,6 +195,28 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           patientId: state.pathParameters['id']!,
           patientName: state.extra as String?,
         ),
+      ),
+
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) => DieticianShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/dietician/dashboard',
+                builder: (context, state) => const DieticianDashboardScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/dietician/patients',
+                builder: (context, state) => const DieticianPatientsScreen(),
+              ),
+            ],
+          ),
+        ],
       ),
 
       // ---- Patient app --------------------------------------------------

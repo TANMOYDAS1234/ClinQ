@@ -46,6 +46,12 @@ class DieticianPatientScreen extends ConsumerWidget {
             children: [
               _MedicalCard(overview: o),
               const SizedBox(height: AppSpacing.lg),
+              // Above the medicines and the log on purpose: the plan is what the
+              // dietician is here to produce; everything below it is input.
+              _SectionTitle('Diet plan'),
+              const SizedBox(height: AppSpacing.sm),
+              _DietPlanSection(patientId: patientId, patientName: patientName ?? o.name),
+              const SizedBox(height: AppSpacing.lg),
               _SectionTitle('Current medicines', trailing: '${o.medications.length}'),
               const SizedBox(height: AppSpacing.sm),
               if (o.medications.isEmpty)
@@ -233,6 +239,183 @@ class _SectionTitle extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The plan at a glance, with the one thing that matters most about it: whether
+/// the patient has actually been sent it. A finished-looking plan the patient
+/// has never seen is a draft, and the card says so rather than looking done.
+class _DietPlanSection extends ConsumerWidget {
+  const _DietPlanSection({required this.patientId, required this.patientName});
+
+  final String patientId;
+  final String patientName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final async = ref.watch(dietPlanProvider(patientId));
+
+    void open() => context.push('/dietician/patients/$patientId/diet', extra: patientName);
+
+    return async.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(AppSpacing.md),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, _) => _note(scheme, 'Could not load the diet plan.'),
+      data: (plan) {
+        if (plan == null || plan.isEmpty) {
+          return Material(
+            color: scheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: open,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.restaurant_menu_rounded, color: scheme.onSurfaceVariant),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('No plan yet', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Write one so the advice survives the conversation.',
+                            style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Material(
+          color: scheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: open,
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: plan.hasUnsentChanges
+                      ? AppColors.warning.withValues(alpha: 0.55)
+                      : scheme.outlineVariant.withValues(alpha: 0.6),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          plan.goal.isNotEmpty ? plan.goal : '${plan.meals.length} meals planned',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, height: 1.35),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Icon(Icons.edit_outlined, size: 19, color: scheme.onSurfaceVariant),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: 6,
+                    children: [
+                      for (final meal in plan.meals.take(5))
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentSoft,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            meal.time.isNotEmpty ? '${meal.name} · ${meal.time}' : meal.name,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      if (plan.avoid.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.danger.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${plan.avoid.length} to avoid',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.danger,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Icon(
+                        plan.hasUnsentChanges ? Icons.schedule_rounded : Icons.check_circle_rounded,
+                        size: 16,
+                        color: plan.hasUnsentChanges ? AppColors.warning : AppColors.primary,
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          plan.sharedAt == null
+                              ? 'Not sent to the patient yet'
+                              : plan.hasUnsentChanges
+                              ? 'Edited since it was last sent'
+                              : 'Sent ${DateFormat('d MMM').format(plan.sharedAt!)}'
+                                    '${plan.dieticianName != null ? ' · ${plan.dieticianName}' : ''}',
+                          style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _note(ColorScheme scheme, String text) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppSpacing.md),
+    decoration: BoxDecoration(
+      color: scheme.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+    ),
+    child: Text(text, style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
+  );
 }
 
 class _FoodLogSection extends ConsumerWidget {
