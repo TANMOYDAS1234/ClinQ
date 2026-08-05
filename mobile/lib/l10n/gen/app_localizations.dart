@@ -700,6 +700,18 @@ abstract class AppLocalizations {
   /// **'Unlock to see your messages and health records.'**
   String get appLockSubtitle;
 
+  /// No description provided for @profileFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Send feedback'**
+  String get profileFeedback;
+
+  /// No description provided for @profileFeedbackSub.
+  ///
+  /// In en, this message translates to:
+  /// **'About the clinic or this app'**
+  String get profileFeedbackSub;
+
   /// No description provided for @chatTapToStop.
   ///
   /// In en, this message translates to:

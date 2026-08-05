@@ -150,6 +150,8 @@
   "chatTitle": "Dr. Dey's Clinic",
   "chatFromClinic": "From the clinic",
   "appLockSubtitle": "Unlock to see your messages and health records.",
+  "profileFeedback": "Send feedback",
+  "profileFeedbackSub": "About the clinic or this app",
   "chatTapToStop": "TAP TO STOP",
   "chatRecordVoice": "Record a voice message",
   "chatVoiceSending": "Sending your voice message…",

@@ -328,6 +328,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Unlock to see your messages and health records.';
 
   @override
+  String get profileFeedback => 'Send feedback';
+
+  @override
+  String get profileFeedbackSub => 'About the clinic or this app';
+
+  @override
   String get chatTapToStop => 'TAP TO STOP';
 
   @override

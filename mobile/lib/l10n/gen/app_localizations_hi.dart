@@ -329,6 +329,12 @@ class AppLocalizationsHi extends AppLocalizations {
       'अपने संदेश और स्वास्थ्य रिकॉर्ड देखने के लिए अनलॉक करें।';
 
   @override
+  String get profileFeedback => 'प्रतिक्रिया भेजें';
+
+  @override
+  String get profileFeedbackSub => 'क्लिनिक या इस ऐप के बारे में';
+
+  @override
   String get chatTapToStop => 'रोकने के लिए टैप करें';
 
   @override

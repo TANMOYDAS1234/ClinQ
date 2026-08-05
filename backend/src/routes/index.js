@@ -18,6 +18,7 @@ import prescriptionRoutes from './prescriptions.js';
 import dashboardRoutes from './dashboard.js';
 import doctorRoutes from './doctor.js';
 import dieticianRoutes from './dietician.js';
+import feedbackRoutes from './feedback.js';
 import uploadRoutes from './uploads.js';
 
 const router = Router();
@@ -70,6 +71,7 @@ router.use('/clinics', clinicRoutes);
 router.use('/messages', messageRoutes);
 router.use('/doctor', doctorRoutes);
 router.use('/dietician', dieticianRoutes);
+router.use('/feedback', feedbackRoutes);
 router.use('/uploads', uploadRoutes);
 
 // Patient-scoped clinical data. `:patientId` is 'me' for patients, or a real

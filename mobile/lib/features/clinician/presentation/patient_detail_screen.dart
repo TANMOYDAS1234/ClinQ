@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // FilteringTextInputFormatter, LengthLimitingTextInputFormatter
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/utils/auth_validators.dart';
 import '../../../shared/widgets/authed_image.dart';
 import '../../../shared/widgets/auto_refresh.dart';
 import '../data/clinician_repository.dart';
@@ -505,9 +507,40 @@ class _DieticianSection extends ConsumerWidget {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Name')),
-                TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone (e.g. +9198…)')),
-                TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Temporary password (8+ chars)')),
+                TextField(
+                  controller: name,
+                  textCapitalization: TextCapitalization.words,
+                  maxLength: 120,
+                  decoration: const InputDecoration(labelText: 'Name', counterText: ''),
+                ),
+                // Same rules as sign-in: +91 is fixed and only the 10 national
+                // digits are typed. Previously this only checked "not empty",
+                // so a 26-digit number was accepted here and then rejected by
+                // the server — or worse, created an account nobody could log
+                // into.
+                TextField(
+                  controller: phone,
+                  keyboardType: TextInputType.number,
+                  maxLength: 10,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: 'Phone',
+                    prefixText: '${AuthValidators.countryCode} ',
+                    counterText: '',
+                  ),
+                ),
+                TextField(
+                  controller: password,
+                  obscureText: true,
+                  maxLength: 72,
+                  decoration: const InputDecoration(
+                    labelText: 'Temporary password (8+ chars)',
+                    counterText: '',
+                  ),
+                ),
                 if (error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
@@ -521,8 +554,20 @@ class _DieticianSection extends ConsumerWidget {
                 onPressed: saving
                     ? null
                     : () async {
-                        if (name.text.trim().length < 2 || phone.text.trim().isEmpty || password.text.length < 8) {
-                          setD(() => error = 'Enter a name, phone, and an 8+ character password.');
+                        final digits = phone.text.trim();
+                        if (name.text.trim().length < 2) {
+                          setD(() => error = 'Enter the dietician\'s full name.');
+                          return;
+                        }
+                        // Said separately rather than as one catch-all message:
+                        // "enter a name, phone and password" does not tell
+                        // someone who typed nine digits what is actually wrong.
+                        if (digits.length != 10 || !RegExp(r'^[6-9]\d{9}$').hasMatch(digits)) {
+                          setD(() => error = 'Enter a valid 10-digit mobile number.');
+                          return;
+                        }
+                        if (password.text.length < 8) {
+                          setD(() => error = 'Password must be at least 8 characters.');
                           return;
                         }
                         setD(() {
@@ -530,7 +575,14 @@ class _DieticianSection extends ConsumerWidget {
                           error = null;
                         });
                         try {
-                          final d = await repo.addDietician(name: name.text.trim(), phone: phone.text.trim(), password: password.text);
+                          final d = await repo.addDietician(
+                            name: name.text.trim(),
+                            // Sent in the same +91XXXXXXXXXX form the server
+                            // stores for every other account, so the dietician
+                            // can sign in with the number the doctor typed.
+                            phone: '${AuthValidators.countryCode}$digits',
+                            password: password.text,
+                          );
                           if (dctx.mounted) Navigator.pop(dctx, d);
                         } on ApiException catch (e) {
                           setD(() {

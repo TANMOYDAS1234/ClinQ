@@ -292,8 +292,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ProfileRow(
                 icon: Icons.notifications_none_rounded,
                 title: l10n.profileNotifications,
-                showDivider: false,
                 onTap: () => context.push('/profile/notifications'),
+              ),
+              // In Account rather than a section of its own: a patient looking
+              // for "where do I tell them this went wrong" looks where their
+              // own details live, not under settings.
+              ProfileRow(
+                icon: Icons.rate_review_outlined,
+                title: l10n.profileFeedback,
+                subtitle: l10n.profileFeedbackSub,
+                showDivider: false,
+                onTap: () => context.push('/profile/feedback'),
               ),
             ],
           ),

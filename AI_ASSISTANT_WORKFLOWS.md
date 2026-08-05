@@ -86,14 +86,14 @@ NOT"*).
 
 **In scope — answered fully, in the patient's language:**
 
-| Domain | Examples |
-| --- | --- |
-| Diabetes (type 1/2, gestational, prediabetes) | sugars, insulin, tablets, CGM, hypos/highs, sick-day rules |
-| Thyroid | hypo/hyper, Hashimoto's, Graves', nodules, goitre, levothyroxine |
-| Cardio-metabolic | blood pressure, cholesterol, weight, GLP-1 medicines |
-| Other endocrine | PCOS, adrenal (Cushing's, Addison's), pituitary, calcium, bone/vitamin D, gout |
-| Complications | kidney, eye, nerve, foot; heart risk; fatty liver; mood/sleep/sexual-health effects |
-| Everyday support | reading labs & medicines, nutrition, exercise, devices, screening intervals, Indian-context (diet, brand names, fasting) |
+| Domain                                        | Examples                                                                                                                 |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Diabetes (type 1/2, gestational, prediabetes) | sugars, insulin, tablets, CGM, hypos/highs, sick-day rules                                                               |
+| Thyroid                                       | hypo/hyper, Hashimoto's, Graves', nodules, goitre, levothyroxine                                                         |
+| Cardio-metabolic                              | blood pressure, cholesterol, weight, GLP-1 medicines                                                                     |
+| Other endocrine                               | PCOS, adrenal (Cushing's, Addison's), pituitary, calcium, bone/vitamin D, gout                                           |
+| Complications                                 | kidney, eye, nerve, foot; heart risk; fatty liver; mood/sleep/sexual-health effects                                      |
+| Everyday support                              | reading labs & medicines, nutrition, exercise, devices, screening intervals, Indian-context (diet, brand names, fasting) |
 
 **Out of scope — politely declined and redirected** (e.g. skin rash, cough/cold, fracture,
 eye infection, unrelated mental health, a child's illness). The assistant says warmly that it
@@ -104,6 +104,7 @@ with Dr. Dey if it's connected to their condition.
 > `emergency`. A dangerous symptom is always escalated, whatever its topic.
 
 **Always refused, however phrased** (prompt *"Actions to refuse, every time"*):
+
 1. No dose changes (start/stop/increase/decrease/split/skip any medicine — insulin,
    levothyroxine, steroids included).
 2. No new diagnoses.
@@ -206,16 +207,16 @@ urgency found (`routine < advice < urgent < emergency`):
 **Clinical thresholds** (mg/dL), reviewed and owned by Dr. Dey — not model judgement, not
 runtime config:
 
-| Constant | Value | Meaning |
-| --- | --- | --- |
-| `SEVERE_LOW` | `< 54` | level-2 hypoglycaemia → **emergency** |
-| `LOW` | `< 70` | level-1 hypoglycaemia → **urgent** |
-| `FASTING_TARGET` | 80–130 | in-range fasting/pre-meal |
-| `POST_PRANDIAL_TARGET_MAX` | 180 | in-range post-meal |
-| `HIGH` | `> 250` | very high → **urgent** (ketone territory) |
-| `CRITICAL_HIGH` | `> 400` | critically high → **emergency** |
-| BP `CRISIS` | ≥180 / ≥120 | hypertensive crisis → **emergency** |
-| `SPO2_CRITICAL` | `< 92%` | → **emergency** |
+| Constant                     | Value         | Meaning                                         |
+| ---------------------------- | ------------- | ----------------------------------------------- |
+| `SEVERE_LOW`               | `< 54`      | level-2 hypoglycaemia →**emergency**     |
+| `LOW`                      | `< 70`      | level-1 hypoglycaemia →**urgent**        |
+| `FASTING_TARGET`           | 80–130       | in-range fasting/pre-meal                       |
+| `POST_PRANDIAL_TARGET_MAX` | 180           | in-range post-meal                              |
+| `HIGH`                     | `> 250`     | very high →**urgent** (ketone territory) |
+| `CRITICAL_HIGH`            | `> 400`     | critically high →**emergency**           |
+| BP`CRISIS`                 | ≥180 / ≥120 | hypertensive crisis →**emergency**       |
+| `SPO2_CRITICAL`            | `< 92%`     | →**emergency**                           |
 
 Result shape: `{ urgency, ruleDriven, matchedRules[], redFlags[], findings[], extracted, alertType }`.
 
@@ -279,8 +280,7 @@ Key behaviours:
 - **Retrieval failure is non-fatal** — the assistant answers without grounding rather than
   erroring, and the prompt tells it to decline politely when it has no approved guidance.
 
-`formatContext()` renders chunks into a numbered grounding block (`[1] Title — Section (source:
-…)`), which the prompt injects.
+`formatContext()` renders chunks into a numbered grounding block (`[1] Title — Section (source: …)`), which the prompt injects.
 
 ---
 
@@ -312,14 +312,14 @@ triage verdict injected as an already-decided fact. Sections:
 
 [`backend/src/services/ai/gemini.js`](backend/src/services/ai/gemini.js).
 
-| Setting | Value | Why |
-| --- | --- | --- |
-| Chat model | `gemini-2.5-flash` | fast; honours `thinkingBudget: 0` |
-| Vision model | `gemini-2.5-flash` | reads prescription/photo attachments |
-| Embedding model | `text-embedding-004` | RAG query/document vectors |
-| Temperature | `0.1` emergency / `0.3` otherwise | tighter, safer wording under emergency |
-| `maxOutputTokens` | 600 | patient replies are short; a smaller ceiling discourages padding |
-| Safety | `DANGEROUS_CONTENT: BLOCK_ONLY_HIGH` | default filter blocks legitimate clinical talk (insulin dosing, overdose symptoms, self-harm risk) — worse to leave a patient in crisis with no answer |
+| Setting             | Value                                  | Why                                                                                                                                                     |
+| ------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Chat model          | `gemini-2.5-flash`                   | fast; honours`thinkingBudget: 0`                                                                                                                      |
+| Vision model        | `gemini-2.5-flash`                   | reads prescription/photo attachments                                                                                                                    |
+| Embedding model     | `text-embedding-004`                 | RAG query/document vectors                                                                                                                              |
+| Temperature         | `0.1` emergency / `0.3` otherwise  | tighter, safer wording under emergency                                                                                                                  |
+| `maxOutputTokens` | 600                                    | patient replies are short; a smaller ceiling discourages padding                                                                                        |
+| Safety              | `DANGEROUS_CONTENT: BLOCK_ONLY_HIGH` | default filter blocks legitimate clinical talk (insulin dosing, overdose symptoms, self-harm risk) — worse to leave a patient in crisis with no answer |
 
 **Thinking budget.** Gemini 2.5 models charge internal reasoning tokens against
 `maxOutputTokens`. Left on the default dynamic budget, a long prompt + RAG context lets
@@ -350,16 +350,15 @@ Route: `POST /chat/message/stream` in
 The safety order is **identical** to the non-streaming path: triage runs and any alert is
 raised **before the first token**. Event sequence:
 
-| Event | Payload | Client action |
-| --- | --- | --- |
-| `meta` | `{ sessionId, userMessage, triage, alert, citations }` | swap the optimistic echo for the server's copy; show emergency/urgent card; stash citations |
-| `token` (×N) | a raw text piece | append to the live assistant bubble |
-| `replace` | full scripted fallback text | discard the partial, show the safe script (on generation failure/empty stream) |
-| `done` | `{ reply }` (saved message) | finalise the bubble, keep the citations from `meta` |
-| `error` | `{ message }` | earlier (DB/retrieval) failure — surface an error, drop the partial |
+| Event           | Payload                                                  | Client action                                                                               |
+| --------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `meta`        | `{ sessionId, userMessage, triage, alert, citations }` | swap the optimistic echo for the server's copy; show emergency/urgent card; stash citations |
+| `token` (×N) | a raw text piece                                         | append to the live assistant bubble                                                         |
+| `replace`     | full scripted fallback text                              | discard the partial, show the safe script (on generation failure/empty stream)              |
+| `done`        | `{ reply }` (saved message)                            | finalise the bubble, keep the citations from`meta`                                        |
+| `error`       | `{ message }`                                          | earlier (DB/retrieval) failure — surface an error, drop the partial                        |
 
-**Transport details:** `Content-Type: text/event-stream`, `Cache-Control: no-cache,
-no-transform`, and `X-Accel-Buffering: no` so nginx doesn't buffer the stream.
+**Transport details:** `Content-Type: text/event-stream`, `Cache-Control: no-cache, no-transform`, and `X-Accel-Buffering: no` so nginx doesn't buffer the stream.
 
 **Client** ([`chat_controller.dart`](mobile/lib/features/chat/presentation/chat_controller.dart)):
 
@@ -510,17 +509,16 @@ flowchart LR
 `requireAuth`, chat generation rate-limited to **20 msg/min per user** (generous enough that an
 anxious patient in a real crisis is never locked out).
 
-| Method & path | Purpose |
-| --- | --- |
-| `POST /message` | Non-streaming send → full result in one response |
-| `POST /message/stream` | Streaming send → SSE (`meta`/`token`/`replace`/`done`/`error`) |
-| `GET /sessions` | List chat threads (paged, newest first, non-archived) |
-| `GET /sessions/:id/messages` | Message history for a thread (paged, by `seq`) |
-| `POST /sessions/:id/archive` | Archive a thread |
-| `POST /messages/:id/flag` | Patient reports a bad answer → flags the thread for doctor review |
+| Method & path                  | Purpose                                                                   |
+| ------------------------------ | ------------------------------------------------------------------------- |
+| `POST /message`              | Non-streaming send → full result in one response                         |
+| `POST /message/stream`       | Streaming send → SSE (`meta`/`token`/`replace`/`done`/`error`) |
+| `GET /sessions`              | List chat threads (paged, newest first, non-archived)                     |
+| `GET /sessions/:id/messages` | Message history for a thread (paged, by`seq`)                           |
+| `POST /sessions/:id/archive` | Archive a thread                                                          |
+| `POST /messages/:id/flag`    | Patient reports a bad answer → flags the thread for doctor review        |
 
-Request body (both send routes): `{ sessionId?, text (1–4000), language? (en|bn|hi),
-attachments? (≤5 asset ids) }`.
+Request body (both send routes): `{ sessionId?, text (1–4000), language? (en|bn|hi), attachments? (≤5 asset ids) }`.
 
 ---
 
@@ -530,16 +528,16 @@ Environment ([`backend/src/config/env.js`](backend/src/config/env.js)) — the s
 fast** if any required value is missing (a healthcare service silently starting without a JWT
 secret or AI key is worse than not starting):
 
-| Var | Default | Notes |
-| --- | --- | --- |
-| `GEMINI_API_KEY` | — (required) | Google Generative AI key |
-| `GEMINI_CHAT_MODEL` | `gemini-2.5-flash` | |
-| `GEMINI_VISION_MODEL` | `gemini-2.5-flash` | |
-| `GEMINI_EMBED_MODEL` | `text-embedding-004` | |
-| `USE_ATLAS_VECTOR_SEARCH` | `false` | `true` uses Atlas `$vectorSearch`; else in-process cosine |
-| `VECTOR_INDEX_NAME` | `knowledge_vector_index` | |
-| `MAX_UPLOAD_MB` | `12` | |
-| `CLINIC_NAME` / `DOCTOR_DISPLAY_NAME` / `CLINIC_EMERGENCY_PHONE` | — | injected into prompts & fallbacks |
+| Var                                                                    | Default                    | Notes                                                         |
+| ---------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------- |
+| `GEMINI_API_KEY`                                                     | — (required)              | Google Generative AI key                                      |
+| `GEMINI_CHAT_MODEL`                                                  | `gemini-2.5-flash`       |                                                               |
+| `GEMINI_VISION_MODEL`                                                | `gemini-2.5-flash`       |                                                               |
+| `GEMINI_EMBED_MODEL`                                                 | `text-embedding-004`     |                                                               |
+| `USE_ATLAS_VECTOR_SEARCH`                                            | `false`                  | `true` uses Atlas `$vectorSearch`; else in-process cosine |
+| `VECTOR_INDEX_NAME`                                                  | `knowledge_vector_index` |                                                               |
+| `MAX_UPLOAD_MB`                                                      | `12`                     |                                                               |
+| `CLINIC_NAME` / `DOCTOR_DISPLAY_NAME` / `CLINIC_EMERGENCY_PHONE` | —                         | injected into prompts & fallbacks                             |
 
 Clinical thresholds live in
 [`thresholds.js`](backend/src/services/triage/thresholds.js) — hard-coded constants,
@@ -549,17 +547,17 @@ sign-off by Dr. Dey required before any change ships.
 
 ## 19. Failure modes & graceful degradation
 
-| Failure | Behaviour |
-| --- | --- |
-| Gemini down / 5xx | retries with backoff, then scripted `unavailable` (or `emergency`) reply |
-| Prompt blocked by safety filter | treated as unavailable → scripted fallback |
-| Reply truncated (`MAX_TOKENS`) | treated as failure → scripted fallback (never a half-instruction) |
-| Retrieval fails | answer without grounding; prompt declines ungrounded questions |
-| Embeddings unavailable | lexical `$text` search fallback |
-| Stream can't open | client silently retries via non-streaming `POST /message` |
-| Stream fails mid-reply | partial dropped, error surfaced, "Try again" offered |
-| Image can't be loaded | reply proceeds text-only rather than erroring |
-| Model rejects `thinkingConfig` | learned once, skipped thereafter with a wider token budget |
+| Failure                          | Behaviour                                                                   |
+| -------------------------------- | --------------------------------------------------------------------------- |
+| Gemini down / 5xx                | retries with backoff, then scripted`unavailable` (or `emergency`) reply |
+| Prompt blocked by safety filter  | treated as unavailable → scripted fallback                                 |
+| Reply truncated (`MAX_TOKENS`) | treated as failure → scripted fallback (never a half-instruction)          |
+| Retrieval fails                  | answer without grounding; prompt declines ungrounded questions              |
+| Embeddings unavailable           | lexical`$text` search fallback                                            |
+| Stream can't open                | client silently retries via non-streaming`POST /message`                  |
+| Stream fails mid-reply           | partial dropped, error surfaced, "Try again" offered                        |
+| Image can't be loaded            | reply proceeds text-only rather than erroring                               |
+| Model rejects`thinkingConfig`  | learned once, skipped thereafter with a wider token budget                  |
 
 ---
 

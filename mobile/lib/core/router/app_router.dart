@@ -22,6 +22,7 @@ import '../../features/clinician/presentation/clinician_dashboard_screen.dart';
 import '../../features/clinician/presentation/clinician_more_screen.dart';
 import '../../features/clinician/presentation/clinician_shell.dart';
 import '../../features/clinician/presentation/knowledge_edit_screen.dart';
+import '../../features/clinician/presentation/feedback_inbox_screen.dart';
 import '../../features/clinician/presentation/knowledge_screen.dart';
 import '../../features/clinician/presentation/patient_detail_screen.dart';
 import '../../features/clinician/presentation/patient_thread_screen.dart';
@@ -34,6 +35,7 @@ import '../../features/onboarding/presentation/language_picker_screen.dart';
 import '../../features/onboarding/presentation/splash_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/profile/presentation/health_details_screen.dart';
+import '../../features/profile/presentation/feedback_screen.dart';
 import '../../features/profile/presentation/notifications_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/shell/presentation/app_shell.dart';
@@ -131,6 +133,7 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         path: '/clinician/chat-review/:id',
         builder: (context, state) => ChatReviewDetailScreen(sessionId: state.pathParameters['id']!),
       ),
+      GoRoute(path: '/clinician/feedback', builder: (context, state) => const FeedbackInboxScreen()),
       GoRoute(path: '/clinician/knowledge', builder: (context, state) => const KnowledgeScreen()),
       GoRoute(path: '/clinician/knowledge/new', builder: (context, state) => const KnowledgeEditScreen()),
       GoRoute(
@@ -214,6 +217,7 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(path: 'health', builder: (context, state) => const HealthDetailsScreen()),
                   GoRoute(path: 'notifications', builder: (context, state) => const NotificationsScreen()),
                   GoRoute(path: 'tests', builder: (context, state) => const LabTestsScreen()),
+                  GoRoute(path: 'feedback', builder: (context, state) => const FeedbackScreen()),
                 ],
               ),
             ],

@@ -57,3 +57,9 @@ mobile/ios/Runner/GoogleService-Info.plist
 # Firebase service-account key. This one can send to every device you have.
 firebase-adminsdk*.json
 serviceAccountKey.json
+
+# --- Local agent tooling ---
+.claude/
+.agents/
+skills-lock.json
+mobile/android/.kotlin/

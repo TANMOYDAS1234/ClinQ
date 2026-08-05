@@ -326,6 +326,12 @@ class AppLocalizationsBn extends AppLocalizations {
       'আপনার বার্তা ও স্বাস্থ্য তথ্য দেখতে আনলক করুন।';
 
   @override
+  String get profileFeedback => 'মতামত পাঠান';
+
+  @override
+  String get profileFeedbackSub => 'ক্লিনিক বা এই অ্যাপ সম্পর্কে';
+
+  @override
   String get chatTapToStop => 'থামাতে ট্যাপ করুন';
 
   @override
