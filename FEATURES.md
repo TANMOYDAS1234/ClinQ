@@ -142,16 +142,12 @@ reading it.
 
 ### Tab 2 — Patients (`/clinician/patients`)
 
-Opens with what is outstanding, then the inbox for reaching anyone.
-
-| Section | What it does |
-| --- | --- |
-| **Greeting** | *"Good Morning, Dr. Amit Kumar Dey"* — time-aware, and it does not print "Dr. Dr." if the name already carries the title. |
-| **New Patient** | Enrols a walk-in from the clinic side: name, 10-digit mobile, temporary password, validated to the same rules as self-registration. Some patients are signed up at the desk rather than downloading the app first. |
-| **Counts** | Patients · Reviews · Plans. Reviews and Plans are tinted only when non-zero — a permanently red box stops meaning anything. |
-| **Action queue** | The outstanding work as rows: initials, name, and either **Review Due · Nd** (a conversation flagged for the doctor) with a chevron into the thread, or **Create Plan · Nd** (a patient never prescribed for, longest-waiting first) with a **Create** button straight into Prescribe. |
-| **Latest meals** | A horizontal strip of the newest meals logged across the clinic — photo, meal type, patient name, how long ago. Tap to open the patient. |
-| **Patient messages** | The inbox: one row per patient, unread first then newest, with last-message preview, timestamp, unread badge and live photo. Search by name or phone. Polls every 3 seconds so new messages appear without a manual refresh. |
+A true inbox, not a directory:
+- One row per patient, unread first then most recent.
+- Last message preview with who spoke last, its timestamp, and an unread badge.
+- Patient photo on the row, pulled live; a media turn shows a small icon.
+- Search by name or phone; an **Unread** filter.
+- Polls every 3 seconds so new messages appear without a manual refresh.
 
 **Patient conversation** (`/clinician/patients/:id/thread`)
 - The patient's full thread — their messages, the assistant's answers and the
@@ -167,20 +163,38 @@ Opens with what is outstanding, then the inbox for reaching anyone.
 - Jump-to-latest button.
 - Call the patient from the header.
 
-**Patient record** (`/clinician/patients/:id`)
-- Header: name, age, sex, risk band, contact — with **Call** and **Message**.
-- **HbA1c history** — the trend, not just the last value.
-- **Test reports** — what was advised and what has come back.
-- **Recent alerts** — this patient's alert history.
-- **Assistant context** — exactly what the AI was given before it answered, so
-  the doctor can audit any reply.
-- **Assign dietician** — pick an existing dietician or **add a new dietician**
-  (name, 10-digit mobile, password, all validated), and set how often the food
-  log should be reviewed. Unassign from the same sheet.
-- **Prescribe** (`/clinician/patients/:id/prescribe`) — medicines with dose,
-  timing and duration; lab tests advised; diagnosis; general advice; follow-up
-  date. Sending it delivers it into the patient's thread and their Medicines tab
-  in one step.
+**Patient Profile** (`/clinician/patients/:id`)
+
+Who the patient is, and everything the doctor might do about it. The prescribing
+form lives here rather than behind another navigation step — writing the
+prescription *is* the consultation, so putting it one screen away would be a tap
+between the doctor and the main work.
+
+| Section | What it does |
+| --- | --- |
+| **Header** | Photo, name, `55 Yrs • Male • ID: P-98421`, a risk pill (with a warning triangle only when the band earns it) and the diabetes type. **Call** and **Message** buttons. |
+| **Medication** | Per medicine: name, dosage, duration in days, and a **B / L / D** frequency toggle — breakfast, lunch, dinner — which maps directly onto the three-slot schedule the patient's reminders already use. **Add another medication** for as many as needed. |
+| **Lab Tests** | Tap-to-select chips for the tests the clinic orders most (HbA1c, Lipid Profile, CBC, TSH); anything else is typed into the search box and becomes its own chip. Selected chips carry an ×. |
+| **Clinical Advice** | One box for diagnosis and general instructions. |
+| **Follow-up** | Next visit date, cleared with an ×. |
+| | **Send Prescription** — delivers into the patient's thread and their Medicines tab in one step, then clears the form and stays on the patient rather than navigating away. |
+
+Sending is blocked with a message if a medicine has no name, or if one has no
+B/L/D selected — a medicine with no schedule reaches the patient's tracker with
+no reminder times and silently never reminds them.
+
+**Overflow menu (⋮)**
+- **Clinical record** (`/clinician/patients/:id/record`) — health score,
+  adherence, average glucose, time in range, estimated HbA1c; **HbA1c history**
+  as a trend rather than a single value; **test reports**; **recent alerts**;
+  **assistant context** (exactly what the AI was given before it answered, so
+  any reply can be audited); and **assign dietician** — pick an existing one or
+  **add a new dietician** (name, 10-digit mobile, password, all validated), set
+  the food-log review interval, or unassign.
+- **Detailed prescription** (`/clinician/patients/:id/prescribe`) — the longer
+  form, which keeps per-medicine strength, dose, free-text instructions and
+  before/after/with-food timing. The profile trades those for speed; some
+  prescriptions need them.
 
 ### Tab 3 — Profile (`/clinician/more`)
 
@@ -190,7 +204,7 @@ Opens with what is outstanding, then the inbox for reaching anyone.
 | **Appearance** | Light · Dark · System. |
 | **Language** | English · বাংলা · हिन्दी. |
 | **Account** | Edit profile. |
-| **Clinic tools** | Clinical alerts · Chat review · Knowledge base · **Patient feedback**. |
+| **Clinic tools** | Clinical alerts · **Dieticians** · Chat review · Knowledge base · **Patient feedback**. |
 | **Security** | App lock. |
 | **App** | Clinic phone number · About. |
 | | Log out. |
@@ -203,6 +217,15 @@ Opens with what is outstanding, then the inbox for reaching anyone.
 - **Chat review** (`/clinician/chat-review`) — every assistant reply a patient
   reported, with the full exchange, so a wrong answer can be corrected at the
   source.
+- **Dieticians** (`/clinician/dieticians`) — the clinic's dieticians, with **Add
+  dietician** (name, 10-digit mobile, password, validated to the same rules as
+  the login and register forms). A dietician added here sees **every patient**
+  immediately and can write a plan for any of them. A clinic has one or two
+  dieticians and hundreds of patients, so requiring an assignment per patient
+  made "nobody is watching this patient's diet" the default and left it to the
+  doctor's memory to fix. Assignment survives as an optional *restriction* — if
+  a patient is explicitly assigned to a dietician, that dietician sees only
+  their assigned patients, which is the lever for when there is more than one.
 - **Knowledge base** (`/clinician/knowledge`) — the clinic's own protocols, in
   the doctor's words. Add, edit and remove entries; each is embedded and becomes
   what the assistant retrieves from. This is the difference between the
@@ -231,16 +254,20 @@ disagrees with the list under it.
 
 | Section | What it shows |
 | --- | --- |
-| **Counts** | My patients · Reviews due · Plans to send. The last two turn amber and orange when they are not zero. |
-| **Reviews due** | Patients whose food-log review interval has elapsed, each with how long it has been — *"12 days ago"*, or *"Never reviewed"*. Tap to open them. |
-| **Waiting for a diet plan** | Patients with no plan, or a plan that was written but never sent. A plan the patient has not received is still work outstanding. |
-| **All caught up** | Shown only when *both* worklists are genuinely empty. A green tick over outstanding work is worse than no tick. |
-| **Latest meals logged** | The most recent meals across all assigned patients, with the photo, the patient's name and the time. Tap to open that patient. |
+| **Greeting** | *"Good Evening, Ritu Sen"* — time-aware — over *"Here is your daily nutrition overview."* |
+| **Counts** | Patients · Reviews · Plans. Reviews and Plans are tinted only when non-zero — a permanently red box stops meaning anything. |
+| **Action Queue** | The outstanding work as rows: initials, name, and either **Review Due · Nd** (the food-log review interval has lapsed) with a chevron into the patient, or **Create Plan · Nd** (no plan, or one written but never sent) with a **Create** button straight into the plan editor. Reviews rank above plans — care going stale outranks care not yet started — and longest-waiting first within each. A patient in both lists appears once, as the plan they still do not have. |
+| **All caught up** | Replaces the queue only when it is genuinely empty. A green tick over outstanding work is worse than no tick. |
+| **Latest Meals** | A horizontal strip of the newest meals logged — photo, meal type, patient name, how long ago. Tap to open that patient. |
+
+There is no "New Patient" action here: a dietician does not enrol patients. The
+doctor does that, and the dietician sees them automatically.
 
 ### Tab 2 — My patients (`/dietician/patients`)
 
-- Only patients a doctor has assigned to this dietician. The backend enforces
-  it; an unassigned patient is not reachable even by URL.
+- Every patient in the clinic — unless the doctor has explicitly assigned
+  patients to this dietician, in which case it is only those. The backend
+  enforces the same scope; a patient outside it is not reachable even by URL.
 - One card per patient, sorted with the overdue ones first.
 - A **Review due** badge when the food-log review interval has elapsed.
 - Header shows who is signed in; log out from the app bar.

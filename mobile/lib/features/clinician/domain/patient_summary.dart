@@ -42,6 +42,7 @@ class PatientSummary {
     this.gender,
     this.age,
     this.language,
+    this.avatarUrl,
     this.diabetesType,
     this.riskBand,
     this.riskScore,
@@ -67,6 +68,14 @@ class PatientSummary {
   final String? gender;
   final int? age;
   final String? language;
+
+  /// Relative `/api/v1/uploads/:id/raw` path of the photo the patient set.
+  final String? avatarUrl;
+
+  /// A short, human-quotable form of the record id — the last six characters of
+  /// the ObjectId. Not a second identifier: it is the same id, shortened, so a
+  /// doctor reading a number over the phone is still reading the real one.
+  String get shortId => id.length <= 6 ? id.toUpperCase() : 'P-${id.substring(id.length - 6).toUpperCase()}';
 
   final String? diabetesType;
   final String? riskBand;
@@ -105,6 +114,7 @@ class PatientSummary {
       gender: patient['gender']?.toString(),
       age: (patient['age'] as num?)?.toInt(),
       language: patient['language']?.toString(),
+      avatarUrl: patient['avatarUrl']?.toString(),
       diabetesType: profile['diabetesType']?.toString(),
       riskBand: profile['riskBand']?.toString(),
       riskScore: (profile['riskScore'] as num?)?.toInt(),

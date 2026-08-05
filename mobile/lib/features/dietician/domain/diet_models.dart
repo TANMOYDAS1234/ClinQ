@@ -187,6 +187,7 @@ class DietPatientBrief {
     this.diabetesType,
     this.reviewIntervalDays,
     this.lastReviewAt,
+    this.sinceDays = 0,
   });
 
   final String id;
@@ -197,6 +198,9 @@ class DietPatientBrief {
   final int? reviewIntervalDays;
   final DateTime? lastReviewAt;
 
+  /// Days since the last review, or since the record started if never reviewed.
+  final int sinceDays;
+
   factory DietPatientBrief.fromJson(Map<String, dynamic> j) => DietPatientBrief(
     id: j['id']?.toString() ?? '',
     name: j['name']?.toString() ?? '',
@@ -205,7 +209,26 @@ class DietPatientBrief {
     diabetesType: j['diabetesType']?.toString(),
     reviewIntervalDays: (j['reviewIntervalDays'] as num?)?.toInt(),
     lastReviewAt: DateTime.tryParse(j['lastReviewAt']?.toString() ?? '')?.toLocal(),
+    sinceDays: (j['sinceDays'] as num?)?.toInt() ?? 0,
   );
+}
+
+/// One row in the dietician's action queue: either a review that has come due
+/// or a patient still waiting for a plan.
+class DietQueueItem {
+  const DietQueueItem({
+    required this.patientId,
+    required this.name,
+    required this.days,
+    required this.needsPlan,
+  });
+
+  final String patientId;
+  final String name;
+  final int days;
+  final bool needsPlan;
+
+  String get label => '${days}d';
 }
 
 /// A meal one of the dietician's patients logged, for the dashboard feed.
@@ -257,6 +280,24 @@ class DietDashboard {
   final List<DietPatientBrief> reviewsDueList;
   final List<DietPatientBrief> plansMissingList;
   final List<DietRecentLog> recentLogs;
+
+  /// The two worklists as one queue. Reviews first: a patient already on a plan
+  /// whose review has lapsed is care going stale, which outranks care not yet
+  /// started. Longest-waiting first within each, and a patient in both lists
+  /// appears once — as the plan they still do not have.
+  List<DietQueueItem> get queue {
+    final planIds = plansMissingList.map((p) => p.id).toSet();
+    final sortedReviews = [...reviewsDueList.where((p) => !planIds.contains(p.id))]
+      ..sort((a, b) => b.sinceDays.compareTo(a.sinceDays));
+    final sortedPlans = [...plansMissingList]..sort((a, b) => b.sinceDays.compareTo(a.sinceDays));
+
+    return [
+      for (final p in sortedReviews)
+        DietQueueItem(patientId: p.id, name: p.name, days: p.sinceDays, needsPlan: false),
+      for (final p in sortedPlans)
+        DietQueueItem(patientId: p.id, name: p.name, days: p.sinceDays, needsPlan: true),
+    ];
+  }
 
   factory DietDashboard.fromJson(Map<String, dynamic> j) {
     final counts = j['counts'] as Map<String, dynamic>? ?? const {};

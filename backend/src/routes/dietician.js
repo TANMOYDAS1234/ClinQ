@@ -30,13 +30,31 @@ function reviewDue(p) {
   return dayjs().diff(dayjs(since), 'day') >= p.dietReviewIntervalDays;
 }
 
-/** Guard: the patient must be assigned to THIS dietician. Returns the profile. */
+/**
+ * The patients this dietician may see.
+ *
+ * A clinic has one or two dieticians and hundreds of patients, so requiring an
+ * explicit assignment per patient made the default "this patient has nutrition
+ * care from nobody" and left it to the doctor to remember, one patient at a
+ * time. The default is now the clinic's actual intent: the dietician covers
+ * everyone.
+ *
+ * Assignment survives as a *restriction* rather than a grant — if any patient
+ * has been explicitly assigned to this dietician, they see only those. That
+ * keeps a lever for the day there is a second dietician or a locum, with no
+ * schema change and nothing to migrate.
+ */
+async function scopeFilter(req) {
+  const assigned = await PatientProfile.find({ assignedDietician: req.user._id }).select('user').lean();
+  if (assigned.length === 0) return {};
+  return { user: { $in: assigned.map((p) => p.user) } };
+}
+
+/** Guard: the id must be a patient this dietician may see. Returns the profile. */
 async function requireAssigned(req) {
-  const profile = await PatientProfile.findOne({
-    user: req.params.id,
-    assignedDietician: req.user._id,
-  }).lean();
-  if (!profile) throw notFound('Patient not found or not assigned to you');
+  const scope = await scopeFilter(req);
+  const profile = await PatientProfile.findOne({ user: req.params.id, ...scope }).lean();
+  if (!profile) throw notFound('Patient not found or not in your list');
   return profile;
 }
 
@@ -51,7 +69,7 @@ async function requireAssigned(req) {
 router.get(
   '/dashboard',
   asyncHandler(async (req, res) => {
-    const profiles = await PatientProfile.find({ assignedDietician: req.user._id })
+    const profiles = await PatientProfile.find(await scopeFilter(req))
       .populate('user', 'name phone avatarAssetId')
       .lean();
     const assigned = profiles.filter((p) => p.user);
@@ -75,6 +93,10 @@ router.get(
       diabetesType: p.diabetesType ?? null,
       reviewIntervalDays: p.dietReviewIntervalDays ?? null,
       lastReviewAt: p.lastDietReviewAt ?? null,
+      // How long this has been waiting: since the last review if there was one,
+      // otherwise since the record started. Reads correctly for both queues —
+      // "review due 12d" and "no plan, 12d" are the same measurement.
+      sinceDays: dayjs().diff(dayjs(p.lastDietReviewAt ?? p.createdAt), 'day'),
     });
 
     const due = assigned.filter(reviewDue);
@@ -112,7 +134,7 @@ router.get(
 router.get(
   '/patients',
   asyncHandler(async (req, res) => {
-    const profiles = await PatientProfile.find({ assignedDietician: req.user._id })
+    const profiles = await PatientProfile.find(await scopeFilter(req))
       .populate('user', 'name phone avatarAssetId')
       .sort({ updatedAt: -1 })
       .lean();

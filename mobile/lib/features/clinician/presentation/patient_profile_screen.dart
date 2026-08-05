@@ -1,0 +1,810 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../core/network/api_exception.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/user_avatar.dart';
+import '../data/clinician_repository.dart';
+import '../domain/patient_summary.dart';
+import 'clinician_providers.dart';
+
+/// The doctor's working screen for one patient: who they are at the top, and
+/// everything the doctor might do about it underneath.
+///
+/// The prescribing form lives here rather than behind a second navigation step,
+/// because writing the prescription IS the consultation — making the doctor
+/// open another screen to do the main thing is a tap between them and the work.
+/// The full clinical record sits one tap away in the overflow menu.
+class PatientProfileScreen extends ConsumerStatefulWidget {
+  const PatientProfileScreen({super.key, required this.patientId});
+
+  final String patientId;
+
+  @override
+  ConsumerState<PatientProfileScreen> createState() => _PatientProfileScreenState();
+}
+
+class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
+  final List<_MedDraft> _meds = [_MedDraft()];
+  final _advice = TextEditingController();
+  final _labSearch = TextEditingController();
+
+  /// The tests the clinic orders most. Offered as chips so the common case is a
+  /// tap; anything else is typed into the search box and added as its own chip.
+  static const _commonTests = ['HbA1c', 'Lipid Profile', 'CBC', 'TSH'];
+
+  final Set<String> _selectedTests = {};
+  final List<String> _customTests = [];
+
+  DateTime? _followUp;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    for (final m in _meds) {
+      m.dispose();
+    }
+    _advice.dispose();
+    _labSearch.dispose();
+    super.dispose();
+  }
+
+  void _addCustomTest() {
+    final text = _labSearch.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      if (!_commonTests.any((t) => t.toLowerCase() == text.toLowerCase()) &&
+          !_customTests.any((t) => t.toLowerCase() == text.toLowerCase())) {
+        _customTests.add(text);
+      }
+      _selectedTests.add(text);
+      _labSearch.clear();
+    });
+  }
+
+  Future<void> _pickFollowUp() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _followUp ?? now.add(const Duration(days: 14)),
+      firstDate: now,
+      lastDate: DateTime(now.year + 2),
+    );
+    if (picked != null) setState(() => _followUp = picked);
+  }
+
+  Future<void> _send() async {
+    final items = _meds
+        .where((m) => m.name.text.trim().isNotEmpty)
+        .map(
+          (m) => <String, dynamic>{
+            'name': m.name.text.trim(),
+            if (m.dosage.text.trim().isNotEmpty) 'strength': m.dosage.text.trim(),
+            'frequency': m.frequency,
+            'relationToMeal': 'any',
+            if (int.tryParse(m.duration.text.trim()) != null)
+              'durationDays': int.parse(m.duration.text.trim()),
+          },
+        )
+        .toList();
+
+    final messenger = ScaffoldMessenger.of(context);
+    if (items.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Add at least one medicine (a name is required).')),
+      );
+      return;
+    }
+    // Guard the silent mistake: a medicine with no dosing schedule reaches the
+    // patient's tracker with no reminder times, so it simply never reminds them.
+    if (_meds.any((m) => m.name.text.trim().isNotEmpty && m.frequency == '0-0-0')) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Pick at least one time (B / L / D) for each medicine.')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      await ref.read(clinicianRepositoryProvider).createPrescription(
+        patientId: widget.patientId,
+        items: items,
+        diagnosis: const [],
+        labTestsAdvised: _selectedTests.toList(),
+        generalAdvice: _advice.text.trim().isEmpty ? null : _advice.text.trim(),
+        followUpOn: _followUp,
+      );
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Prescription sent — added to the patient’s tracker')),
+      );
+      // Clear rather than pop: the doctor stays with the patient they are
+      // seeing, and the record behind this form has just changed.
+      setState(() {
+        for (final m in _meds) {
+          m.dispose();
+        }
+        _meds
+          ..clear()
+          ..add(_MedDraft());
+        _advice.clear();
+        _selectedTests.clear();
+        _followUp = null;
+        _saving = false;
+      });
+      ref.invalidate(patientSummaryProvider(widget.patientId));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final async = ref.watch(patientSummaryProvider(widget.patientId));
+    final patient = async.valueOrNull;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Patient Profile'),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) => switch (value) {
+              'record' => context.push('/clinician/patients/${widget.patientId}/record'),
+              'detailed' => context.push(
+                '/clinician/patients/${widget.patientId}/prescribe',
+                extra: patient?.name,
+              ),
+              _ => null,
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'record', child: Text('Clinical record')),
+              // The longer form keeps per-medicine strength, dose, instructions
+              // and meal timing. Kept reachable rather than deleted: this screen
+              // trades those for speed, and some prescriptions need them.
+              PopupMenuItem(value: 'detailed', child: Text('Detailed prescription')),
+            ],
+          ),
+        ],
+      ),
+      body: async.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Could not load patient'),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton(
+                onPressed: () => ref.invalidate(patientSummaryProvider(widget.patientId)),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+        data: (p) => ListView(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.xl),
+          children: [
+            _ProfileHeader(patient: p),
+            const SizedBox(height: AppSpacing.lg),
+
+            const Text('Clinical Actions', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+            const SizedBox(height: AppSpacing.sm),
+            const Divider(height: 1),
+            const SizedBox(height: AppSpacing.md),
+
+            _ActionCard(
+              icon: Icons.assignment_outlined,
+              title: 'Medication',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < _meds.length; i++)
+                    _MedFields(
+                      draft: _meds[i],
+                      onChanged: () => setState(() {}),
+                      onRemove: _meds.length > 1
+                          ? () => setState(() => _meds.removeAt(i).dispose())
+                          : null,
+                    ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        foregroundColor: AppColors.primary,
+                      ),
+                      onPressed: () => setState(() => _meds.add(_MedDraft())),
+                      icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                      label: const Text(
+                        'Add another medication',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            _ActionCard(
+              icon: Icons.biotech_outlined,
+              title: 'Lab Tests',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SearchField(
+                    controller: _labSearch,
+                    hint: 'Search lab tests...',
+                    onSubmitted: (_) => _addCustomTest(),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      for (final test in [..._commonTests, ..._customTests])
+                        _TestChip(
+                          label: test,
+                          selected: _selectedTests.contains(test),
+                          onTap: () => setState(() {
+                            if (!_selectedTests.remove(test)) _selectedTests.add(test);
+                          }),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            _ActionCard(
+              icon: Icons.edit_note_rounded,
+              title: 'Clinical Advice',
+              child: TextField(
+                controller: _advice,
+                minLines: 3,
+                maxLines: 8,
+                maxLength: 2000,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  hintText: 'Enter diagnosis and general instructions...',
+                  counterText: '',
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            _ActionCard(
+              icon: Icons.calendar_month_outlined,
+              title: 'Follow-up',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _FieldLabel('Next Visit'),
+                  const SizedBox(height: 6),
+                  _DateField(date: _followUp, onTap: _pickFollowUp, onClear: () => setState(() => _followUp = null)),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            SizedBox(
+              height: AppSpacing.minTapTarget + 12,
+              child: FilledButton.icon(
+                onPressed: _saving ? null : _send,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: _saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                      )
+                    : const Icon(Icons.send_rounded, size: 21),
+                label: const Text(
+                  'Send Prescription',
+                  style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---- Header ---------------------------------------------------------------
+
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({required this.patient});
+
+  final PatientSummary patient;
+
+  static String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+  static String? _diabetesLabel(String? t) => switch (t) {
+    'type1' => 'Type 1 DM',
+    'type2' => 'Type 2 DM',
+    'gestational' => 'Gestational',
+    'prediabetes' => 'Prediabetes',
+    'none' => 'Non-diabetic',
+    null => null,
+    _ => t,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final p = patient;
+    final band = p.riskBand ?? 'low';
+    final atRisk = band == 'high' || band == 'critical';
+    final meta = [
+      if (p.age != null) '${p.age} Yrs',
+      if (p.gender != null) _cap(p.gender!),
+      'ID: ${p.shortId}',
+    ].join('  •  ');
+    final diabetes = _diabetesLabel(p.diabetesType);
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.accentSoft,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      ),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              UserAvatar(name: p.name, avatarUrl: p.avatarUrl, accent: AppColors.primary, size: 62),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      p.name,
+                      style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, height: 1.2),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      meta,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: AppColors.primary.withValues(alpha: 0.75),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: 6,
+                      children: [
+                        _HeaderPill(
+                          // The warning triangle appears only when the band
+                          // earns it — a permanent icon stops being a warning.
+                          icon: atRisk ? Icons.warning_amber_rounded : null,
+                          label: '${_cap(band)} Risk',
+                          fg: atRisk ? AppColors.danger : AppColors.primary,
+                          bg: atRisk ? AppColors.dangerBg : Colors.white,
+                        ),
+                        if (diabetes != null)
+                          _HeaderPill(label: diabetes, fg: AppColors.primary, bg: Colors.white),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => launchUrl(Uri(scheme: 'tel', path: p.phone)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.call_rounded, size: 19),
+                  label: const Text('Call', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => context.push('/clinician/patients/${p.id}/thread', extra: p.name),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 19),
+                  label: const Text(
+                    'Message',
+                    style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderPill extends StatelessWidget {
+  const _HeaderPill({required this.label, required this.fg, required this.bg, this.icon});
+
+  final String label;
+  final Color fg;
+  final Color bg;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: fg),
+            const SizedBox(width: 4),
+          ],
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
+        ],
+      ),
+    );
+  }
+}
+
+// ---- Action cards ---------------------------------------------------------
+
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({required this.icon, required this.title, required this.child});
+
+  final IconData icon;
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 21, color: scheme.onSurface),
+              const SizedBox(width: AppSpacing.sm),
+              Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.7)),
+          const SizedBox(height: AppSpacing.md),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Text(
+      text,
+      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
+    );
+  }
+}
+
+class _SearchField extends StatelessWidget {
+  const _SearchField({required this.controller, required this.hint, this.onSubmitted});
+
+  final TextEditingController controller;
+  final String hint;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return TextField(
+      controller: controller,
+      textCapitalization: TextCapitalization.words,
+      textInputAction: TextInputAction.done,
+      onSubmitted: onSubmitted,
+      decoration: InputDecoration(
+        hintText: hint,
+        isDense: true,
+        prefixIcon: Icon(Icons.search_rounded, size: 20, color: scheme.onSurfaceVariant),
+        prefixIconConstraints: const BoxConstraints(minWidth: 42),
+        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+      ),
+    );
+  }
+}
+
+// ---- Medication -----------------------------------------------------------
+
+/// One medicine being written. `frequency` is the three-slot string the API and
+/// the patient's reminder scheduler already speak — B/L/D map straight onto its
+/// morning/noon/night positions, so the friendlier control needs no translation.
+class _MedDraft {
+  final name = TextEditingController();
+  final dosage = TextEditingController();
+  final duration = TextEditingController();
+  String frequency = '0-0-0';
+
+  bool slot(int i) => frequency.split('-')[i] == '1';
+
+  void toggle(int i) {
+    final parts = frequency.split('-');
+    parts[i] = parts[i] == '1' ? '0' : '1';
+    frequency = parts.join('-');
+  }
+
+  void dispose() {
+    name.dispose();
+    dosage.dispose();
+    duration.dispose();
+  }
+}
+
+class _MedFields extends StatelessWidget {
+  const _MedFields({required this.draft, required this.onChanged, required this.onRemove});
+
+  final _MedDraft draft;
+  final VoidCallback onChanged;
+  final VoidCallback? onRemove;
+
+  static const _slots = ['B', 'L', 'D'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(child: _FieldLabel('Medicine Name')),
+              if (onRemove != null)
+                InkWell(
+                  onTap: onRemove,
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _SearchField(controller: draft.name, hint: 'Search medicine...'),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _FieldLabel('Dosage'),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: draft.dosage,
+                      decoration: const InputDecoration(hintText: 'e.g. 500mg', isDense: true),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _FieldLabel('Duration (days)'),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: draft.duration,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: const InputDecoration(hintText: 'e.g. 14', isDense: true),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const _FieldLabel('Frequency'),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              for (var i = 0; i < _slots.length; i++) ...[
+                if (i > 0) const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _SlotButton(
+                    label: _slots[i],
+                    selected: draft.slot(i),
+                    onTap: () {
+                      draft.toggle(i);
+                      onChanged();
+                    },
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SlotButton extends StatelessWidget {
+  const _SlotButton({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? AppColors.accentSoft : scheme.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          height: 46,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: selected ? AppColors.primary.withValues(alpha: 0.45) : scheme.outlineVariant,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: selected ? AppColors.primary : scheme.onSurface,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---- Lab tests ------------------------------------------------------------
+
+class _TestChip extends StatelessWidget {
+  const _TestChip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? AppColors.accentSoft : scheme.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? AppColors.primary.withValues(alpha: 0.45) : scheme.outlineVariant,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? AppColors.primary : scheme.onSurface,
+                ),
+              ),
+              if (selected) ...[
+                const SizedBox(width: 6),
+                const Icon(Icons.close_rounded, size: 15, color: AppColors.primary),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---- Follow-up ------------------------------------------------------------
+
+class _DateField extends StatelessWidget {
+  const _DateField({required this.date, required this.onTap, required this.onClear});
+
+  final DateTime? date;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                date == null ? 'dd/mm/yyyy' : DateFormat('EEE, d MMM yyyy').format(date!),
+                style: TextStyle(
+                  fontSize: 15.5,
+                  color: date == null ? scheme.onSurfaceVariant : scheme.onSurface,
+                ),
+              ),
+            ),
+            if (date != null)
+              InkWell(
+                onTap: onClear,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Icon(Icons.close_rounded, size: 19, color: scheme.onSurfaceVariant),
+                ),
+              ),
+            Icon(Icons.calendar_today_outlined, size: 20, color: scheme.onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
+  }
+}

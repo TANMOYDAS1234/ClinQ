@@ -17,10 +17,13 @@ import 'clinician_providers.dart';
 import 'widgets/clinician_visuals.dart';
 
 /// A patient's full clinical picture for the clinician: risk, health score,
-/// adherence, glucose control, HbA1c history, recent alerts and the same
-/// context the AI assistant sees.
-class PatientDetailScreen extends ConsumerWidget {
-  const PatientDetailScreen({super.key, required this.patientId});
+/// adherence, glucose control, HbA1c history, recent alerts, dietician
+/// assignment and the same context the AI assistant sees.
+///
+/// Reached from the Patient Profile's overflow menu. The profile is where the
+/// doctor acts; this is where they read the record behind those actions.
+class PatientRecordScreen extends ConsumerWidget {
+  const PatientRecordScreen({super.key, required this.patientId});
 
   final String patientId;
 
@@ -29,14 +32,7 @@ class PatientDetailScreen extends ConsumerWidget {
     final async = ref.watch(patientSummaryProvider(patientId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Patient')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/clinician/patients/$patientId/prescribe', extra: async.valueOrNull?.name),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.edit_document),
-        label: const Text('Prescribe'),
-      ),
+      appBar: AppBar(title: const Text('Clinical record')),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
