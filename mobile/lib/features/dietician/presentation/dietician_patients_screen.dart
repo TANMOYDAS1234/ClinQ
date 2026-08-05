@@ -37,14 +37,6 @@ class DieticianPatientsScreen extends ConsumerWidget {
             Text('Dietician · ${user?.name ?? ''}', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
           ],
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Log out',
-            onPressed: () => _confirmLogout(context, ref),
-            icon: Icon(Icons.logout_rounded, color: scheme.onSurfaceVariant),
-          ),
-          const SizedBox(width: 4),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(dietPatientsProvider),
@@ -80,19 +72,6 @@ class DieticianPatientsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Log out?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Log out')),
-        ],
-      ),
-    );
-    if (ok == true) await ref.read(authControllerProvider.notifier).logout();
-  }
 }
 
 class _PatientCard extends StatelessWidget {
@@ -120,7 +99,7 @@ class _PatientCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              UserAvatar(name: p.name, avatarUrl: null, accent: AppColors.primary, size: 46),
+              UserAvatar(name: p.name, avatarUrl: p.avatarUrl, accent: AppColors.primary, size: 46),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(

@@ -5,7 +5,12 @@ import 'package:intl/intl.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../../shared/widgets/chat_background.dart';
+import '../../../shared/widgets/user_avatar.dart';
+import '../../chat/presentation/widgets/care_composer.dart';
+import '../../chat/presentation/widgets/jump_to_latest.dart';
 import '../data/dietician_repository.dart';
 import '../domain/diet_models.dart';
 import 'dietician_providers.dart';
@@ -25,11 +30,35 @@ class DieticianChatScreen extends ConsumerStatefulWidget {
 
 class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
   final _controller = TextEditingController();
+  final _scroll = ScrollController();
   bool _sending = false;
+
+  /// The list is reversed, so "at the latest" is offset 0.
+  bool _showJump = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final away = _scroll.offset > 220;
+    if (away != _showJump) setState(() => _showJump = away);
+  }
+
+  void _toLatest() => _scroll.animateTo(
+    0,
+    duration: const Duration(milliseconds: 250),
+    curve: Curves.easeOut,
+  );
 
   @override
   void dispose() {
+    _scroll.removeListener(_onScroll);
     _controller.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -49,20 +78,68 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
     }
   }
 
+  /// Posts an already-uploaded photo, document or voice note.
+  Future<void> _sendAttachment(String assetId) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(dieticianRepositoryProvider).sendMessage(
+        widget.patientId,
+        content: _controller.text.trim(),
+        attachments: [assetId],
+      );
+      _controller.clear();
+      ref.invalidate(dietThreadProvider(widget.patientId));
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final async = ref.watch(dietThreadProvider(widget.patientId));
+    final overview = ref.watch(dietOverviewProvider(widget.patientId)).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        titleSpacing: 0,
+        title: Row(
           children: [
-            Text(widget.patientName ?? 'Patient', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-            Text('Nutrition chat', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+            UserAvatar(
+              name: overview?.name ?? widget.patientName ?? '',
+              avatarUrl: overview?.avatarUrl,
+              accent: AppColors.primary,
+              size: 38,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    overview?.name ?? widget.patientName ?? 'Patient',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    'Nutrition chat',
+                    style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
+        actions: [
+          if (overview?.phone.isNotEmpty == true)
+            IconButton(
+              tooltip: 'Call patient',
+              onPressed: () => launchUrl(Uri(scheme: 'tel', path: overview!.phone)),
+              icon: const Icon(Icons.call_rounded),
+            ),
+          const SizedBox(width: 4),
+        ],
       ),
       // The same wallpaper the patient and the doctor see. A different backdrop
       // per panel would read as three products showing three different threads.
@@ -94,6 +171,7 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
                   );
                 }
                 return ListView.builder(
+                  controller: _scroll,
                   reverse: true,
                   padding: const EdgeInsets.all(AppSpacing.md),
                   itemCount: shown.length,
@@ -102,7 +180,17 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
               },
             ),
           ),
-            _Composer(controller: _controller, sending: _sending, onSend: _send),
+            Align(
+              alignment: Alignment.centerRight,
+              child: JumpToLatest(visible: _showJump, onTap: _toLatest),
+            ),
+            CareComposer(
+              controller: _controller,
+              hint: 'Recommend a meal or reply…',
+              sending: _sending,
+              onSend: _send,
+              onSendAttachment: _sendAttachment,
+            ),
           ],
         ),
       ),
@@ -124,7 +212,9 @@ class _Bubble extends StatelessWidget {
     // received turn, so a thread carrying an AI, a doctor and a dietician never
     // leaves the reader guessing which of them said something.
     final (icon, label) = switch (message.role) {
-      'user' => (Icons.person_rounded, message.senderName ?? 'Patient'),
+      // No label on the patient's own turns: in a thread with one patient
+      // in it, naming them on every message is noise.
+      'user' => (Icons.person_rounded, ''),
       'clinician' => (Icons.medical_information_rounded, message.senderName ?? 'Doctor'),
       'assistant' => (Icons.smart_toy_rounded, 'AI Assistant'),
       _ => (Icons.restaurant_rounded, message.senderName ?? 'Dietician'),
@@ -241,62 +331,6 @@ class _Bubble extends StatelessWidget {
                     ),
                   ],
                 ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Composer extends StatelessWidget {
-  const _Composer({required this.controller, required this.sending, required this.onSend});
-
-  final TextEditingController controller;
-  final bool sending;
-  final VoidCallback onSend;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.md, 8, AppSpacing.md, 8),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          border: Border(top: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                minLines: 1,
-                maxLines: 5,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  hintText: 'Recommend a meal or reply…',
-                  isDense: true,
-                  filled: true,
-                  fillColor: scheme.surfaceContainerHighest,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 46,
-              height: 46,
-              child: FilledButton(
-                onPressed: sending ? null : onSend,
-                style: FilledButton.styleFrom(padding: EdgeInsets.zero, shape: const CircleBorder(), backgroundColor: AppColors.primary),
-                child: sending
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white))
-                    : const Icon(Icons.send_rounded, size: 20),
               ),
             ),
           ],

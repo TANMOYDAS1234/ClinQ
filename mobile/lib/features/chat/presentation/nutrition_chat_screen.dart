@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../shared/data/upload_repository.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/chat_background.dart';
 import '../domain/chat_message.dart';
+import 'widgets/care_composer.dart';
+import 'widgets/jump_to_latest.dart';
 import 'widgets/chat_message_bubble.dart';
 
 /// The patient's side of the dietician conversation.
@@ -36,63 +36,51 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
   final _scroll = ScrollController();
   bool _sending = false;
 
+  /// The list is reversed, so "at the latest" is offset 0.
+  bool _showJump = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final away = _scroll.offset > 220;
+    if (away != _showJump) setState(() => _showJump = away);
+  }
+
+  void _toLatest() => _scroll.animateTo(
+    0,
+    duration: const Duration(milliseconds: 250),
+    curve: Curves.easeOut,
+  );
+
   @override
   void dispose() {
+    _scroll.removeListener(_onScroll);
     _controller.dispose();
     _scroll.dispose();
     super.dispose();
   }
 
-  /// Sends a meal photo. Server-side this also becomes a food-log entry, so the
-  /// patient never has to log the same meal twice — showing it to the dietician
-  /// and recording it are the same act.
-  Future<void> _sendPhoto() async {
+  /// Posts an already-uploaded attachment. A photo sent here also becomes a
+  /// food-log entry server-side, so the patient never logs the same meal twice.
+  Future<void> _sendAttachment(String assetId) async {
     final messenger = ScaffoldMessenger.of(context);
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Take a photo'),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from gallery'),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (source == null) return;
-
-    final file = await ImagePicker().pickImage(source: source, maxWidth: 1600, imageQuality: 85);
-    if (file == null) return;
-
-    setState(() => _sending = true);
     try {
-      final asset = await ref.read(uploadRepositoryProvider).uploadImage(
-        path: file.path,
-        filename: file.name,
-      );
       await ref.read(apiClientProvider).postJson(
         '/chat/nutrition',
         body: {
           'content': _controller.text.trim(),
-          'attachments': [asset.id],
+          'attachments': [assetId],
         },
       );
       _controller.clear();
       ref.invalidate(nutritionThreadProvider);
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
-    } finally {
-      if (mounted) setState(() => _sending = false);
     }
   }
 
@@ -231,92 +219,16 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
                 },
               ),
             ),
-            _Composer(
+            Align(
+              alignment: Alignment.centerRight,
+              child: JumpToLatest(visible: _showJump, onTap: _toLatest),
+            ),
+            CareComposer(
               controller: _controller,
+              hint: 'Message your dietician…',
               sending: _sending,
               onSend: _send,
-              onAttach: _sendPhoto,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Composer extends StatelessWidget {
-  const _Composer({
-    required this.controller,
-    required this.sending,
-    required this.onSend,
-    required this.onAttach,
-  });
-
-  final TextEditingController controller;
-  final bool sending;
-  final VoidCallback onSend;
-  final VoidCallback onAttach;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.sm,
-        AppSpacing.sm,
-        AppSpacing.sm,
-        MediaQuery.viewInsetsOf(context).bottom + AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        border: Border(top: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            IconButton(
-              tooltip: 'Send a meal photo',
-              onPressed: sending ? null : onAttach,
-              icon: Icon(Icons.add_circle_outline_rounded, size: 27, color: AppColors.primary),
-            ),
-            Expanded(
-              child: TextField(
-                controller: controller,
-                minLines: 1,
-                maxLines: 5,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  hintText: 'Message your dietician…',
-                  filled: true,
-                  fillColor: scheme.surfaceContainerHigh.withValues(alpha: 0.5),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(26),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Material(
-              color: AppColors.primary,
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: sending ? null : onSend,
-                child: Padding(
-                  padding: const EdgeInsets.all(13),
-                  child: sending
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
-                        )
-                      : const Icon(Icons.send_rounded, size: 22, color: Colors.white),
-                ),
-              ),
+              onSendAttachment: _sendAttachment,
             ),
           ],
         ),

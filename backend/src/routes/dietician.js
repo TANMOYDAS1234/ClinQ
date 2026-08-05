@@ -101,7 +101,7 @@ router.get(
     const brief = (p) => ({
       id: String(p.user._id),
       name: p.user.name,
-      avatarAssetId: p.user.avatarAssetId ? String(p.user.avatarAssetId) : null,
+      avatarUrl: p.user.avatarAssetId ? `/api/v1/uploads/${p.user.avatarAssetId}/raw` : null,
       riskBand: p.riskBand ?? 'low',
       diabetesType: p.diabetesType ?? null,
       reviewIntervalDays: p.dietReviewIntervalDays ?? defaultDays,
@@ -166,7 +166,7 @@ router.get(
         id: String(p.user._id),
         name: p.user.name,
         phone: p.user.phone,
-        avatarAssetId: p.user.avatarAssetId ? String(p.user.avatarAssetId) : null,
+        avatarUrl: p.user.avatarAssetId ? `/api/v1/uploads/${p.user.avatarAssetId}/raw` : null,
         diabetesType: p.diabetesType ?? null,
         riskBand: p.riskBand ?? 'low',
         reviewIntervalDays: p.dietReviewIntervalDays ?? defaultDays,
@@ -183,7 +183,9 @@ router.get(
   '/patients/:id/overview',
   asyncHandler(async (req, res) => {
     const profile = await requireAssigned(req);
-    const user = await User.findById(req.params.id).select('name phone gender dateOfBirth language').lean();
+    const user = await User.findById(req.params.id)
+      .select('name phone gender dateOfBirth language avatarAssetId')
+      .lean();
     if (!user) throw notFound('Patient not found');
 
     // Medicines and lab work, live from the doctor's own record. A dietician
@@ -207,6 +209,7 @@ router.get(
         id: String(user._id),
         name: user.name,
         phone: user.phone,
+        avatarUrl: user.avatarAssetId ? `/api/v1/uploads/${user.avatarAssetId}/raw` : null,
         gender: user.gender ?? null,
         language: user.language ?? 'en',
       },

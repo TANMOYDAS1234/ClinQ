@@ -1,0 +1,40 @@
+import 'package:flutter/material.dart';
+
+import '../../../../core/theme/app_colors.dart';
+
+/// Appears once the newest message scrolls out of view — the same affordance the
+/// doctor's and patient's main threads have. Without it a long conversation
+/// leaves you dragging back down to see what just arrived.
+class JumpToLatest extends StatelessWidget {
+  const JumpToLatest({super.key, required this.visible, required this.onTap});
+
+  final bool visible;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: visible ? 1 : 0,
+      duration: const Duration(milliseconds: 160),
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: Padding(
+          padding: const EdgeInsets.only(right: 12, bottom: 8),
+          child: Material(
+            color: AppColors.primary,
+            shape: const CircleBorder(),
+            elevation: 3,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onTap,
+              child: const Padding(
+                padding: EdgeInsets.all(10),
+                child: Icon(Icons.keyboard_arrow_down_rounded, size: 26, color: Colors.white),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -4,7 +4,7 @@ class DietPatient {
     required this.id,
     required this.name,
     required this.phone,
-    this.avatarAssetId,
+    this.avatarUrl,
     this.diabetesType,
     required this.riskBand,
     this.reviewIntervalDays,
@@ -15,7 +15,7 @@ class DietPatient {
   final String id;
   final String name;
   final String phone;
-  final String? avatarAssetId;
+  final String? avatarUrl;
   final String? diabetesType;
   final String riskBand; // low | moderate | high | critical
   final int? reviewIntervalDays;
@@ -26,7 +26,7 @@ class DietPatient {
         id: j['id']?.toString() ?? '',
         name: j['name']?.toString() ?? '',
         phone: j['phone']?.toString() ?? '',
-        avatarAssetId: j['avatarAssetId']?.toString(),
+        avatarUrl: j['avatarUrl']?.toString(),
         diabetesType: j['diabetesType']?.toString(),
         riskBand: j['riskBand']?.toString() ?? 'low',
         reviewIntervalDays: (j['reviewIntervalDays'] as num?)?.toInt(),
@@ -58,6 +58,7 @@ class DietPatientOverview {
     required this.id,
     required this.name,
     required this.phone,
+    this.avatarUrl,
     this.gender,
     this.diabetesType,
     required this.riskBand,
@@ -73,6 +74,7 @@ class DietPatientOverview {
   final String id;
   final String name;
   final String phone;
+  final String? avatarUrl;
   final String? gender;
   final String? diabetesType;
   final String riskBand;
@@ -95,6 +97,7 @@ class DietPatientOverview {
       id: p['id']?.toString() ?? '',
       name: p['name']?.toString() ?? '',
       phone: p['phone']?.toString() ?? '',
+      avatarUrl: p['avatarUrl']?.toString(),
       gender: p['gender']?.toString(),
       diabetesType: m['diabetesType']?.toString(),
       riskBand: m['riskBand']?.toString() ?? 'low',
@@ -207,7 +210,7 @@ class DietPatientBrief {
   const DietPatientBrief({
     required this.id,
     required this.name,
-    this.avatarAssetId,
+    this.avatarUrl,
     required this.riskBand,
     this.diabetesType,
     this.reviewIntervalDays,
@@ -217,7 +220,7 @@ class DietPatientBrief {
 
   final String id;
   final String name;
-  final String? avatarAssetId;
+  final String? avatarUrl;
   final String riskBand;
   final String? diabetesType;
   final int? reviewIntervalDays;
@@ -229,7 +232,7 @@ class DietPatientBrief {
   factory DietPatientBrief.fromJson(Map<String, dynamic> j) => DietPatientBrief(
     id: j['id']?.toString() ?? '',
     name: j['name']?.toString() ?? '',
-    avatarAssetId: j['avatarAssetId']?.toString(),
+    avatarUrl: j['avatarUrl']?.toString(),
     riskBand: j['riskBand']?.toString() ?? 'low',
     diabetesType: j['diabetesType']?.toString(),
     reviewIntervalDays: (j['reviewIntervalDays'] as num?)?.toInt(),
