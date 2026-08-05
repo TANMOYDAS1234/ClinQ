@@ -8,6 +8,7 @@ import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/chat/presentation/chat_screen.dart';
+import '../../features/chat/presentation/nutrition_chat_screen.dart';
 import '../../features/medications/presentation/medications_screen.dart';
 import '../../features/medications/presentation/reminder_times_screen.dart';
 import '../../features/foodlog/presentation/food_log_screen.dart';
@@ -250,7 +251,18 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
-            routes: [GoRoute(path: '/food-log', builder: (context, state) => const FoodLogScreen())],
+            routes: [
+              GoRoute(
+                path: '/food-log',
+                builder: (context, state) => const FoodLogScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'dietician',
+                    builder: (context, state) => const NutritionChatScreen(),
+                  ),
+                ],
+              ),
+            ],
           ),
           StatefulShellBranch(
             routes: [

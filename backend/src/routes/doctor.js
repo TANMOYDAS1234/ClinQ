@@ -605,6 +605,10 @@ router.get(
           patientId: s.patient?._id,
           patientName: s.patient?.name ?? null,
           title: s.title,
+          // `care` (assistant + doctor) or `nutrition` (the dietician's own
+          // thread). Both are reviewable; the doctor needs to know which one
+          // they are reading before they judge what was said in it.
+          kind: s.kind ?? 'care',
           language: s.language,
           messageCount: s.messageCount,
           highestUrgency: s.highestUrgency,

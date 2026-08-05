@@ -441,7 +441,7 @@ async function resolveSession({ patientId, sessionId, language, text }) {
   // id â€” which left the clinic reading only the newest fragment while the
   // patient read another, and the doctor's reply landing in a thread the
   // patient was not looking at.
-  const ongoing = await ChatSession.findOne({ patient: patientId, isArchived: false }).sort({
+  const ongoing = await ChatSession.findOne({ patient: patientId, kind: 'care', isArchived: false }).sort({
     lastMessageAt: -1,
   });
   if (ongoing) return ongoing;

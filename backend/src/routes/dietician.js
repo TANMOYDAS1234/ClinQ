@@ -328,7 +328,11 @@ router.get(
   '/patients/:id/thread',
   asyncHandler(async (req, res) => {
     await requireAssigned(req);
-    const session = await ChatSession.findOne({ patient: req.params.id, isArchived: false }).sort({ lastMessageAt: -1 });
+    const session = await ChatSession.findOne({
+      patient: req.params.id,
+      kind: 'nutrition',
+      isArchived: false,
+    }).sort({ lastMessageAt: -1 });
     if (!session) return res.json({ items: [] });
 
     const messages = await ChatMessage.find({ session: session._id })
@@ -384,13 +388,18 @@ router.post(
  * "send plan" so both land in the same thread with the same role and sequence.
  */
 async function postToCareThread(patientId, sender, content, attachments = []) {
-  let session = await ChatSession.findOne({ patient: patientId, isArchived: false }).sort({ lastMessageAt: -1 });
+  let session = await ChatSession.findOne({
+    patient: patientId,
+    kind: 'nutrition',
+    isArchived: false,
+  }).sort({ lastMessageAt: -1 });
   if (!session) {
     const patient = await User.findById(patientId).select('language').lean();
     session = await ChatSession.create({
       patient: patientId,
+      kind: 'nutrition',
       language: patient?.language ?? 'en',
-      title: 'Message from your dietician',
+      title: 'Nutrition',
     });
   }
 

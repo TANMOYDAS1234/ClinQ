@@ -211,31 +211,19 @@ class ChatMessageBubble extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: ChatDocumentCard(doc: doc, onDark: false),
               ),
-            // Name the human. A patient must never have to guess whether the
-            // words they are reading came from their doctor or from software.
-            if (isClinician && !isMine) ...[
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 5),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.medical_information_rounded, size: 15, color: AppColors.primary),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        message.senderName ?? l10n.chatFromClinic,
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            // Every turn is attributed, not just the clinicians'. A patient
+            // must never have to guess whether the words they are reading came
+            // from their doctor, their dietician or from software — and the
+            // assistant going unlabelled is exactly how software gets mistaken
+            // for a person.
+            _SenderRow(
+              isMine: isMine,
+              isClinician: isClinician,
+              isDietician: message.isDietician,
+              isUser: isUser,
+              name: message.senderName,
+              fallback: l10n.chatFromClinic,
+            ),
             if (message.pinned)
               Padding(
                 padding: const EdgeInsets.only(left: 4, bottom: 4),
@@ -438,6 +426,86 @@ class ChatMessageBubble extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Who is speaking, above their bubble: a small role badge and a name.
+///
+/// Shown on every turn rather than only on clinicians'. An unlabelled bubble
+/// in a thread that mixes an AI, a doctor and a dietician is a bubble the
+/// reader has to guess at, and the wrong guess here is "I thought the doctor
+/// told me that".
+class _SenderRow extends StatelessWidget {
+  const _SenderRow({
+    required this.isMine,
+    required this.isClinician,
+    required this.isDietician,
+    required this.isUser,
+    required this.name,
+    required this.fallback,
+  });
+
+  final bool isMine;
+  final bool isClinician;
+  final bool isDietician;
+  final bool isUser;
+  final String? name;
+  final String fallback;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    // Own turns get a plain "You" — a badge for yourself is noise, and the
+    // right-hand side and fill colour already say whose it is.
+    if (isMine) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 4, bottom: 5),
+        child: Text(
+          'You',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+
+    final (icon, label) = switch (true) {
+      _ when isDietician => (Icons.restaurant_rounded, name ?? 'Your dietician'),
+      _ when isClinician => (Icons.medical_information_rounded, name ?? fallback),
+      // The patient's own words, read by a clinician.
+      _ when isUser => (Icons.person_rounded, name ?? 'Patient'),
+      _ => (Icons.smart_toy_rounded, 'AI Assistant'),
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 2, bottom: 5),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
+            child: Icon(icon, size: 14, color: AppColors.primary),
+          ),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: isClinician || isDietician ? AppColors.primary : scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

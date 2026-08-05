@@ -10,6 +10,9 @@ import { handlePatientMessage, streamPatientMessage } from '../services/ai/assis
 import { ChatSession } from '../models/ChatSession.js';
 import { ChatMessage } from '../models/ChatMessage.js';
 import { notifyPatientOfClinicianReply } from '../services/notifications.js';
+import { triageMessage } from '../services/triage/engine.js';
+import { buildPatientContext } from '../services/patientContext.js';
+import { raiseAlert } from '../services/alerts.js';
 import { paged, pageParams } from '../utils/pagination.js';
 
 const router = Router();
@@ -135,7 +138,7 @@ router.get(
   validate({ query: pageParams }),
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = q(req);
-    const filter = { patient: req.user._id, isArchived: false };
+    const filter = { patient: req.user._id, kind: 'care', isArchived: false };
     const [items, total] = await Promise.all([
       ChatSession.find(filter).sort({ lastMessageAt: -1 }).skip(skip).limit(limit).lean(),
       ChatSession.countDocuments(filter),
@@ -219,7 +222,7 @@ router.get(
   validate({ query: pageParams }),
   audit('read', 'ChatMessage'),
   asyncHandler(async (req, res) => {
-    const session = await ChatSession.findOne({ patient: req.patientId, isArchived: false })
+    const session = await ChatSession.findOne({ patient: req.patientId, kind: 'care', isArchived: false })
       .sort({ lastMessageAt: -1 })
       .lean();
 
@@ -331,7 +334,7 @@ router.post(
   }),
   audit('create', 'ChatMessage'),
   asyncHandler(async (req, res) => {
-    let session = await ChatSession.findOne({ patient: req.patientId, isArchived: false }).sort({
+    let session = await ChatSession.findOne({ patient: req.patientId, kind: 'care', isArchived: false }).sort({
       lastMessageAt: -1,
     });
 
@@ -382,6 +385,139 @@ router.post(
 );
 
 /** Pin or unpin a message so it stays at the top of the thread. */
+// ---------------------------------------------------------------------------
+// The patient's nutrition thread — their side of the dietician conversation.
+// ---------------------------------------------------------------------------
+
+/** Read the nutrition thread. Empty until the dietician writes the first time. */
+router.get(
+  '/nutrition',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const session = await ChatSession.findOne({
+      patient: req.user._id,
+      kind: 'nutrition',
+      isArchived: false,
+    }).sort({ lastMessageAt: -1 });
+
+    if (!session) return res.json({ items: [] });
+
+    const items = await ChatMessage.find({
+      session: session._id,
+      hiddenFor: { $ne: req.user._id },
+    })
+      .sort({ seq: 1 })
+      .limit(300)
+      .populate('sender', 'name')
+      .populate('attachments', 'kind mimeType transcript originalName sizeBytes')
+      .lean();
+
+    res.json({ items: items.map(serialiseMessage) });
+  }),
+);
+
+/**
+ * The patient writes to their dietician.
+ *
+ * Runs the identical triage the care thread runs. The dietician's thread is a
+ * separate conversation, not a lesser one: a patient who types "my chest hurts"
+ * here has said it to the clinic, and which inbox they happened to choose must
+ * not decide whether anyone is paged. Without this the same words escalate in
+ * one thread and vanish in the other.
+ */
+router.post(
+  '/nutrition',
+  requireAuth,
+  chatLimiter,
+  validate({
+    body: z
+      .object({
+        content: z.string().trim().max(4000).optional().default(''),
+        attachments: z.array(z.string()).max(5).default([]),
+      })
+      .refine((b) => b.content.trim().length > 0 || b.attachments.length > 0, {
+        message: 'Add a message or attach a photo',
+        path: ['content'],
+      }),
+  }),
+  audit('create', 'ChatMessage'),
+  asyncHandler(async (req, res) => {
+    const patientId = req.user._id;
+    const text = req.body.content;
+
+    let session = await ChatSession.findOne({
+      patient: patientId,
+      kind: 'nutrition',
+      isArchived: false,
+    }).sort({ lastMessageAt: -1 });
+
+    if (!session) {
+      session = await ChatSession.create({
+        patient: patientId,
+        kind: 'nutrition',
+        language: req.user.language ?? 'en',
+        title: 'Nutrition',
+      });
+    }
+
+    const context = await buildPatientContext(patientId);
+    const triage = triageMessage({
+      text,
+      targets: context.targets,
+      latestGlucose: context.latestGlucose,
+    });
+
+    const last = await ChatMessage.findOne({ session: session._id }).sort({ seq: -1 }).select('seq').lean();
+    const message = await ChatMessage.create({
+      session: session._id,
+      patient: patientId,
+      seq: (last?.seq ?? -1) + 1,
+      role: 'user',
+      content: text,
+      language: session.language,
+      attachments: req.body.attachments,
+      triage: {
+        urgency: triage.urgency,
+        matchedRules: triage.matchedRules,
+        redFlags: triage.redFlags.map((r) => r.label),
+        ruleDriven: triage.ruleDriven,
+      },
+    });
+
+    if (triage.urgency === 'emergency' || triage.urgency === 'urgent') {
+      const alert = await raiseAlert({
+        patientId,
+        severity: triage.urgency === 'emergency' ? 'emergency' : 'urgent',
+        type: triage.alertType ?? 'chat_escalation',
+        title: triage.redFlags[0]?.label ?? triage.findings[0]?.summary ?? 'Patient reported a concerning symptom',
+        detail:
+          `Sent to the dietician: "${text.slice(0, 500)}"\n\n` +
+          `Triage findings:\n${triage.findings.map((f) => `- ${f.summary}`).join('\n')}`,
+        source: { kind: 'chat', ref: message._id },
+        matchedRules: triage.matchedRules,
+      });
+      await ChatMessage.findByIdAndUpdate(message._id, { alert: alert._id });
+    }
+
+    await ChatSession.findByIdAndUpdate(session._id, {
+      lastMessageAt: message.createdAt,
+      $inc: { messageCount: 1 },
+      highestUrgency: triage.urgency,
+    });
+
+    if (message.attachments?.length) {
+      await message.populate('attachments', 'kind mimeType transcript originalName sizeBytes');
+    }
+
+    res.status(201).json({
+      message: serialiseMessage(message),
+      // So the app can show the same emergency card it shows in the care
+      // thread, rather than the patient getting a silent send.
+      triage: { urgency: triage.urgency },
+    });
+  }),
+);
+
 router.post(
   '/messages/:id/pin',
   requireAuth,

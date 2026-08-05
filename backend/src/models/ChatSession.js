@@ -6,6 +6,16 @@ const chatSessionSchema = new mongoose.Schema(
     title: { type: String, trim: true, maxlength: 200, default: 'New conversation' },
     language: { type: String, enum: ['en', 'bn', 'hi'], default: 'en' },
 
+    /// Which conversation this is.
+    ///
+    /// `care` is the main thread: the assistant and the doctor. `nutrition` is
+    /// the dietician's, kept apart so diet coaching does not interleave with
+    /// clinical questions and leave both harder to follow.
+    ///
+    /// Defaults to `care` so every session that existed before the split keeps
+    /// behaving exactly as it did — there is nothing to migrate.
+    kind: { type: String, enum: ['care', 'nutrition'], default: 'care', index: true },
+
     // Rolling summary of older turns, so long conversations stay in context
     // without resending the entire history to the model each turn.
     runningSummary: { type: String, maxlength: 6000 },
@@ -31,5 +41,6 @@ const chatSessionSchema = new mongoose.Schema(
 );
 
 chatSessionSchema.index({ patient: 1, lastMessageAt: -1 });
+chatSessionSchema.index({ patient: 1, kind: 1 });
 
 export const ChatSession = mongoose.model('ChatSession', chatSessionSchema);

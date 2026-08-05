@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
@@ -35,7 +36,20 @@ class FoodLogScreen extends ConsumerWidget {
     final async = ref.watch(foodLogProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Food log')),
+      appBar: AppBar(
+        title: const Text('Food log'),
+        actions: [
+          // The dietician conversation lives here rather than on a tab of its
+          // own: nutrition questions come up while looking at what you ate, and
+          // the patient's bottom bar is already full.
+          IconButton(
+            tooltip: 'Message your dietician',
+            onPressed: () => context.push('/food-log/dietician'),
+            icon: const Icon(Icons.forum_outlined),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _logMeal(context, ref),
         backgroundColor: AppColors.primary,
