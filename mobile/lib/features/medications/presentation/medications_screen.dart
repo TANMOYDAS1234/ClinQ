@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,8 +19,45 @@ import 'widgets/medication_slot_tile.dart';
 
 /// The patient's medicines: the windows their reminders fire in, what they are
 /// currently prescribed, and today's outstanding doses.
-class MedicationsScreen extends ConsumerWidget {
+class MedicationsScreen extends ConsumerStatefulWidget {
   const MedicationsScreen({super.key});
+
+  @override
+  ConsumerState<MedicationsScreen> createState() => _MedicationsScreenState();
+}
+
+class _MedicationsScreenState extends ConsumerState<MedicationsScreen>
+    with WidgetsBindingObserver {
+  Timer? _poll;
+
+  /// Prescriptions and their times are the doctor's to change, not the
+  /// patient's. Waiting for a pull-to-refresh meant a retimed dose kept showing
+  /// the old hour — and, because the reminder scheduler is driven by this
+  /// list, kept ringing at it too.
+  static const _pollInterval = Duration(seconds: 30);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _poll = Timer.periodic(_pollInterval, (_) => _refreshFromServer());
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshFromServer();
+  }
+
+  void _refreshFromServer() {
+    if (mounted) _refreshAll(ref);
+  }
 
   void _refreshAll(WidgetRef ref) {
     // Reloads everything a new medicine affects. Invalidating the list also
@@ -63,10 +102,14 @@ class MedicationsScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final medsAsync = ref.watch(medicationsListProvider);
+    final medsAsyncRaw = ref.watch(medicationsListProvider);
+    // Hold the last list while a background poll is in flight, or the screen
+    // would drop to a spinner every thirty seconds.
+    final medsLoaded = medsAsyncRaw.valueOrNull;
+    final medsAsync = medsLoaded != null ? AsyncData<List<Medication>>(medsLoaded) : medsAsyncRaw;
     final scheduleAsync = ref.watch(todayScheduleProvider);
     final meals = ref.watch(mealTimesProvider).valueOrNull;
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +10,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/authed_image.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../medications/presentation/medications_providers.dart';
 import '../domain/care_summary.dart';
 import 'home_providers.dart';
 
@@ -17,14 +20,61 @@ import 'home_providers.dart';
 /// and every action it implies — logging a meal, ticking off a dose, asking a
 /// question — already has a tab of its own. A second place to do those things
 /// would be a second place to keep them in sync.
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
+  Timer? _poll;
+
+  /// The home screen shows what the clinic has decided — a new prescription, a
+  /// diet plan the dietician just sent, a fresh HbA1c. None of that is the
+  /// patient's own doing, so waiting for them to pull-to-refresh means showing
+  /// them yesterday's care and giving no sign there is anything newer.
+  static const _pollInterval = Duration(seconds: 30);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _poll = Timer.periodic(_pollInterval, (_) => _refresh());
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Coming back from the background is the likeliest moment for something to
+    // have changed, so check at once rather than waiting out the timer.
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  void _refresh() {
+    if (!mounted) return;
+    ref.invalidate(careSummaryProvider);
+    // Also the source the on-device reminders are built from: a dose the doctor
+    // has just retimed should move on this screen *and* stop ringing at the old
+    // hour, without waiting for the app to be backgrounded and reopened.
+    ref.invalidate(medicationsListProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final user = ref.watch(authControllerProvider).user;
-    final async = ref.watch(careSummaryProvider);
+    final asyncCare = ref.watch(careSummaryProvider);
+    // Read the last value during a background refresh: .when would drop the
+    // whole screen to a spinner every thirty seconds.
+    final loaded = asyncCare.valueOrNull;
+    final async = loaded != null ? AsyncData<CareSummary>(loaded) : asyncCare;
 
     return Scaffold(
       backgroundColor: scheme.surface,
@@ -35,7 +85,7 @@ class HomeScreen extends ConsumerWidget {
             const _BrandHeader(),
             Expanded(
               child: RefreshIndicator(
-                onRefresh: () async => ref.invalidate(careSummaryProvider),
+                onRefresh: () async => _refresh(),
                 child: async.when(
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (_, _) => ListView(
