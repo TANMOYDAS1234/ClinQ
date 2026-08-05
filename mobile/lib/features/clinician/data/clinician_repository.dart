@@ -46,11 +46,14 @@ class ClinicianRepository {
     final now = DateTime.now();
     final from = DateTime(now.year, now.month, now.day);
     final to = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
-    final json = await _client.getJson('/appointments', query: {
-      'from': from.toUtc().toIso8601String(),
-      'to': to.toUtc().toIso8601String(),
-      'limit': 200,
-    });
+    final json = await _client.getJson(
+      '/appointments',
+      query: {
+        'from': from.toUtc().toIso8601String(),
+        'to': to.toUtc().toIso8601String(),
+        'limit': 200,
+      },
+    );
     return (json['items'] as List? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(Appointment.fromJson)
@@ -72,26 +75,31 @@ class ClinicianRepository {
     })
   >
   patientThread(String patientId) async {
-    final json = await _client.getJson('/chat/patients/$patientId/thread', query: {'limit': 200});
-    final items = (json['items'] as List? ?? const [])
-        .whereType<Map<String, dynamic>>()
-        // Sorted by createdAt, not seq: seq restarts per session, so it cannot
-        // order a history that spans several.
-        .map(ChatMessage.fromJson)
-        .toList()
-      ..sort((a, b) {
-        final at = a.createdAt;
-        final bt = b.createdAt;
-        if (at == null || bt == null) return a.seq.compareTo(b.seq);
-        return at.compareTo(bt);
-      });
+    final json = await _client.getJson(
+      '/chat/patients/$patientId/thread',
+      query: {'limit': 200},
+    );
+    final items =
+        (json['items'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            // Sorted by createdAt, not seq: seq restarts per session, so it cannot
+            // order a history that spans several.
+            .map(ChatMessage.fromJson)
+            .toList()
+          ..sort((a, b) {
+            final at = a.createdAt;
+            final bt = b.createdAt;
+            if (at == null || bt == null) return a.seq.compareTo(b.seq);
+            return at.compareTo(bt);
+          });
 
     final patient = json['patient'];
     return (
       patientName: patient is Map ? patient['name']?.toString() : null,
       // Carried so the clinician can call from inside the conversation.
       patientPhone: patient is Map ? patient['phone']?.toString() : null,
-      patientAvatarUrl: patient is Map ? patient['avatarUrl']?.toString() : null,
+      patientAvatarUrl:
+          patient is Map ? patient['avatarUrl']?.toString() : null,
       messages: items,
     );
   }
@@ -134,7 +142,8 @@ class ClinicianRepository {
         'items': items,
         if (diagnosis.isNotEmpty) 'diagnosis': diagnosis,
         if (labTestsAdvised.isNotEmpty) 'labTestsAdvised': labTestsAdvised,
-        if (generalAdvice != null && generalAdvice.isNotEmpty) 'generalAdvice': generalAdvice,
+        if (generalAdvice != null && generalAdvice.isNotEmpty)
+          'generalAdvice': generalAdvice,
         if (followUpOn != null) 'followUpOn': followUpOn.toIso8601String(),
       },
     );
@@ -146,23 +155,45 @@ class ClinicianRepository {
     final items = json['items'] as List? ?? const [];
     return items
         .whereType<Map<String, dynamic>>()
-        .map((d) => (id: d['id']?.toString() ?? '', name: d['name']?.toString() ?? ''))
+        .map(
+          (d) => (
+            id: d['id']?.toString() ?? '',
+            name: d['name']?.toString() ?? '',
+          ),
+        )
         .toList();
   }
 
   /// Creates a dietician account (the doctor onboarding one directly). Returns
   /// the new dietician so it can be assigned right away.
-  Future<({String id, String name})> addDietician({required String name, required String phone, required String password}) async {
-    final json = await _client.postJson('/doctor/dieticians', body: {'name': name, 'phone': phone, 'password': password});
-    return (id: json['id']?.toString() ?? '', name: json['name']?.toString() ?? '');
+  Future<({String id, String name})> addDietician({
+    required String name,
+    required String phone,
+    required String password,
+  }) async {
+    final json = await _client.postJson(
+      '/doctor/dieticians',
+      body: {'name': name, 'phone': phone, 'password': password},
+    );
+    return (
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+    );
   }
 
   /// Assign the patient's dietician and food-log review cadence. A null
   /// [dieticianId] unassigns; a null [reviewIntervalDays] clears the cadence.
-  Future<void> assignDietician(String patientId, {String? dieticianId, int? reviewIntervalDays}) async {
+  Future<void> assignDietician(
+    String patientId, {
+    String? dieticianId,
+    int? reviewIntervalDays,
+  }) async {
     await _client.patchJson(
       '/doctor/patients/$patientId/dietician',
-      body: {'dieticianId': dieticianId, 'reviewIntervalDays': reviewIntervalDays},
+      body: {
+        'dieticianId': dieticianId,
+        'reviewIntervalDays': reviewIntervalDays,
+      },
     );
   }
 
@@ -173,13 +204,16 @@ class ClinicianRepository {
     int page = 1,
     int limit = 50,
   }) async {
-    final json = await _client.getJson('/doctor/patients', query: {
-      'page': page,
-      'limit': limit,
-      'sort': sort,
-      if (riskBand != null) 'riskBand': riskBand,
-      if (search != null && search.isNotEmpty) 'search': search,
-    });
+    final json = await _client.getJson(
+      '/doctor/patients',
+      query: {
+        'page': page,
+        'limit': limit,
+        'sort': sort,
+        if (riskBand != null) 'riskBand': riskBand,
+        if (search != null && search.isNotEmpty) 'search': search,
+      },
+    );
     return Paged.fromJson(json, PatientListItem.fromJson);
   }
 
@@ -194,12 +228,15 @@ class ClinicianRepository {
     int page = 1,
     int limit = 50,
   }) async {
-    final json = await _client.getJson('/doctor/alerts', query: {
-      'page': page,
-      'limit': limit,
-      if (status != null) 'status': status,
-      if (severity != null) 'severity': severity,
-    });
+    final json = await _client.getJson(
+      '/doctor/alerts',
+      query: {
+        'page': page,
+        'limit': limit,
+        if (status != null) 'status': status,
+        if (severity != null) 'severity': severity,
+      },
+    );
     return Paged.fromJson(json, ClinicalAlert.fromJson);
   }
 
@@ -209,26 +246,35 @@ class ClinicianRepository {
   }
 
   Future<ClinicalAlert> resolveAlert(String id, {String? notes}) async {
-    final json = await _client.postJson('/doctor/alerts/$id/resolve', body: {
-      if (notes != null && notes.isNotEmpty) 'notes': notes,
-    });
+    final json = await _client.postJson(
+      '/doctor/alerts/$id/resolve',
+      body: {if (notes != null && notes.isNotEmpty) 'notes': notes},
+    );
     return ClinicalAlert.fromJson(json['alert'] as Map<String, dynamic>);
   }
 
   // ---- Chat review ------------------------------------------------------
 
+  /// [kind] is `care` (assistant + doctor) or `nutrition` (the dietician's own
+  /// thread); null returns both. Without it the Nutrition tab was the same
+  /// query as All chats and simply showed everything.
   Future<Paged<ChatReviewSession>> chatReviewSessions({
     bool flagged = true,
     String? urgency,
+    String? kind,
     int page = 1,
     int limit = 50,
   }) async {
-    final json = await _client.getJson('/doctor/chat-review', query: {
-      'page': page,
-      'limit': limit,
-      'flagged': flagged,
-      if (urgency != null) 'urgency': urgency,
-    });
+    final json = await _client.getJson(
+      '/doctor/chat-review',
+      query: {
+        'page': page,
+        'limit': limit,
+        'flagged': flagged,
+        if (urgency != null) 'urgency': urgency,
+        if (kind != null) 'kind': kind,
+      },
+    );
     return Paged.fromJson(json, ChatReviewSession.fromJson);
   }
 
@@ -250,13 +296,16 @@ class ClinicianRepository {
     int page = 1,
     int limit = 50,
   }) async {
-    final json = await _client.getJson('/doctor/knowledge', query: {
-      'page': page,
-      'limit': limit,
-      if (status != null) 'status': status,
-      if (category != null) 'category': category,
-      if (language != null) 'language': language,
-    });
+    final json = await _client.getJson(
+      '/doctor/knowledge',
+      query: {
+        'page': page,
+        'limit': limit,
+        if (status != null) 'status': status,
+        if (category != null) 'category': category,
+        if (language != null) 'language': language,
+      },
+    );
     return Paged.fromJson(json, KnowledgeChunk.fromJson);
   }
 
@@ -265,7 +314,10 @@ class ClinicianRepository {
     return KnowledgeChunk.fromJson(json['chunk'] as Map<String, dynamic>);
   }
 
-  Future<KnowledgeChunk> updateKnowledge(String id, Map<String, dynamic> body) async {
+  Future<KnowledgeChunk> updateKnowledge(
+    String id,
+    Map<String, dynamic> body,
+  ) async {
     final json = await _client.patchJson('/doctor/knowledge/$id', body: body);
     return KnowledgeChunk.fromJson(json['chunk'] as Map<String, dynamic>);
   }
@@ -281,6 +333,7 @@ class ClinicianRepository {
   }
 }
 
-final Provider<ClinicianRepository> clinicianRepositoryProvider = Provider<ClinicianRepository>((ref) {
-  return ClinicianRepository(ref.watch(apiClientProvider));
-});
+final Provider<ClinicianRepository> clinicianRepositoryProvider =
+    Provider<ClinicianRepository>((ref) {
+      return ClinicianRepository(ref.watch(apiClientProvider));
+    });

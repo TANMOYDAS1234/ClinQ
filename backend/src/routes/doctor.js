@@ -572,12 +572,13 @@ router.get(
     query: pageParams.and(
       z.object({
         urgency: z.enum(['routine', 'advice', 'urgent', 'emergency']).optional(),
+        kind: z.enum(['care', 'nutrition']).optional(),
       }),
     ),
   }),
   audit('read', 'ChatSession'),
   asyncHandler(async (req, res) => {
-    const { page, limit, skip, urgency } = q(req);
+    const { page, limit, skip, urgency, kind } = q(req);
     // `flagged` is read from the raw query rather than the zod schema: pageParams
     // is `.passthrough()`, so an intersected `z.coerce.boolean()` would keep the
     // string on one side and a boolean on the other and fail to merge. Defaults
@@ -586,6 +587,14 @@ router.get(
     const filter = {
       ...(flagged ? { flaggedForReview: true } : {}),
       ...(urgency ? { highestUrgency: urgency } : {}),
+      // `nutrition` is an equality match; `care` has to be `$ne: 'nutrition'`
+      // because sessions created before `kind` existed carry no value at all —
+      // a Mongoose default never backfills. See ChatSession.kind.
+      ...(kind === 'nutrition'
+        ? { kind: 'nutrition' }
+        : kind === 'care'
+          ? { kind: { $ne: 'nutrition' } }
+          : {}),
     };
 
     const [items, total] = await Promise.all([
@@ -630,7 +639,14 @@ router.get(
     if (!session) throw notFound('Conversation not found');
     req.patientId = session.patient?._id;
 
-    const messages = await ChatMessage.find({ session: session._id }).sort({ seq: 1 }).lean();
+    // Attachments are populated because a food photo *is* the message: without
+    // them the doctor sees an empty bubble above the assistant's reply and has
+    // no way to judge whether that reply was right about the meal.
+    const messages = await ChatMessage.find({ session: session._id })
+      .sort({ seq: 1 })
+      .populate('sender', 'name role')
+      .populate('attachments', 'kind mimeType transcript originalName sizeBytes')
+      .lean();
 
     res.json({
       session: {
@@ -656,6 +672,22 @@ router.get(
         flaggedByPatient: m.flaggedByPatient ?? false,
         modelVersion: m.modelVersion ?? null,
         latencyMs: m.latencyMs ?? null,
+        senderName: m.sender && typeof m.sender === 'object' ? (m.sender.name ?? null) : null,
+        senderRole: m.sender && typeof m.sender === 'object' ? (m.sender.role ?? null) : null,
+        attachments: (m.attachments ?? []).map((a) => {
+          const id = (a?._id ?? a).toString?.() ?? a;
+          return {
+            id,
+            url: `/api/v1/uploads/${id}/raw`,
+            kind: a?.kind ?? null,
+            mimeType: a?.mimeType ?? null,
+            originalName: a?.originalName ?? null,
+            sizeBytes: a?.sizeBytes ?? null,
+            // A voice note's transcript is what triage actually read, so the
+            // doctor should see the same text the rules did.
+            transcript: a?.transcript ?? null,
+          };
+        }),
         createdAt: m.createdAt,
       })),
     });
@@ -856,6 +888,10 @@ router.get(
         name: d.name,
         phone: d.phone,
         avatarAssetId: d.avatarAssetId ? String(d.avatarAssetId) : null,
+        // Every other avatar in the app is consumed as a ready URL. Sending
+        // only the asset id here meant the doctor's list could never draw the
+        // dietician's own photo, however recently they had changed it.
+        avatarUrl: d.avatarAssetId ? `/api/v1/uploads/${d.avatarAssetId}/raw` : null,
       })),
     });
   }),

@@ -7,13 +7,19 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/auth_validators.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/widgets/fullscreen_photo.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/clinician_repository.dart';
 
-final _dieticiansProvider = FutureProvider.autoDispose<List<_Dietician>>((ref) async {
+final _dieticiansProvider = FutureProvider.autoDispose<List<_Dietician>>((
+  ref,
+) async {
   final data = await ref.read(apiClientProvider).getJson('/doctor/dieticians');
   final items = (data['items'] as List?) ?? const [];
-  return items.whereType<Map<String, dynamic>>().map(_Dietician.fromJson).toList();
+  return items
+      .whereType<Map<String, dynamic>>()
+      .map(_Dietician.fromJson)
+      .toList();
 });
 
 /// How often a patient's food log should be reviewed, clinic-wide.
@@ -55,10 +61,12 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
     if (picked == null) return;
 
     try {
-      await ref.read(apiClientProvider).patchJson(
-        '/doctor/settings',
-        body: {'dietReviewIntervalDays': picked},
-      );
+      await ref
+          .read(apiClientProvider)
+          .patchJson(
+            '/doctor/settings',
+            body: {'dietReviewIntervalDays': picked},
+          );
       ref.invalidate(_reviewIntervalProvider);
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
@@ -83,173 +91,243 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
         onRefresh: () async => ref.invalidate(_dieticiansProvider),
         child: async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => ListView(
-            children: [
-              const SizedBox(height: 140),
-              const Center(child: Text('Could not load dieticians')),
-              const SizedBox(height: AppSpacing.md),
-              Center(
-                child: OutlinedButton(
-                  onPressed: () => ref.invalidate(_dieticiansProvider),
-                  child: const Text('Retry'),
-                ),
+          error:
+              (_, _) => ListView(
+                children: [
+                  const SizedBox(height: 140),
+                  const Center(child: Text('Could not load dieticians')),
+                  const SizedBox(height: AppSpacing.md),
+                  Center(
+                    child: OutlinedButton(
+                      onPressed: () => ref.invalidate(_dieticiansProvider),
+                      child: const Text('Retry'),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          data: (items) => ListView(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 100),
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.infoBg,
-                  borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+          data:
+              (items) => ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  100,
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline_rounded, size: 19, color: scheme.onSurfaceVariant),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        'A dietician you add here sees every patient and can write a '
-                        'diet plan for any of them. Set how often a patient’s food log '
-                        'should be reviewed on that patient’s record.',
-                        style: TextStyle(fontSize: 13.5, height: 1.45, color: scheme.onSurfaceVariant),
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.infoBg,
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.cardRadius,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
-              // Clinic-wide, not per patient: with one dietician covering
-              // hundreds of patients, a cadence set per patient meant almost
-              // every patient had none, and so was never due for review.
-              Consumer(
-                builder: (context, ref, _) {
-                  final days = ref.watch(_reviewIntervalProvider).valueOrNull;
-                  return Material(
-                    color: scheme.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                      onTap: days == null ? null : () => _editInterval(days),
-                      child: Container(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 19,
+                          color: scheme.onSurfaceVariant,
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: AppColors.accentSoft,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.event_repeat_outlined,
-                                size: 21,
-                                color: AppColors.primary,
-                              ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            'A dietician you add here sees every patient and can write a '
+                            'diet plan for any of them. Set how often a patient’s food log '
+                            'should be reviewed on that patient’s record.',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              height: 1.45,
+                              color: scheme.onSurfaceVariant,
                             ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Food-log review',
-                                    style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    days == null
-                                        ? 'Loading…'
-                                        : '${intervalLabel(days)}, for every patient',
-                                    style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (days != null)
-                              Text(
-                                'Change',
-                                style: TextStyle(
-                                  fontSize: 14.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              if (items.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 60),
-                  child: Column(
-                    children: [
-                      Icon(Icons.restaurant_menu_rounded, size: 50, color: scheme.outlineVariant),
-                      const SizedBox(height: AppSpacing.md),
-                      const Text(
-                        'No dieticians yet',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Add one and they can start guiding your patients.',
-                        style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                Container(
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < items.length; i++) ...[
-                        if (i > 0)
-                          Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
-                        ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                            vertical: 6,
-                          ),
-                          leading: UserAvatar(
-                            name: items[i].name,
-                            avatarUrl: null,
-                            accent: AppColors.primary,
-                            size: 44,
-                          ),
-                          title: Text(
-                            items[i].name,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                          ),
-                          subtitle: Text(
-                            items[i].phone,
-                            style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
                           ),
                         ),
                       ],
-                    ],
+                    ),
                   ),
-                ),
-            ],
-          ),
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Clinic-wide, not per patient: with one dietician covering
+                  // hundreds of patients, a cadence set per patient meant almost
+                  // every patient had none, and so was never due for review.
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final days =
+                          ref.watch(_reviewIntervalProvider).valueOrNull;
+                      return Material(
+                        color: scheme.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.cardRadius,
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.cardRadius,
+                          ),
+                          onTap:
+                              days == null ? null : () => _editInterval(days),
+                          child: Container(
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.cardRadius,
+                              ),
+                              border: Border.all(
+                                color: scheme.outlineVariant.withValues(
+                                  alpha: 0.7,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accentSoft,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.event_repeat_outlined,
+                                    size: 21,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.md),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Food-log review',
+                                        style: TextStyle(
+                                          fontSize: 15.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        days == null
+                                            ? 'Loading…'
+                                            : '${intervalLabel(days)}, for every patient',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (days != null)
+                                  Text(
+                                    'Change',
+                                    style: TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  if (items.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 60),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.restaurant_menu_rounded,
+                            size: 50,
+                            color: scheme.outlineVariant,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          const Text(
+                            'No dieticians yet',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Add one and they can start guiding your patients.',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Container(
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.cardRadius,
+                        ),
+                        border: Border.all(
+                          color: scheme.outlineVariant.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < items.length; i++) ...[
+                            if (i > 0)
+                              Divider(
+                                height: 1,
+                                color: scheme.outlineVariant.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                                vertical: 6,
+                              ),
+                              leading: GestureDetector(
+                                onTap:
+                                    items[i].avatarUrl == null
+                                        ? null
+                                        : () => FullscreenPhoto.show(
+                                          context,
+                                          items[i].avatarUrl!,
+                                        ),
+                                child: UserAvatar(
+                                  name: items[i].name,
+                                  avatarUrl: items[i].avatarUrl,
+                                  accent: AppColors.primary,
+                                  size: 44,
+                                ),
+                              ),
+                              title: Text(
+                                items[i].name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              subtitle: Text(
+                                items[i].phone,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                ],
+              ),
         ),
       ),
     );
@@ -263,15 +341,26 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
 /// reviewing a *food* log after 60 days means reading what a patient ate two
 /// months ago — an archive, not a review.
 const _intervalOptions = <({int days, String label, String fits})>[
-  (days: 1, label: 'Daily', fits: 'New diagnosis, insulin titration, pregnancy'),
-  (days: 3, label: 'Every 3 days', fits: 'Close watch while something is being changed'),
+  (
+    days: 1,
+    label: 'Daily',
+    fits: 'New diagnosis, insulin titration, pregnancy',
+  ),
+  (
+    days: 3,
+    label: 'Every 3 days',
+    fits: 'Close watch while something is being changed',
+  ),
   (days: 7, label: 'Weekly', fits: 'Active management'),
   (days: 14, label: 'Every 2 weeks', fits: 'Steady patients'),
   (days: 30, label: 'Monthly', fits: 'Stable, maintenance'),
 ];
 
 String intervalLabel(int days) =>
-    _intervalOptions.where((o) => o.days == days).map((o) => o.label).firstOrNull ??
+    _intervalOptions
+        .where((o) => o.days == days)
+        .map((o) => o.label)
+        .firstOrNull ??
     'Every $days days';
 
 /// Picks the clinic-wide review cadence. Preset chips rather than a free number
@@ -313,7 +402,11 @@ class _IntervalSheetState extends State<_IntervalSheet> {
             'How often the dietician should review each patient’s food log. '
             'A patient becomes due once this many days have passed since the '
             'dietician last wrote to them.',
-            style: TextStyle(fontSize: 13.5, height: 1.45, color: scheme.onSurfaceVariant),
+            style: TextStyle(
+              fontSize: 13.5,
+              height: 1.45,
+              color: scheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           for (final option in _intervalOptions)
@@ -337,15 +430,23 @@ class _IntervalSheetState extends State<_IntervalSheet> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFFB45309)),
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    size: 18,
+                    color: Color(0xFFB45309),
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
                       _selected == 1
                           ? 'Every patient will be due for review every day. Useful for a small '
-                                'list; heavy going for a large one.'
+                              'list; heavy going for a large one.'
                           : 'Every patient will be due every 3 days.',
-                      style: const TextStyle(fontSize: 12.5, height: 1.4, color: Color(0xFFB45309)),
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        height: 1.4,
+                        color: Color(0xFFB45309),
+                      ),
                     ),
                   ),
                 ],
@@ -358,7 +459,9 @@ class _IntervalSheetState extends State<_IntervalSheet> {
             child: FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () => Navigator.pop(context, _selected),
               child: const Text(
@@ -401,11 +504,16 @@ class _IntervalRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 11),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: 11,
+          ),
           child: Row(
             children: [
               Icon(
-                selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                selected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_unchecked_rounded,
                 size: 21,
                 color: selected ? AppColors.primary : scheme.outline,
               ),
@@ -423,7 +531,13 @@ class _IntervalRow extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 1),
-                    Text(fits, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                    Text(
+                      fits,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -436,16 +550,26 @@ class _IntervalRow extends StatelessWidget {
 }
 
 class _Dietician {
-  const _Dietician({required this.id, required this.name, required this.phone});
+  const _Dietician({
+    required this.id,
+    required this.name,
+    required this.phone,
+    this.avatarUrl,
+  });
 
   final String id;
   final String name;
   final String phone;
 
+  /// The dietician's own photo, whatever it is right now — the doctor should
+  /// recognise the person they are handing patients to.
+  final String? avatarUrl;
+
   factory _Dietician.fromJson(Map<String, dynamic> j) => _Dietician(
     id: j['id']?.toString() ?? '',
     name: j['name']?.toString() ?? '',
     phone: j['phone']?.toString() ?? '',
+    avatarUrl: j['avatarUrl']?.toString(),
   );
 }
 
@@ -490,11 +614,13 @@ class _AddDieticianSheetState extends ConsumerState<_AddDieticianSheet> {
 
     setState(() => _saving = true);
     try {
-      await ref.read(clinicianRepositoryProvider).addDietician(
-        name: _name.text.trim(),
-        phone: AuthValidators.toE164(_phone.text),
-        password: _password.text,
-      );
+      await ref
+          .read(clinicianRepositoryProvider)
+          .addDietician(
+            name: _name.text.trim(),
+            phone: AuthValidators.toE164(_phone.text),
+            password: _password.text,
+          );
       if (!mounted) return;
       Navigator.pop(context, true);
     } on ApiException catch (e) {
@@ -524,7 +650,10 @@ class _AddDieticianSheetState extends ConsumerState<_AddDieticianSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('New dietician', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            const Text(
+              'New dietician',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 4),
             Text(
               'They can sign in with this number and password.',
@@ -570,7 +699,8 @@ class _AddDieticianSheetState extends ConsumerState<_AddDieticianSheet> {
               validator: (v) {
                 final digits = AuthValidators.digitsOnly(v ?? '');
                 if (digits.isEmpty) return 'Enter their mobile number.';
-                if (digits.length != 10) return 'A mobile number is exactly 10 digits.';
+                if (digits.length != 10)
+                  return 'A mobile number is exactly 10 digits.';
                 if (!AuthValidators.isValidPhone(digits)) {
                   return 'Indian mobile numbers start with 6, 7, 8 or 9.';
                 }
@@ -590,7 +720,11 @@ class _AddDieticianSheetState extends ConsumerState<_AddDieticianSheet> {
                 counterText: '',
                 suffixIcon: IconButton(
                   onPressed: () => setState(() => _obscure = !_obscure),
-                  icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                  icon: Icon(
+                    _obscure
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
                 ),
               ),
               validator: (v) {
@@ -604,7 +738,10 @@ class _AddDieticianSheetState extends ConsumerState<_AddDieticianSheet> {
             ),
             if (_serverError != null) ...[
               const SizedBox(height: AppSpacing.sm),
-              Text(_serverError!, style: const TextStyle(fontSize: 13.5, color: AppColors.danger)),
+              Text(
+                _serverError!,
+                style: const TextStyle(fontSize: 13.5, color: AppColors.danger),
+              ),
             ],
             const SizedBox(height: AppSpacing.lg),
             SizedBox(
@@ -612,19 +749,28 @@ class _AddDieticianSheetState extends ConsumerState<_AddDieticianSheet> {
               child: FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
-                      )
-                    : const Text(
-                        'Add dietician',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                      ),
+                child:
+                    _saving
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Text(
+                          'Add dietician',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
               ),
             ),
             const SizedBox(height: AppSpacing.sm),

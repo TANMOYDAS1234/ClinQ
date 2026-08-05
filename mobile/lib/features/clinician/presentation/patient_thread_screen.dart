@@ -29,13 +29,18 @@ enum _DoctorAttach { camera, gallery, document }
 /// looking at, down to the emergency cards and citations. A separate clinician
 /// chat UI was what let the two drift into showing different conversations.
 class PatientThreadScreen extends ConsumerStatefulWidget {
-  const PatientThreadScreen({super.key, required this.patientId, this.patientName});
+  const PatientThreadScreen({
+    super.key,
+    required this.patientId,
+    this.patientName,
+  });
 
   final String patientId;
   final String? patientName;
 
   @override
-  ConsumerState<PatientThreadScreen> createState() => _PatientThreadScreenState();
+  ConsumerState<PatientThreadScreen> createState() =>
+      _PatientThreadScreenState();
 }
 
 class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
@@ -103,7 +108,9 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
   Future<void> _pollForUpdates() async {
     if (!mounted || _sending || _loading) return;
     try {
-      final result = await ref.read(clinicianRepositoryProvider).patientThread(widget.patientId);
+      final result = await ref
+          .read(clinicianRepositoryProvider)
+          .patientThread(widget.patientId);
       if (!mounted || result.messages.length <= _messages.length) return;
       setState(() => _messages = result.messages);
       _scrollToBottom();
@@ -114,7 +121,9 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
 
   Future<void> _load() async {
     try {
-      final result = await ref.read(clinicianRepositoryProvider).patientThread(widget.patientId);
+      final result = await ref
+          .read(clinicianRepositoryProvider)
+          .patientThread(widget.patientId);
       if (!mounted) return;
       setState(() {
         _messages = result.messages;
@@ -160,7 +169,9 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
     if (phone == null) return;
     final messenger = ScaffoldMessenger.of(context);
     if (!await launchUrl(Uri(scheme: 'tel', path: phone))) {
-      messenger.showSnackBar(SnackBar(content: Text('Could not start a call to $phone')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not start a call to $phone')),
+      );
     }
   }
 
@@ -174,23 +185,29 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _sending = true);
     try {
-      final asset = await ref.read(uploadRepositoryProvider).uploadImage(
-        path: path,
-        filename: path.split(RegExp(r'[/\\]')).last,
-        kind: UploadKind.voiceNote,
-        patientId: widget.patientId,
-      );
-      await ref.read(clinicianRepositoryProvider).messagePatient(
-        patientId: widget.patientId,
-        // WhatsApp-style: the message text is just a marker, not the transcript —
-        // so the thread, the inbox preview and the patient's push notification
-        // all read "Voice message" rather than the spoken words.
-        content: 'Voice message',
-        attachments: [asset.id],
-      );
+      final asset = await ref
+          .read(uploadRepositoryProvider)
+          .uploadImage(
+            path: path,
+            filename: path.split(RegExp(r'[/\\]')).last,
+            kind: UploadKind.voiceNote,
+            patientId: widget.patientId,
+          );
+      await ref
+          .read(clinicianRepositoryProvider)
+          .messagePatient(
+            patientId: widget.patientId,
+            // WhatsApp-style: the message text is just a marker, not the transcript —
+            // so the thread, the inbox preview and the patient's push notification
+            // all read "Voice message" rather than the spoken words.
+            content: 'Voice message',
+            attachments: [asset.id],
+          );
       await _load();
     } on ApiException {
-      messenger.showSnackBar(const SnackBar(content: Text('Could not send. Please try again.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not send. Please try again.')),
+      );
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -207,13 +224,20 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
       return;
     }
     final picker = ImagePicker();
-    final source = choice == _DoctorAttach.camera ? ImageSource.camera : ImageSource.gallery;
+    final source =
+        choice == _DoctorAttach.camera
+            ? ImageSource.camera
+            : ImageSource.gallery;
     // Gallery allows picking several at once; the camera takes one.
     final List<XFile> files;
     if (source == ImageSource.gallery) {
       files = await picker.pickMultiImage(maxWidth: 2000, imageQuality: 85);
     } else {
-      final f = await picker.pickImage(source: ImageSource.camera, maxWidth: 2000, imageQuality: 85);
+      final f = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 2000,
+        imageQuality: 85,
+      );
       files = f == null ? const [] : [f];
     }
     if (files.isEmpty || !mounted) return;
@@ -223,24 +247,32 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
     try {
       final ids = <String>[];
       for (final file in files.take(5)) {
-        final asset = await ref.read(uploadRepositoryProvider).uploadImage(
-          path: file.path,
-          filename: file.name,
-          kind: UploadKind.other,
-          patientId: widget.patientId,
-        );
+        final asset = await ref
+            .read(uploadRepositoryProvider)
+            .uploadImage(
+              path: file.path,
+              filename: file.name,
+              kind: UploadKind.other,
+              patientId: widget.patientId,
+            );
         ids.add(asset.id);
       }
       // Caption is optional — photos can go on their own.
-      await ref.read(clinicianRepositoryProvider).messagePatient(
-        patientId: widget.patientId,
-        content: _controller.text.trim(),
-        attachments: ids,
-      );
+      await ref
+          .read(clinicianRepositoryProvider)
+          .messagePatient(
+            patientId: widget.patientId,
+            content: _controller.text.trim(),
+            attachments: ids,
+          );
       _controller.clear();
       await _load();
     } on ApiException {
-      messenger.showSnackBar(const SnackBar(content: Text('Could not send the photo. Please try again.')));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not send the photo. Please try again.'),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -250,29 +282,30 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
     return showModalBottomSheet<_DoctorAttach>(
       context: context,
       showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Take photo'),
-              onTap: () => Navigator.pop(ctx, _DoctorAttach.camera),
+      builder:
+          (ctx) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.photo_camera_outlined),
+                  title: const Text('Take photo'),
+                  onTap: () => Navigator.pop(ctx, _DoctorAttach.camera),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_outlined),
+                  title: const Text('Choose from gallery'),
+                  onTap: () => Navigator.pop(ctx, _DoctorAttach.gallery),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.description_outlined),
+                  title: const Text('Document'),
+                  subtitle: const Text('PDF, Word, Excel, text…'),
+                  onTap: () => Navigator.pop(ctx, _DoctorAttach.document),
+                ),
+              ],
             ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from gallery'),
-              onTap: () => Navigator.pop(ctx, _DoctorAttach.gallery),
-            ),
-            ListTile(
-              leading: const Icon(Icons.description_outlined),
-              title: const Text('Document'),
-              subtitle: const Text('PDF, Word, Excel, text…'),
-              onTap: () => Navigator.pop(ctx, _DoctorAttach.document),
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -284,15 +317,28 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
       result = await FilePicker.platform.pickFiles(
         allowMultiple: true,
         type: FileType.custom,
-        allowedExtensions: const ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'],
+        allowedExtensions: const [
+          'pdf',
+          'doc',
+          'docx',
+          'xls',
+          'xlsx',
+          'ppt',
+          'pptx',
+          'txt',
+          'csv',
+        ],
       );
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not pick the file.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not pick the file.')),
+        );
       }
       return;
     }
-    final picked = result?.files.where((f) => f.path != null).take(5).toList() ?? const [];
+    final picked =
+        result?.files.where((f) => f.path != null).take(5).toList() ?? const [];
     if (picked.isEmpty || !mounted) return;
 
     setState(() => _sending = true);
@@ -300,23 +346,31 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
     try {
       final ids = <String>[];
       for (final f in picked) {
-        final asset = await ref.read(uploadRepositoryProvider).uploadImage(
-          path: f.path!,
-          filename: f.name,
-          kind: UploadKind.other,
-          patientId: widget.patientId,
-        );
+        final asset = await ref
+            .read(uploadRepositoryProvider)
+            .uploadImage(
+              path: f.path!,
+              filename: f.name,
+              kind: UploadKind.other,
+              patientId: widget.patientId,
+            );
         ids.add(asset.id);
       }
-      await ref.read(clinicianRepositoryProvider).messagePatient(
-        patientId: widget.patientId,
-        content: _controller.text.trim(),
-        attachments: ids,
-      );
+      await ref
+          .read(clinicianRepositoryProvider)
+          .messagePatient(
+            patientId: widget.patientId,
+            content: _controller.text.trim(),
+            attachments: ids,
+          );
       _controller.clear();
       await _load();
     } on ApiException {
-      messenger.showSnackBar(const SnackBar(content: Text('Could not send the file. Please try again.')));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not send the file. Please try again.'),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -337,7 +391,9 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
       // exactly as it was stored — and as the patient will receive it.
       await _load();
     } on ApiException {
-      messenger.showSnackBar(const SnackBar(content: Text('Could not send. Please try again.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not send. Please try again.')),
+      );
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -376,8 +432,15 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
           // test reports — opens from here; the chat is where the doctor is.
           IconButton(
             tooltip: 'Patient record & prescribe',
-            icon: const Icon(Icons.assignment_ind_outlined, color: AppColors.primary),
-            onPressed: () => context.push('/clinician/patients/${widget.patientId}', extra: _patientName),
+            icon: const Icon(
+              Icons.assignment_ind_outlined,
+              color: AppColors.primary,
+            ),
+            onPressed:
+                () => context.push(
+                  '/clinician/patients/${widget.patientId}',
+                  extra: _patientName,
+                ),
           ),
           // Calling belongs here rather than on the inbox row: the decision to
           // stop typing and phone someone is made while reading the exchange,
@@ -474,12 +537,18 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.forum_outlined, size: 48, color: Theme.of(context).colorScheme.outlineVariant),
+              Icon(
+                Icons.forum_outlined,
+                size: 48,
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
               const SizedBox(height: AppSpacing.md),
               Text(
                 'No messages yet.\nAnything you send starts the conversation.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -489,11 +558,21 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
 
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      itemCount: _messages.length,
-      itemBuilder: (context, i) => RepaintBoundary(
-        child: ChatMessageBubble(message: _messages[i], isClinicianView: true),
+      // Bottom clearance for the floating jump-to-latest button.
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md + 48,
       ),
+      itemCount: _messages.length,
+      itemBuilder:
+          (context, i) => RepaintBoundary(
+            child: ChatMessageBubble(
+              message: _messages[i],
+              isClinicianView: true,
+            ),
+          ),
     );
   }
 }
@@ -568,53 +647,63 @@ class _Composer extends StatelessWidget {
                     if (!focusNode.hasFocus) focusNode.requestFocus();
                   },
                   child: Container(
-                  constraints: const BoxConstraints(minHeight: 52),
-                  decoration: BoxDecoration(
-                    // Filled, not outlined — matches the patient's composer.
-                    color: scheme.surfaceContainerHigh.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(26),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 4, right: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        // Attach on the LEFT, matching the patient's composer.
-                        IconButton(
-                          tooltip: 'Attach a photo',
-                          onPressed: sending ? null : onAttach,
-                          icon: Icon(Icons.attach_file_rounded, color: scheme.onSurfaceVariant),
-                        ),
-                        Expanded(
-                          child: TextField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      minLines: 1,
-                      maxLines: 5,
-                      textCapitalization: TextCapitalization.sentences,
-                      style: const TextStyle(fontSize: 16),
-                      decoration: const InputDecoration(
-                        hintText: 'Reply to this patient…',
-                        hintMaxLines: 1,
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        filled: false,
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(vertical: 15),
+                    constraints: const BoxConstraints(minHeight: 52),
+                    decoration: BoxDecoration(
+                      // Filled, not outlined — matches the patient's composer.
+                      color: scheme.surfaceContainerHigh.withValues(
+                        alpha: 0.55,
                       ),
-                      onSubmitted: (_) => onSend(),
+                      borderRadius: BorderRadius.circular(26),
                     ),
-                        ),
-                        // Speak instead of typing, same as the patient has.
-                        IconButton(
-                          tooltip: 'Record a voice reply',
-                          onPressed: sending ? null : onRecord,
-                          icon: Icon(Icons.mic_none_rounded, color: scheme.onSurfaceVariant),
-                        ),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 4, right: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // Attach on the LEFT, matching the patient's composer.
+                          IconButton(
+                            tooltip: 'Attach a photo',
+                            onPressed: sending ? null : onAttach,
+                            icon: Icon(
+                              Icons.attach_file_rounded,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: controller,
+                              focusNode: focusNode,
+                              minLines: 1,
+                              maxLines: 5,
+                              textCapitalization: TextCapitalization.sentences,
+                              style: const TextStyle(fontSize: 16),
+                              decoration: const InputDecoration(
+                                hintText: 'Reply to this patient…',
+                                hintMaxLines: 1,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                filled: false,
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 15,
+                                ),
+                              ),
+                              onSubmitted: (_) => onSend(),
+                            ),
+                          ),
+                          // Speak instead of typing, same as the patient has.
+                          IconButton(
+                            tooltip: 'Record a voice reply',
+                            onPressed: sending ? null : onRecord,
+                            icon: Icon(
+                              Icons.mic_none_rounded,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                   ),
                 ),
               ),
@@ -629,13 +718,21 @@ class _Composer extends StatelessWidget {
                     width: 52,
                     height: 52,
                     child: Center(
-                      child: sending
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                            )
-                          : const Icon(Icons.send_rounded, color: Colors.white, size: 24),
+                      child:
+                          sending
+                              ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : const Icon(
+                                Icons.send_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
                     ),
                   ),
                 ),

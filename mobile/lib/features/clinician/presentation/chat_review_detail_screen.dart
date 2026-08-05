@@ -5,6 +5,9 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/markdown_text.dart';
+import '../../chat/presentation/widgets/chat_attachment_thumbs.dart';
+import '../../chat/presentation/widgets/chat_document_card.dart';
+import '../../chat/presentation/widgets/voice_note_player.dart';
 import '../data/clinician_repository.dart';
 import '../domain/chat_review.dart';
 import 'clinician_providers.dart';
@@ -27,52 +30,65 @@ class ChatReviewDetailScreen extends ConsumerWidget {
         title: const Text('Conversation'),
         actions: [
           async.maybeWhen(
-            data: (d) => d.session.flaggedForReview
-                ? Padding(
-                    padding: const EdgeInsets.only(right: AppSpacing.sm),
-                    child: TextButton.icon(
-                      onPressed: () => _markReviewed(context, ref),
-                      icon: const Icon(Icons.check_rounded, size: 18),
-                      label: const Text('Reviewed'),
-                    ),
-                  )
-                : const SizedBox.shrink(),
+            data:
+                (d) =>
+                    d.session.flaggedForReview
+                        ? Padding(
+                          padding: const EdgeInsets.only(right: AppSpacing.sm),
+                          child: TextButton.icon(
+                            onPressed: () => _markReviewed(context, ref),
+                            icon: const Icon(Icons.check_rounded, size: 18),
+                            label: const Text('Reviewed'),
+                          ),
+                        )
+                        : const SizedBox.shrink(),
             orElse: () => const SizedBox.shrink(),
           ),
         ],
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Could not load conversation'),
-              const SizedBox(height: AppSpacing.sm),
-              OutlinedButton(onPressed: () => ref.invalidate(chatReviewDetailProvider(sessionId)), child: const Text('Retry')),
-            ],
-          ),
-        ),
-        data: (detail) => Column(
-          children: [
-            _SessionHeader(session: detail.session),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                itemCount: detail.messages.length,
-                itemBuilder: (context, i) => _MessageBubble(message: detail.messages[i]),
+        error:
+            (_, _) => Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Could not load conversation'),
+                  const SizedBox(height: AppSpacing.sm),
+                  OutlinedButton(
+                    onPressed:
+                        () =>
+                            ref.invalidate(chatReviewDetailProvider(sessionId)),
+                    child: const Text('Retry'),
+                  ),
+                ],
               ),
             ),
-            // Reply from inside the conversation. Reading the exchange and
-            // answering it are one action for a doctor, so making them two
-            // screens only costs time at the moment a patient is waiting.
-            if (detail.session.patientId != null)
-              _ClinicianComposer(
-                patientId: detail.session.patientId!,
-                onSent: () => ref.invalidate(chatReviewDetailProvider(sessionId)),
-              ),
-          ],
-        ),
+        data:
+            (detail) => Column(
+              children: [
+                _SessionHeader(session: detail.session),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    itemCount: detail.messages.length,
+                    itemBuilder:
+                        (context, i) =>
+                            _MessageBubble(message: detail.messages[i]),
+                  ),
+                ),
+                // Reply from inside the conversation. Reading the exchange and
+                // answering it are one action for a doctor, so making them two
+                // screens only costs time at the moment a patient is waiting.
+                if (detail.session.patientId != null)
+                  _ClinicianComposer(
+                    patientId: detail.session.patientId!,
+                    onSent:
+                        () =>
+                            ref.invalidate(chatReviewDetailProvider(sessionId)),
+                  ),
+              ],
+            ),
       ),
     );
   }
@@ -82,10 +98,14 @@ class ChatReviewDetailScreen extends ConsumerWidget {
     try {
       await ref.read(clinicianRepositoryProvider).markReviewed(sessionId);
       ref.invalidate(chatReviewDetailProvider(sessionId));
-      ref.invalidate(chatReviewProvider((flagged: true, urgency: null)));
-      messenger.showSnackBar(const SnackBar(content: Text('Marked as reviewed')));
+      ref.invalidate(chatReviewProvider((flagged: true, urgency: null, kind: 'care')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Marked as reviewed')),
+      );
     } on ApiException {
-      messenger.showSnackBar(const SnackBar(content: Text('Could not update. Please try again.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not update. Please try again.')),
+      );
     }
   }
 }
@@ -126,9 +146,13 @@ class _ClinicianComposerState extends ConsumerState<_ClinicianComposer> {
           .messagePatient(patientId: widget.patientId, content: text);
       _controller.clear();
       widget.onSent();
-      messenger.showSnackBar(const SnackBar(content: Text('Sent to the patient')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Sent to the patient')),
+      );
     } on ApiException {
-      messenger.showSnackBar(const SnackBar(content: Text('Could not send. Please try again.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not send. Please try again.')),
+      );
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -174,13 +198,21 @@ class _ClinicianComposerState extends ConsumerState<_ClinicianComposer> {
                     width: 46,
                     height: 46,
                     child: Center(
-                      child: _sending
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
-                            )
-                          : const Icon(Icons.send_rounded, color: Colors.white, size: 21),
+                      child:
+                          _sending
+                              ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : const Icon(
+                                Icons.send_rounded,
+                                color: Colors.white,
+                                size: 21,
+                              ),
                     ),
                   ),
                 ),
@@ -211,12 +243,27 @@ class _SessionHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text(s.patientName ?? 'Patient', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
-              MiniPill(label: s.highestUrgency.toUpperCase(), color: color, filled: s.highestUrgency == 'emergency'),
+              Expanded(
+                child: Text(
+                  s.patientName ?? 'Patient',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              MiniPill(
+                label: s.highestUrgency.toUpperCase(),
+                color: color,
+                filled: s.highestUrgency == 'emergency',
+              ),
             ],
           ),
           const SizedBox(height: 2),
-          Text(s.title, style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+          Text(
+            s.title,
+            style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+          ),
         ],
       ),
     );
@@ -242,11 +289,12 @@ class _MessageBubble extends StatelessWidget {
     // the patient sees: one continuous conversation rather than messages
     // hopping sides. Who spoke is carried by the label, not the alignment.
     final align = isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-    final bubbleColor = isUser
-        ? AppColors.primary.withValues(alpha: 0.12)
-        : isClinician
-        ? AppColors.primary.withValues(alpha: 0.22)
-        : scheme.surfaceContainerHighest;
+    final bubbleColor =
+        isUser
+            ? AppColors.primary.withValues(alpha: 0.12)
+            : isClinician
+            ? AppColors.primary.withValues(alpha: 0.22)
+            : scheme.surfaceContainerHighest;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -254,7 +302,8 @@ class _MessageBubble extends StatelessWidget {
         crossAxisAlignment: align,
         children: [
           Row(
-            mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment:
+                isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
             children: [
               Icon(
                 isUser
@@ -272,7 +321,12 @@ class _MessageBubble extends StatelessWidget {
                 isUser
                     ? 'Patient'
                     : isDietician
-                    ? 'Dietician'
+                    // Named where the server knows who wrote it: with one
+                    // dietician today and more later, "Dietician" alone stops
+                    // telling the doctor whose advice they are reading.
+                    ? (m.senderName == null
+                        ? 'Dietician'
+                        : '${m.senderName} · Dietician')
                     : isClinician
                     ? 'You / clinic'
                     : 'Assistant',
@@ -284,23 +338,61 @@ class _MessageBubble extends StatelessWidget {
               ),
               if (m.flaggedByPatient) ...[
                 const SizedBox(width: 6),
-                const Icon(Icons.flag_rounded, size: 14, color: AppColors.warning),
-                const Text(' reported', style: TextStyle(fontSize: 11, color: AppColors.warning)),
+                const Icon(
+                  Icons.flag_rounded,
+                  size: 14,
+                  color: AppColors.warning,
+                ),
+                const Text(
+                  ' reported',
+                  style: TextStyle(fontSize: 11, color: AppColors.warning),
+                ),
               ],
             ],
           ),
           const SizedBox(height: 3),
           Container(
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.82,
+            ),
             padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(color: bubbleColor, borderRadius: BorderRadius.circular(14)),
-            child: isUser || isClinician
-                ? Text(m.content, style: const TextStyle(fontSize: 14.5, height: 1.4))
-                : MarkdownText(
-                    data: m.content,
-                    selectable: true,
-                    style: TextStyle(fontSize: 14.5, height: 1.4, color: scheme.onSurface),
+            decoration: BoxDecoration(
+              color: bubbleColor,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // A photo is often the whole message. Rendering only the text
+                // left an empty bubble above the assistant's reply about a
+                // meal the doctor could not see.
+                if (m.imagePaths.isNotEmpty)
+                  ChatAttachmentThumbs(paths: m.imagePaths),
+                for (final note in m.voiceNotes)
+                  VoiceNotePlayer(note: note, onDark: false),
+                for (final doc in m.documents)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: ChatDocumentCard(doc: doc, onDark: false),
                   ),
+                if (m.content.trim().isNotEmpty)
+                  isUser || isClinician
+                      ? Text(
+                        m.content,
+                        style: const TextStyle(fontSize: 14.5, height: 1.4),
+                      )
+                      : MarkdownText(
+                        data: m.content,
+                        selectable: true,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          height: 1.4,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+              ],
+            ),
           ),
           // Audit chips describe an assistant answer — a human reply has no
           // triage verdict, grounding or latency to account for.
@@ -310,17 +402,35 @@ class _MessageBubble extends StatelessWidget {
               spacing: 6,
               runSpacing: 4,
               children: [
-                if (m.urgency != 'routine') _chip(m.urgency.toUpperCase(), AppColors.forUrgency(m.urgency)),
+                if (m.urgency != 'routine')
+                  _chip(
+                    m.urgency.toUpperCase(),
+                    AppColors.forUrgency(m.urgency),
+                  ),
                 if (m.ruleDriven) _chip('rule-driven', AppColors.primary),
                 if (m.isFallback) _chip('fallback', AppColors.warning),
-                if (m.citations.isNotEmpty) _chip('${m.citations.length} source${m.citations.length == 1 ? '' : 's'}', const Color(0xFF6B7280)),
-                if (m.latencyMs != null) _chip('${(m.latencyMs! / 1000).toStringAsFixed(1)}s', const Color(0xFF6B7280)),
+                if (m.citations.isNotEmpty)
+                  _chip(
+                    '${m.citations.length} source${m.citations.length == 1 ? '' : 's'}',
+                    const Color(0xFF6B7280),
+                  ),
+                if (m.latencyMs != null)
+                  _chip(
+                    '${(m.latencyMs! / 1000).toStringAsFixed(1)}s',
+                    const Color(0xFF6B7280),
+                  ),
               ],
             ),
             if (m.citations.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 3),
-                child: Text('Sources: ${m.citations.join(', ')}', style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                child: Text(
+                  'Sources: ${m.citations.join(', ')}',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ),
           ],
         ],
@@ -330,7 +440,17 @@ class _MessageBubble extends StatelessWidget {
 
   Widget _chip(String label, Color color) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-    decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(6)),
-    child: Text(label, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: color)),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(
+        fontSize: 10.5,
+        fontWeight: FontWeight.w700,
+        color: color,
+      ),
+    ),
   );
 }
