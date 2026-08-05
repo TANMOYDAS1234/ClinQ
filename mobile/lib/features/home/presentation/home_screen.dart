@@ -58,13 +58,27 @@ class HomeScreen extends ConsumerWidget {
                       110,
                     ),
                     children: [
-                      Text(
-                        user?.name ?? '',
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          height: 1.15,
-                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              user?.name ?? '',
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                height: 1.15,
+                              ),
+                            ),
+                          ),
+                          // The clinic's own assessment, shown only for the
+                          // bands that mean something. "Low Risk" beside
+                          // someone's name is a label doing no work.
+                          if (care.profile.showRisk) ...[
+                            const SizedBox(width: AppSpacing.sm),
+                            _RiskBadge(profile: care.profile),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -717,6 +731,41 @@ class _SectionTitle extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// The clinic's risk assessment, beside the patient's own name.
+///
+/// Shown at the clinic's request. Worth being clear about what it is: a band
+/// the doctor set on the record, not something the app worked out — which is
+/// why it reads as a label rather than a warning, and why "low" gets no badge
+/// at all.
+class _RiskBadge extends StatelessWidget {
+  const _RiskBadge({required this.profile});
+
+  final CareProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final critical = profile.riskBand == 'critical' || profile.riskBand == 'high';
+    final fg = critical ? AppColors.danger : AppColors.warning;
+    final bg = critical ? AppColors.dangerBg : AppColors.warningBg;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 14, color: fg),
+          const SizedBox(width: 5),
+          Text(
+            profile.riskLabel,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg),
+          ),
+        ],
+      ),
     );
   }
 }

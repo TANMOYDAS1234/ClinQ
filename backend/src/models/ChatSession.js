@@ -12,8 +12,14 @@ const chatSessionSchema = new mongoose.Schema(
     /// the dietician's, kept apart so diet coaching does not interleave with
     /// clinical questions and leave both harder to follow.
     ///
-    /// Defaults to `care` so every session that existed before the split keeps
-    /// behaving exactly as it did — there is nothing to migrate.
+    /// Defaults to `care` for new sessions — but a Mongoose default only
+    /// applies on write, so every session created before this field existed has
+    /// no `kind` at all. Querying `{ kind: 'care' }` therefore matched none of
+    /// them and made every patient's history vanish the moment it shipped.
+    ///
+    /// Read paths must ask for `{ kind: { $ne: 'nutrition' } }`, which catches
+    /// both the tagged and the untagged. Do not "tidy" that back to an equality
+    /// check unless every document has been backfilled.
     kind: { type: String, enum: ['care', 'nutrition'], default: 'care', index: true },
 
     // Rolling summary of older turns, so long conversations stay in context

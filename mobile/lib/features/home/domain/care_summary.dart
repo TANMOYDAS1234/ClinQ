@@ -44,6 +44,7 @@ class CareSummary {
 class CareProfile {
   const CareProfile({
     this.diabetesType,
+    this.riskBand,
     this.heightCm,
     this.weightKg,
     this.bmi,
@@ -52,6 +53,11 @@ class CareProfile {
   });
 
   final String? diabetesType;
+
+  /// The clinic's own assessment, shown beside the patient's name. Set by the
+  /// doctor, not computed here.
+  final String? riskBand;
+
   final int? heightCm;
   final num? weightKg;
   final num? bmi;
@@ -67,6 +73,17 @@ class CareProfile {
     _ => null,
   };
 
+  /// Only the bands worth flagging get a badge — "Low Risk" beside someone's
+  /// name is a label doing no work.
+  bool get showRisk => riskBand == 'high' || riskBand == 'critical' || riskBand == 'moderate';
+
+  String get riskLabel => switch (riskBand) {
+    'critical' => 'Critical Risk',
+    'high' => 'High Risk',
+    'moderate' => 'Moderate Risk',
+    _ => 'Low Risk',
+  };
+
   /// "Every 2 weeks" reads better than "14 days" for the rhythms a clinic uses.
   String? get reviewLabel => switch (reviewIntervalDays) {
     null => null,
@@ -80,6 +97,7 @@ class CareProfile {
 
   factory CareProfile.fromJson(Map<String, dynamic> j) => CareProfile(
     diabetesType: j['diabetesType']?.toString(),
+    riskBand: j['riskBand']?.toString(),
     heightCm: (j['heightCm'] as num?)?.toInt(),
     weightKg: j['weightKg'] as num?,
     bmi: j['bmi'] as num?,

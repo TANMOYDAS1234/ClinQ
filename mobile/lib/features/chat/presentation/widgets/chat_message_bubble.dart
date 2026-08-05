@@ -410,12 +410,21 @@ class ChatMessageBubble extends StatelessWidget {
                       label: l10n.chatFlagMessage,
                       onTap: onFlag!,
                     ),
-                  // The disclaimer used to repeat under every single reply,
-                  // which turned it into furniture nobody read and made the
-                  // assistant look like a lesser channel than the doctor. It
-                  // now sits once at the top of the thread, where it is read
-                  // as a statement about the conversation rather than a legal
-                  // line stapled to each message.
+                  const SizedBox(width: 2),
+                  // Under every reply, not once at the top: a patient scrolling
+                  // back to a month-old answer sees it there too, and the line
+                  // travels with the message when it is screenshotted or read
+                  // out of order.
+                  Flexible(
+                    child: Text(
+                      l10n.chatDisclaimer,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],

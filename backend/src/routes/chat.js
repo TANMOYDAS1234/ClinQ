@@ -141,7 +141,7 @@ router.get(
   validate({ query: pageParams }),
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = q(req);
-    const filter = { patient: req.user._id, kind: 'care', isArchived: false };
+    const filter = { patient: req.user._id, kind: { $ne: 'nutrition' }, isArchived: false };
     const [items, total] = await Promise.all([
       ChatSession.find(filter).sort({ lastMessageAt: -1 }).skip(skip).limit(limit).lean(),
       ChatSession.countDocuments(filter),
@@ -225,7 +225,7 @@ router.get(
   validate({ query: pageParams }),
   audit('read', 'ChatMessage'),
   asyncHandler(async (req, res) => {
-    const session = await ChatSession.findOne({ patient: req.patientId, kind: 'care', isArchived: false })
+    const session = await ChatSession.findOne({ patient: req.patientId, kind: { $ne: 'nutrition' }, isArchived: false })
       .sort({ lastMessageAt: -1 })
       .lean();
 
@@ -337,7 +337,7 @@ router.post(
   }),
   audit('create', 'ChatMessage'),
   asyncHandler(async (req, res) => {
-    let session = await ChatSession.findOne({ patient: req.patientId, kind: 'care', isArchived: false }).sort({
+    let session = await ChatSession.findOne({ patient: req.patientId, kind: { $ne: 'nutrition' }, isArchived: false }).sort({
       lastMessageAt: -1,
     });
 

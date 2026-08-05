@@ -126,6 +126,10 @@ async function careSummary(patientId, profile, latestHba1c) {
   return {
     profile: {
       diabetesType: profile?.diabetesType ?? null,
+      // The clinic's own risk assessment, shown to the patient on their home
+      // screen at the clinic's request. Worth noting this is a number the
+      // doctor set, not a judgement the app made.
+      riskBand: profile?.riskBand ?? null,
       heightCm,
       weightKg,
       bmi,

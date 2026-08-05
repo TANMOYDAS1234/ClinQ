@@ -146,7 +146,7 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 0,
+        titleSpacing: AppSpacing.md,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
