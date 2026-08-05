@@ -13,6 +13,7 @@ import 'citation_chips.dart';
 import 'emergency_card.dart';
 import 'urgent_card.dart';
 import 'voice_note_player.dart';
+import '../../../../shared/widgets/user_avatar.dart';
 
 /// Renders one turn. Assistant messages whose `urgency` is `emergency` or
 /// `urgent` bypass the normal bubble entirely and render inside the
@@ -222,6 +223,7 @@ class ChatMessageBubble extends StatelessWidget {
               isDietician: message.isDietician,
               isUser: isUser,
               name: message.senderName,
+              avatarUrl: message.senderAvatarUrl,
               fallback: l10n.chatFromClinic,
             ),
             if (message.pinned)
@@ -448,6 +450,7 @@ class _SenderRow extends StatelessWidget {
     required this.isDietician,
     required this.isUser,
     required this.name,
+    required this.avatarUrl,
     required this.fallback,
   });
 
@@ -456,6 +459,7 @@ class _SenderRow extends StatelessWidget {
   final bool isDietician;
   final bool isUser;
   final String? name;
+  final String? avatarUrl;
   final String fallback;
 
   @override
@@ -491,17 +495,36 @@ class _SenderRow extends StatelessWidget {
       _ => (Icons.auto_awesome_rounded, 'Dr. Dey\'s Clinic · assistant'),
     };
 
+    // A real person gets their own face; the assistant gets the clinic's mark.
+    // A role icon standing in for a doctor who has a photo on file is a worse
+    // likeness than the photo, and the generic sparkle read as decoration.
+    final isPerson = isClinician || isDietician;
+
     return Padding(
       padding: const EdgeInsets.only(left: 2, bottom: 5),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 24,
-            height: 24,
-            decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
-            child: Icon(icon, size: 14, color: AppColors.primary),
-          ),
+          if (isPerson)
+            UserAvatar(name: name ?? '', avatarUrl: avatarUrl, accent: AppColors.primary, size: 24)
+          else if (isUser)
+            Container(
+              width: 24,
+              height: 24,
+              decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
+              child: Icon(icon, size: 14, color: AppColors.primary),
+            )
+          else
+            Container(
+              width: 24,
+              height: 24,
+              padding: const EdgeInsets.all(3),
+              decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
+              child: Image.asset(
+                'assets/brand/logo_emblem.png',
+                errorBuilder: (_, _, _) => Icon(icon, size: 14, color: AppColors.primary),
+              ),
+            ),
           const SizedBox(width: 7),
           Flexible(
             child: Text(

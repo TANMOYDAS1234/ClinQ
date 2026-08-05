@@ -368,7 +368,7 @@ router.get(
     const messages = await ChatMessage.find({ session: session._id })
       .sort({ seq: 1 })
       .limit(300)
-      .populate('sender', 'name')
+      .populate('sender', 'name avatarAssetId')
       .lean();
 
     res.json({
@@ -378,6 +378,9 @@ router.get(
         content: m.content ?? '',
         attachments: (m.attachments ?? []).map(String),
         senderName: m.sender?.name ?? null,
+        senderAvatarUrl: m.sender?.avatarAssetId
+          ? `/api/v1/uploads/${m.sender.avatarAssetId}/raw`
+          : null,
         createdAt: m.createdAt,
       })),
     });

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
@@ -21,6 +22,10 @@ class LabTestsScreen extends ConsumerStatefulWidget {
   ConsumerState<LabTestsScreen> createState() => _LabTestsScreenState();
 }
 
+/// Where a report came from. A PDF is the common case — labs email them — and
+/// it was the one route the screen did not offer.
+enum _Source { document, camera, gallery }
+
 class _LabTestsScreenState extends ConsumerState<LabTestsScreen> {
   final _picker = ImagePicker();
   String? _uploading;
@@ -29,11 +34,38 @@ class _LabTestsScreenState extends ConsumerState<LabTestsScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final source = await _pickSource();
     if (source == null) return;
-    final x = await _picker.pickImage(source: source, maxWidth: 1600, imageQuality: 85);
-    if (x == null) return;
+
+    // Path and display name, whichever way it was chosen.
+    String path;
+    String filename;
+
+    if (source == _Source.document) {
+      // Most lab reports arrive as a PDF by email or WhatsApp. Photographing a
+      // phone screen to upload one was the only route before this, and it lost
+      // every number on the page.
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
+        withData: false,
+      );
+      final file = result?.files.singleOrNull;
+      if (file?.path == null) return;
+      path = file!.path!;
+      filename = file.name;
+    } else {
+      final x = await _picker.pickImage(
+        source: source == _Source.camera ? ImageSource.camera : ImageSource.gallery,
+        maxWidth: 1600,
+        imageQuality: 85,
+      );
+      if (x == null) return;
+      path = x.path;
+      filename = x.name;
+    }
+
     setState(() => _uploading = testName);
     try {
-      final asset = await ref.read(uploadRepositoryProvider).uploadImage(path: x.path, filename: x.name);
+      final asset = await ref.read(uploadRepositoryProvider).uploadImage(path: path, filename: filename);
       await ref.read(labTestsRepositoryProvider).upload(testName: testName, photo: asset.id);
       ref.invalidate(labTestsProvider);
       messenger.showSnackBar(SnackBar(content: Text('$testName report uploaded')));
@@ -44,15 +76,30 @@ class _LabTestsScreenState extends ConsumerState<LabTestsScreen> {
     }
   }
 
-  Future<ImageSource?> _pickSource() {
-    return showModalBottomSheet<ImageSource>(
+  Future<_Source?> _pickSource() {
+    return showModalBottomSheet<_Source>(
       context: context,
+      showDragHandle: true,
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(leading: const Icon(Icons.photo_camera_outlined), title: const Text('Camera'), onTap: () => Navigator.pop(ctx, ImageSource.camera)),
-            ListTile(leading: const Icon(Icons.photo_library_outlined), title: const Text('Gallery'), onTap: () => Navigator.pop(ctx, ImageSource.gallery)),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: const Text('PDF or document'),
+              subtitle: const Text('The report your lab emailed you'),
+              onTap: () => Navigator.pop(ctx, _Source.document),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Camera'),
+              onTap: () => Navigator.pop(ctx, _Source.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Gallery'),
+              onTap: () => Navigator.pop(ctx, _Source.gallery),
+            ),
           ],
         ),
       ),

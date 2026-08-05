@@ -167,7 +167,7 @@ router.get(
         .sort({ seq: 1 })
         .skip(skip)
         .limit(limit)
-        .populate('sender', 'name')
+        .populate('sender', 'name avatarAssetId')
         .populate('replyTo', 'content role')
         .populate('attachments', 'kind mimeType transcript originalName sizeBytes')
         .lean(),
@@ -270,7 +270,7 @@ router.get(
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate('sender', 'name')
+      .populate('sender', 'name avatarAssetId')
       .populate('replyTo', 'content role')
         .populate('attachments', 'kind mimeType transcript originalName sizeBytes')
       .lean();
@@ -411,7 +411,7 @@ router.get(
     })
       .sort({ seq: 1 })
       .limit(300)
-      .populate('sender', 'name')
+      .populate('sender', 'name avatarAssetId')
       .populate('attachments', 'kind mimeType transcript originalName sizeBytes')
       .lean();
 
@@ -679,6 +679,12 @@ function serialiseMessage(m) {
     role: m.role,
     // Present on clinician turns once populated; null everywhere else.
     senderName: m.sender && typeof m.sender === 'object' ? (m.sender.name ?? null) : null,
+    // The clinician's or dietician's own photo, so the patient sees the person
+    // who wrote to them rather than a role icon standing in for them.
+    senderAvatarUrl:
+      m.sender && typeof m.sender === 'object' && m.sender.avatarAssetId
+        ? `/api/v1/uploads/${m.sender.avatarAssetId}/raw`
+        : null,
     pinned: Boolean(m.pinnedAt),
     replyToId: m.replyTo
       ? (m.replyTo._id ? String(m.replyTo._id) : (m.replyTo.toString?.() ?? String(m.replyTo)))

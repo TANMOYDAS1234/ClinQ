@@ -61,6 +61,7 @@ class ChatMessage {
     this.citations,
     this.triage,
     this.senderName,
+    this.senderAvatarUrl,
     this.pinned = false,
     this.replyToId,
     this.replyPreviewContent,
@@ -109,6 +110,10 @@ class ChatMessage {
   /// Who wrote a `clinician` turn, e.g. "Dr. Amit Kumar Dey". Null otherwise.
   final String? senderName;
 
+  /// The clinician's or dietician's own photo, so a patient sees the person who
+  /// wrote to them rather than a role icon standing in for them.
+  final String? senderAvatarUrl;
+
   /// routine < advice < urgent < emergency.
   final String urgency;
   final bool? isFallback;
@@ -145,6 +150,7 @@ class ChatMessage {
       isFallback: json['isFallback'] as bool?,
       createdAt: json['createdAt'] == null ? null : DateTime.tryParse(json['createdAt'].toString()),
       senderName: json['senderName']?.toString(),
+      senderAvatarUrl: json['senderAvatarUrl']?.toString(),
       pinned: json['pinned'] == true,
       replyToId: json['replyToId']?.toString(),
       replyPreviewContent: json['replyPreview'] is Map
@@ -230,6 +236,7 @@ class ChatMessage {
     citations: citations,
     triage: triage,
     senderName: senderName,
+    senderAvatarUrl: senderAvatarUrl,
     pinned: pinned,
     replyToId: replyToId,
     replyPreviewContent: replyPreviewContent,
@@ -253,6 +260,7 @@ class ChatMessage {
     citations: citations,
     triage: triage,
     senderName: senderName,
+    senderAvatarUrl: senderAvatarUrl,
     pinned: value,
     replyToId: replyToId,
     replyPreviewContent: replyPreviewContent,
@@ -275,6 +283,7 @@ class ChatMessage {
       citations: citations ?? this.citations,
       triage: triage ?? this.triage,
       senderName: senderName,
+      senderAvatarUrl: senderAvatarUrl,
       attachmentPaths: attachmentPaths,
     voiceNotes: voiceNotes,
     documents: documents,
