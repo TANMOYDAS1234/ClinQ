@@ -557,7 +557,11 @@ class _Medicines extends StatelessWidget {
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
       ),
       clipBehavior: Clip.antiAlias,
+      // stretch, not the default centre: without it each row shrinks to the
+      // width of its own text and floats in the middle, so a list of medicines
+      // has a different left edge on every line and nothing to read down.
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (var i = 0; i < items.length; i++) ...[
             if (i > 0) Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
