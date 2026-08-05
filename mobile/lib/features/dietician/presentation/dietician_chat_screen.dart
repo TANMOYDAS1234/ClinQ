@@ -19,13 +19,18 @@ import 'dietician_providers.dart';
 /// replies land in the same thread the patient reads (as the doctor's do), so
 /// there is a single food + care conversation, never two half-conversations.
 class DieticianChatScreen extends ConsumerStatefulWidget {
-  const DieticianChatScreen({super.key, required this.patientId, this.patientName});
+  const DieticianChatScreen({
+    super.key,
+    required this.patientId,
+    this.patientName,
+  });
 
   final String patientId;
   final String? patientName;
 
   @override
-  ConsumerState<DieticianChatScreen> createState() => _DieticianChatScreenState();
+  ConsumerState<DieticianChatScreen> createState() =>
+      _DieticianChatScreenState();
 }
 
 class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
@@ -68,7 +73,9 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
     setState(() => _sending = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(dieticianRepositoryProvider).sendMessage(widget.patientId, content: text);
+      await ref
+          .read(dieticianRepositoryProvider)
+          .sendMessage(widget.patientId, content: text);
       _controller.clear();
       ref.invalidate(dietThreadProvider(widget.patientId));
     } on ApiException catch (e) {
@@ -82,11 +89,13 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
   Future<void> _sendAttachment(String assetId) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(dieticianRepositoryProvider).sendMessage(
-        widget.patientId,
-        content: _controller.text.trim(),
-        attachments: [assetId],
-      );
+      await ref
+          .read(dieticianRepositoryProvider)
+          .sendMessage(
+            widget.patientId,
+            content: _controller.text.trim(),
+            attachments: [assetId],
+          );
       _controller.clear();
       ref.invalidate(dietThreadProvider(widget.patientId));
     } on ApiException catch (e) {
@@ -98,7 +107,8 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final async = ref.watch(dietThreadProvider(widget.patientId));
-    final overview = ref.watch(dietOverviewProvider(widget.patientId)).valueOrNull;
+    final overview =
+        ref.watch(dietOverviewProvider(widget.patientId)).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(
@@ -120,11 +130,17 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
                     overview?.name ?? widget.patientName ?? 'Patient',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   Text(
                     'Nutrition chat',
-                    style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -135,7 +151,8 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
           if (overview?.phone.isNotEmpty == true)
             IconButton(
               tooltip: 'Call patient',
-              onPressed: () => launchUrl(Uri(scheme: 'tel', path: overview!.phone)),
+              onPressed:
+                  () => launchUrl(Uri(scheme: 'tel', path: overview!.phone)),
               icon: const Icon(Icons.call_rounded),
             ),
           const SizedBox(width: 4),
@@ -145,44 +162,71 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
       // per panel would read as three products showing three different threads.
       body: ChatBackground(
         child: Column(
-        children: [
-          Expanded(
-            child: async.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, _) => Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Could not load the conversation'),
-                    const SizedBox(height: AppSpacing.sm),
-                    OutlinedButton(onPressed: () => ref.invalidate(dietThreadProvider(widget.patientId)), child: const Text('Retry')),
-                  ],
-                ),
+          children: [
+            Expanded(
+              // Floats over the thread rather than taking a row of its own — in
+              // the column it covered the newest message instead of hovering
+              // above it. See the patient's side of this thread.
+              child: Stack(
+                children: [
+                  async.when(
+                    loading:
+                        () => const Center(child: CircularProgressIndicator()),
+                    error:
+                        (_, _) => Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('Could not load the conversation'),
+                              const SizedBox(height: AppSpacing.sm),
+                              OutlinedButton(
+                                onPressed:
+                                    () => ref.invalidate(
+                                      dietThreadProvider(widget.patientId),
+                                    ),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        ),
+                    data: (messages) {
+                      final shown =
+                          messages.where((m) => m.role != 'system').toList();
+                      if (shown.isEmpty) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppSpacing.xl),
+                            child: Text(
+                              'Say hello and share your first food guidance.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: scheme.onSurfaceVariant),
+                            ),
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        controller: _scroll,
+                        reverse: true,
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md,
+                          AppSpacing.md,
+                          AppSpacing.md,
+                          AppSpacing.md + 48,
+                        ),
+                        itemCount: shown.length,
+                        itemBuilder:
+                            (context, i) =>
+                                _Bubble(message: shown[shown.length - 1 - i]),
+                      );
+                    },
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: JumpToLatest(visible: _showJump, onTap: _toLatest),
+                  ),
+                ],
               ),
-              data: (messages) {
-                final shown = messages.where((m) => m.role != 'system').toList();
-                if (shown.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.xl),
-                      child: Text('Say hello and share your first food guidance.',
-                          textAlign: TextAlign.center, style: TextStyle(color: scheme.onSurfaceVariant)),
-                    ),
-                  );
-                }
-                return ListView.builder(
-                  controller: _scroll,
-                  reverse: true,
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  itemCount: shown.length,
-                  itemBuilder: (context, i) => _Bubble(message: shown[shown.length - 1 - i]),
-                );
-              },
-            ),
-          ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: JumpToLatest(visible: _showJump, onTap: _toLatest),
             ),
             CareComposer(
               controller: _controller,
@@ -215,7 +259,10 @@ class _Bubble extends StatelessWidget {
       // No label on the patient's own turns: in a thread with one patient
       // in it, naming them on every message is noise.
       'user' => (Icons.person_rounded, ''),
-      'clinician' => (Icons.medical_information_rounded, message.senderName ?? 'Doctor'),
+      'clinician' => (
+        Icons.medical_information_rounded,
+        message.senderName ?? 'Doctor',
+      ),
       'assistant' => (Icons.smart_toy_rounded, 'AI Assistant'),
       _ => (Icons.restaurant_rounded, message.senderName ?? 'Dietician'),
     };
@@ -224,9 +271,12 @@ class _Bubble extends StatelessWidget {
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.md),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.82,
+        ),
         child: Column(
-          crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment:
+              mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             if (mine)
               Padding(
@@ -266,9 +316,10 @@ class _Bubble extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w700,
-                          color: message.role == 'clinician'
-                              ? AppColors.primary
-                              : scheme.onSurfaceVariant,
+                          color:
+                              message.role == 'clinician'
+                                  ? AppColors.primary
+                                  : scheme.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -285,9 +336,12 @@ class _Bubble extends StatelessWidget {
                   bottomLeft: Radius.circular(mine ? 20 : 6),
                   bottomRight: Radius.circular(mine ? 6 : 20),
                 ),
-                border: mine
-                    ? null
-                    : Border.all(color: scheme.outlineVariant.withValues(alpha: 0.20)),
+                border:
+                    mine
+                        ? null
+                        : Border.all(
+                          color: scheme.outlineVariant.withValues(alpha: 0.20),
+                        ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,7 +363,8 @@ class _Bubble extends StatelessWidget {
                         Icon(
                           Icons.attach_file_rounded,
                           size: 15,
-                          color: mine ? Colors.white70 : scheme.onSurfaceVariant,
+                          color:
+                              mine ? Colors.white70 : scheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -317,7 +372,8 @@ class _Bubble extends StatelessWidget {
                           '${message.attachments.length == 1 ? '' : 's'}',
                           style: TextStyle(
                             fontSize: 12.5,
-                            color: mine ? Colors.white70 : scheme.onSurfaceVariant,
+                            color:
+                                mine ? Colors.white70 : scheme.onSurfaceVariant,
                           ),
                         ),
                       ],

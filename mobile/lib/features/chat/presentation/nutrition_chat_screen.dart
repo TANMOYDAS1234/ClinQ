@@ -18,17 +18,23 @@ import 'widgets/chat_message_bubble.dart';
 /// do not interleave — but the server runs the *same* triage on anything sent
 /// here. Which inbox a patient happens to pick must never decide whether a
 /// worrying symptom reaches the clinic.
-final nutritionThreadProvider = FutureProvider.autoDispose<List<ChatMessage>>((ref) async {
+final nutritionThreadProvider = FutureProvider.autoDispose<List<ChatMessage>>((
+  ref,
+) async {
   final json = await ref.read(apiClientProvider).getJson('/chat/nutrition');
   final items = (json['items'] as List?) ?? const [];
-  return items.whereType<Map<String, dynamic>>().map(ChatMessage.fromJson).toList();
+  return items
+      .whereType<Map<String, dynamic>>()
+      .map(ChatMessage.fromJson)
+      .toList();
 });
 
 class NutritionChatScreen extends ConsumerStatefulWidget {
   const NutritionChatScreen({super.key});
 
   @override
-  ConsumerState<NutritionChatScreen> createState() => _NutritionChatScreenState();
+  ConsumerState<NutritionChatScreen> createState() =>
+      _NutritionChatScreenState();
 }
 
 class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
@@ -70,13 +76,15 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
   Future<void> _sendAttachment(String assetId) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(apiClientProvider).postJson(
-        '/chat/nutrition',
-        body: {
-          'content': _controller.text.trim(),
-          'attachments': [assetId],
-        },
-      );
+      await ref
+          .read(apiClientProvider)
+          .postJson(
+            '/chat/nutrition',
+            body: {
+              'content': _controller.text.trim(),
+              'attachments': [assetId],
+            },
+          );
       _controller.clear();
       ref.invalidate(nutritionThreadProvider);
     } on ApiException catch (e) {
@@ -91,10 +99,9 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _sending = true);
     try {
-      final res = await ref.read(apiClientProvider).postJson(
-        '/chat/nutrition',
-        body: {'content': text},
-      );
+      final res = await ref
+          .read(apiClientProvider)
+          .postJson('/chat/nutrition', body: {'content': text});
       _controller.clear();
       // Refetch rather than append: the server may have added a plan-bound
       // assistant turn after the patient's, and re-reading is the only way to
@@ -163,65 +170,92 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
         child: Column(
           children: [
             Expanded(
-              child: async.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, _) => Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Could not load the conversation'),
-                      const SizedBox(height: AppSpacing.sm),
-                      OutlinedButton(
-                        onPressed: () => ref.invalidate(nutritionThreadProvider),
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                ),
-                data: (messages) {
-                  final shown = messages.where((m) => m.role != 'system').toList();
-                  if (shown.isEmpty) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.xl),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.restaurant_rounded,
-                              size: 46,
-                              color: scheme.outlineVariant,
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            const Text(
-                              'No messages yet',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Ask your dietician about food, portions or your plan.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
-                            ),
-                          ],
+              // The button floats over the thread instead of sitting in the
+              // column. Given a row of its own it both stole a strip of the
+              // list and parked itself on the newest message; the list's extra
+              // bottom padding keeps the bubbles clear of where it hovers.
+              child: Stack(
+                children: [
+                  async.when(
+                    loading:
+                        () => const Center(child: CircularProgressIndicator()),
+                    error:
+                        (_, _) => Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('Could not load the conversation'),
+                              const SizedBox(height: AppSpacing.sm),
+                              OutlinedButton(
+                                onPressed:
+                                    () =>
+                                        ref.invalidate(nutritionThreadProvider),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  }
-                  return ListView.builder(
-                    controller: _scroll,
-                    reverse: true,
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    itemCount: shown.length,
-                    itemBuilder: (context, i) =>
-                        ChatMessageBubble(message: shown[shown.length - 1 - i]),
-                  );
-                },
+                    data: (messages) {
+                      final shown =
+                          messages.where((m) => m.role != 'system').toList();
+                      if (shown.isEmpty) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppSpacing.xl),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.restaurant_rounded,
+                                  size: 46,
+                                  color: scheme.outlineVariant,
+                                ),
+                                const SizedBox(height: AppSpacing.md),
+                                const Text(
+                                  'No messages yet',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Ask your dietician about food, portions or your plan.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        controller: _scroll,
+                        reverse: true,
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md,
+                          AppSpacing.md,
+                          AppSpacing.md,
+                          AppSpacing.md + 48,
+                        ),
+                        itemCount: shown.length,
+                        itemBuilder:
+                            (context, i) => ChatMessageBubble(
+                              message: shown[shown.length - 1 - i],
+                            ),
+                      );
+                    },
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: JumpToLatest(visible: _showJump, onTap: _toLatest),
+                  ),
+                ],
               ),
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: JumpToLatest(visible: _showJump, onTap: _toLatest),
             ),
             CareComposer(
               controller: _controller,

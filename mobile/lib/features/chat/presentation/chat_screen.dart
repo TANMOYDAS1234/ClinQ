@@ -31,7 +31,8 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObserver {
+class _ChatScreenState extends ConsumerState<ChatScreen>
+    with WidgetsBindingObserver {
   // A positioned list (not a plain ListView) so a tap on the pinned banner or a
   // reply quote can jump to that exact message even when it is off-screen.
   final ItemScrollController _itemScrollController = ItemScrollController();
@@ -93,7 +94,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   void _onScroll() {
     final positions = _itemPositions.itemPositions.value;
     if (positions.isEmpty || _itemCount == 0) return;
-    final lastVisible = positions.map((p) => p.index).reduce((a, b) => a > b ? a : b);
+    final lastVisible = positions
+        .map((p) => p.index)
+        .reduce((a, b) => a > b ? a : b);
     final away = lastVisible < _itemCount - 2;
     if (away != _showJumpToLatest) setState(() => _showJumpToLatest = away);
   }
@@ -144,7 +147,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   /// emergency record" explains itself; "could not hide" does not.
   Future<void> _hide(ChatMessage message) async {
     final messenger = ScaffoldMessenger.of(context);
-    final error = await ref.read(chatControllerProvider.notifier).hideMessage(message.id);
+    final error = await ref
+        .read(chatControllerProvider.notifier)
+        .hideMessage(message.id);
     if (error != null) messenger.showSnackBar(SnackBar(content: Text(error)));
   }
 
@@ -156,10 +161,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   Future<void> _callClinic() async {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context);
-    final phone = ref.read(clinicPhoneProvider).valueOrNull ?? AppConfig.clinicPhoneNumber;
+    final phone =
+        ref.read(clinicPhoneProvider).valueOrNull ??
+        AppConfig.clinicPhoneNumber;
     final uri = Uri(scheme: 'tel', path: phone);
     if (!await launchUrl(uri)) {
-      messenger.showSnackBar(SnackBar(content: Text(l10n.commonSomethingWentWrong)));
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.commonSomethingWentWrong)),
+      );
     }
   }
 
@@ -175,11 +184,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     final l10n = AppLocalizations.of(context);
 
     try {
-      final asset = await ref.read(uploadRepositoryProvider).uploadImage(
-        path: path,
-        filename: path.split(RegExp(r'[/\\]')).last,
-        kind: UploadKind.voiceNote,
-      );
+      final asset = await ref
+          .read(uploadRepositoryProvider)
+          .uploadImage(
+            path: path,
+            filename: path.split(RegExp(r'[/\\]')).last,
+            kind: UploadKind.voiceNote,
+          );
 
       // Send the recording even when transcription came back empty. Blocking on
       // an empty transcript is exactly what stopped voice notes from sending at
@@ -197,12 +208,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     final replyTo = _replyingTo;
     if (replyTo != null) setState(() => _replyingTo = null);
 
-    await ref.read(chatControllerProvider.notifier).send(
-      text: text,
-      language: _replyLanguage,
-      attachments: attachments,
-      replyToId: replyTo?.id,
-    );
+    await ref
+        .read(chatControllerProvider.notifier)
+        .send(
+          text: text,
+          language: _replyLanguage,
+          attachments: attachments,
+          replyToId: replyTo?.id,
+        );
     _scrollToBottom();
   }
 
@@ -219,10 +232,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       final lengthChanged = previous?.messages.length != next.messages.length;
       // Also follow a streaming reply, whose length is fixed but whose last
       // message's content grows token by token.
-      final contentGrew = previous != null &&
+      final contentGrew =
+          previous != null &&
           previous.messages.isNotEmpty &&
           next.messages.isNotEmpty &&
-          previous.messages.last.content.length != next.messages.last.content.length;
+          previous.messages.last.content.length !=
+              next.messages.last.content.length;
       if (lengthChanged || contentGrew) _scrollToBottom();
       // Let the error banner clear itself after a few seconds instead of
       // sitting there until the next message.
@@ -238,11 +253,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     // an empty bubble for a moment, so hold it back until it has text.
     final messages = chatState.messages;
     final pinnedMsgs = messages.where((m) => m.pinned).toList();
-    final pinnedShown = pinnedMsgs.isEmpty
-        ? null
-        : pinnedMsgs[_pinnedIndex.clamp(0, pinnedMsgs.length - 1)];
+    final pinnedShown =
+        pinnedMsgs.isEmpty
+            ? null
+            : pinnedMsgs[_pinnedIndex.clamp(0, pinnedMsgs.length - 1)];
     final awaitingFirstToken =
-        messages.isNotEmpty && !messages.last.isUser && messages.last.content.isEmpty;
+        messages.isNotEmpty &&
+        !messages.last.isUser &&
+        messages.last.content.isEmpty;
 
     final entries = _withDateSeparators(
       awaitingFirstToken ? messages.sublist(0, messages.length - 1) : messages,
@@ -252,7 +270,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     // actual text — so the two never swap to a blank gap in between. Once the
     // reply starts streaming it would be a duplicate, so it goes.
     final showGenerating =
-        chatState.isSending && (messages.isEmpty || messages.last.isUser || awaitingFirstToken);
+        chatState.isSending &&
+        (messages.isEmpty || messages.last.isUser || awaitingFirstToken);
 
     // Kept so a banner/quote tap can resolve a message id to its list index.
     _entries = entries;
@@ -263,7 +282,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         centerTitle: true,
         title: Text(
           l10n.chatTitle,
-          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         // No "new chat" action: the patient has one continuous conversation
         // with the assistant, which the doctor reviews as a single thread.
@@ -288,162 +310,207 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       body: ChatBackground(
         child: _KeyboardInset(
           child: Column(
-          children: [
-            if (chatState.error != null)
-              Container(
-                width: double.infinity,
-                color: AppColors.dangerBg,
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                child: Text(
-                  _errorMessage(context, chatState.error!.code),
-                  style: const TextStyle(color: AppColors.danger),
+            children: [
+              if (chatState.error != null)
+                Container(
+                  width: double.infinity,
+                  color: AppColors.dangerBg,
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  child: Text(
+                    _errorMessage(context, chatState.error!.code),
+                    style: const TextStyle(color: AppColors.danger),
+                  ),
                 ),
-              ),
-            // Pinned message pinned to the top of the thread, WhatsApp-style.
-            if (pinnedShown != null)
-              _PinnedBanner(
-                message: pinnedShown,
-                count: pinnedMsgs.length,
-                // Tap scrolls to the pinned message; with several pinned, it
-                // also advances to the next so repeated taps cycle through them.
-                onTap: () {
-                  _scrollToMessage(pinnedShown.id);
-                  if (pinnedMsgs.length > 1) {
-                    setState(() => _pinnedIndex = (_pinnedIndex + 1) % pinnedMsgs.length);
-                  }
-                },
-                onUnpin: () {
-                  ref.read(chatControllerProvider.notifier).setPinned(pinnedShown.id, false);
-                  setState(() => _pinnedIndex = 0);
-                },
-              ),
-            Expanded(
-              child: Stack(
-                children: [
-                  chatState.isLoadingHistory
-                  ? const LoadingView()
-                  : chatState.messages.isEmpty
-                  ? ChatEmptyState(onSuggestionTap: _send)
-                  : ScrollablePositionedList.builder(
-                      itemScrollController: _itemScrollController,
-                      itemPositionsListener: _itemPositions,
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      itemCount: entries.length + (showGenerating ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (index == entries.length) return const GeneratingBubble();
-
-                        final entry = entries[index];
-                        if (entry.separatorLabel != null) {
-                          return _DateSeparator(label: entry.separatorLabel!);
-                        }
-
-                        final message = entry.message!;
-                        // Each bubble is its own repaint layer, so a keyboard
-                        // resize or a new message repaints one row, not the
-                        // whole transcript.
-                        return RepaintBoundary(
-                          child: ChatMessageBubble(
-                            message: message,
-                            // Tapping a source pill asks the assistant about
-                            // that topic — the citation becomes a question.
-                            onCitationTap: (c) => _send(c.title),
-                            repliedTo: message.replyToId == null
-                                ? null
-                                : chatState.messages
-                                      .where((m) => m.id == message.replyToId)
-                                      .firstOrNull,
-                            // Tapping the reply quote jumps to the message it
-                            // answers, when that message is still in the thread.
-                            onQuoteTap: message.replyToId == null
-                                ? null
-                                : () => _scrollToMessage(message.replyToId!),
-                            onReply: () => setState(() => _replyingTo = message),
-                            onTogglePin: () => ref
-                                .read(chatControllerProvider.notifier)
-                                .setPinned(message.id, !message.pinned),
-                            onHide: () => _hide(message),
-                            onRetry: message.isUser
-                                ? null
-                                : () => ref
-                                    .read(chatControllerProvider.notifier)
-                                    .retryLast(language: language),
-                            onFlag: message.isUser
-                                ? null
-                                : () async {
-                                    final ok = await ref
-                                        .read(chatControllerProvider.notifier)
-                                        .flagMessage(message.id);
-                                    if (ok && context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(SnackBar(content: Text(l10n.chatFlagSent)));
-                                    }
-                                  },
-                          ),
-                        );
-                      },
-                    ),
-                  if (_showJumpToLatest)
-                    Positioned(
-                      right: AppSpacing.md,
-                      bottom: AppSpacing.md,
-                      child: _JumpToLatestButton(
-                        label: l10n.chatScrollToLatest,
-                        onTap: _scrollToBottom,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            // Shows what is being answered while the reply is written, so the
-            // quote is never a surprise after sending.
-            if (_replyingTo != null)
-              Container(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.md, 8, AppSpacing.sm, 8),
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: Row(
+              // Pinned message pinned to the top of the thread, WhatsApp-style.
+              if (pinnedShown != null)
+                _PinnedBanner(
+                  message: pinnedShown,
+                  count: pinnedMsgs.length,
+                  // Tap scrolls to the pinned message; with several pinned, it
+                  // also advances to the next so repeated taps cycle through them.
+                  onTap: () {
+                    _scrollToMessage(pinnedShown.id);
+                    if (pinnedMsgs.length > 1) {
+                      setState(
+                        () =>
+                            _pinnedIndex =
+                                (_pinnedIndex + 1) % pinnedMsgs.length,
+                      );
+                    }
+                  },
+                  onUnpin: () {
+                    ref
+                        .read(chatControllerProvider.notifier)
+                        .setPinned(pinnedShown.id, false);
+                    setState(() => _pinnedIndex = 0);
+                  },
+                ),
+              Expanded(
+                child: Stack(
                   children: [
-                    Container(width: 3, height: 34, color: AppColors.primary),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            l10n.chatReplyingTo,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
+                    chatState.isLoadingHistory
+                        ? const LoadingView()
+                        : chatState.messages.isEmpty
+                        ? ChatEmptyState(onSuggestionTap: _send)
+                        : ScrollablePositionedList.builder(
+                          itemScrollController: _itemScrollController,
+                          itemPositionsListener: _itemPositions,
+                          // Bottom clearance for the floating jump-to-latest
+                          // button, which would otherwise sit on the message it is
+                          // offering to scroll you to.
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.md,
+                            AppSpacing.md,
+                            AppSpacing.md,
+                            AppSpacing.md + 48,
                           ),
-                          Text(
-                            _replyingTo!.content,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                          itemCount: entries.length + (showGenerating ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == entries.length)
+                              return const GeneratingBubble();
+
+                            final entry = entries[index];
+                            if (entry.separatorLabel != null) {
+                              return _DateSeparator(
+                                label: entry.separatorLabel!,
+                              );
+                            }
+
+                            final message = entry.message!;
+                            // Each bubble is its own repaint layer, so a keyboard
+                            // resize or a new message repaints one row, not the
+                            // whole transcript.
+                            return RepaintBoundary(
+                              child: ChatMessageBubble(
+                                message: message,
+                                // Tapping a source pill asks the assistant about
+                                // that topic — the citation becomes a question.
+                                onCitationTap: (c) => _send(c.title),
+                                repliedTo:
+                                    message.replyToId == null
+                                        ? null
+                                        : chatState.messages
+                                            .where(
+                                              (m) => m.id == message.replyToId,
+                                            )
+                                            .firstOrNull,
+                                // Tapping the reply quote jumps to the message it
+                                // answers, when that message is still in the thread.
+                                onQuoteTap:
+                                    message.replyToId == null
+                                        ? null
+                                        : () => _scrollToMessage(
+                                          message.replyToId!,
+                                        ),
+                                onReply:
+                                    () => setState(() => _replyingTo = message),
+                                onTogglePin:
+                                    () => ref
+                                        .read(chatControllerProvider.notifier)
+                                        .setPinned(message.id, !message.pinned),
+                                onHide: () => _hide(message),
+                                onRetry:
+                                    message.isUser
+                                        ? null
+                                        : () => ref
+                                            .read(
+                                              chatControllerProvider.notifier,
+                                            )
+                                            .retryLast(language: language),
+                                onFlag:
+                                    message.isUser
+                                        ? null
+                                        : () async {
+                                          final ok = await ref
+                                              .read(
+                                                chatControllerProvider.notifier,
+                                              )
+                                              .flagMessage(message.id);
+                                          if (ok && context.mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  l10n.chatFlagSent,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        },
+                              ),
+                            );
+                          },
+                        ),
+                    if (_showJumpToLatest)
+                      Positioned(
+                        right: AppSpacing.md,
+                        bottom: AppSpacing.md,
+                        child: _JumpToLatestButton(
+                          label: l10n.chatScrollToLatest,
+                          onTap: _scrollToBottom,
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 20),
-                      onPressed: () => setState(() => _replyingTo = null),
-                    ),
                   ],
                 ),
               ),
-            ChatComposer(
-              onSend: _send,
-              onSendVoiceNote: _sendVoiceNote,
-              isSending: chatState.isSending,
-              languageCode: language,
-            ),
-          ],
+              // Shows what is being answered while the reply is written, so the
+              // quote is never a surprise after sending.
+              if (_replyingTo != null)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    8,
+                    AppSpacing.sm,
+                    8,
+                  ),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: Row(
+                    children: [
+                      Container(width: 3, height: 34, color: AppColors.primary),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              l10n.chatReplyingTo,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            Text(
+                              _replyingTo!.content,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color:
+                                    Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        onPressed: () => setState(() => _replyingTo = null),
+                      ),
+                    ],
+                  ),
+                ),
+              ChatComposer(
+                onSend: _send,
+                onSendVoiceNote: _sendVoiceNote,
+                isSending: chatState.isSending,
+                languageCode: language,
+              ),
+            ],
           ),
         ),
       ),
@@ -486,7 +553,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   String _errorMessage(BuildContext context, String code) {
     final l10n = AppLocalizations.of(context);
     if (code == 'AI_UNAVAILABLE') return l10n.errorAiUnavailable;
-    if (code == 'NETWORK_ERROR' || code == 'TIMEOUT') return l10n.commonNoInternet;
+    if (code == 'NETWORK_ERROR' || code == 'TIMEOUT')
+      return l10n.commonNoInternet;
     return l10n.commonSomethingWentWrong;
   }
 }
@@ -543,7 +611,11 @@ class _JumpToLatestButton extends StatelessWidget {
           child: const SizedBox(
             width: 44,
             height: 44,
-            child: Icon(Icons.keyboard_arrow_down_rounded, size: 26, color: Colors.white),
+            child: Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 26,
+              color: Colors.white,
+            ),
           ),
         ),
       ),
@@ -586,7 +658,11 @@ class _PinnedBanner extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.push_pin_rounded, size: 16, color: AppColors.primary),
+              const Icon(
+                Icons.push_pin_rounded,
+                size: 16,
+                color: AppColors.primary,
+              ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
@@ -597,11 +673,21 @@ class _PinnedBanner extends StatelessWidget {
                       children: [
                         Text(
                           l10n.chatPinned,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
                         ),
                         if (count > 1) ...[
                           const SizedBox(width: 6),
-                          Text('$count', style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+                          Text(
+                            '$count',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
                         ],
                       ],
                     ),
@@ -609,7 +695,10 @@ class _PinnedBanner extends StatelessWidget {
                       preview,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -647,7 +736,10 @@ class _DateSeparator extends StatelessWidget {
     return Center(
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.md),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: 6,
+        ),
         decoration: BoxDecoration(
           color: scheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(14),
