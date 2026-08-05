@@ -25,11 +25,9 @@ import '../../features/clinician/presentation/knowledge_edit_screen.dart';
 import '../../features/clinician/presentation/dieticians_screen.dart';
 import '../../features/clinician/presentation/feedback_inbox_screen.dart';
 import '../../features/clinician/presentation/knowledge_screen.dart';
-import '../../features/clinician/presentation/patient_detail_screen.dart';
 import '../../features/clinician/presentation/patient_thread_screen.dart';
 import '../../features/clinician/presentation/patients_screen.dart';
 import '../../features/clinician/presentation/patient_profile_screen.dart';
-import '../../features/clinician/presentation/prescribe_screen.dart';
 import '../../features/dietician/presentation/diet_plan_screen.dart';
 import '../../features/dietician/presentation/dietician_dashboard_screen.dart';
 import '../../features/dietician/presentation/dietician_patients_screen.dart';
@@ -159,23 +157,10 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           patientName: state.extra as String?,
         ),
       ),
-      GoRoute(
-        path: '/clinician/patients/:id/prescribe',
-        builder: (context, state) => PrescribeScreen(
-          patientId: state.pathParameters['id']!,
-          patientName: state.extra as String?,
-        ),
-      ),
-      // The full clinical record — metrics, HbA1c, test reports, alerts,
-      // dietician assignment and the assistant's context. Reached from the
-      // profile's overflow menu.
-      GoRoute(
-        path: '/clinician/patients/:id/record',
-        builder: (context, state) => PatientRecordScreen(patientId: state.pathParameters['id']!),
-      ),
-      // The patient profile: who they are, and the prescribing form. Top-level
-      // so it opens as a full page from the chat thread instead of a blank
-      // scaffold inside the shell.
+      // The patient profile: who they are, the prescribing form, and the
+      // clinical record beneath it — one screen per patient. Top-level so it
+      // opens as a full page from the chat thread instead of a blank scaffold
+      // inside the shell.
       GoRoute(
         path: '/clinician/patients/:id',
         builder: (context, state) => PatientProfileScreen(patientId: state.pathParameters['id']!),

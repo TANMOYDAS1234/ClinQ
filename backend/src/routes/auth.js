@@ -12,6 +12,7 @@ import { logger } from '../config/logger.js';
 import { env } from '../config/env.js';
 import { Medication } from '../models/Medication.js';
 import { recomputeSchedule } from '../services/medicationSchedule.js';
+import { toE164 } from '../utils/phone.js';
 
 const router = Router();
 
@@ -24,10 +25,13 @@ const authLimiter = rateLimit({
   message: { error: { code: 'RATE_LIMITED', message: 'Too many attempts. Please try again in a few minutes.' } },
 });
 
+// Normalised to E.164 before it is validated, so a number typed as ten bare
+// digits registers and logs in as the same account as one typed with +91.
+// Without this the two are different strings, and the lookup is exact.
 const phoneSchema = z
   .string()
   .trim()
-  .transform((v) => v.replace(/[\s-()]/g, ''))
+  .transform(toE164)
   .pipe(z.string().regex(/^\+?[1-9]\d{7,14}$/, 'Enter a valid phone number'));
 
 const registerSchema = z.object({

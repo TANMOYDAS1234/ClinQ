@@ -13,6 +13,52 @@ import { env } from '../../config/env.js';
 
 const HISTORY_TURNS = 8;
 
+/** How many recent doctor/dietician messages are carried into the prompt. */
+const CARE_TEAM_NOTES = 6;
+
+/** Each is trimmed to this, so one long note cannot crowd out the rest. */
+const CARE_TEAM_NOTE_CHARS = 400;
+
+/**
+ * The doctor's and dietician's own messages to this patient.
+ *
+ * These are deliberately NOT put into `contents` alongside the chat turns.
+ * Gemini only accepts `user` and `model` roles, so a clinician's message would
+ * have to be labelled as one or the other — and labelling it `model` lets the
+ * assistant treat a doctor's instruction as its own earlier output, free to
+ * extend or paraphrase. Carrying them as authoritative context in the system
+ * prompt instead means the model can quote them but cannot speak as them.
+ *
+ * Scoped by patient rather than by session: care is one continuous story, and
+ * an instruction given last week still stands this week.
+ */
+async function loadCareTeamNotes(patientId) {
+  const notes = await ChatMessage.find({
+    patient: patientId,
+    role: { $in: ['clinician', 'dietician'] },
+    content: { $nin: [null, ''] },
+  })
+    .sort({ createdAt: -1 })
+    .limit(CARE_TEAM_NOTES)
+    .populate('sender', 'name')
+    .lean();
+
+  if (notes.length === 0) return '';
+
+  return notes
+    .reverse()
+    .map((m) => {
+      const who = m.role === 'dietician' ? 'Dietician' : 'Doctor';
+      const name = m.sender?.name ? ` (${m.sender.name})` : '';
+      const when = m.createdAt ? m.createdAt.toISOString().slice(0, 10) : '';
+      const body = m.content.length > CARE_TEAM_NOTE_CHARS
+        ? `${m.content.slice(0, CARE_TEAM_NOTE_CHARS)}…`
+        : m.content;
+      return `- ${when} ${who}${name}: ${body}`;
+    })
+    .join('\n');
+}
+
 /**
  * Defensively strip a disclaimer the model may still append despite the prompt
  * telling it not to. The app owns the single footer disclaimer; anything the
@@ -103,8 +149,8 @@ export async function handlePatientMessage({ patientId, sessionId, text, languag
     await ChatMessage.findByIdAndUpdate(userMessage._id, { alert: alert._id });
   }
 
-  // Retrieve grounding + prior turns in parallel.
-  const [chunks, history] = await Promise.all([
+  // Retrieve grounding + prior turns + the care team's own words, in parallel.
+  const [chunks, history, careTeamNotes] = await Promise.all([
     retrieve(text, { language, categories: categoriesFor(triage), limit: 6 }).catch((err) => {
       logger.warn({ err: err?.message }, 'retrieval failed; answering without grounding');
       return [];
@@ -113,6 +159,7 @@ export async function handlePatientMessage({ patientId, sessionId, text, languag
       .sort({ seq: -1 })
       .limit(HISTORY_TURNS)
       .lean(),
+    loadCareTeamNotes(patientId).catch(() => ''),
   ]);
 
   // If the patient attached photos, load them so the assistant can actually
@@ -128,6 +175,9 @@ export async function handlePatientMessage({ patientId, sessionId, text, languag
       // Never feed the model its own scripted fallback replies: once an
       // "assistant unavailable" message is in the thread, the model parrots it
       // for the same prompt (e.g. every "hi") instead of answering.
+      // Clinician and dietician turns are deliberately absent here — they are
+      // carried in the system prompt instead, so the model can quote them
+      // without being able to speak as the doctor. See loadCareTeamNotes.
       .filter((m) => (m.role === 'user' || m.role === 'assistant') && !m.isFallback)
       .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
     { role: 'user', parts: userParts },
@@ -137,6 +187,7 @@ export async function handlePatientMessage({ patientId, sessionId, text, languag
     language,
     triage,
     patientContext: context.text,
+    careTeamNotes,
     groundingContext: formatContext(chunks),
   });
 
@@ -279,12 +330,13 @@ export async function* streamPatientMessage({ patientId, sessionId, text, langua
     await ChatMessage.findByIdAndUpdate(userMessage._id, { alert: alert._id });
   }
 
-  const [chunks, history] = await Promise.all([
+  const [chunks, history, careTeamNotes] = await Promise.all([
     retrieve(text, { language, categories: categoriesFor(triage), limit: 6 }).catch(() => []),
     ChatMessage.find({ session: session._id, seq: { $lt: seq } })
       .sort({ seq: -1 })
       .limit(HISTORY_TURNS)
       .lean(),
+    loadCareTeamNotes(patientId).catch(() => ''),
   ]);
 
   const images = attachments.length ? await loadAssetsForAi(attachments).catch(() => []) : [];
@@ -295,6 +347,9 @@ export async function* streamPatientMessage({ patientId, sessionId, text, langua
       // Never feed the model its own scripted fallback replies: once an
       // "assistant unavailable" message is in the thread, the model parrots it
       // for the same prompt (e.g. every "hi") instead of answering.
+      //
+      // Clinician and dietician turns are absent here too — carried in the
+      // system prompt instead. See loadCareTeamNotes.
       .filter((m) => (m.role === 'user' || m.role === 'assistant') && !m.isFallback)
       .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
     { role: 'user', parts: userParts },
@@ -303,6 +358,7 @@ export async function* streamPatientMessage({ patientId, sessionId, text, langua
     language,
     triage,
     patientContext: context.text,
+    careTeamNotes,
     groundingContext: formatContext(chunks),
   });
 

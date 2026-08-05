@@ -12,6 +12,7 @@ import '../../../shared/widgets/user_avatar.dart';
 import '../data/clinician_repository.dart';
 import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
+import 'patient_detail_screen.dart' show PatientRecordSections;
 
 /// The doctor's working screen for one patient: who they are at the top, and
 /// everything the doctor might do about it underneath.
@@ -314,70 +315,18 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.xl),
 
-            // Quiet, after the primary action — reachable without competing
-            // with it. The record is where the doctor reads; the longer form
-            // keeps per-medicine strength, dose, instructions and meal timing
-            // for the prescriptions that need them.
-            _SecondaryLink(
-              icon: Icons.folder_open_outlined,
-              label: 'Clinical record',
-              detail: 'HbA1c, reports, alerts, dietician',
-              onTap: () => context.push('/clinician/patients/${widget.patientId}/record'),
+            // The record, inline rather than a screen away. One patient, one
+            // screen: what you read about them sits under what you do about it.
+            const Text(
+              'Clinical Record',
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
             ),
-            _SecondaryLink(
-              icon: Icons.edit_document,
-              label: 'Detailed prescription',
-              detail: 'Strength, dose, instructions, food timing',
-              onTap: () => context.push(
-                '/clinician/patients/${widget.patientId}/prescribe',
-                extra: p.name,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SecondaryLink extends StatelessWidget {
-  const _SecondaryLink({
-    required this.icon,
-    required this.label,
-    required this.detail,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final String detail;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: scheme.onSurfaceVariant),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 1),
-                  Text(detail, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+            const SizedBox(height: AppSpacing.sm),
+            const Divider(height: 1),
+            const SizedBox(height: AppSpacing.md),
+            PatientRecordSections(summary: p, patientId: widget.patientId),
           ],
         ),
       ),

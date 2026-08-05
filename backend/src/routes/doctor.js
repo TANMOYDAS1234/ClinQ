@@ -19,6 +19,7 @@ import { FootAssessment } from '../models/FootAssessment.js';
 import { LabResult } from '../models/LabResult.js';
 import { FoodLog } from '../models/FoodLog.js';
 import { Prescription } from '../models/Prescription.js';
+import { toE164 } from '../utils/phone.js';
 import { acknowledgeAlert, resolveAlert } from '../services/alerts.js';
 import { computeAdherence, glucoseTrends, computeHealthScore } from '../services/analytics.js';
 import { buildPatientContext } from '../services/patientContext.js';
@@ -239,10 +240,12 @@ router.post(
   validate({
     body: z.object({
       name: z.string().trim().min(2).max(120),
+      // Normalised to E.164 first: a number stored as bare digits is an
+      // account whose owner can never sign in, because login sends +91.
       phone: z
         .string()
         .trim()
-        .transform((v) => v.replace(/[\s\-()]/g, ''))
+        .transform(toE164)
         .pipe(z.string().regex(/^\+?[1-9]\d{7,14}$/, 'Enter a valid phone number')),
       password: z.string().min(8, 'At least 8 characters').max(128),
     }),
@@ -859,10 +862,12 @@ router.post(
   validate({
     body: z.object({
       name: z.string().trim().min(2).max(120),
+      // Normalised to E.164 first: a number stored as bare digits is an
+      // account whose owner can never sign in, because login sends +91.
       phone: z
         .string()
         .trim()
-        .transform((v) => v.replace(/[\s\-()]/g, ''))
+        .transform(toE164)
         .pipe(z.string().regex(/^\+?[1-9]\d{7,14}$/, 'Enter a valid phone number')),
       password: z.string().min(8, 'At least 8 characters').max(128),
     }),

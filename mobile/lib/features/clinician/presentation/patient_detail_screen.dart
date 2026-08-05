@@ -1,189 +1,81 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // FilteringTextInputFormatter, LengthLimitingTextInputFormatter
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/auth_validators.dart';
 import '../../../shared/widgets/authed_image.dart';
-import '../../../shared/widgets/auto_refresh.dart';
 import '../data/clinician_repository.dart';
 import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
 import 'widgets/clinician_visuals.dart';
 
-/// A patient's full clinical picture for the clinician: risk, health score,
-/// adherence, glucose control, HbA1c history, recent alerts, dietician
-/// assignment and the same context the AI assistant sees.
+/// The read side of a patient: health score, adherence, glucose control, HbA1c
+/// history, test reports, recent alerts, the dietician's review cadence, and
+/// the same context the AI assistant is given before it answers.
 ///
-/// Reached from the Patient Profile's overflow menu. The profile is where the
-/// doctor acts; this is where they read the record behind those actions.
-class PatientRecordScreen extends ConsumerWidget {
-  const PatientRecordScreen({super.key, required this.patientId});
+/// A section list rather than a screen of its own. It sits underneath the
+/// prescribing form on the Patient Profile, so one screen holds everything
+/// about a patient — what you read and what you then do about it — instead of
+/// splitting them across a navigation step.
+class PatientRecordSections extends ConsumerWidget {
+  const PatientRecordSections({super.key, required this.summary, required this.patientId});
 
+  final PatientSummary summary;
   final String patientId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(patientSummaryProvider(patientId));
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Clinical record')),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Could not load patient'),
-              const SizedBox(height: AppSpacing.sm),
-              OutlinedButton(onPressed: () => ref.invalidate(patientSummaryProvider(patientId)), child: const Text('Retry')),
-            ],
-          ),
-        ),
-        data: (p) => AutoRefresh(
-          onTick: (r) => r.invalidate(patientSummaryProvider(patientId)),
-          child: RefreshIndicator(
-          onRefresh: () async => ref.invalidate(patientSummaryProvider(patientId)),
-          child: ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            children: [
-              _Header(summary: p),
-              const SizedBox(height: AppSpacing.md),
-              _MetricsGrid(summary: p),
-              const SizedBox(height: AppSpacing.lg),
-              _DieticianSection(summary: p, patientId: patientId),
-              if (p.hba1cHistory.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.lg),
-                const _SectionTitle('HbA1c history'),
-                const SizedBox(height: AppSpacing.sm),
-                _Hba1cList(points: p.hba1cHistory),
-              ],
-              if (p.labResults.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.lg),
-                const _SectionTitle('Test reports'),
-                const SizedBox(height: AppSpacing.sm),
-                for (final r in p.labResults.take(12))
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: _LabReportRow(report: r),
-                  ),
-              ],
-              if (p.alerts.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.lg),
-                const _SectionTitle('Recent alerts'),
-                const SizedBox(height: AppSpacing.sm),
-                for (final a in p.alerts.take(8))
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: _AlertMini(
-                      title: a.title,
-                      severity: a.severity,
-                      status: a.status,
-                      when: a.createdAt,
-                    ),
-                  ),
-              ],
-              if (p.aiContext != null && p.aiContext!.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.lg),
-                const _SectionTitle('Assistant context'),
-                const SizedBox(height: AppSpacing.sm),
-                _AiContextCard(text: p.aiContext!),
-              ],
-              const SizedBox(height: AppSpacing.xl),
-            ],
-          ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.summary});
-  final PatientSummary summary;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final p = summary;
-    final band = riskBandColor(p.riskBand ?? 'low');
-    final initial = (p.name.isNotEmpty ? p.name[0] : '?').toUpperCase();
-    final meta = [
-      if (p.age != null) '${p.age} yrs',
-      if (p.gender != null) _cap(p.gender!),
-      if (p.diabetesType != null) _diabetesLabel(p.diabetesType!),
-    ].join(' · ');
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(color: band.withValues(alpha: 0.16), shape: BoxShape.circle),
-                child: Center(child: Text(initial, style: TextStyle(fontWeight: FontWeight.w800, color: band, fontSize: 22))),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(p.name, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
-                    if (meta.isNotEmpty) Text(meta, style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              MiniPill(label: '${riskBandLabel(p.riskBand ?? 'low')} risk', color: band, filled: true),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => launchUrl(Uri(scheme: 'tel', path: p.phone)),
-                  icon: const Icon(Icons.call_rounded, size: 18),
-                  label: const Text('Call'),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () => context.push('/clinician/patients/${p.id}/thread', extra: p.name),
-                  icon: const Icon(Icons.forum_rounded, size: 18),
-                  label: const Text('Message'),
-                ),
-              ),
-            ],
-          ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _MetricsGrid(summary: p),
+        const SizedBox(height: AppSpacing.lg),
+        _DieticianSection(summary: p, patientId: patientId),
+        if (p.hba1cHistory.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.lg),
+          const _SectionTitle('HbA1c history'),
+          const SizedBox(height: AppSpacing.sm),
+          _Hba1cList(points: p.hba1cHistory),
         ],
-      ),
+        if (p.labResults.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.lg),
+          const _SectionTitle('Test reports'),
+          const SizedBox(height: AppSpacing.sm),
+          for (final r in p.labResults.take(12))
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _LabReportRow(report: r),
+            ),
+        ],
+        if (p.alerts.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.lg),
+          const _SectionTitle('Recent alerts'),
+          const SizedBox(height: AppSpacing.sm),
+          for (final a in p.alerts.take(8))
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _AlertMini(
+                title: a.title,
+                severity: a.severity,
+                status: a.status,
+                when: a.createdAt,
+              ),
+            ),
+        ],
+        if (p.aiContext != null && p.aiContext!.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.lg),
+          const _SectionTitle('Assistant context'),
+          const SizedBox(height: AppSpacing.sm),
+          _AiContextCard(text: p.aiContext!),
+        ],
+      ],
     );
   }
-
-  String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
-  String _diabetesLabel(String t) => switch (t) {
-    'type1' => 'Type 1',
-    'type2' => 'Type 2',
-    'gestational' => 'Gestational',
-    'prediabetes' => 'Prediabetes',
-    'none' => 'Non-diabetic',
-    _ => t,
-  };
 }
 
 class _MetricsGrid extends StatelessWidget {
