@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/network/api_exception.dart';
+import '../../../shared/data/upload_repository.dart';
+import '../../../shared/widgets/fullscreen_photo.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../l10n/gen/app_localizations.dart';
@@ -24,6 +28,62 @@ class DieticianProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen> {
+  bool _uploadingAvatar = false;
+
+  /// Tap to replace the photo, long-press to view it full screen — the same
+  /// gestures the patient and the doctor already have, so the three panels
+  /// behave identically for the one thing every user does first.
+  Future<void> _changeAvatar() async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: Text(l10n.chatAttachCamera),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text(l10n.chatAttachGallery),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final file = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (file == null) return;
+
+    setState(() => _uploadingAvatar = true);
+    try {
+      final asset = await ref.read(uploadRepositoryProvider).uploadImage(
+        path: file.path,
+        filename: file.name,
+        kind: UploadKind.avatar,
+      );
+      final user = await ref.read(authRepositoryProvider).updateMe(avatarAssetId: asset.id);
+      ref.read(authControllerProvider.notifier).replaceUser(user);
+      messenger.showSnackBar(SnackBar(content: Text(l10n.profileSaved)));
+    } on ApiException {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.chatAttachFailed)));
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
+
   Future<void> _changeLanguage(String code) async {
     await ref.read(localeControllerProvider.notifier).setLanguage(code);
   }
@@ -47,17 +107,22 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
 
   Future<void> _confirmLogout() async {
     final l10n = AppLocalizations.of(context);
+    // The same dialog the patient and doctor get, down to the wording and the
+    // red confirm — three panels asking the same question three different ways
+    // is three chances to misread it.
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.profileLogout),
-        content: const Text('You will need your number and password to sign in again.'),
+        title: Text(l10n.authLogoutConfirmTitle),
+        content: Text(l10n.authLogoutConfirmBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.commonCancel),
+          ),
+          TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.profileLogout),
+            child: Text(l10n.profileLogout, style: const TextStyle(color: AppColors.danger)),
           ),
         ],
       ),
@@ -91,7 +156,57 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
         children: [
           Row(
             children: [
-              UserAvatar(name: user?.name ?? '', avatarUrl: user?.avatarUrl, accent: accent, size: 64),
+              Semantics(
+                button: true,
+                label: l10n.profileChangePhoto,
+                child: GestureDetector(
+                  onTap: _uploadingAvatar ? null : _changeAvatar,
+                  onLongPress: user?.avatarUrl != null
+                      ? () => FullscreenPhoto.show(context, user!.avatarUrl)
+                      : null,
+                  child: Stack(
+                    children: [
+                      UserAvatar(
+                        name: user?.name ?? '',
+                        avatarUrl: user?.avatarUrl,
+                        accent: accent,
+                        size: 72,
+                      ),
+                      if (_uploadingAvatar)
+                        Positioned.fill(
+                          child: ClipOval(
+                            child: ColoredBox(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: accent,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: scheme.surface, width: 2.5),
+                          ),
+                          child: const Icon(Icons.photo_camera_rounded, size: 13, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(

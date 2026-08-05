@@ -27,16 +27,6 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/chat'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.chat_bubble_outline_rounded),
-        label: const Text(
-          'Message the clinic',
-          style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
-        ),
-      ),
       body: SafeArea(
         bottom: false,
         child: Column(
