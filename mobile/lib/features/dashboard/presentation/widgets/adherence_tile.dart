@@ -22,7 +22,7 @@ class AdherenceTile extends StatelessWidget {
         children: [
           HealthRing(
             value: adherence.percentage.toDouble(),
-            color: AppColors.primary,
+            color: AppColors.accentOn(context),
             size: 76,
             strokeWidth: 9,
             centerLabel: '${adherence.percentage.round()}%',
@@ -39,7 +39,7 @@ class AdherenceTile extends StatelessWidget {
                     l10n.dashboardTodayPending(adherence.todayPending),
                     style: Theme.of(
                       context,
-                    ).textTheme.bodyMedium?.copyWith(color: AppColors.warning),
+                    ).textTheme.bodyMedium?.copyWith(color: AppColors.warningOn(context)),
                   ),
               ],
             ),

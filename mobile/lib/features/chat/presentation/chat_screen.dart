@@ -282,8 +282,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         centerTitle: true,
         title: Text(
           l10n.chatTitle,
-          style: const TextStyle(
-            color: AppColors.primary,
+          style: TextStyle(
+            color: AppColors.accentOn(context),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -314,11 +314,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
               if (chatState.error != null)
                 Container(
                   width: double.infinity,
-                  color: AppColors.dangerBg,
+                  color: AppColors.dangerBgOn(context),
                   padding: const EdgeInsets.all(AppSpacing.sm),
                   child: Text(
                     _errorMessage(context, chatState.error!.code),
-                    style: const TextStyle(color: AppColors.danger),
+                    style: TextStyle(color: AppColors.dangerOn(context)),
                   ),
                 ),
               // Pinned message pinned to the top of the thread, WhatsApp-style.
@@ -467,7 +467,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: Row(
                     children: [
-                      Container(width: 3, height: 34, color: AppColors.primary),
+                      Container(width: 3, height: 34, color: AppColors.accentOn(context)),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Column(
@@ -476,10 +476,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                           children: [
                             Text(
                               l10n.chatReplyingTo,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
+                                color: AppColors.accentOn(context),
                               ),
                             ),
                             Text(
@@ -652,16 +652,16 @@ class _PinnedBanner extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(AppSpacing.md, 8, 4, 8),
           decoration: BoxDecoration(
             border: Border(
-              left: const BorderSide(color: AppColors.primary, width: 3),
+              left: BorderSide(color: AppColors.accentOn(context), width: 3),
               bottom: BorderSide(color: scheme.outlineVariant),
             ),
           ),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.push_pin_rounded,
                 size: 16,
-                color: AppColors.primary,
+                color: AppColors.accentOn(context),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
@@ -673,10 +673,10 @@ class _PinnedBanner extends StatelessWidget {
                       children: [
                         Text(
                           l10n.chatPinned,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                            color: AppColors.accentOn(context),
                           ),
                         ),
                         if (count > 1) ...[

@@ -254,7 +254,7 @@ class ChatMessageBubble extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: scheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border(left: BorderSide(color: AppColors.primary, width: 3)),
+                    border: Border(left: BorderSide(color: AppColors.accentOn(context), width: 3)),
                   ),
                   child: Text(
                     repliedTo?.content ?? message.replyPreviewContent!,
@@ -350,11 +350,11 @@ class ChatMessageBubble extends StatelessWidget {
                     // was read without implying a reply is seconds away.
                     if (isMine && !isClinicianView && message.seenByClinicAt != null) ...[
                       const SizedBox(width: 6),
-                      Icon(Icons.done_all_rounded, size: 15, color: AppColors.primary),
+                      Icon(Icons.done_all_rounded, size: 15, color: AppColors.accentOn(context)),
                       const SizedBox(width: 3),
                       Text(
                         l10n.chatSeenByClinic,
-                        style: const TextStyle(fontSize: 12, color: AppColors.primary),
+                        style: TextStyle(fontSize: 12, color: AppColors.accentOn(context)),
                       ),
                     ],
                   ],
@@ -512,23 +512,23 @@ class _SenderRow extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (isPerson)
-            UserAvatar(name: name ?? '', avatarUrl: avatarUrl, accent: AppColors.primary, size: 24)
+            UserAvatar(name: name ?? '', avatarUrl: avatarUrl, accent: AppColors.accentOn(context), size: 24)
           else if (isUser)
             Container(
               width: 24,
               height: 24,
-              decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
-              child: Icon(icon, size: 14, color: AppColors.primary),
+              decoration: BoxDecoration(color: AppColors.accentSoftOn(context), shape: BoxShape.circle),
+              child: Icon(icon, size: 14, color: AppColors.accentOn(context)),
             )
           else
             Container(
               width: 24,
               height: 24,
               padding: const EdgeInsets.all(3),
-              decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: AppColors.accentSoftOn(context), shape: BoxShape.circle),
               child: Image.asset(
                 'assets/brand/logo_emblem.png',
-                errorBuilder: (_, _, _) => Icon(icon, size: 14, color: AppColors.primary),
+                errorBuilder: (_, _, _) => Icon(icon, size: 14, color: AppColors.accentOn(context)),
               ),
             ),
           const SizedBox(width: 7),

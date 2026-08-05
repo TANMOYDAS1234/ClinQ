@@ -171,15 +171,15 @@ class _BrandHeader extends StatelessWidget {
             'assets/brand/logo_emblem.png',
             height: 28,
             errorBuilder: (_, _, _) =>
-                const Icon(Icons.rate_review_rounded, size: 24, color: AppColors.primary),
+                Icon(Icons.rate_review_rounded, size: 24, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 8),
-          const Text(
+          Text(
             'ClinQ',
-            style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: AppColors.primary),
+            style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
-          UserAvatar(name: name, avatarUrl: avatarUrl, accent: AppColors.primary, size: 38),
+          UserAvatar(name: name, avatarUrl: avatarUrl, accent: AppColors.accentOn(context), size: 38),
         ],
       ),
     );
@@ -196,7 +196,7 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? AppColors.primary : AppColors.infoBg,
+      color: selected ? AppColors.primary : AppColors.infoBgOn(context),
       borderRadius: BorderRadius.circular(24),
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
@@ -315,25 +315,25 @@ class _FeedbackCard extends StatelessWidget {
                         const SizedBox(width: AppSpacing.sm),
                         if (unread)
                           Material(
-                            color: AppColors.infoBg,
+                            color: AppColors.infoBgOn(context),
                             borderRadius: BorderRadius.circular(24),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(24),
                               onTap: onReviewed,
-                              child: const Padding(
+                              child: Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(Icons.check_circle_outline_rounded,
-                                        size: 17, color: AppColors.primary),
+                                        size: 17, color: AppColors.accentOn(context)),
                                     SizedBox(width: 6),
                                     Text(
                                       'Mark reviewed',
                                       style: TextStyle(
                                         fontSize: 13.5,
                                         fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
+                                        color: AppColors.accentOn(context),
                                       ),
                                     ),
                                   ],

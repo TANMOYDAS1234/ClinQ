@@ -361,7 +361,7 @@ class _ProfileHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.accentSoft,
+        color: AppColors.accentSoftOn(context),
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
       ),
       child: Column(
@@ -369,7 +369,7 @@ class _ProfileHeader extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              UserAvatar(name: p.name, avatarUrl: p.avatarUrl, accent: AppColors.primary, size: 62),
+              UserAvatar(name: p.name, avatarUrl: p.avatarUrl, accent: AppColors.accentOn(context), size: 62),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
@@ -384,7 +384,7 @@ class _ProfileHeader extends StatelessWidget {
                       meta,
                       style: TextStyle(
                         fontSize: 13.5,
-                        color: AppColors.primary.withValues(alpha: 0.75),
+                        color: AppColors.accentOn(context).withValues(alpha: 0.75),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
@@ -398,7 +398,7 @@ class _ProfileHeader extends StatelessWidget {
                           icon: atRisk ? Icons.warning_amber_rounded : null,
                           label: '${_cap(band)} Risk',
                           fg: atRisk ? AppColors.danger : AppColors.primary,
-                          bg: atRisk ? AppColors.dangerBg : Colors.white,
+                          bg: atRisk ? AppColors.dangerBgOn(context) : Colors.white,
                         ),
                         if (diabetes != null)
                           _HeaderPill(label: diabetes, fg: AppColors.primary, bg: Colors.white),
@@ -700,7 +700,7 @@ class _SlotButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: selected ? AppColors.accentSoft : scheme.surfaceContainerLowest,
+      color: selected ? AppColors.accentSoftOn(context) : scheme.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
@@ -741,7 +741,7 @@ class _TestChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: selected ? AppColors.accentSoft : scheme.surfaceContainerLowest,
+      color: selected ? AppColors.accentSoftOn(context) : scheme.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -767,7 +767,7 @@ class _TestChip extends StatelessWidget {
               ),
               if (selected) ...[
                 const SizedBox(width: 6),
-                const Icon(Icons.close_rounded, size: 15, color: AppColors.primary),
+                Icon(Icons.close_rounded, size: 15, color: AppColors.accentOn(context)),
               ],
             ],
           ),

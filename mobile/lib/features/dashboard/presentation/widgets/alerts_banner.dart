@@ -42,7 +42,7 @@ class _AlertRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = AppColors.forUrgency(alert.severity);
+    final color = AppColors.forUrgencyOn(context, alert.severity);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(

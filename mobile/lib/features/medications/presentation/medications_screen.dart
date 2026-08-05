@@ -259,12 +259,12 @@ class _BrandHeader extends StatelessWidget {
             'assets/brand/logo_emblem.png',
             height: 30,
             errorBuilder: (_, _, _) =>
-                const Icon(Icons.medication_rounded, size: 26, color: AppColors.primary),
+                Icon(Icons.medication_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 10),
-          const Text(
+          Text(
             'ClinQ',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
           IconButton(
@@ -351,7 +351,7 @@ class _WindowCard extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(window.icon, size: 24, color: AppColors.primary),
+              Icon(window.icon, size: 24, color: AppColors.accentOn(context)),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 window.label,
@@ -484,16 +484,16 @@ class _PrescriptionCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.accentSoft,
+                  color: AppColors.accentSoftOn(context),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
+                child: Text(
                   'ACTIVE',
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
-                    color: AppColors.primary,
+                    color: AppColors.accentOn(context),
                   ),
                 ),
               ),
@@ -512,10 +512,10 @@ class _PrescriptionCard extends StatelessWidget {
                     children: [
                       Text(
                         amount,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.primary,
+                          color: AppColors.accentOn(context),
                         ),
                       ),
                       if (unit.isNotEmpty) ...[

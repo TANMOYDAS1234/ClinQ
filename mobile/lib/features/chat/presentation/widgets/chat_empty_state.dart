@@ -32,15 +32,15 @@ class ChatEmptyState extends StatelessWidget {
           child: Container(
             width: 88,
             height: 88,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               // Flat mint rather than a tint of primary: a translucent green
               // over the dotted background picked up the dots and looked dirty.
-              color: AppColors.accentSoft,
+              color: AppColors.accentSoftOn(context),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.medical_services_outlined,
-              color: AppColors.primary,
+              color: AppColors.accentOn(context),
               size: 40,
             ),
           ),
@@ -97,7 +97,7 @@ class _SuggestionCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(icon, size: 22, color: AppColors.primary),
+              Icon(icon, size: 22, color: AppColors.accentOn(context)),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Text(text, style: const TextStyle(fontSize: 16, height: 1.4)),

@@ -46,7 +46,7 @@ class GlucoseTrendChart extends StatelessWidget {
               HorizontalRangeAnnotation(
                 y1: _targetLow,
                 y2: _targetHigh,
-                color: AppColors.success.withValues(alpha: 0.10),
+                color: AppColors.successOn(context).withValues(alpha: 0.10),
               ),
             ],
           ),
@@ -93,7 +93,7 @@ class GlucoseTrendChart extends StatelessWidget {
               spots: [for (var i = 0; i < points.length; i++) FlSpot(i.toDouble(), points[i].value.toDouble())],
               isCurved: true,
               curveSmoothness: 0.2,
-              color: AppColors.primary,
+              color: AppColors.accentOn(context),
               barWidth: 2.5,
               dotData: const FlDotData(show: false),
               belowBarData: BarAreaData(show: false),

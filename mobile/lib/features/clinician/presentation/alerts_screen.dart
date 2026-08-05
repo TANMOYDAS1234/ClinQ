@@ -220,7 +220,7 @@ class _AlertCard extends StatelessWidget {
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(44),
                           foregroundColor: AppColors.primary,
-                          side: const BorderSide(color: AppColors.primary),
+                          side: BorderSide(color: AppColors.accentOn(context)),
                         ),
                         child: const Text('Acknowledge'),
                       ),

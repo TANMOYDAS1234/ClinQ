@@ -249,12 +249,12 @@ class _InboxHeader extends ConsumerWidget {
             'assets/brand/logo_emblem.png',
             height: 30,
             errorBuilder: (_, _, _) =>
-                const Icon(Icons.forum_rounded, size: 26, color: AppColors.primary),
+                Icon(Icons.forum_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 10),
-          const Text(
+          Text(
             'ClinQ',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
           // No search icon here: the search field is already on screen a few
@@ -265,7 +265,7 @@ class _InboxHeader extends ConsumerWidget {
             child: UserAvatar(
               name: user?.name ?? '',
               avatarUrl: user?.avatarUrl,
-              accent: AppColors.primary,
+              accent: AppColors.accentOn(context),
               size: 38,
             ),
           ),
@@ -306,7 +306,7 @@ class _SearchField extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
-            borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
+            borderSide: BorderSide(color: AppColors.accentOn(context), width: 1.6),
           ),
         ),
       ),
@@ -480,8 +480,8 @@ class _ConversationRow extends StatelessWidget {
                           height: 22,
                           padding: const EdgeInsets.symmetric(horizontal: 7),
                           alignment: Alignment.center,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
+                          decoration: BoxDecoration(
+                            color: AppColors.accentOn(context),
                             borderRadius: BorderRadius.all(Radius.circular(11)),
                           ),
                           child: Text(
@@ -498,10 +498,10 @@ class _ConversationRow extends StatelessWidget {
                   ),
                   if (emergency) ...[
                     const SizedBox(height: 8),
-                    const _Chip(
+                    _Chip(
                       label: 'Needs attention',
-                      fg: AppColors.danger,
-                      bg: AppColors.dangerBg,
+                      fg: AppColors.dangerOn(context),
+                      bg: AppColors.dangerBgOn(context),
                       icon: Icons.priority_high_rounded,
                     ),
                   ],

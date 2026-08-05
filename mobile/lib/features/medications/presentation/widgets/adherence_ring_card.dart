@@ -20,7 +20,7 @@ class AdherenceRingCard extends StatelessWidget {
         children: [
           HealthRing(
             value: adherence.percentage.toDouble(),
-            color: AppColors.primary,
+            color: AppColors.accentOn(context),
             size: 96,
             strokeWidth: 11,
             centerLabel: '${adherence.percentage.round()}%',

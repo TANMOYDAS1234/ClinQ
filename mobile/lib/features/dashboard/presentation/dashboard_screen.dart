@@ -146,7 +146,7 @@ class _QuickActions extends StatelessWidget {
         Expanded(
           child: _QuickAction(
             icon: Icons.add_chart_rounded,
-            color: AppColors.primary,
+            color: AppColors.accentOn(context),
             label: l10n.glucoseLogReading,
             onTap: () => context.go('/track'),
           ),
@@ -155,7 +155,7 @@ class _QuickActions extends StatelessWidget {
         Expanded(
           child: _QuickAction(
             icon: Icons.event_available_rounded,
-            color: AppColors.success,
+            color: AppColors.successOn(context),
             label: l10n.apptBook,
             onTap: () => context.go('/care/appointments/book'),
           ),
@@ -227,9 +227,9 @@ class _ReminderChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ActionChip(
-      avatar: const Icon(Icons.notifications_active_outlined, size: 18, color: AppColors.warning),
+      avatar: Icon(Icons.notifications_active_outlined, size: 18, color: AppColors.warningOn(context)),
       label: Text(label),
-      backgroundColor: AppColors.warningBg,
+      backgroundColor: AppColors.warningBgOn(context),
       onPressed: onTap,
     );
   }

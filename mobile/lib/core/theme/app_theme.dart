@@ -148,6 +148,15 @@ class AppTheme {
           textStyle: textTheme.labelLarge,
         ),
       ),
+      // Selection was unthemed, so the handles took the raw seed colour and the
+      // highlight was nearly the same shade as the text behind it — hard to see
+      // what was selected, and harder to aim at a handle sitting on the field's
+      // border. Brand-coloured handles over a light wash keep both readable.
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: AppColors.primary,
+        selectionColor: AppColors.primary.withValues(alpha: 0.25),
+        selectionHandleColor: AppColors.primary,
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark ? colorScheme.surfaceContainerHigh : Colors.white,

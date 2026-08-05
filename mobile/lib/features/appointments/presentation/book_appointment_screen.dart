@@ -90,7 +90,7 @@ class _BookAppointmentScreenState extends ConsumerState<BookAppointmentScreen> {
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          icon: const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 40),
+          icon: Icon(Icons.check_circle_rounded, color: AppColors.successOn(context), size: 40),
           title: Text(l10n.apptBookedTitle),
           content: Text(l10n.apptBookedBody),
           actions: [
@@ -492,12 +492,12 @@ class _WaitlistButtonState extends ConsumerState<_WaitlistButton> {
         padding: const EdgeInsets.only(top: AppSpacing.xs),
         child: Row(
           children: [
-            const Icon(Icons.notifications_active_rounded, size: 18, color: AppColors.success),
+            Icon(Icons.notifications_active_rounded, size: 18, color: AppColors.successOn(context)),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
                 l10n.apptWaitlistJoined,
-                style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600),
+                style: TextStyle(color: AppColors.successOn(context), fontWeight: FontWeight.w600),
               ),
             ),
           ],

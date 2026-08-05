@@ -27,9 +27,9 @@ class EmergencyCard extends ConsumerWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.dangerBg,
+        color: AppColors.dangerBgOn(context),
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.danger, width: 2),
+        border: Border.all(color: AppColors.dangerOn(context), width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,8 +43,8 @@ class EmergencyCard extends ConsumerWidget {
               Container(
                 width: 44,
                 height: 44,
-                decoration: const BoxDecoration(
-                  color: AppColors.danger,
+                decoration: BoxDecoration(
+                  color: AppColors.dangerOn(context),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 26),
@@ -56,8 +56,8 @@ class EmergencyCard extends ConsumerWidget {
                   children: [
                     Text(
                       l10n.chatEmergencyBody,
-                      style: const TextStyle(
-                        color: AppColors.danger,
+                      style: TextStyle(
+                        color: AppColors.dangerOn(context),
                         fontWeight: FontWeight.w800,
                         fontSize: 19,
                         height: 1.3,
@@ -85,7 +85,7 @@ class EmergencyCard extends ConsumerWidget {
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-                  side: const BorderSide(color: AppColors.danger, width: 1.5),
+                  side: BorderSide(color: AppColors.dangerOn(context), width: 1.5),
                 ),
               ),
               icon: const Icon(Icons.call_rounded, size: 22),

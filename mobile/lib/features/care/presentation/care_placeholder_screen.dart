@@ -29,10 +29,10 @@ class CarePlaceholderScreen extends StatelessWidget {
                 width: 88,
                 height: 88,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.10),
+                  color: AppColors.accentOn(context).withValues(alpha: 0.10),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 42, color: AppColors.primary),
+                child: Icon(icon, size: 42, color: AppColors.accentOn(context)),
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(

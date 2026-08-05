@@ -143,7 +143,7 @@ class _SessionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final s = session;
-    final color = AppColors.forUrgency(s.highestUrgency);
+    final color = AppColors.forUrgencyOn(context, s.highestUrgency);
 
     return InkWell(
       onTap: onTap,
@@ -173,10 +173,10 @@ class _SessionRow extends StatelessWidget {
                   MiniPill(label: s.highestUrgency.toUpperCase(), color: color),
                 if (s.flaggedForReview) ...[
                   const SizedBox(width: 6),
-                  const Icon(
+                  Icon(
                     Icons.flag_rounded,
                     size: 16,
-                    color: AppColors.warning,
+                    color: AppColors.warningOn(context),
                   ),
                 ],
               ],
@@ -217,10 +217,10 @@ class _SessionRow extends StatelessWidget {
                 if (s.reviewedAt != null)
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.check_circle_rounded,
                         size: 13,
-                        color: AppColors.success,
+                        color: AppColors.successOn(context),
                       ),
                       const SizedBox(width: 3),
                       Text(

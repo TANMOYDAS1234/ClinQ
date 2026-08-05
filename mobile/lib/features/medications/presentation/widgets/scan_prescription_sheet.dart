@@ -149,7 +149,7 @@ class _ScanPrescriptionSheetState extends ConsumerState<_ScanPrescriptionSheet> 
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.image_not_supported_outlined, size: 40, color: AppColors.warning),
+          Icon(Icons.image_not_supported_outlined, size: 40, color: AppColors.warningOn(context)),
           const SizedBox(height: AppSpacing.sm),
           Text("Couldn't read that photo", style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.xs),
@@ -178,7 +178,7 @@ class _ScanPrescriptionSheetState extends ConsumerState<_ScanPrescriptionSheet> 
         children: [
           Row(
             children: [
-              const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 26),
+              Icon(Icons.check_circle_rounded, color: AppColors.successOn(context), size: 26),
               const SizedBox(width: AppSpacing.sm),
               Text(
                 'Added ${res.created.length} medicine${res.created.length == 1 ? '' : 's'}',
@@ -232,7 +232,7 @@ class _SourceButton extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Icon(icon, size: 30, color: AppColors.primary),
+            Icon(icon, size: 30, color: AppColors.accentOn(context)),
             const SizedBox(height: AppSpacing.sm),
             Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
           ],
@@ -266,7 +266,7 @@ class _MedRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.medication_outlined, color: AppColors.primary),
+            Icon(Icons.medication_outlined, color: AppColors.accentOn(context)),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
@@ -281,7 +281,7 @@ class _MedRow extends StatelessWidget {
             if (times.isNotEmpty)
               Row(
                 children: [
-                  const Icon(Icons.alarm, size: 15, color: AppColors.primary),
+                  Icon(Icons.alarm, size: 15, color: AppColors.accentOn(context)),
                   const SizedBox(width: 4),
                   Text(times, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 ],

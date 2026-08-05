@@ -47,7 +47,7 @@ class GlucoseReadingTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final color = AppColors.forGlucoseFlag(reading.flag);
+    final color = AppColors.forGlucoseFlagOn(context, reading.flag);
     final unit = ref.watch(glucoseUnitProvider);
 
     return Dismissible(
@@ -72,10 +72,10 @@ class GlucoseReadingTile extends ConsumerWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
         decoration: BoxDecoration(
-          color: AppColors.dangerBg,
+          color: AppColors.dangerBgOn(context),
           borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         ),
-        child: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
+        child: Icon(Icons.delete_outline_rounded, color: AppColors.dangerOn(context)),
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),

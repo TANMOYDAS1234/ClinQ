@@ -21,7 +21,7 @@ class JumpToLatest extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.only(right: 12, bottom: 8),
           child: Material(
-            color: AppColors.primary,
+            color: AppColors.accentOn(context),
             shape: const CircleBorder(),
             elevation: 3,
             child: InkWell(

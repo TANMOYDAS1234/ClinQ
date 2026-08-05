@@ -239,8 +239,8 @@ class _ManageSheet extends StatelessWidget {
             if (canCancel)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.cancel_outlined, color: AppColors.danger),
-                title: const Text('Cancel appointment', style: TextStyle(color: AppColors.danger)),
+                leading: Icon(Icons.cancel_outlined, color: AppColors.dangerOn(context)),
+                title: Text('Cancel appointment', style: TextStyle(color: AppColors.dangerOn(context))),
                 onTap: () => onAction(null, cancel: true),
               ),
             if (actions.isEmpty && !canCancel)

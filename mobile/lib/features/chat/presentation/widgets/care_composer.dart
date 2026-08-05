@@ -194,7 +194,7 @@ class _CareComposerState extends ConsumerState<CareComposer> {
             ),
             const SizedBox(width: 6),
             Material(
-              color: AppColors.primary,
+              color: AppColors.accentOn(context),
               shape: const CircleBorder(),
               child: InkWell(
                 customBorder: const CircleBorder(),

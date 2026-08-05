@@ -185,7 +185,7 @@ class _MicButtonState extends State<MicButton> with SingleTickerProviderStateMix
             animation: _rings,
             builder: (context, _) => CustomPaint(
               size: Size(widget.size, widget.size),
-              painter: _RingsPainter(progress: _rings.value, color: AppColors.danger),
+              painter: _RingsPainter(progress: _rings.value, color: AppColors.dangerOn(context)),
             ),
           ),
           // Halo that swells with loudness — repaints on its own.
@@ -195,7 +195,7 @@ class _MicButtonState extends State<MicButton> with SingleTickerProviderStateMix
               width: 26 + level * 16,
               height: 26 + level * 16,
               decoration: BoxDecoration(
-                color: AppColors.danger.withValues(alpha: 0.18),
+                color: AppColors.dangerOn(context).withValues(alpha: 0.18),
                 shape: BoxShape.circle,
               ),
             ),
@@ -204,7 +204,7 @@ class _MicButtonState extends State<MicButton> with SingleTickerProviderStateMix
           Container(
             width: 30,
             height: 30,
-            decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: AppColors.dangerOn(context), shape: BoxShape.circle),
             child: const Icon(Icons.mic_rounded, size: 18, color: Colors.white),
           ),
         ],

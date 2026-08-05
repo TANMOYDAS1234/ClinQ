@@ -130,10 +130,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 Text(
                   AppConfig.appName,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
+                    color: AppColors.accentOn(context),
                     letterSpacing: -0.5,
                   ),
                 ),
@@ -184,11 +184,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
-                  // maxLength caps the length; a second length limiter on top of
-                  // it made the cursor jump when editing a full field, so only
-                  // digitsOnly is kept here.
-                  maxLength: 10,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  // One limiter, in the formatters. maxLength enforces after
+                  // them and rewrites the value, resetting the caret to the end
+                  // mid-edit. See the login screen.
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
                   decoration: InputDecoration(
                     labelText: l10n.authPhoneLabel,
                     hintText: l10n.authPhoneHint,
@@ -345,12 +347,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.sm),
                     decoration: BoxDecoration(
-                      color: AppColors.dangerBg,
+                      color: AppColors.dangerBgOn(context),
                       borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
                     ),
                     child: Text(
                       _errorMessage!,
-                      style: const TextStyle(color: AppColors.danger, fontSize: 16),
+                      style: TextStyle(color: AppColors.dangerOn(context), fontSize: 16),
                     ),
                   ),
                 ],

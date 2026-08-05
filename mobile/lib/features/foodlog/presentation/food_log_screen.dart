@@ -94,7 +94,7 @@ class FoodLogScreen extends ConsumerWidget {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: AppColors.danger)),
+            child: Text('Delete', style: TextStyle(color: AppColors.dangerOn(context))),
           ),
         ],
       ),
@@ -156,8 +156,8 @@ class _FoodCard extends StatelessWidget {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.11), borderRadius: BorderRadius.circular(20)),
-                        child: Text(_mealLabel(entry.mealType), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                        decoration: BoxDecoration(color: AppColors.accentOn(context).withValues(alpha: 0.11), borderRadius: BorderRadius.circular(20)),
+                        child: Text(_mealLabel(entry.mealType), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.accentOn(context))),
                       ),
                       const Spacer(),
                       if (entry.createdAt != null)
@@ -305,16 +305,16 @@ class _LogMealSheetState extends ConsumerState<_LogMealSheet> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.06),
+                  color: AppColors.accentOn(context).withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+                  border: Border.all(color: AppColors.accentOn(context).withValues(alpha: 0.35)),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_a_photo_outlined, color: AppColors.primary),
+                    Icon(Icons.add_a_photo_outlined, color: AppColors.accentOn(context)),
                     SizedBox(width: 8),
-                    Text('Add a photo of your meal', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
+                    Text('Add a photo of your meal', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.accentOn(context))),
                   ],
                 ),
               ),

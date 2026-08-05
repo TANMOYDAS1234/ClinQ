@@ -117,10 +117,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Text(
                   AppConfig.appName,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
+                    color: AppColors.accentOn(context),
                     letterSpacing: -0.5,
                   ),
                 ),
@@ -154,11 +154,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   keyboardType: TextInputType.phone,
                   autofillHints: const [AutofillHints.telephoneNumber],
                   // +91 is fixed and the patient types only the 10 national
-                  // digits. maxLength caps the length; a SECOND length limiter on
-                  // top of it made the cursor jump when editing a full field, so
-                  // only digitsOnly is kept here.
-                  maxLength: 10,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  // digits.
+                  //
+                  // Capped by a formatter rather than maxLength. maxLength
+                  // enforces AFTER the formatters and rewrites the whole value,
+                  // which resets the selection — so tapping into the middle of a
+                  // full number and typing threw the cursor to the end. The
+                  // formatter preserves the caret. Exactly one limiter, always:
+                  // two of them fight each other and reintroduce the jump.
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
                   decoration: InputDecoration(
                     labelText: l10n.authPhoneLabel,
                     hintText: l10n.authPhoneHint,
@@ -205,12 +212,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.sm),
                     decoration: BoxDecoration(
-                      color: AppColors.dangerBg,
+                      color: AppColors.dangerBgOn(context),
                       borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
                     ),
                     child: Text(
                       _errorMessage!,
-                      style: const TextStyle(color: AppColors.danger, fontSize: 16),
+                      style: TextStyle(color: AppColors.dangerOn(context), fontSize: 16),
                     ),
                   ),
                 ],

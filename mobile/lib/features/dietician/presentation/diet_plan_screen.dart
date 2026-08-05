@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
@@ -44,9 +45,18 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
   /// a blank page. Free text after that — an Indian day is not three meals.
   static const _suggestedMeals = ['Breakfast', 'Mid-morning', 'Lunch', 'Evening snack', 'Dinner'];
 
+  /// Drives the enabled state of the "add" button beside the avoid field. It
+  /// used to be always enabled and silently do nothing on an empty box, which
+  /// reads as a broken button rather than as "type something first".
+  bool _canAddAvoid = false;
+
   @override
   void initState() {
     super.initState();
+    _avoid.addListener(() {
+      final can = _avoid.text.trim().isNotEmpty;
+      if (can != _canAddAvoid) setState(() => _canAddAvoid = can);
+    });
     _load();
   }
 
@@ -154,12 +164,51 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
     });
   }
 
+  /// Where the plan stands right now, in the order the dietician cares about:
+  /// what is happening, then what is pending, then what is done.
+  String get _statusText {
+    if (_saving) return 'Saving…';
+    if (_sending) return 'Sending…';
+    if (_dirty) return 'Unsaved changes';
+    if (_sharedAt == null) return 'Saved · not sent to the patient yet';
+    return 'Saved · sent ${DateFormat('d MMM, h:mm a').format(_sharedAt!)}';
+  }
+
+  IconData get _statusIcon {
+    if (_saving || _sending) return Icons.sync_rounded;
+    if (_dirty) return Icons.edit_note_rounded;
+    if (_sharedAt == null) return Icons.check_circle_outline_rounded;
+    return Icons.check_circle_rounded;
+  }
+
+  Color _statusColour(ColorScheme scheme) {
+    if (_dirty) return AppColors.warning;
+    if (_sharedAt != null && !_saving && !_sending) return AppColors.primary;
+    return scheme.onSurfaceVariant;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final plan = _current;
     final canSend = plan.meals.isNotEmpty || plan.goal.isNotEmpty || plan.avoid.isNotEmpty;
 
+    return PopScope(
+      // Keeps an unsent draft. Without a Save button, walking back from a
+      // half-written plan would otherwise throw the work away — and a diet plan
+      // is twenty minutes of typing, not a form.
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop || !_dirty) return;
+        final navigator = Navigator.of(context);
+        await _save(quiet: true);
+        if (mounted) navigator.pop();
+      },
+      child: _body(context, scheme, canSend),
+    );
+  }
+
+  Widget _body(BuildContext context, ColorScheme scheme, bool canSend) {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: AppSpacing.md,
@@ -175,13 +224,20 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: _saving ? null : () => _save(),
-            child: _saving
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2))
-                : const Text('Save', style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(width: 4),
+          // No Save button: "Send to patient" below already saves first, and two
+          // commit actions on one form invites sending a plan that was meant to
+          // stay a draft. Unsent edits are kept by the auto-save on leaving.
+          if (_saving)
+            const Padding(
+              padding: EdgeInsets.only(right: AppSpacing.md),
+              child: Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2.2),
+                ),
+              ),
+            ),
         ],
       ),
       body: !_loaded
@@ -196,11 +252,21 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                   maxLines: 3,
                   textCapitalization: TextCapitalization.sentences,
                   onChanged: (_) => _dirty = true,
-                  decoration: const InputDecoration(
+                  style: const TextStyle(fontSize: 15.5, height: 1.45),
+                  decoration: InputDecoration(
                     hintText: 'e.g. Bring fasting sugar under 130 without cutting rice completely',
+                    filled: true,
+                    fillColor: scheme.surfaceContainerLowest,
+                    contentPadding: const EdgeInsets.all(16),
+                    border: _softBorder(scheme),
+                    enabledBorder: _softBorder(scheme),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: AppColors.accentOn(context), width: 1.4),
+                    ),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.xl),
 
                 _Label('Meals'),
                 for (var i = 0; i < _meals.length; i++)
@@ -213,36 +279,49 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                     }),
                   ),
                 Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    for (final name in _suggestedMeals)
-                      if (!_meals.any((m) => m.name.text.trim().toLowerCase() == name.toLowerCase()))
+                    for (final name in [..._suggestedMeals, ''])
+                      if (name.isEmpty ||
+                          !_meals.any(
+                            (m) => m.name.text.trim().toLowerCase() == name.toLowerCase(),
+                          ))
                         ActionChip(
-                          avatar: const Icon(Icons.add_rounded, size: 17),
-                          label: Text(name),
+                          avatar: Icon(Icons.add_rounded, size: 18, color: AppColors.accentOn(context)),
+                          label: Text(
+                            name.isEmpty ? 'Other' : name,
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                          ),
+                          labelPadding: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          backgroundColor: scheme.surfaceContainerLowest,
+                          side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           onPressed: () => _addMeal(name),
                         ),
-                    ActionChip(
-                      avatar: const Icon(Icons.add_rounded, size: 17),
-                      label: const Text('Other'),
-                      onPressed: () => _addMeal(''),
-                    ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.xl),
 
                 // Kept out of the meal cards on purpose: a patient scanning for
                 // "can I have this?" should have one place to look.
                 _Label('Best avoided'),
-                if (_avoidList.isNotEmpty)
+                if (_avoidList.isNotEmpty) ...[
                   Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       for (var i = 0; i < _avoidList.length; i++)
                         Chip(
-                          label: Text(_avoidList[i]),
+                          label: Text(
+                            _avoidList[i],
+                            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                          ),
+                          backgroundColor: AppColors.dangerBgOn(context),
+                          side: BorderSide(color: AppColors.dangerOn(context).withValues(alpha: 0.28)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          deleteIconColor: AppColors.danger,
                           onDeleted: () => setState(() {
                             _avoidList = [..._avoidList]..removeAt(i);
                             _dirty = true;
@@ -250,22 +329,50 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                         ),
                     ],
                   ),
-                const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 Row(
                   children: [
                     Expanded(
                       child: TextField(
                         controller: _avoid,
                         textInputAction: TextInputAction.done,
+                        textCapitalization: TextCapitalization.sentences,
                         onSubmitted: (_) => _addAvoid(),
-                        decoration: const InputDecoration(hintText: 'Add a food to avoid'),
+                        decoration: InputDecoration(
+                          hintText: 'e.g. Sweetened lassi',
+                          filled: true,
+                          fillColor: scheme.surfaceContainerLowest,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                          border: _softBorder(scheme),
+                          enabledBorder: _softBorder(scheme),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: AppColors.accentOn(context), width: 1.4),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
-                    IconButton.filledTonal(onPressed: _addAvoid, icon: const Icon(Icons.add_rounded)),
+                    // Disabled until there is something to add, so an empty tap
+                    // no longer looks like a dead button.
+                    SizedBox(
+                      height: 52,
+                      width: 52,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          disabledBackgroundColor: scheme.surfaceContainerHighest,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        onPressed: _canAddAvoid ? _addAvoid : null,
+                        child: const Icon(Icons.add_rounded, size: 24),
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.xl),
 
                 _Label('Anything else'),
                 TextField(
@@ -275,8 +382,18 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                   maxLength: 2000,
                   textCapitalization: TextCapitalization.sentences,
                   onChanged: (_) => _dirty = true,
-                  decoration: const InputDecoration(
+                  style: const TextStyle(fontSize: 15.5, height: 1.45),
+                  decoration: InputDecoration(
                     hintText: 'Water, cooking oil, eating out, fasting days…',
+                    filled: true,
+                    fillColor: scheme.surfaceContainerLowest,
+                    contentPadding: const EdgeInsets.all(16),
+                    border: _softBorder(scheme),
+                    enabledBorder: _softBorder(scheme),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: AppColors.accentOn(context), width: 1.4),
+                    ),
                   ),
                 ),
               ],
@@ -288,14 +405,29 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (_sharedAt == null && canSend)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: Text(
-                        'The patient has not been sent this plan yet.',
-                        style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
-                      ),
+                  // Says where the plan stands at all times. With no Save
+                  // button there was nothing on screen to confirm the work had
+                  // been stored, which reads exactly like it has not been.
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(_statusIcon, size: 14, color: _statusColour(scheme)),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            _statusText,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: _statusColour(scheme),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
                   SizedBox(
                     width: double.infinity,
                     height: AppSpacing.minTapTarget + 6,
@@ -321,6 +453,14 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
     );
   }
 }
+
+/// The resting outline shared by every field on this screen. A hairline rather
+/// than Material's default underline: the form is long, and a dozen heavy
+/// underlines read as clutter where a card edge reads as structure.
+OutlineInputBorder _softBorder(ColorScheme scheme) => OutlineInputBorder(
+  borderRadius: BorderRadius.circular(14),
+  borderSide: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+);
 
 /// A meal being edited. Items are one controller per line so a dietician can
 /// fix "2 rotis" without retyping the rest of the meal.
@@ -368,14 +508,46 @@ class _MealCard extends StatefulWidget {
 }
 
 class _MealCardState extends State<_MealCard> {
+  /// Reads the stored string back into a [TimeOfDay] so the picker opens on the
+  /// time already set rather than on the current hour. Accepts both the
+  /// 12-hour form this screen writes and a bare 24-hour "HH:mm", because plans
+  /// saved before the picker existed were typed by hand.
+  TimeOfDay? get _parsedTime {
+    final raw = widget.draft.time.text.trim().toLowerCase();
+    if (raw.isEmpty) return null;
+    final m = RegExp(r'^(\d{1,2})[:.](\d{2})\s*(am|pm)?$').firstMatch(raw);
+    if (m == null) return null;
+    var hour = int.tryParse(m.group(1)!) ?? 0;
+    final minute = int.tryParse(m.group(2)!) ?? 0;
+    final suffix = m.group(3);
+    if (suffix == 'pm' && hour < 12) hour += 12;
+    if (suffix == 'am' && hour == 12) hour = 0;
+    if (hour > 23 || minute > 59) return null;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _parsedTime ?? const TimeOfDay(hour: 8, minute: 0),
+      helpText: 'When should this meal be?',
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      widget.draft.time.text = picked.format(context);
+      widget.onChanged();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final d = widget.draft;
+    final time = d.time.text.trim();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.md),
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.sm, AppSpacing.md),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
@@ -387,12 +559,11 @@ class _MealCardState extends State<_MealCard> {
           Row(
             children: [
               Expanded(
-                flex: 3,
                 child: TextField(
                   controller: d.name,
-                  textCapitalization: TextCapitalization.sentences,
+                  textCapitalization: TextCapitalization.words,
                   onChanged: (_) => widget.onChanged(),
-                  style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                   decoration: const InputDecoration(
                     hintText: 'Meal name',
                     isDense: true,
@@ -401,82 +572,152 @@ class _MealCardState extends State<_MealCard> {
                   ),
                 ),
               ),
-              Expanded(
-                flex: 2,
-                child: TextField(
-                  controller: d.time,
-                  textAlign: TextAlign.end,
-                  onChanged: (_) => widget.onChanged(),
-                  style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
-                  decoration: const InputDecoration(
-                    hintText: '8:00 am',
-                    isDense: true,
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ),
               IconButton(
+                tooltip: 'Remove this meal',
                 visualDensity: VisualDensity.compact,
                 onPressed: widget.onRemove,
-                icon: Icon(Icons.close_rounded, size: 19, color: scheme.onSurfaceVariant),
+                icon: Icon(Icons.close_rounded, size: 20, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
-          const Divider(height: AppSpacing.md),
-          for (var i = 0; i < d.items.length; i++)
-            Row(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.sm),
-                  child: Text('•', style: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant)),
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: d.items[i],
-                    textCapitalization: TextCapitalization.sentences,
-                    textInputAction: TextInputAction.next,
-                    onChanged: (_) => widget.onChanged(),
-                    decoration: const InputDecoration(
-                      hintText: 'e.g. 2 rotis, no ghee',
-                      isDense: true,
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 6),
-                    ),
+          const SizedBox(height: 10),
+
+          // A picker, not a text box. Typing the time by hand produced "8",
+          // "8pm", "20:00" and "8 o'clock" in the same plan, and the patient's
+          // side has to render whatever was typed.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Material(
+              color: time.isEmpty ? scheme.surfaceContainerHigh : AppColors.accentSoftOn(context),
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: _pickTime,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.schedule_rounded,
+                        size: 18,
+                        color: time.isEmpty ? scheme.onSurfaceVariant : AppColors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        time.isEmpty ? 'Set a time' : time,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: time.isEmpty ? scheme.onSurfaceVariant : AppColors.primary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () => setState(() {
-                    d.items.removeAt(i).dispose();
-                    widget.onChanged();
-                  }),
-                  icon: Icon(Icons.remove_circle_outline_rounded, size: 18, color: scheme.onSurfaceVariant),
-                ),
-              ],
+              ),
             ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.md, bottom: 4, right: AppSpacing.sm),
+            child: Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+          ),
+
+          for (var i = 0; i < d.items.length; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    margin: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentOn(context),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: d.items[i],
+                      textCapitalization: TextCapitalization.sentences,
+                      textInputAction: TextInputAction.next,
+                      onChanged: (_) => widget.onChanged(),
+                      style: const TextStyle(fontSize: 15.5),
+                      decoration: const InputDecoration(
+                        hintText: 'e.g. 2 rotis, no ghee',
+                        isDense: true,
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 11),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Remove this item',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => setState(() {
+                      d.items.removeAt(i).dispose();
+                      widget.onChanged();
+                    }),
+                    icon: Icon(
+                      Icons.remove_circle_outline_rounded,
+                      size: 19,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          const SizedBox(height: 4),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              ),
               onPressed: () => setState(() {
                 d.items = [...d.items, TextEditingController()];
                 widget.onChanged();
               }),
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Add item'),
+              icon: const Icon(Icons.add_rounded, size: 19),
+              label: const Text(
+                'Add item',
+                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+              ),
             ),
           ),
-          TextField(
-            controller: d.notes,
-            textCapitalization: TextCapitalization.sentences,
-            onChanged: (_) => widget.onChanged(),
-            style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
-            decoration: const InputDecoration(
-              hintText: 'Note for this meal (optional)',
-              isDense: true,
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
+          const SizedBox(height: AppSpacing.sm),
+
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: TextField(
+              controller: d.notes,
+              textCapitalization: TextCapitalization.sentences,
+              minLines: 1,
+              maxLines: 3,
+              onChanged: (_) => widget.onChanged(),
+              style: const TextStyle(fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Note for this meal (optional)',
+                filled: true,
+                fillColor: scheme.surfaceContainerHigh.withValues(alpha: 0.45),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.accentOn(context), width: 1.4),
+                ),
+              ),
             ),
           ),
         ],

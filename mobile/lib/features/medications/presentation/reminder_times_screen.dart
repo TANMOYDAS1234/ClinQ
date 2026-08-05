@@ -195,7 +195,7 @@ class _ReminderTimesScreenState extends ConsumerState<ReminderTimesScreen> {
 
   Widget _mealRow(String label, TimeOfDay time, VoidCallback onTap, ColorScheme scheme) => ListTile(
         title: Text(label, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
-        trailing: Text(time.format(context), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary)),
+        trailing: Text(time.format(context), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.accentOn(context))),
         onTap: onTap,
       );
 }
@@ -227,7 +227,7 @@ class _MedTimes extends StatelessWidget {
             children: [
               for (var i = 0; i < med.schedule.length; i++)
                 ActionChip(
-                  avatar: const Icon(Icons.access_time_rounded, size: 16, color: AppColors.primary),
+                  avatar: Icon(Icons.access_time_rounded, size: 16, color: AppColors.accentOn(context)),
                   label: Text(med.schedule[i].time),
                   onPressed: () => onEdit(i),
                 ),

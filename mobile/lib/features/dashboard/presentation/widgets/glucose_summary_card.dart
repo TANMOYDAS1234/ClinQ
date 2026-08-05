@@ -20,7 +20,7 @@ class GlucoseSummaryCard extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final unit = ref.watch(glucoseUnitProvider);
     final latest = glucose.latest;
-    final color = latest == null ? AppColors.primary : AppColors.forGlucoseFlag(latest.flag);
+    final color = latest == null ? AppColors.primary : AppColors.forGlucoseFlagOn(context, latest.flag);
 
     return AppCard(
       onTap: () => context.go('/track'),

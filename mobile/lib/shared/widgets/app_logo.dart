@@ -26,7 +26,7 @@ class AppLogo extends StatelessWidget {
         boxShadow: showShadow
             ? [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.28),
+                  color: AppColors.accentOn(context).withValues(alpha: 0.28),
                   blurRadius: size * 0.25,
                   offset: Offset(0, size * 0.08),
                 ),

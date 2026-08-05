@@ -148,9 +148,9 @@ class _OverviewSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: _StatTile(icon: Icons.groups_rounded, color: AppColors.primary, value: '${o.patientCount}', label: 'Patients')),
+            Expanded(child: _StatTile(icon: Icons.groups_rounded, color: AppColors.accentOn(context), value: '${o.patientCount}', label: 'Patients')),
             const SizedBox(width: AppSpacing.sm),
-            Expanded(child: _StatTile(icon: Icons.today_rounded, color: AppColors.success, value: '${o.appointmentsToday}', label: 'Appts today')),
+            Expanded(child: _StatTile(icon: Icons.today_rounded, color: AppColors.successOn(context), value: '${o.appointmentsToday}', label: 'Appts today')),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),

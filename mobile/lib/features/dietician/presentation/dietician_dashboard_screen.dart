@@ -106,7 +106,7 @@ class DieticianDashboardScreen extends ConsumerWidget {
                         value: '${d.plansMissing}',
                         note: d.plansMissing > 0 ? 'waiting on you' : 'all sent',
                         accent: d.plansMissing > 0 ? AppColors.primary : null,
-                        tint: AppColors.infoBg,
+                        tint: AppColors.infoBgOn(context),
                         icon: Icons.assignment_outlined,
                       ),
 
@@ -223,17 +223,17 @@ class _BrandHeader extends StatelessWidget {
             'assets/brand/logo_emblem.png',
             height: 30,
             errorBuilder: (_, _, _) =>
-                const Icon(Icons.restaurant_rounded, size: 26, color: AppColors.primary),
+                Icon(Icons.restaurant_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 10),
-          const Text(
+          Text(
             'ClinQ',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
           GestureDetector(
             onTap: () => context.go('/dietician/profile'),
-            child: UserAvatar(name: name, avatarUrl: avatarUrl, accent: AppColors.primary, size: 38),
+            child: UserAvatar(name: name, avatarUrl: avatarUrl, accent: AppColors.accentOn(context), size: 38),
           ),
         ],
       ),
@@ -373,7 +373,7 @@ class _WorkCard extends StatelessWidget {
                     style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
                     child: Text(
                       action!,
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.accentOn(context)),
                     ),
                   ),
               ],
@@ -422,13 +422,13 @@ class _PatientRow extends StatelessWidget {
               width: 42,
               height: 42,
               alignment: Alignment.center,
-              decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: AppColors.accentSoftOn(context), shape: BoxShape.circle),
               child: Text(
                 _initials(patient.name),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
+                  color: AppColors.accentOn(context),
                 ),
               ),
             ),
@@ -476,15 +476,15 @@ class _AgePill extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: AppColors.dangerBg,
+            color: AppColors.dangerBgOn(context),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
             days == 0 ? 'today' : '$days ${days == 1 ? 'day' : 'days'} ago',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: AppColors.danger,
+              color: AppColors.dangerOn(context),
             ),
           ),
         ),
@@ -502,16 +502,16 @@ class _CreateButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.accentSoft,
+      color: AppColors.accentSoftOn(context),
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: onTap,
-        child: const Padding(
+        child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Text(
             'Create Plan',
-            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.primary),
+            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.accentOn(context)),
           ),
         ),
       ),
@@ -532,20 +532,20 @@ class _AllCaught extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.accentSoft,
+        color: AppColors.accentSoftOn(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 30),
+          Icon(Icons.check_circle_rounded, color: AppColors.accentOn(context), size: 30),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'All caught up',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
                 ),
                 const SizedBox(height: 2),
                 Text(

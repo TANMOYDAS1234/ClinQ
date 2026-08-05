@@ -122,7 +122,7 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.profileLogout, style: const TextStyle(color: AppColors.danger)),
+            child: Text(l10n.profileLogout, style: TextStyle(color: AppColors.dangerOn(context))),
           ),
         ],
       ),
@@ -316,7 +316,7 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.danger,
-                side: const BorderSide(color: AppColors.danger, width: 1.5),
+                side: BorderSide(color: AppColors.dangerOn(context), width: 1.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
                 ),

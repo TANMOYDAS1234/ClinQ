@@ -338,7 +338,7 @@ class _DayEditor extends StatelessWidget {
                     ),
             ),
             IconButton(
-              icon: const Icon(Icons.add_circle_outline_rounded, color: AppColors.primary),
+              icon: Icon(Icons.add_circle_outline_rounded, color: AppColors.accentOn(context)),
               tooltip: 'Add hours',
               onPressed: onAdd,
             ),

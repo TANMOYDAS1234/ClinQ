@@ -90,10 +90,11 @@ class CareScreen extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: item.color.withValues(alpha: 0.12),
+                    // Declared in a top-level const table, so the tone is picked here.
+                    color: AppColors.toneOn(context, item.color).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(item.icon, color: item.color),
+                  child: Icon(item.icon, color: AppColors.toneOn(context, item.color)),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(

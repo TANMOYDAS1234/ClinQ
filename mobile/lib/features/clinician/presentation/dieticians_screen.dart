@@ -117,7 +117,7 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.md),
                     decoration: BoxDecoration(
-                      color: AppColors.infoBg,
+                      color: AppColors.infoBgOn(context),
                       borderRadius: BorderRadius.circular(
                         AppSpacing.cardRadius,
                       ),
@@ -184,13 +184,13 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                                   width: 42,
                                   height: 42,
                                   decoration: BoxDecoration(
-                                    color: AppColors.accentSoft,
+                                    color: AppColors.accentSoftOn(context),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.event_repeat_outlined,
                                     size: 21,
-                                    color: AppColors.primary,
+                                    color: AppColors.accentOn(context),
                                   ),
                                 ),
                                 const SizedBox(width: AppSpacing.md),
@@ -225,7 +225,7 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                                     style: TextStyle(
                                       fontSize: 14.5,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.primary,
+                                      color: AppColors.accentOn(context),
                                     ),
                                   ),
                               ],
@@ -303,7 +303,7 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                                 child: UserAvatar(
                                   name: items[i].name,
                                   avatarUrl: items[i].avatarUrl,
-                                  accent: AppColors.primary,
+                                  accent: AppColors.accentOn(context),
                                   size: 44,
                                 ),
                               ),
@@ -424,7 +424,7 @@ class _IntervalSheetState extends State<_IntervalSheet> {
             Container(
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
-                color: AppColors.warningBg,
+                color: AppColors.warningBgOn(context),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
@@ -498,7 +498,7 @@ class _IntervalRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: selected ? AppColors.accentSoft : Colors.transparent,
+      color: selected ? AppColors.accentSoftOn(context) : Colors.transparent,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
@@ -684,11 +684,12 @@ class _AddDieticianSheetState extends ConsumerState<_AddDieticianSheet> {
               controller: _phone,
               keyboardType: TextInputType.phone,
               textInputAction: TextInputAction.next,
-              // Same pair as the login field: maxLength caps it and digitsOnly
-              // strips anything pasted. A second length limiter on top made the
-              // cursor jump when editing a full field.
-              maxLength: 10,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              // Same as the login field: one limiter, in the formatters, so the
+              // caret survives an edit in the middle of a full number.
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
               decoration: const InputDecoration(
                 labelText: 'Mobile number',
                 hintText: '9830012345',
@@ -740,7 +741,7 @@ class _AddDieticianSheetState extends ConsumerState<_AddDieticianSheet> {
               const SizedBox(height: AppSpacing.sm),
               Text(
                 _serverError!,
-                style: const TextStyle(fontSize: 13.5, color: AppColors.danger),
+                style: TextStyle(fontSize: 13.5, color: AppColors.dangerOn(context)),
               ),
             ],
             const SizedBox(height: AppSpacing.lg),

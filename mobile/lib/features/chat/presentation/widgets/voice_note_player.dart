@@ -209,7 +209,7 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Material(
-              color: widget.onDark ? Colors.white24 : AppColors.accentSoft,
+              color: widget.onDark ? Colors.white24 : AppColors.accentSoftOn(context),
               shape: const CircleBorder(),
               child: InkWell(
                 customBorder: const CircleBorder(),
@@ -296,7 +296,7 @@ class _SpeedChip extends StatelessWidget {
         : '${speed.toStringAsFixed(1)}×';
 
     return Material(
-      color: onDark ? Colors.white24 : AppColors.accentSoft,
+      color: onDark ? Colors.white24 : AppColors.accentSoftOn(context),
       borderRadius: BorderRadius.circular(11),
       child: InkWell(
         borderRadius: BorderRadius.circular(11),

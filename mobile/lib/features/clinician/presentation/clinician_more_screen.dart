@@ -329,7 +329,7 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.danger,
-                side: const BorderSide(color: AppColors.danger, width: 1.5),
+                side: BorderSide(color: AppColors.dangerOn(context), width: 1.5),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.buttonRadius)),
               ),
               onPressed: _confirmLogout,

@@ -2,6 +2,7 @@ import { ChatMessage } from '../../models/ChatMessage.js';
 import { DietPlan } from '../../models/DietPlan.js';
 import { generate, AiUnavailableError } from './gemini.js';
 import { retrieve, formatContext } from './rag.js';
+import { buildPatientContext } from '../patientContext.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../config/logger.js';
 
@@ -28,7 +29,13 @@ const HISTORY_TURNS = 6;
  * It stays silent when generation fails: the dietician replying late beats the
  * app replying wrong.
  */
-export function buildNutritionPrompt({ plan, dieticianNotes, grounding, language = 'en' }) {
+export function buildNutritionPrompt({
+  plan,
+  dieticianNotes,
+  grounding,
+  clinicalRecord,
+  language = 'en',
+}) {
   const lang = { en: 'English', bn: 'Bengali (বাংলা)', hi: 'Hindi (हिन्दी)' }[language] ?? 'English';
 
   return `You are the nutrition assistant for ${env.CLINIC_NAME}. You are answering inside the patient's conversation with their dietician.
@@ -63,6 +70,18 @@ ${grounding || 'No matching approved guidance was found.'}
 ## What the dietician has told this patient recently
 ${dieticianNotes || 'Nothing yet.'}
 
+## This patient's clinical record (from the clinic's own notes)
+${clinicalRecord || 'Nothing recorded yet.'}
+
+This record is here so you know WHO you are talking to — it is not a source of
+diet advice. Use it only to:
+- address the patient as someone whose situation you already know, rather than
+  asking them what you have been told;
+- recognise when a question is clinical rather than dietary, and hand it over.
+It never licenses you to invent a portion, a substitution or a target. Rule 1
+still governs: specifics for this patient come from the dietician, never from
+this record.
+
 Answer the patient's latest message now, under every rule above.`;
 }
 
@@ -82,7 +101,7 @@ function formatPlan(plan) {
 /** Generates the assistant's turn, or null when generation failed and the
  * dietician should answer instead. */
 export async function nutritionReply({ patientId, sessionId, text, language = 'en' }) {
-  const [plan, notes, history, chunks] = await Promise.all([
+  const [plan, notes, history, chunks, context] = await Promise.all([
     DietPlan.findOne({ patient: patientId, sharedAt: { $ne: null } }).lean(),
     ChatMessage.find({ patient: patientId, role: 'dietician', content: { $nin: [null, ''] } })
       .sort({ createdAt: -1 })
@@ -95,6 +114,10 @@ export async function nutritionReply({ patientId, sessionId, text, language = 'e
     // Grounding matters most before a plan exists: it is the only thing
     // standing between "no answer at all" and the model improvising.
     retrieve(text, { language, categories: ['nutrition'], limit: 4 }).catch(() => []),
+    // Built fresh on every turn, never cached: a sugar logged a minute ago or a
+    // prescription changed this morning has to be what this reply is written
+    // against. A stale picture here is worse than none.
+    buildPatientContext(patientId).catch(() => null),
   ]);
 
   const dieticianNotes = notes
@@ -115,7 +138,13 @@ export async function nutritionReply({ patientId, sessionId, text, language = 'e
 
   try {
     const result = await generate({
-      system: buildNutritionPrompt({ plan, dieticianNotes, grounding: formatContext(chunks), language }),
+      system: buildNutritionPrompt({
+        plan,
+        dieticianNotes,
+        grounding: formatContext(chunks),
+        clinicalRecord: context?.text ?? null,
+        language,
+      }),
       contents,
       // Low: this is a quoting job, not a writing one. Variance here means
       // paraphrasing the dietician's numbers, which is the failure mode.

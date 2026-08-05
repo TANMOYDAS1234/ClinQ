@@ -100,8 +100,8 @@ class _ClinicRow extends StatelessWidget {
               Container(
                 width: 46,
                 height: 46,
-                decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.local_hospital_rounded, color: AppColors.primary),
+                decoration: BoxDecoration(color: AppColors.accentOn(context).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.local_hospital_rounded, color: AppColors.accentOn(context)),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(

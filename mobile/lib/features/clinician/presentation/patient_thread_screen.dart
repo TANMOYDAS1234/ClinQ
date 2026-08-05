@@ -409,7 +409,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
             UserAvatar(
               name: _patientName ?? '?',
               avatarUrl: _patientAvatarUrl,
-              accent: AppColors.primary,
+              accent: AppColors.accentOn(context),
               size: 36,
             ),
             const SizedBox(width: 10),
@@ -418,8 +418,8 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
                 _patientName ?? 'Conversation',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.primary,
+                style: TextStyle(
+                  color: AppColors.accentOn(context),
                   fontWeight: FontWeight.w700,
                   fontSize: 18,
                 ),
@@ -432,9 +432,9 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
           // test reports — opens from here; the chat is where the doctor is.
           IconButton(
             tooltip: 'Patient record & prescribe',
-            icon: const Icon(
+            icon: Icon(
               Icons.assignment_ind_outlined,
-              color: AppColors.primary,
+              color: AppColors.accentOn(context),
             ),
             onPressed:
                 () => context.push(
@@ -447,7 +447,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
           // not while scanning the list.
           IconButton(
             tooltip: 'Call ${_patientName ?? 'patient'}',
-            icon: const Icon(Icons.call_rounded, color: AppColors.primary),
+            icon: Icon(Icons.call_rounded, color: AppColors.accentOn(context)),
             onPressed: _patientPhone == null ? null : _call,
           ),
         ],
@@ -468,7 +468,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
                         right: AppSpacing.md,
                         bottom: AppSpacing.md,
                         child: Material(
-                          color: AppColors.primary,
+                          color: AppColors.accentOn(context),
                           shape: const CircleBorder(),
                           elevation: 3,
                           child: InkWell(
@@ -709,7 +709,7 @@ class _Composer extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Material(
-                color: AppColors.primary,
+                color: AppColors.accentOn(context),
                 shape: const CircleBorder(),
                 child: InkWell(
                   customBorder: const CircleBorder(),

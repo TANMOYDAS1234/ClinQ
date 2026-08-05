@@ -131,12 +131,12 @@ class _DashboardHeader extends ConsumerWidget {
           Image.asset(
             'assets/brand/logo_emblem.png',
             height: 30,
-            errorBuilder: (_, _, _) => const Icon(Icons.forum_rounded, size: 26, color: AppColors.primary),
+            errorBuilder: (_, _, _) => Icon(Icons.forum_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 10),
-          const Text(
+          Text(
             'ClinQ',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
           GestureDetector(
@@ -144,7 +144,7 @@ class _DashboardHeader extends ConsumerWidget {
             child: UserAvatar(
               name: user?.name ?? '',
               avatarUrl: user?.avatarUrl,
-              accent: AppColors.primary,
+              accent: AppColors.accentOn(context),
               size: 38,
             ),
           ),
@@ -276,7 +276,7 @@ class _ActiveTodayCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.infoBg,
+        color: AppColors.infoBgOn(context),
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
       ),
       child: Column(
@@ -325,7 +325,7 @@ class _ActiveTodayCard extends StatelessWidget {
                 fg: Colors.white,
               ),
               const SizedBox(width: AppSpacing.sm),
-              _Pill(text: 'Remaining: $remaining', bg: AppColors.accentSoft, fg: AppColors.primary),
+              _Pill(text: 'Remaining: $remaining', bg: AppColors.accentSoftOn(context), fg: AppColors.primary),
             ],
           ),
         ],
@@ -365,7 +365,7 @@ class _AlertStrip extends StatelessWidget {
         _AlertRow(
           icon: Icons.warning_amber_rounded,
           iconBg: AppColors.danger,
-          bg: AppColors.dangerBg,
+          bg: AppColors.dangerBgOn(context),
           label: 'VITALS WARNING',
           labelColor: AppColors.danger,
           detail: '${overview.riskCritical} Critical ${overview.riskCritical == 1 ? 'Patient' : 'Patients'}',
@@ -375,7 +375,7 @@ class _AlertStrip extends StatelessWidget {
         _AlertRow(
           icon: Icons.priority_high_rounded,
           iconBg: AppColors.primary,
-          bg: AppColors.infoBg,
+          bg: AppColors.infoBgOn(context),
           label: 'HIGH PRIORITY',
           detail:
               '${overview.highPriorityAlerts} Action ${overview.highPriorityAlerts == 1 ? 'Item' : 'Items'}',
@@ -385,7 +385,7 @@ class _AlertStrip extends StatelessWidget {
         _AlertRow(
           icon: Icons.mail_outline_rounded,
           iconBg: AppColors.primary,
-          bg: AppColors.infoBg,
+          bg: AppColors.infoBgOn(context),
           label: 'NEW MESSAGES',
           detail: '${overview.unreadMessages} Unread',
           onTap: () => context.go('/clinician/patients'),
@@ -512,7 +512,7 @@ class _TriageQueue extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 26),
+                Icon(Icons.check_circle_rounded, color: AppColors.accentOn(context), size: 26),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Text(
@@ -544,7 +544,7 @@ class _TriageQueue extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: Material(
-            color: AppColors.infoBg,
+            color: AppColors.infoBgOn(context),
             borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
             child: InkWell(
               borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
@@ -647,10 +647,10 @@ class _TriageRow extends StatelessWidget {
                   _Tag(
                     _severityLabel(alert.severity),
                     fg: isEmergency ? AppColors.danger : AppColors.primary,
-                    bg: isEmergency ? AppColors.dangerBg : AppColors.infoBg,
+                    bg: isEmergency ? AppColors.dangerBgOn(context) : AppColors.infoBgOn(context),
                   ),
                   if (alert.type.isNotEmpty)
-                    _Tag(_humanise(alert.type), fg: AppColors.primary, bg: AppColors.infoBg),
+                    _Tag(_humanise(alert.type), fg: AppColors.primary, bg: AppColors.infoBgOn(context)),
                 ],
               ),
             ),
@@ -707,15 +707,15 @@ class _NutritionReviews extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: AppColors.accentSoft,
+                  color: AppColors.accentSoftOn(context),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   '$due Due',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
+                    color: AppColors.accentOn(context),
                   ),
                 ),
               ),
@@ -776,7 +776,7 @@ class _NutritionCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: quiet ? AppColors.warningBg : AppColors.accentSoft,
+                  color: quiet ? AppColors.warningBgOn(context) : AppColors.accentSoftOn(context),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -805,17 +805,17 @@ class _NutritionCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: Material(
-              color: AppColors.accentSoft,
+              color: AppColors.accentSoftOn(context),
               borderRadius: BorderRadius.circular(10),
               child: InkWell(
                 borderRadius: BorderRadius.circular(10),
                 onTap: () => context.push('/clinician/patients/${review.patientId}'),
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 13),
                   child: Center(
                     child: Text(
                       'Review Log',
-                      style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.primary),
+                      style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.accentOn(context)),
                     ),
                   ),
                 ),

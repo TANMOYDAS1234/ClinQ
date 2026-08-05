@@ -5,6 +5,10 @@ import { Medication } from '../models/Medication.js';
 import { VitalRecord } from '../models/VitalRecord.js';
 import { Hba1cRecord } from '../models/Hba1cRecord.js';
 import { Appointment } from '../models/Appointment.js';
+import { Prescription } from '../models/Prescription.js';
+import { LabResult } from '../models/LabResult.js';
+import { DietPlan } from '../models/DietPlan.js';
+import { FootAssessment } from '../models/FootAssessment.js';
 
 /**
  * Builds the compact clinical picture injected into the assistant prompt.
@@ -15,7 +19,18 @@ import { Appointment } from '../models/Appointment.js';
  * materially different reply than one that does not.
  */
 export async function buildPatientContext(patientId) {
-  const [profile, recentGlucose, meds, latestVital, latestHba1c, nextAppt] = await Promise.all([
+  const [
+    profile,
+    recentGlucose,
+    meds,
+    latestVital,
+    latestHba1c,
+    nextAppt,
+    latestRx,
+    labs,
+    dietPlan,
+    foot,
+  ] = await Promise.all([
     PatientProfile.findOne({ user: patientId }).lean(),
     GlucoseReading.find({ patient: patientId })
       .sort({ measuredAt: -1 })
@@ -32,6 +47,13 @@ export async function buildPatientContext(patientId) {
     })
       .sort({ scheduledFor: 1 })
       .lean(),
+    // The doctor's own record of this patient. Without it the assistant could
+    // describe the medicines but not what they were prescribed *for*, and gave
+    // general answers to a patient whose diagnosis was already written down.
+    Prescription.findOne({ patient: patientId }).sort({ issuedOn: -1 }).lean(),
+    LabResult.find({ patient: patientId }).sort({ createdAt: -1 }).limit(5).lean(),
+    DietPlan.findOne({ patient: patientId }).lean(),
+    FootAssessment.findOne({ patient: patientId }).sort({ assessedAt: -1 }).lean(),
   ]);
 
   const lines = [];
@@ -106,10 +128,77 @@ export async function buildPatientContext(patientId) {
     lines.push('- No upcoming appointment booked.');
   }
 
+  // ---- The clinical record ------------------------------------------------
+  // What the clinic has actually written about this patient, as opposed to what
+  // the patient has logged. It is the difference between "your sugars look
+  // high" and "your sugars are above the target Dr. Dey set for you, and he has
+  // already changed your metformin once for it".
+
+  if (latestRx) {
+    if (latestRx.diagnosis) {
+      lines.push(`- Diagnosis on the latest prescription: ${latestRx.diagnosis}`);
+    }
+    lines.push(`- Latest prescription issued: ${dayjs(latestRx.issuedOn).format('DD MMM YYYY')}`);
+    if (latestRx.generalAdvice) {
+      lines.push(`- Doctor's advice on it: ${String(latestRx.generalAdvice).slice(0, 500)}`);
+    }
+    // Per-item instructions ("take with water", "stop if loose motions") sit on
+    // each medicine, not on the prescription, and are exactly the sort of thing
+    // a patient asks the assistant to repeat.
+    const perItem = (latestRx.items ?? [])
+      .filter((it) => it.instructions)
+      .map((it) => `${it.name}: ${it.instructions}`);
+    if (perItem.length) lines.push(`- Instructions with specific medicines: ${perItem.join('; ')}`);
+    if (latestRx.labTestsAdvised?.length) {
+      lines.push(`- Tests the doctor advised: ${latestRx.labTestsAdvised.join(', ')}`);
+    }
+    if (latestRx.followUpOn) {
+      lines.push(`- Doctor asked for follow-up on: ${dayjs(latestRx.followUpOn).format('DD MMM YYYY')}`);
+    }
+  }
+
+  if (labs?.length) {
+    const list = labs
+      .map((l) => `${l.testName}${l.note ? ` — ${String(l.note).slice(0, 120)}` : ''}`)
+      .join('; ');
+    lines.push(`- Recent tests and reports on file: ${list}`);
+  }
+
+  // The clinician's own verdict outranks the final computed one, which in turn
+  // outranks the model's — the same order the patient is shown.
+  const footRisk =
+    foot?.clinicianReview?.riskLevel ?? foot?.finalRiskLevel ?? foot?.aiAssessment?.riskLevel;
+  if (footRisk) {
+    lines.push(
+      `- Most recent foot assessment: risk ${footRisk}` +
+        `${foot.assessedAt ? ` (${dayjs(foot.assessedAt).format('DD MMM YYYY')})` : ''}`,
+    );
+  }
+
+  // The plan is quoted in full rather than summarised: the nutrition assistant
+  // is only allowed to answer from it, so a paraphrase here would become the
+  // answer the patient acts on.
+  const dietLines = [];
+  if (dietPlan) {
+    if (dietPlan.goal) dietLines.push(`Goal: ${dietPlan.goal}`);
+    for (const meal of dietPlan.meals ?? []) {
+      const items = (meal.items ?? []).join(', ');
+      dietLines.push(
+        `${meal.name}${meal.time ? ` (${meal.time})` : ''}: ${items || '—'}` +
+          `${meal.notes ? ` [${meal.notes}]` : ''}`,
+      );
+    }
+    if (dietPlan.avoid?.length) dietLines.push(`Best avoided: ${dietPlan.avoid.join(', ')}`);
+    if (dietPlan.notes) dietLines.push(`Other notes: ${dietPlan.notes}`);
+    lines.push(`- Diet plan from the dietician:\n  ${dietLines.join('\n  ')}`);
+  }
+
   return {
     text: lines.join('\n'),
     profile,
     latestGlucose: recentGlucose?.[0] ?? null,
     targets: profile?.targets ?? {},
+    dietPlan: dietPlan ?? null,
+    dietPlanText: dietLines.length ? dietLines.join('\n') : null,
   };
 }

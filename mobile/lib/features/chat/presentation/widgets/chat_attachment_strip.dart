@@ -67,7 +67,7 @@ class ChatAttachmentStrip extends StatelessWidget {
                       ? Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.insert_drive_file_rounded, color: AppColors.primary, size: 26),
+                            Icon(Icons.insert_drive_file_rounded, color: AppColors.accentOn(context), size: 26),
                             const SizedBox(height: 4),
                             Text(
                               a.documentName!,
@@ -111,7 +111,7 @@ class ChatAttachmentStrip extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
                     child: Container(
-                      color: AppColors.danger.withValues(alpha: 0.75),
+                      color: AppColors.dangerOn(context).withValues(alpha: 0.75),
                       child: const Center(
                         child: Icon(Icons.error_outline_rounded, color: Colors.white, size: 26),
                       ),

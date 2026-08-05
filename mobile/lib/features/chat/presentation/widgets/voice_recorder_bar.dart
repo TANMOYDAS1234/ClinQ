@@ -172,7 +172,7 @@ class _VoiceRecorderBarState extends State<VoiceRecorderBar> {
                   height: 52,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: AppColors.dangerBg,
+                    color: AppColors.dangerBgOn(context),
                     borderRadius: BorderRadius.circular(26),
                   ),
                   child: Row(
@@ -182,11 +182,11 @@ class _VoiceRecorderBarState extends State<VoiceRecorderBar> {
                       const SizedBox(width: 10),
                       Text(
                         _starting ? '…' : _clock,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           fontFeatures: [FontFeature.tabularFigures()],
-                          color: AppColors.danger,
+                          color: AppColors.dangerOn(context),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -197,7 +197,7 @@ class _VoiceRecorderBarState extends State<VoiceRecorderBar> {
               ),
               const SizedBox(width: AppSpacing.sm),
               Material(
-                color: AppColors.primary,
+                color: AppColors.accentOn(context),
                 shape: const CircleBorder(),
                 child: InkWell(
                   customBorder: const CircleBorder(),
@@ -235,14 +235,14 @@ class _RecordingDot extends StatelessWidget {
             width: 10 + level * 6,
             height: 10 + level * 6,
             decoration: BoxDecoration(
-              color: AppColors.danger.withValues(alpha: 0.25),
+              color: AppColors.dangerOn(context).withValues(alpha: 0.25),
               shape: BoxShape.circle,
             ),
           ),
           Container(
             width: 9,
             height: 9,
-            decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: AppColors.dangerOn(context), shape: BoxShape.circle),
           ),
         ],
       ),
@@ -279,7 +279,7 @@ class _LiveBars extends StatelessWidget {
                   // a progress bar.
                   height: 4 + level * 18 * (0.45 + 0.55 * math.sin((i / count) * math.pi)),
                   decoration: BoxDecoration(
-                    color: AppColors.danger.withValues(alpha: 0.65),
+                    color: AppColors.dangerOn(context).withValues(alpha: 0.65),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),

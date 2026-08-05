@@ -57,7 +57,7 @@ class _LanguagePickerScreenState extends ConsumerState<LanguagePickerScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSpacing.xl),
-              Icon(Icons.translate_rounded, size: 40, color: AppColors.primary),
+              Icon(Icons.translate_rounded, size: 40, color: AppColors.accentOn(context)),
               const SizedBox(height: AppSpacing.md),
               Text(
                 l10n.languagePickerTitle,

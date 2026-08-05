@@ -23,10 +23,10 @@ class NextAppointmentCard extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
+              color: AppColors.accentOn(context).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.event_rounded, color: AppColors.primary),
+            child: Icon(Icons.event_rounded, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(

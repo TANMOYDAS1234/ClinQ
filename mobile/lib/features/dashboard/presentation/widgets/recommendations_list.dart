@@ -34,7 +34,7 @@ class RecommendationsList extends StatelessWidget {
           AppCard(
             child: Row(
               children: [
-                const Icon(Icons.check_circle_outline_rounded, color: AppColors.success),
+                Icon(Icons.check_circle_outline_rounded, color: AppColors.successOn(context)),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(child: Text(l10n.dashboardNoRecommendations)),
               ],

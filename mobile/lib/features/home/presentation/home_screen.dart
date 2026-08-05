@@ -209,12 +209,12 @@ class _BrandHeader extends ConsumerWidget {
             'assets/brand/logo_emblem.png',
             height: 30,
             errorBuilder: (_, _, _) =>
-                const Icon(Icons.favorite_rounded, size: 26, color: AppColors.primary),
+                Icon(Icons.favorite_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 10),
-          const Text(
+          Text(
             'ClinQ',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
           // Tapping it opens Profile, the same as the doctor's header — the
@@ -224,7 +224,7 @@ class _BrandHeader extends ConsumerWidget {
             child: UserAvatar(
               name: user?.name ?? '',
               avatarUrl: user?.avatarUrl,
-              accent: AppColors.primary,
+              accent: AppColors.accentOn(context),
               size: 38,
             ),
           ),
@@ -339,20 +339,20 @@ class _Allergies extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.dangerBg.withValues(alpha: 0.5),
+        color: AppColors.dangerBgOn(context).withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
+        border: Border.all(color: AppColors.dangerOn(context).withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.dangerous_outlined, size: 21, color: AppColors.danger),
+              Icon(Icons.dangerous_outlined, size: 21, color: AppColors.dangerOn(context)),
               const SizedBox(width: AppSpacing.sm),
-              const Text(
+              Text(
                 'Allergies & Intolerances',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.danger),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.dangerOn(context)),
               ),
             ],
           ),
@@ -365,7 +365,7 @@ class _Allergies extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.danger,
+                    color: AppColors.dangerOn(context),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -399,16 +399,16 @@ class _DietPlanCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.accentSoft.withValues(alpha: 0.35),
+        color: AppColors.accentSoftOn(context).withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.accentOn(context).withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.restaurant_rounded, size: 20, color: AppColors.primary),
+              Icon(Icons.restaurant_rounded, size: 20, color: AppColors.accentOn(context)),
               const SizedBox(width: AppSpacing.sm),
               const Expanded(
                 child: Text(
@@ -476,9 +476,9 @@ class _DietPlanCard extends StatelessWidget {
                   isScrollControlled: true,
                   builder: (_) => _FullPlanSheet(plan: plan),
                 ),
-                child: const Text(
+                child: Text(
                   'View full plan',
-                  style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+                  style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.accentOn(context)),
                 ),
               ),
             ),
@@ -795,7 +795,7 @@ class _SectionTitle extends StatelessWidget {
             style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
             child: Text(
               action!,
-              style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+              style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.accentOn(context)),
             ),
           ),
       ],
@@ -818,7 +818,7 @@ class _RiskBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final critical = profile.riskBand == 'critical' || profile.riskBand == 'high';
     final fg = critical ? AppColors.danger : AppColors.warning;
-    final bg = critical ? AppColors.dangerBg : AppColors.warningBg;
+    final bg = critical ? AppColors.dangerBgOn(context) : AppColors.warningBgOn(context);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),

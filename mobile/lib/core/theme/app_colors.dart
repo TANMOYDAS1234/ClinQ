@@ -44,6 +44,78 @@ class AppColors {
   static const Color successBgDark = Color(0xFF0C2E22);
   static const Color infoBgDark = Color(0xFF16233A);
 
+  /// Status colours lightened for dark surfaces. The saturated light-mode reds
+  /// and ambers sit at roughly 3:1 against a near-black card — legible as a
+  /// blob of colour, not as text. These carry the same meaning at a contrast
+  /// you can actually read a number in.
+  static const Color dangerLight = Color(0xFFF87171);
+  static const Color warningLight = Color(0xFFFBBF24);
+  static const Color successLight = Color(0xFF34D399);
+
+  /// Mint fill's dark counterpart. Not a fixed colour but a wash of the bright
+  /// green, so it sits on whatever surface it lands on instead of punching a
+  /// pale hole in a dark card.
+  static Color get accentSoftDark => primaryDark.withValues(alpha: 0.16);
+
+  // ---- Theme-aware accessors ---------------------------------------------
+  //
+  // Every tint above exists in both brightnesses, but nothing chose between
+  // them: screens referenced the light constants directly, so dark mode kept
+  // rendering pale pastel panels with light text on them — unreadable, and the
+  // reason the app stopped looking finished the moment the phone went dark.
+  //
+  // Use these anywhere a colour is drawn, and the light constants only when
+  // building the theme itself.
+
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  /// The brand green, legible on whichever surface it is drawn on. The deep
+  /// forest green disappears into a dark background; [primaryDark] is its
+  /// counterpart, and this picks between them.
+  static Color accentOn(BuildContext context) => isDark(context) ? primaryDark : primary;
+
+  static Color accentSoftOn(BuildContext context) =>
+      isDark(context) ? accentSoftDark : accentSoft;
+
+  static Color dangerOn(BuildContext context) => isDark(context) ? dangerLight : danger;
+  static Color warningOn(BuildContext context) => isDark(context) ? warningLight : warning;
+  static Color successOn(BuildContext context) => isDark(context) ? successLight : success;
+
+  static Color dangerBgOn(BuildContext context) => isDark(context) ? dangerBgDark : dangerBg;
+  static Color warningBgOn(BuildContext context) => isDark(context) ? warningBgDark : warningBg;
+  static Color successBgOn(BuildContext context) => isDark(context) ? successBgDark : successBg;
+  static Color infoBgOn(BuildContext context) => isDark(context) ? infoBgDark : infoBg;
+
+  /// Glucose flag and triage urgency, in the current brightness. The plain
+  /// [forGlucoseFlag] / [forUrgency] stay for the theme and for places that
+  /// genuinely have no context.
+  static Color forGlucoseFlagOn(BuildContext context, String flag) =>
+      _lighten(context, forGlucoseFlag(flag));
+
+  static Color forUrgencyOn(BuildContext context, String urgency) =>
+      _lighten(context, forUrgency(urgency));
+
+  /// Maps a light-mode brand or status colour to its dark-mode counterpart.
+  ///
+  /// For colours that arrive as plain constants — from a top-level `const`
+  /// table, or a model field — and so cannot pick their own brightness at the
+  /// point they are declared. Call it where the colour is drawn.
+  static Color toneOn(BuildContext context, Color c) => _lighten(context, c);
+
+  static Color _lighten(BuildContext context, Color c) {
+    if (!isDark(context)) return c;
+    if (c == danger) return dangerLight;
+    if (c == warning) return warningLight;
+    if (c == success) return successLight;
+    if (c == primary) return primaryDark;
+    // The two one-off band colours: the "needs attention" orange and the
+    // "unknown band" grey, both of which sit too close to a dark card to read.
+    if (c == const Color(0xFFEA580C)) return const Color(0xFFFB923C);
+    if (c == const Color(0xFF6B7280)) return const Color(0xFF9CA3AF);
+    return c;
+  }
+
   /// Glucose reading flag → colour, per contract flags:
   /// severe_low, low, in_range, very_high, critical_high.
   static Color forGlucoseFlag(String flag) {

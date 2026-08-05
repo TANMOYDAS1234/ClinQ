@@ -120,13 +120,13 @@ class _MedicalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final o = overview;
-    final risk = dietRiskColor(o.riskBand);
+    final risk = AppColors.toneOn(context, dietRiskColor(o.riskBand));
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+        border: Border.all(color: AppColors.accentOn(context).withValues(alpha: 0.18)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,8 +164,8 @@ class _MedicalCard extends StatelessWidget {
                 for (final a in o.allergies)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                    decoration: BoxDecoration(color: AppColors.danger.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(8)),
-                    child: Text(a, style: const TextStyle(fontSize: 12.5, color: AppColors.danger, fontWeight: FontWeight.w600)),
+                    decoration: BoxDecoration(color: AppColors.dangerOn(context).withValues(alpha: 0.10), borderRadius: BorderRadius.circular(8)),
+                    child: Text(a, style: TextStyle(fontSize: 12.5, color: AppColors.dangerOn(context), fontWeight: FontWeight.w600)),
                   ),
               ],
             ),
@@ -206,8 +206,8 @@ class _MedRow extends StatelessWidget {
           Container(
             width: 34,
             height: 34,
-            decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(9)),
-            child: const Icon(Icons.medication_rounded, size: 18, color: AppColors.primary),
+            decoration: BoxDecoration(color: AppColors.accentOn(context).withValues(alpha: 0.10), borderRadius: BorderRadius.circular(9)),
+            child: Icon(Icons.medication_rounded, size: 18, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -351,15 +351,15 @@ class _DietPlanSection extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.accentSoft,
+                            color: AppColors.accentSoftOn(context),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             meal.time.isNotEmpty ? '${meal.name} · ${meal.time}' : meal.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
+                              color: AppColors.accentOn(context),
                             ),
                           ),
                         ),
@@ -367,15 +367,15 @@ class _DietPlanSection extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.danger.withValues(alpha: 0.12),
+                            color: AppColors.dangerOn(context).withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             '${plan.avoid.length} to avoid',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.danger,
+                              color: AppColors.dangerOn(context),
                             ),
                           ),
                         ),
@@ -490,7 +490,7 @@ class _FoodEntry extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(meal, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                    Text(meal, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.accentOn(context))),
                     const Spacer(),
                     if (entry.createdAt != null)
                       Text(DateFormat('d MMM, h:mm a').format(entry.createdAt!), style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
@@ -537,7 +537,7 @@ class _LabTests extends StatelessWidget {
           if (hba1c != null) ...[
             Row(
               children: [
-                const Icon(Icons.science_outlined, size: 19, color: AppColors.primary),
+                Icon(Icons.science_outlined, size: 19, color: AppColors.accentOn(context)),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   'Last HbA1c  $hba1c%',

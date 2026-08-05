@@ -189,7 +189,7 @@ class _ClinicianComposerState extends ConsumerState<_ClinicianComposer> {
               ),
               const SizedBox(width: AppSpacing.sm),
               Material(
-                color: AppColors.primary,
+                color: AppColors.accentOn(context),
                 shape: const CircleBorder(),
                 child: InkWell(
                   customBorder: const CircleBorder(),
@@ -233,7 +233,7 @@ class _SessionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final s = session;
-    final color = AppColors.forUrgency(s.highestUrgency);
+    final color = AppColors.forUrgencyOn(context, s.highestUrgency);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -338,14 +338,14 @@ class _MessageBubble extends StatelessWidget {
               ),
               if (m.flaggedByPatient) ...[
                 const SizedBox(width: 6),
-                const Icon(
+                Icon(
                   Icons.flag_rounded,
                   size: 14,
-                  color: AppColors.warning,
+                  color: AppColors.warningOn(context),
                 ),
-                const Text(
+                Text(
                   ' reported',
-                  style: TextStyle(fontSize: 11, color: AppColors.warning),
+                  style: TextStyle(fontSize: 11, color: AppColors.warningOn(context)),
                 ),
               ],
             ],
@@ -405,7 +405,7 @@ class _MessageBubble extends StatelessWidget {
                 if (m.urgency != 'routine')
                   _chip(
                     m.urgency.toUpperCase(),
-                    AppColors.forUrgency(m.urgency),
+                    AppColors.forUrgencyOn(context, m.urgency),
                   ),
                 if (m.ruleDriven) _chip('rule-driven', AppColors.primary),
                 if (m.isFallback) _chip('fallback', AppColors.warning),

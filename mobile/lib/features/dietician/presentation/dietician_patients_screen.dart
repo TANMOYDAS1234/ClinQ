@@ -18,11 +18,36 @@ Color dietRiskColor(String band) => switch (band) {
 
 /// The dietician's home: the patients a doctor has assigned to them, with the
 /// ones whose food log is due for review surfaced first.
-class DieticianPatientsScreen extends ConsumerWidget {
+class DieticianPatientsScreen extends ConsumerStatefulWidget {
   const DieticianPatientsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DieticianPatientsScreen> createState() => _DieticianPatientsScreenState();
+}
+
+class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScreen> {
+  final _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  /// Name or phone. A dietician covering every patient in the clinic scrolls a
+  /// list of hundreds otherwise, and the one they want is the one who just
+  /// messaged them.
+  List<DietPatient> _filter(List<DietPatient> all) {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return all;
+    return all
+        .where((p) => p.name.toLowerCase().contains(q) || p.phone.toLowerCase().contains(q))
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final async = ref.watch(dietPatientsProvider);
     final user = ref.watch(authControllerProvider).user;
@@ -33,9 +58,63 @@ class DieticianPatientsScreen extends ConsumerWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('My patients', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary)),
+            Text('My patients', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.accentOn(context))),
             Text('Dietician · ${user?.name ?? ''}', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
           ],
+        ),
+        actions: [
+          // `go`, not `push`: Profile is one of this shell's own tabs, so
+          // pushing it would stack a second copy over the Patients tab with a
+          // back arrow instead of simply switching to it.
+          GestureDetector(
+            onTap: () => context.go('/dietician/profile'),
+            child: UserAvatar(
+              name: user?.name ?? '',
+              avatarUrl: user?.avatarUrl,
+              accent: AppColors.accentOn(context),
+              size: 38,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(64),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
+            child: TextField(
+              controller: _search,
+              onChanged: (v) => setState(() => _query = v),
+              style: const TextStyle(fontSize: 15.5),
+              decoration: InputDecoration(
+                hintText: 'Search patients by name or number…',
+                prefixIcon: Icon(Icons.search_rounded, color: scheme.onSurfaceVariant),
+                suffixIcon: _query.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => setState(() {
+                          _search.clear();
+                          _query = '';
+                        }),
+                      ),
+                filled: true,
+                fillColor: scheme.surfaceContainerHigh.withValues(alpha: 0.55),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
       body: RefreshIndicator(
@@ -59,7 +138,21 @@ class DieticianPatientsScreen extends ConsumerWidget {
                 Center(child: Text('A doctor will assign patients to you.', style: TextStyle(color: scheme.onSurfaceVariant))),
               ]);
             }
-            final sorted = [...patients]..sort((a, b) => (b.reviewDue ? 1 : 0).compareTo(a.reviewDue ? 1 : 0));
+            final matched = _filter(patients);
+            if (matched.isEmpty) {
+              return ListView(children: [
+                SizedBox(height: MediaQuery.of(context).size.height * 0.22),
+                Icon(Icons.search_off_rounded, size: 54, color: scheme.outlineVariant),
+                const SizedBox(height: AppSpacing.md),
+                Center(
+                  child: Text(
+                    'No patient matches “${_query.trim()}”',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ]);
+            }
+            final sorted = [...matched]..sort((a, b) => (b.reviewDue ? 1 : 0).compareTo(a.reviewDue ? 1 : 0));
             return ListView.separated(
               padding: const EdgeInsets.all(AppSpacing.md),
               itemCount: sorted.length,
@@ -83,7 +176,7 @@ class _PatientCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final p = patient;
-    final risk = dietRiskColor(p.riskBand);
+    final risk = AppColors.toneOn(context, dietRiskColor(p.riskBand));
 
     return Material(
       color: scheme.surfaceContainerLowest,
@@ -99,7 +192,7 @@ class _PatientCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              UserAvatar(name: p.name, avatarUrl: p.avatarUrl, accent: AppColors.primary, size: 46),
+              UserAvatar(name: p.name, avatarUrl: p.avatarUrl, accent: AppColors.accentOn(context), size: 46),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
@@ -123,7 +216,7 @@ class _PatientCard extends StatelessWidget {
                 Container(
                   margin: const EdgeInsets.only(right: 6),
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                  decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
+                  decoration: BoxDecoration(color: AppColors.warningOn(context).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
                   child: const Text('Review due', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFFB45309))),
                 ),
               Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),

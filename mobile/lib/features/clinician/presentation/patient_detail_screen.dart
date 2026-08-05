@@ -89,26 +89,26 @@ class _MetricsGrid extends StatelessWidget {
       _Metric(
         label: 'Health score',
         value: p.healthScore?.toString() ?? '—',
-        color: healthBandColor(p.healthBand),
+        color: AppColors.toneOn(context, healthBandColor(p.healthBand)),
         icon: Icons.favorite_rounded,
       ),
       _Metric(
         label: 'Adherence',
         value: p.adherencePercent != null ? '${p.adherencePercent}%' : '—',
-        color: AppColors.primary,
+        color: AppColors.accentOn(context),
         icon: Icons.medication_rounded,
       ),
       _Metric(
         label: 'Avg glucose',
         value: p.glucoseAverage != null ? '${p.glucoseAverage}' : '—',
         unit: p.glucoseAverage != null ? 'mg/dL' : null,
-        color: AppColors.warning,
+        color: AppColors.warningOn(context),
         icon: Icons.bloodtype_rounded,
       ),
       _Metric(
         label: 'Time in range',
         value: p.timeInRangePercent != null ? '${p.timeInRangePercent}%' : '—',
-        color: AppColors.success,
+        color: AppColors.successOn(context),
         icon: Icons.check_circle_rounded,
       ),
       _Metric(
@@ -238,8 +238,8 @@ class _DieticianSection extends ConsumerWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(11)),
-            child: const Icon(Icons.restaurant_menu_rounded, size: 20, color: AppColors.primary),
+            decoration: BoxDecoration(color: AppColors.accentOn(context).withValues(alpha: 0.10), borderRadius: BorderRadius.circular(11)),
+            child: Icon(Icons.restaurant_menu_rounded, size: 20, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -409,7 +409,9 @@ class _DieticianSection extends ConsumerWidget {
                 TextField(
                   controller: phone,
                   keyboardType: TextInputType.number,
-                  maxLength: 10,
+                  // maxLength dropped: paired with the limiter below it capped
+                  // the number twice and reset the caret to the end on every
+                  // mid-string edit.
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                     LengthLimitingTextInputFormatter(10),
@@ -432,7 +434,7 @@ class _DieticianSection extends ConsumerWidget {
                 if (error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text(error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+                    child: Text(error!, style: TextStyle(color: AppColors.dangerOn(dctx), fontSize: 13)),
                   ),
               ],
             ),

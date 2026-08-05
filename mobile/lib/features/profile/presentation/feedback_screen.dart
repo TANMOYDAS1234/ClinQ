@@ -197,7 +197,7 @@ class _SubjectCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: selected ? AppColors.accentSoft : scheme.surfaceContainerLowest,
+          color: selected ? AppColors.accentSoftOn(context) : scheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected ? AppColors.primary : scheme.outlineVariant,
@@ -247,8 +247,8 @@ class _ThankYou extends StatelessWidget {
             Container(
               width: 84,
               height: 84,
-              decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
-              child: const Icon(Icons.check_rounded, size: 42, color: AppColors.primary),
+              decoration: BoxDecoration(color: AppColors.accentSoftOn(context), shape: BoxShape.circle),
+              child: Icon(Icons.check_rounded, size: 42, color: AppColors.accentOn(context)),
             ),
             const SizedBox(height: AppSpacing.lg),
             const Text(

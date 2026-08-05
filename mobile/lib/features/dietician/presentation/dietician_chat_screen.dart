@@ -121,7 +121,7 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
             UserAvatar(
               name: overview?.name ?? widget.patientName ?? '',
               avatarUrl: overview?.avatarUrl,
-              accent: AppColors.primary,
+              accent: AppColors.accentOn(context),
               size: 38,
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -305,11 +305,11 @@ class _Bubble extends StatelessWidget {
                     Container(
                       width: 24,
                       height: 24,
-                      decoration: const BoxDecoration(
-                        color: AppColors.accentSoft,
+                      decoration: BoxDecoration(
+                        color: AppColors.accentSoftOn(context),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(icon, size: 14, color: AppColors.primary),
+                      child: Icon(icon, size: 14, color: AppColors.accentOn(context)),
                     ),
                     const SizedBox(width: 7),
                     Flexible(

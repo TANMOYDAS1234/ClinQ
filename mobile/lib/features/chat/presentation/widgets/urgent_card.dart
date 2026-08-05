@@ -25,9 +25,9 @@ class UrgentCard extends ConsumerWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.warningBg,
+        color: AppColors.warningBgOn(context),
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.warning, width: 1.5),
+        border: Border.all(color: AppColors.warningOn(context), width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -35,7 +35,7 @@ class UrgentCard extends ConsumerWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 24),
+              Icon(Icons.warning_amber_rounded, color: AppColors.warningOn(context), size: 24),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
@@ -43,8 +43,8 @@ class UrgentCard extends ConsumerWidget {
                   children: [
                     Text(
                       l10n.chatUrgentTitle,
-                      style: const TextStyle(
-                        color: AppColors.warning,
+                      style: TextStyle(
+                        color: AppColors.warningOn(context),
                         fontWeight: FontWeight.w800,
                         fontSize: 17,
                         height: 1.3,
@@ -68,7 +68,7 @@ class UrgentCard extends ConsumerWidget {
               onPressed: () => launchUrl(Uri(scheme: 'tel', path: clinicPhone)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.warning,
-                side: const BorderSide(color: AppColors.warning, width: 1.5),
+                side: BorderSide(color: AppColors.warningOn(context), width: 1.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
                 ),
