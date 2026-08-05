@@ -21,7 +21,12 @@ class ChatReviewScreen extends ConsumerStatefulWidget {
 class _ChatReviewScreenState extends ConsumerState<ChatReviewScreen> {
   bool _flaggedOnly = true;
 
-  ChatReviewQuery get _query => (flagged: _flaggedOnly, urgency: null);
+  /// Nutrition threads are a separate conversation with the dietician. The
+  /// doctor can read them, but they should not be mixed into the flagged queue
+  /// of clinical chats — a diet question is not a review item.
+  bool _nutritionOnly = false;
+
+  ChatReviewQuery get _query => (flagged: _flaggedOnly && !_nutritionOnly, urgency: null);
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +45,9 @@ class _ChatReviewScreenState extends ConsumerState<ChatReviewScreen> {
               children: [
                 ChoiceChip(label: const Text('Flagged'), selected: _flaggedOnly, onSelected: (_) => setState(() => _flaggedOnly = true)),
                 const SizedBox(width: AppSpacing.sm),
-                ChoiceChip(label: const Text('All chats'), selected: !_flaggedOnly, onSelected: (_) => setState(() => _flaggedOnly = false)),
+                ChoiceChip(label: const Text('All chats'), selected: !_flaggedOnly && !_nutritionOnly, onSelected: (_) => setState(() { _flaggedOnly = false; _nutritionOnly = false; })),
+                const SizedBox(width: AppSpacing.sm),
+                ChoiceChip(label: const Text('Nutrition'), selected: _nutritionOnly, onSelected: (_) => setState(() { _nutritionOnly = true; _flaggedOnly = false; })),
               ],
             ),
           ),

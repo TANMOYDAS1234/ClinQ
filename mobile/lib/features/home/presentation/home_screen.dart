@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/authed_image.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/care_summary.dart';
 import 'home_providers.dart';
@@ -140,12 +141,13 @@ class HomeScreen extends ConsumerWidget {
   static String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 }
 
-class _BrandHeader extends StatelessWidget {
+class _BrandHeader extends ConsumerWidget {
   const _BrandHeader();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final user = ref.watch(authControllerProvider).user;
     return Container(
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
       decoration: BoxDecoration(
@@ -163,6 +165,18 @@ class _BrandHeader extends StatelessWidget {
           const Text(
             'ClinQ',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
+          ),
+          const Spacer(),
+          // Tapping it opens Profile, the same as the doctor's header — the
+          // photo is where people expect their own account to live.
+          GestureDetector(
+            onTap: () => context.go('/profile'),
+            child: UserAvatar(
+              name: user?.name ?? '',
+              avatarUrl: user?.avatarUrl,
+              accent: AppColors.primary,
+              size: 38,
+            ),
           ),
         ],
       ),

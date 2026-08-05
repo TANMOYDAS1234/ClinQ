@@ -234,7 +234,16 @@ router.get(
     // exchange is often exactly the context that explains today's question.
     // It also heals threads already split by sessions created per message
     // before that was fixed.
-    const total = await ChatMessage.countDocuments({ patient: req.patientId });
+    const careIdsForCount = await ChatSession.find({
+      patient: req.patientId,
+      kind: { $ne: 'nutrition' },
+    })
+      .select('_id')
+      .lean();
+    const total = await ChatMessage.countDocuments({
+      patient: req.patientId,
+      session: { $in: careIdsForCount.map((s) => s._id) },
+    });
 
     if (!session && total === 0) {
       // No conversation yet is a normal state, not an error: the clinic may be
@@ -266,7 +275,22 @@ router.get(
     // oldest — the clinic was missing the latest messages on any thread past the
     // limit. Ordered by time, not seq: seq restarts per session, so it cannot
     // order a history that spans several. The app re-sorts ascending to display.
-    const items = await ChatMessage.find({ patient: req.patientId, hiddenFor: { $ne: req.user._id } })
+    // Scoped to the patient's CARE sessions, not simply to the patient. The
+    // nutrition thread is a separate conversation with the dietician, and
+    // pulling it in here put the dietician's messages into the doctor's chat
+    // as though they were part of it.
+    const careSessionIds = await ChatSession.find({
+      patient: req.patientId,
+      kind: { $ne: 'nutrition' },
+    })
+      .select('_id')
+      .lean();
+
+    const items = await ChatMessage.find({
+      patient: req.patientId,
+      session: { $in: careSessionIds.map((s) => s._id) },
+      hiddenFor: { $ne: req.user._id },
+    })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

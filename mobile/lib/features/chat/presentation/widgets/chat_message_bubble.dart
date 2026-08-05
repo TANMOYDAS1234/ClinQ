@@ -483,7 +483,13 @@ class _SenderRow extends StatelessWidget {
     }
 
     final (icon, label) = switch (true) {
-      _ when isDietician => (Icons.restaurant_rounded, name ?? 'Your dietician'),
+      // The role, not just the name. "Dr." carries it for the doctor; a
+      // dietician's name alone tells a patient nothing about who is advising
+      // them or on what.
+      _ when isDietician => (
+        Icons.restaurant_rounded,
+        name == null ? 'Your dietician' : '$name · Dietician',
+      ),
       _ when isClinician => (Icons.medical_information_rounded, name ?? fallback),
       // The patient's own words, read by a clinician.
       _ when isUser => (Icons.person_rounded, name ?? 'Patient'),

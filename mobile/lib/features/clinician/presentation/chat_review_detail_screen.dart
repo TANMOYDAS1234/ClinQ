@@ -233,6 +233,11 @@ class _MessageBubble extends StatelessWidget {
     final m = message;
     final isUser = m.isUser;
     final isClinician = m.isClinician;
+    // Without this a dietician's message fell through to the assistant branch
+    // and was labelled "Assistant" — the doctor reviewing the thread would have
+    // read a human colleague's words as machine output.
+    final isDietician = m.role == 'dietician';
+    final isPerson = isClinician || isDietician;
     // The clinic's replies sit on the same side as the assistant, matching what
     // the patient sees: one continuous conversation rather than messages
     // hopping sides. Who spoke is carried by the label, not the alignment.
@@ -254,23 +259,27 @@ class _MessageBubble extends StatelessWidget {
               Icon(
                 isUser
                     ? Icons.person_rounded
+                    : isDietician
+                    ? Icons.restaurant_rounded
                     : isClinician
                     ? Icons.medical_information_rounded
                     : Icons.smart_toy_outlined,
                 size: 15,
-                color: isClinician ? AppColors.primary : scheme.onSurfaceVariant,
+                color: isPerson ? AppColors.primary : scheme.onSurfaceVariant,
               ),
               const SizedBox(width: 4),
               Text(
                 isUser
                     ? 'Patient'
+                    : isDietician
+                    ? 'Dietician'
                     : isClinician
                     ? 'You / clinic'
                     : 'Assistant',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: isClinician ? AppColors.primary : scheme.onSurfaceVariant,
+                  color: isPerson ? AppColors.primary : scheme.onSurfaceVariant,
                 ),
               ),
               if (m.flaggedByPatient) ...[

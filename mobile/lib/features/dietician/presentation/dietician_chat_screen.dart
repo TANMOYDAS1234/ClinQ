@@ -240,7 +240,10 @@ class _Bubble extends StatelessWidget {
                   ),
                 ),
               )
-            else
+            // Nothing above the patient's own bubbles: in a thread with one
+            // patient in it, an avatar and a name on every message is furniture.
+            // The dietician knows who they are talking to.
+            else if (message.role != 'user')
               Padding(
                 padding: const EdgeInsets.only(left: 2, bottom: 5),
                 child: Row(
