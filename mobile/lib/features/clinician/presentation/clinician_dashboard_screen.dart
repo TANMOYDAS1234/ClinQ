@@ -163,28 +163,33 @@ class _HeadlineRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: _HeadlineCard(
-            label: 'TOTAL PATIENTS',
-            value: '${overview.patientCount}',
-            // Only shown when someone actually registered today; "+0 today" is
-            // noise dressed up as news.
-            suffix: overview.newPatientsToday > 0 ? '+${overview.newPatientsToday} today' : null,
-            suffixColor: AppColors.primary,
+    // IntrinsicHeight, not a bare stretch: inside a ListView the cross-axis is
+    // unbounded, so stretching makes both cards infinitely tall and everything
+    // below them unreachable. This sizes them to the taller of the two.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _HeadlineCard(
+              label: 'TOTAL PATIENTS',
+              value: '${overview.patientCount}',
+              // Only shown when someone actually registered today; "+0 today"
+              // is noise dressed up as news.
+              suffix: overview.newPatientsToday > 0 ? '+${overview.newPatientsToday} today' : null,
+              suffixColor: AppColors.primary,
+            ),
           ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _HeadlineCard(
-            label: 'PENDING SUMMARIES',
-            value: '${overview.pendingReviews}',
-            suffix: 'in queue',
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: _HeadlineCard(
+              label: 'PENDING SUMMARIES',
+              value: '${overview.pendingReviews}',
+              suffix: 'in queue',
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

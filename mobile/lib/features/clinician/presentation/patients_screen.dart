@@ -346,30 +346,35 @@ class _StatTrio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(child: _StatBox(label: 'Patients', value: worklist.patients)),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _StatBox(
-            label: 'Reviews',
-            value: worklist.reviews,
-            // Tinted only when there is something to do. A permanently red box
-            // stops meaning anything.
-            accent: worklist.reviews > 0 ? AppColors.danger : null,
+    // IntrinsicHeight, not a bare stretch: inside a ListView the cross-axis is
+    // unbounded, so stretching makes the boxes infinitely tall and pushes the
+    // action queue and the inbox below them out of reach.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _StatBox(label: 'Patients', value: worklist.patients)),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: _StatBox(
+              label: 'Reviews',
+              value: worklist.reviews,
+              // Tinted only when there is something to do. A permanently red
+              // box stops meaning anything.
+              accent: worklist.reviews > 0 ? AppColors.danger : null,
+            ),
           ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _StatBox(
-            label: 'Plans',
-            value: worklist.plans,
-            accent: worklist.plans > 0 ? AppColors.primary : null,
-            tint: AppColors.infoBg,
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: _StatBox(
+              label: 'Plans',
+              value: worklist.plans,
+              accent: worklist.plans > 0 ? AppColors.primary : null,
+              tint: AppColors.infoBg,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
