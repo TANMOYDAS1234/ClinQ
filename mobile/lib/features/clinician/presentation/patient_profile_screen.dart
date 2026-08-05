@@ -12,7 +12,6 @@ import '../../../shared/widgets/user_avatar.dart';
 import '../data/clinician_repository.dart';
 import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
-import 'patient_detail_screen.dart' show PatientRecordSections;
 
 /// The doctor's working screen for one patient: who they are at the top, and
 /// everything the doctor might do about it underneath.
@@ -315,18 +314,6 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: AppSpacing.xl),
-
-            // The record, inline rather than a screen away. One patient, one
-            // screen: what you read about them sits under what you do about it.
-            const Text(
-              'Clinical Record',
-              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Divider(height: 1),
-            const SizedBox(height: AppSpacing.md),
-            PatientRecordSections(summary: p, patientId: widget.patientId),
           ],
         ),
       ),

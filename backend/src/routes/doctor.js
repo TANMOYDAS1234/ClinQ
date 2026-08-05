@@ -20,6 +20,7 @@ import { LabResult } from '../models/LabResult.js';
 import { FoodLog } from '../models/FoodLog.js';
 import { Prescription } from '../models/Prescription.js';
 import { toE164 } from '../utils/phone.js';
+import { ClinicSettings, getClinicSettings } from '../models/ClinicSettings.js';
 import { acknowledgeAlert, resolveAlert } from '../services/alerts.js';
 import { computeAdherence, glucoseTrends, computeHealthScore } from '../services/analytics.js';
 import { buildPatientContext } from '../services/patientContext.js';
@@ -853,6 +854,45 @@ router.get(
         avatarAssetId: d.avatarAssetId ? String(d.avatarAssetId) : null,
       })),
     });
+  }),
+);
+
+/**
+ * Clinic-wide settings. Read by the doctor's Dieticians screen.
+ *
+ * The review cadence lives here rather than on each patient for the same reason
+ * dietician assignment does not: one or two dieticians and hundreds of
+ * patients. Set once, it covers everyone.
+ */
+router.get(
+  '/settings',
+  asyncHandler(async (req, res) => {
+    const settings = await getClinicSettings();
+    res.json({ dietReviewIntervalDays: settings.dietReviewIntervalDays });
+  }),
+);
+
+router.patch(
+  '/settings',
+  validate({
+    body: z.object({
+      dietReviewIntervalDays: z.coerce.number().int().min(1).max(90).optional(),
+    }),
+  }),
+  audit('update', 'ClinicSettings'),
+  asyncHandler(async (req, res) => {
+    const update = {};
+    if (req.body.dietReviewIntervalDays != null) {
+      update.dietReviewIntervalDays = req.body.dietReviewIntervalDays;
+    }
+
+    const settings = await ClinicSettings.findOneAndUpdate(
+      { key: 'clinic' },
+      { $set: update, $setOnInsert: { key: 'clinic' } },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    ).lean();
+
+    res.json({ dietReviewIntervalDays: settings.dietReviewIntervalDays });
   }),
 );
 

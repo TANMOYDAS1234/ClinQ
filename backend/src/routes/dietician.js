@@ -13,6 +13,7 @@ import { ChatMessage } from '../models/ChatMessage.js';
 import { DietPlan } from '../models/DietPlan.js';
 import { notifyPatientOfClinicianReply } from '../services/notifications.js';
 import { dayjs } from '../utils/clinicTime.js';
+import { getClinicSettings } from '../models/ClinicSettings.js';
 
 /**
  * The dietician panel API. A dietician only ever sees the patients a doctor has
@@ -23,11 +24,18 @@ import { dayjs } from '../utils/clinicTime.js';
 const router = Router();
 router.use(requireAuth, requireDietician);
 
-/** A food-log review is due when the doctor-set interval has elapsed. */
-function reviewDue(p) {
-  if (!p.dietReviewIntervalDays) return false;
+/**
+ * A food-log review is due when the review interval has elapsed.
+ *
+ * The clinic-wide default applies unless this patient's record overrides it —
+ * so a cadence set once in the doctor's panel covers every patient, and a
+ * patient who needs closer watching can still be set apart.
+ */
+function reviewDue(p, defaultDays) {
+  const interval = p.dietReviewIntervalDays ?? defaultDays;
+  if (!interval) return false;
   const since = p.lastDietReviewAt ?? p.createdAt;
-  return dayjs().diff(dayjs(since), 'day') >= p.dietReviewIntervalDays;
+  return dayjs().diff(dayjs(since), 'day') >= interval;
 }
 
 /**
@@ -69,9 +77,11 @@ async function requireAssigned(req) {
 router.get(
   '/dashboard',
   asyncHandler(async (req, res) => {
-    const profiles = await PatientProfile.find(await scopeFilter(req))
-      .populate('user', 'name phone avatarAssetId')
-      .lean();
+    const [profiles, settings] = await Promise.all([
+      PatientProfile.find(await scopeFilter(req)).populate('user', 'name phone avatarAssetId').lean(),
+      getClinicSettings(),
+    ]);
+    const defaultDays = settings.dietReviewIntervalDays;
     const assigned = profiles.filter((p) => p.user);
     const ids = assigned.map((p) => p.user._id);
 
@@ -91,7 +101,7 @@ router.get(
       avatarAssetId: p.user.avatarAssetId ? String(p.user.avatarAssetId) : null,
       riskBand: p.riskBand ?? 'low',
       diabetesType: p.diabetesType ?? null,
-      reviewIntervalDays: p.dietReviewIntervalDays ?? null,
+      reviewIntervalDays: p.dietReviewIntervalDays ?? defaultDays,
       lastReviewAt: p.lastDietReviewAt ?? null,
       // How long this has been waiting: since the last review if there was one,
       // otherwise since the record started. Reads correctly for both queues —
@@ -99,7 +109,7 @@ router.get(
       sinceDays: dayjs().diff(dayjs(p.lastDietReviewAt ?? p.createdAt), 'day'),
     });
 
-    const due = assigned.filter(reviewDue);
+    const due = assigned.filter((p) => reviewDue(p, defaultDays));
     // A plan that exists but was never sent is still work outstanding — the
     // patient cannot follow instructions they have not been given.
     const noPlan = assigned.filter((p) => {
@@ -134,10 +144,14 @@ router.get(
 router.get(
   '/patients',
   asyncHandler(async (req, res) => {
-    const profiles = await PatientProfile.find(await scopeFilter(req))
-      .populate('user', 'name phone avatarAssetId')
-      .sort({ updatedAt: -1 })
-      .lean();
+    const [profiles, settings] = await Promise.all([
+      PatientProfile.find(await scopeFilter(req))
+        .populate('user', 'name phone avatarAssetId')
+        .sort({ updatedAt: -1 })
+        .lean(),
+      getClinicSettings(),
+    ]);
+    const defaultDays = settings.dietReviewIntervalDays;
 
     const items = profiles
       .filter((p) => p.user)
@@ -148,9 +162,9 @@ router.get(
         avatarAssetId: p.user.avatarAssetId ? String(p.user.avatarAssetId) : null,
         diabetesType: p.diabetesType ?? null,
         riskBand: p.riskBand ?? 'low',
-        reviewIntervalDays: p.dietReviewIntervalDays ?? null,
+        reviewIntervalDays: p.dietReviewIntervalDays ?? defaultDays,
         lastReviewAt: p.lastDietReviewAt ?? null,
-        reviewDue: reviewDue(p),
+        reviewDue: reviewDue(p, defaultDays),
       }));
 
     res.json({ items });
