@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import dayjs from 'dayjs';
 import { z } from 'zod';
+import { inClinicTz, clinicDateTime } from '../utils/clinicTime.js';
 import { requireAuth, resolvePatientScope } from '../middleware/auth.js';
 import { validate, q } from '../middleware/validate.js';
 import { asyncHandler, notFound, badRequest } from '../middleware/errors.js';
@@ -183,7 +184,13 @@ router.get(
   '/schedule/today',
   validate({ query: z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }) }),
   asyncHandler(async (req, res) => {
-    const day = q(req).date ? dayjs(q(req).date) : dayjs();
+    // Dose times are clinic wall-clock ("08:00" means 08:00 in Kolkata), so the
+    // day and every slot in it must be built in that zone. Reasoning in the
+    // server's own zone made a UTC-hosted API place this morning's dose 5½
+    // hours off and, in the small hours, on the wrong calendar day entirely —
+    // which is how a dose still nine minutes away was reported as missed.
+    const day = q(req).date ? clinicDateTime(q(req).date, '00:00') : inClinicTz(new Date());
+    const dayStr = day.format('YYYY-MM-DD');
     const dayStart = day.startOf('day');
     const dayEnd = day.endOf('day');
 
@@ -199,7 +206,7 @@ router.get(
       scheduledFor: { $gte: dayStart.toDate(), $lte: dayEnd.toDate() },
     }).lean();
 
-    const logKey = (medId, when) => `${medId}|${dayjs(when).format('HH:mm')}`;
+    const logKey = (medId, when) => `${medId}|${inClinicTz(when).format('HH:mm')}`;
     const logMap = new Map(logs.map((l) => [logKey(l.medication, l.scheduledFor), l]));
 
     const now = dayjs();
@@ -209,8 +216,7 @@ router.get(
       if (med.daysOfWeek?.length && !med.daysOfWeek.includes(day.day())) continue;
 
       for (const slot of med.schedule ?? []) {
-        const [hh, mm] = slot.time.split(':').map(Number);
-        const scheduledFor = day.hour(hh).minute(mm).second(0).millisecond(0);
+        const scheduledFor = clinicDateTime(dayStr, slot.time);
         const log = logMap.get(logKey(med._id, scheduledFor.toDate()));
 
         // A dose is only "missed" once a grace period has elapsed, so the UI

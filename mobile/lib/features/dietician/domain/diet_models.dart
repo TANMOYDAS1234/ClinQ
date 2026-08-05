@@ -1,3 +1,5 @@
+import '../../chat/domain/chat_message.dart';
+
 /// A patient assigned to the dietician (`GET /dietician/patients`).
 class DietPatient {
   const DietPatient({
@@ -381,17 +383,26 @@ class DietMessage {
     required this.id,
     required this.role,
     required this.content,
-    required this.attachments,
     this.senderName,
     this.createdAt,
+    this.imagePaths = const [],
+    this.voiceNotes = const [],
+    this.documents = const [],
   });
 
   final String id;
   final String role; // user | assistant | clinician | dietician | system
   final String content;
-  final List<String> attachments;
   final String? senderName;
   final DateTime? createdAt;
+
+  /// Photos on this turn, as relative `/uploads/:id/raw` paths.
+  final List<String> imagePaths;
+  final List<VoiceNote> voiceNotes;
+  final List<DocumentAttachment> documents;
+
+  bool get hasAttachments =>
+      imagePaths.isNotEmpty || voiceNotes.isNotEmpty || documents.isNotEmpty;
 
   bool get fromPatient => role == 'user';
   bool get fromDietician => role == 'dietician';
@@ -400,8 +411,34 @@ class DietMessage {
         id: j['id']?.toString() ?? '',
         role: j['role']?.toString() ?? 'user',
         content: j['content']?.toString() ?? '',
-        attachments: (j['attachments'] as List?)?.map((e) => e.toString()).toList() ?? const [],
         senderName: j['senderName']?.toString(),
         createdAt: DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal(),
+        imagePaths: _parts(j)
+            .where((a) => a['kind'] == 'image')
+            .map((a) => a['url']?.toString() ?? '')
+            .where((s) => s.isNotEmpty)
+            .toList(),
+        voiceNotes: _parts(j)
+            .where((a) => a['kind'] == 'audio')
+            .map((a) => VoiceNote(
+                  url: a['url']?.toString() ?? '',
+                  transcript: a['transcript']?.toString(),
+                  mimeType: a['mimeType']?.toString(),
+                ))
+            .where((v) => v.url.isNotEmpty)
+            .toList(),
+        documents: _parts(j)
+            .where((a) => a['kind'] != 'image' && a['kind'] != 'audio')
+            .map((a) => DocumentAttachment(
+                  url: a['url']?.toString() ?? '',
+                  name: a['originalName']?.toString() ?? 'Document',
+                  mimeType: a['mimeType']?.toString(),
+                  sizeBytes: (a['sizeBytes'] as num?)?.toInt(),
+                ))
+            .where((d) => d.url.isNotEmpty)
+            .toList(),
       );
+
+  static List<Map<String, dynamic>> _parts(Map<String, dynamic> j) =>
+      (j['attachments'] as List?)?.whereType<Map<String, dynamic>>().toList() ?? const [];
 }

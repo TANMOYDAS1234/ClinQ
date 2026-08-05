@@ -372,6 +372,7 @@ router.get(
       .sort({ seq: 1 })
       .limit(300)
       .populate('sender', 'name avatarAssetId')
+      .populate('attachments', 'kind mimeType transcript originalName sizeBytes')
       .lean();
 
     res.json({
@@ -379,7 +380,22 @@ router.get(
         id: String(m._id),
         role: m.role,
         content: m.content ?? '',
-        attachments: (m.attachments ?? []).map(String),
+        // The same shape the patient's own thread sends. Bare ids left the
+        // dietician's screen unable to tell a food photo from a voice note
+        // from a PDF, so it rendered all three as the words "1 attachment" —
+        // in the one conversation whose whole point is looking at food.
+        attachments: (m.attachments ?? []).map((a) => {
+          const id = (a?._id ?? a).toString?.() ?? a;
+          return {
+            id,
+            url: `/api/v1/uploads/${id}/raw`,
+            kind: a?.kind ?? null,
+            mimeType: a?.mimeType ?? null,
+            originalName: a?.originalName ?? null,
+            sizeBytes: a?.sizeBytes ?? null,
+            transcript: a?.transcript ?? null,
+          };
+        }),
         senderName: m.sender?.name ?? null,
         senderAvatarUrl: m.sender?.avatarAssetId
           ? `/api/v1/uploads/${m.sender.avatarAssetId}/raw`

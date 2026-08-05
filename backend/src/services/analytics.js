@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { inClinicTz, clinicDateTime } from '../utils/clinicTime.js';
 import { GlucoseReading } from '../models/GlucoseReading.js';
 import { MedicationLog } from '../models/MedicationLog.js';
 import { Medication } from '../models/Medication.js';
@@ -174,7 +175,10 @@ export async function computeAdherence(patientId, { days = 30 } = {}) {
     .select('medication status scheduledFor')
     .lean();
 
-  const logKey = (medId, when) => `${medId}|${dayjs(when).format('YYYY-MM-DDTHH:mm')}`;
+  // Keyed on clinic wall-clock, matching how the slots below are built — the
+  // server's own zone would shift every dose by the UTC offset and file the
+  // late-evening ones against the following day.
+  const logKey = (medId, when) => `${medId}|${inClinicTz(when).format('YYYY-MM-DDTHH:mm')}`;
   const logMap = new Map(logs.map((l) => [logKey(l.medication, l.scheduledFor), l.status]));
 
   let expected = 0;
@@ -189,12 +193,11 @@ export async function computeAdherence(patientId, { days = 30 } = {}) {
     const start = dayjs.max ? dayjs.max(since, dayjs(med.startDate)) : (dayjs(med.startDate).isAfter(since) ? dayjs(med.startDate) : since);
     const end = med.endDate && dayjs(med.endDate).isBefore(now) ? dayjs(med.endDate) : now;
 
-    for (let d = start.startOf('day'); d.isBefore(end); d = d.add(1, 'day')) {
+    for (let d = inClinicTz(start.toDate()).startOf('day'); d.isBefore(end); d = d.add(1, 'day')) {
       if (med.daysOfWeek?.length && !med.daysOfWeek.includes(d.day())) continue;
 
       for (const slot of med.schedule) {
-        const [hh, mm] = slot.time.split(':').map(Number);
-        const slotTime = d.hour(hh).minute(mm).second(0).millisecond(0);
+        const slotTime = clinicDateTime(d.format('YYYY-MM-DD'), slot.time);
         // Only count slots that have already elapsed — a dose due tonight is
         // not yet missed.
         if (slotTime.isAfter(now)) continue;

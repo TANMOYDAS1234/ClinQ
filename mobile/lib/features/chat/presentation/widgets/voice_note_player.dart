@@ -36,6 +36,33 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
   Duration _position = Duration.zero;
   Duration? _duration;
 
+  /// Cycled by the chip on the right. Kept on the widget so it survives a
+  /// pause: a patient who slowed a dietician's instructions down should not
+  /// have it snap back to full speed when they resume.
+  double _speed = 1.0;
+  static const _speeds = <double>[1.0, 1.5, 2.0];
+
+  /// True while a drag is in progress, so incoming position events don't fight
+  /// the finger for control of the bar.
+  bool _scrubbing = false;
+
+  Future<void> _cycleSpeed() async {
+    final next = _speeds[(_speeds.indexOf(_speed) + 1) % _speeds.length];
+    setState(() => _speed = next);
+    await _player?.setPlaybackRate(next);
+  }
+
+  /// Seeks to [fraction] of the clip. Only meaningful once the file is loaded
+  /// and its duration known — before that there is nothing to seek within.
+  Future<void> _seekTo(double fraction) async {
+    final player = _player;
+    final total = _duration;
+    if (player == null || total == null) return;
+    final target = total * fraction.clamp(0.0, 1.0);
+    setState(() => _position = target);
+    await player.seek(target);
+  }
+
   /// The downloaded file, kept so a finished note can be reloaded and replayed.
   String? _cachedPath;
 
@@ -88,7 +115,9 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
       // the bar resets cleanly and a replay starts instantly.
       await player.setReleaseMode(ReleaseMode.stop);
       player.onPositionChanged.listen((p) {
-        if (mounted) setState(() => _position = p);
+        // Ignored mid-drag: the player keeps reporting where it still is while
+        // the finger has already moved on, which makes the bar stutter back.
+        if (mounted && !_scrubbing) setState(() => _position = p);
       });
       player.onDurationChanged.listen((d) {
         if (mounted) setState(() => _duration = d);
@@ -103,6 +132,9 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
       });
 
       await player.play(DeviceFileSource(cached.path));
+      // Applied after play(): setting a rate on an unprepared player is a no-op
+      // on Android, so a note started at 2× would come out at 1×.
+      if (_speed != 1.0) await player.setPlaybackRate(_speed);
       if (!mounted) {
         await player.dispose();
         return;
@@ -199,10 +231,33 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
               ),
             ),
             const SizedBox(width: 12),
+            // Draggable: a long instruction from the dietician is unusable if
+            // the only way back thirty seconds is to replay the whole thing.
+            // Seeking needs a loaded clip, so before that this is inert rather
+            // than jumping to a position the player cannot honour.
             SizedBox(
               width: 132,
-              child: _Waveform(progress: progress, colour: fg, track: track),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: total == null
+                    ? null
+                    : (d) => _seekTo(d.localPosition.dx / 132),
+                onHorizontalDragStart: total == null
+                    ? null
+                    : (_) => setState(() => _scrubbing = true),
+                onHorizontalDragUpdate: total == null
+                    ? null
+                    : (d) => _seekTo(d.localPosition.dx / 132),
+                onHorizontalDragEnd: total == null
+                    ? null
+                    : (_) => setState(() => _scrubbing = false),
+                child: _Waveform(progress: progress, colour: fg, track: track),
+              ),
             ),
+            if (total != null) ...[
+              const SizedBox(width: 8),
+              _SpeedChip(speed: _speed, onTap: _cycleSpeed, onDark: widget.onDark),
+            ],
           ],
         ),
         if (total != null) ...[
@@ -219,6 +274,41 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Tap to cycle 1× → 1.5× → 2×. Only shown once the clip has loaded, because
+/// there is no speed to change until there is something playing.
+class _SpeedChip extends StatelessWidget {
+  const _SpeedChip({required this.speed, required this.onTap, required this.onDark});
+
+  final double speed;
+  final VoidCallback onTap;
+  final bool onDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = onDark ? Colors.white : AppColors.primary;
+    // Drop the trailing zero: "1×" and "1.5×", never "1.0×".
+    final label = speed == speed.roundToDouble()
+        ? '${speed.toInt()}×'
+        : '${speed.toStringAsFixed(1)}×';
+
+    return Material(
+      color: onDark ? Colors.white24 : AppColors.accentSoft,
+      borderRadius: BorderRadius.circular(11),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(11),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: fg),
+          ),
+        ),
+      ),
     );
   }
 }

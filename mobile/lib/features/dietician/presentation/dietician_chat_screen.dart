@@ -10,6 +10,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/widgets/chat_background.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../chat/presentation/widgets/care_composer.dart';
+import '../../chat/presentation/widgets/chat_attachment_thumbs.dart';
+import '../../chat/presentation/widgets/chat_document_card.dart';
+import '../../chat/presentation/widgets/voice_note_player.dart';
 import '../../chat/presentation/widgets/jump_to_latest.dart';
 import '../data/dietician_repository.dart';
 import '../domain/diet_models.dart';
@@ -355,29 +358,20 @@ class _Bubble extends StatelessWidget {
                         color: mine ? Colors.white : scheme.onSurface,
                       ),
                     ),
-                  if (message.attachments.isNotEmpty) ...[
+                  // The meal itself, not a count of it. This is the thread the
+                  // patient photographs their food into, so "1 attachment" was
+                  // the dietician being told a picture existed somewhere.
+                  if (message.hasAttachments) ...[
                     if (message.content.isNotEmpty) const SizedBox(height: 8),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.attach_file_rounded,
-                          size: 15,
-                          color:
-                              mine ? Colors.white70 : scheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${message.attachments.length} attachment'
-                          '${message.attachments.length == 1 ? '' : 's'}',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            color:
-                                mine ? Colors.white70 : scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
+                    if (message.imagePaths.isNotEmpty)
+                      ChatAttachmentThumbs(paths: message.imagePaths),
+                    for (final note in message.voiceNotes)
+                      VoiceNotePlayer(note: note, onDark: mine),
+                    for (final doc in message.documents)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: ChatDocumentCard(doc: doc, onDark: mine),
+                      ),
                   ],
                   if (message.createdAt != null) ...[
                     const SizedBox(height: 5),

@@ -12,7 +12,7 @@ import { asyncHandler, badRequest, notFound, forbidden } from '../middleware/err
 import { audit } from '../middleware/audit.js';
 import { MediaAsset } from '../models/MediaAsset.js';
 import { ChatMessage } from '../models/ChatMessage.js';
-import { ROLES } from '../models/User.js';
+import { User, ROLES } from '../models/User.js';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
 
@@ -246,6 +246,20 @@ router.get(
     // patient's media.
     if (!allowed && req.user.role === ROLES.PATIENT) {
       allowed = await ChatMessage.exists({ patient: req.user._id, attachments: asset._id });
+    }
+
+    // A staff member's profile photo is readable by anyone signed in. The whole
+    // point of the doctor's and dietician's picture is that the patient sees
+    // who is talking to them, and owner-only access made every one of those
+    // avatars a 403 that fell back to a grey initial.
+    //
+    // Deliberately staff only: a patient's own photo stays private to them and
+    // the clinic, so this cannot leak one patient's face to another.
+    if (!allowed) {
+      allowed = await User.exists({
+        avatarAssetId: asset._id,
+        role: { $ne: ROLES.PATIENT },
+      });
     }
 
     if (!allowed) throw forbidden('You do not have access to this file');
