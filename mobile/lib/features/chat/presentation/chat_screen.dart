@@ -289,6 +289,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         child: _KeyboardInset(
           child: Column(
           children: [
+            // Said once, here, rather than under every reply. Repeated on each
+            // message it became furniture nobody read; stated once about the
+            // conversation it is actually a statement.
+            Container(
+              width: double.infinity,
+              color: AppColors.infoBg,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l10n.chatDisclaimer,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             if (chatState.error != null)
               Container(
                 width: double.infinity,

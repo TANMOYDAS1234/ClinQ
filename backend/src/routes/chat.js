@@ -13,6 +13,9 @@ import { notifyPatientOfClinicianReply } from '../services/notifications.js';
 import { triageMessage } from '../services/triage/engine.js';
 import { buildPatientContext } from '../services/patientContext.js';
 import { raiseAlert } from '../services/alerts.js';
+import { nutritionReply } from '../services/ai/nutritionAssistant.js';
+import { FoodLog } from '../models/FoodLog.js';
+import { MediaAsset } from '../models/MediaAsset.js';
 import { paged, pageParams } from '../utils/pagination.js';
 
 const router = Router();
@@ -505,12 +508,70 @@ router.post(
       highestUrgency: triage.urgency,
     });
 
+    // A photo sent to the dietician IS a food log entry. Recording it here
+    // rather than asking the patient to also add it somewhere else removes the
+    // question the two-screen version created — "do I log this or send it?" —
+    // and means the dietician sees one item, not the same meal twice.
+    if (req.body.attachments.length) {
+      const photos = await MediaAsset.find({
+        _id: { $in: req.body.attachments },
+        kind: { $ne: 'voice_note' },
+      })
+        .select('_id')
+        .lean();
+
+      for (const photo of photos) {
+        await FoodLog.create({
+          patient: patientId,
+          mealType: mealTypeForNow(),
+          note: text,
+          photo: photo._id,
+          // Ties the log back to the message it arrived in, so opening either
+          // one can find the other.
+          sourceMessage: message._id,
+        });
+      }
+    }
+
     if (message.attachments?.length) {
       await message.populate('attachments', 'kind mimeType transcript originalName sizeBytes');
     }
 
+    // The plan-bound assistant answers only what the dietician has already
+    // decided. It stays silent when there is no plan to quote, when the
+    // question is not covered, or when anything failed — the dietician
+    // answering late beats the app answering differently from them.
+    //
+    // Skipped entirely on an escalation: a patient who has just reported a
+    // symptom needs the clinic, not a sentence about their meal plan.
+    let assistantMessage = null;
+    if (triage.urgency !== 'emergency' && triage.urgency !== 'urgent') {
+      const reply = await nutritionReply({
+        patientId,
+        sessionId: session._id,
+        text,
+        language: session.language,
+      }).catch(() => null);
+
+      if (reply) {
+        assistantMessage = await ChatMessage.create({
+          session: session._id,
+          patient: patientId,
+          seq: message.seq + 1,
+          role: 'assistant',
+          content: reply,
+          language: session.language,
+        });
+        await ChatSession.findByIdAndUpdate(session._id, {
+          lastMessageAt: assistantMessage.createdAt,
+          $inc: { messageCount: 1 },
+        });
+      }
+    }
+
     res.status(201).json({
       message: serialiseMessage(message),
+      reply: assistantMessage ? serialiseMessage(assistantMessage) : null,
       // So the app can show the same emergency card it shows in the care
       // thread, rather than the patient getting a silent send.
       triage: { urgency: triage.urgency },
@@ -595,6 +656,20 @@ function serialiseSession(s) {
     flaggedForReview: s.flaggedForReview,
     createdAt: s.createdAt,
   };
+}
+
+/**
+ * Which meal a photo sent right now most likely is. Derived from the clock
+ * rather than asked: the patient is already telling their dietician what they
+ * ate, and a "which meal was this?" prompt in the middle of a conversation is a
+ * form where a sentence should be. The dietician can correct it.
+ */
+function mealTypeForNow() {
+  const hour = new Date().getHours();
+  if (hour < 11) return 'breakfast';
+  if (hour < 16) return 'lunch';
+  if (hour < 21) return 'dinner';
+  return 'snack';
 }
 
 function serialiseMessage(m) {

@@ -7,6 +7,9 @@ import { audit } from '../middleware/audit.js';
 import { User } from '../models/User.js';
 import { PatientProfile } from '../models/PatientProfile.js';
 import { Medication } from '../models/Medication.js';
+import { Prescription } from '../models/Prescription.js';
+import { LabResult } from '../models/LabResult.js';
+import { Hba1cRecord } from '../models/Hba1cRecord.js';
 import { FoodLog } from '../models/FoodLog.js';
 import { ChatSession } from '../models/ChatSession.js';
 import { ChatMessage } from '../models/ChatMessage.js';
@@ -183,9 +186,21 @@ router.get(
     const user = await User.findById(req.params.id).select('name phone gender dateOfBirth language').lean();
     if (!user) throw notFound('Patient not found');
 
-    const meds = await Medication.find({ patient: req.params.id, isActive: true })
-      .select('name strength dose schedule')
-      .lean();
+    // Medicines and lab work, live from the doctor's own record. A dietician
+    // planning around metformin needs to know it was stopped last week, and a
+    // pending HbA1c is the difference between "your control is fine" and a
+    // number nobody has yet.
+    const [meds, prescriptions, labResults, latestHba1c] = await Promise.all([
+      Medication.find({ patient: req.params.id, isActive: true })
+        .select('name strength dose schedule instructions')
+        .lean(),
+      Prescription.find({ patient: req.params.id, isActive: true }).select('labTestsAdvised').lean(),
+      LabResult.find({ patient: req.params.id }).sort({ createdAt: -1 }).limit(10).lean(),
+      Hba1cRecord.findOne({ patient: req.params.id }).sort({ testedOn: -1 }).lean(),
+    ]);
+
+    const advised = [...new Set(prescriptions.flatMap((p) => p.labTestsAdvised ?? []).filter(Boolean))];
+    const reported = new Set(labResults.map((r) => r.testName.toLowerCase()));
 
     res.json({
       patient: {
@@ -207,8 +222,23 @@ router.get(
         name: m.name,
         strength: m.strength ?? '',
         dose: m.dose ?? '',
+        instructions: m.instructions ?? '',
         times: (m.schedule ?? []).map((s) => s.time).filter(Boolean),
       })),
+      labTests: {
+        // Whether a result is back matters more than the list itself: an
+        // advised-but-missing test is why a plan may be built on stale numbers.
+        advised: advised.map((name) => ({ name, reported: reported.has(name.toLowerCase()) })),
+        recent: labResults.map((r) => ({
+          id: String(r._id),
+          testName: r.testName,
+          note: r.note ?? '',
+          createdAt: r.createdAt,
+        })),
+        latestHba1c: latestHba1c
+          ? { percentage: latestHba1c.percentage, testedOn: latestHba1c.testedOn }
+          : null,
+      },
       reviewIntervalDays: profile.dietReviewIntervalDays ?? null,
       lastReviewAt: profile.lastDietReviewAt ?? null,
     });

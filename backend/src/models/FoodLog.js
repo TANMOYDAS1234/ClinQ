@@ -12,6 +12,12 @@ const foodLogSchema = new mongoose.Schema(
     mealType: { type: String, enum: MEAL_TYPES, default: 'other' },
     note: { type: String, trim: true, maxlength: 1000 },
     photo: { type: mongoose.Schema.Types.ObjectId, ref: 'MediaAsset' },
+
+    /// The chat message this arrived in, when the patient sent it to their
+    /// dietician rather than logging it from the food screen. Logging a meal
+    /// and showing it to the dietician are the same act, so they produce one
+    /// record — this is the link back to the conversation it came from.
+    sourceMessage: { type: mongoose.Schema.Types.ObjectId, ref: 'ChatMessage' },
   },
   { timestamps: true },
 );

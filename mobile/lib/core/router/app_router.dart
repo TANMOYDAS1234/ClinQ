@@ -252,13 +252,16 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           ),
           StatefulShellBranch(
             routes: [
+              // The dietician conversation IS the food log: a photo sent here
+              // becomes a log entry server-side. The old list lives on as a
+              // history view pushed from inside it.
               GoRoute(
                 path: '/food-log',
-                builder: (context, state) => const FoodLogScreen(),
+                builder: (context, state) => const NutritionChatScreen(),
                 routes: [
                   GoRoute(
-                    path: 'dietician',
-                    builder: (context, state) => const NutritionChatScreen(),
+                    path: 'history',
+                    builder: (context, state) => const FoodLogScreen(),
                   ),
                 ],
               ),

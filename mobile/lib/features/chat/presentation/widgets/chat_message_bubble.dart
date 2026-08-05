@@ -410,17 +410,12 @@ class ChatMessageBubble extends StatelessWidget {
                       label: l10n.chatFlagMessage,
                       onTap: onFlag!,
                     ),
-                  const SizedBox(width: 2),
-                  Flexible(
-                    child: Text(
-                      l10n.chatDisclaimer,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontStyle: FontStyle.italic,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
+                  // The disclaimer used to repeat under every single reply,
+                  // which turned it into furniture nobody read and made the
+                  // assistant look like a lesser channel than the doctor. It
+                  // now sits once at the top of the thread, where it is read
+                  // as a statement about the conversation rather than a legal
+                  // line stapled to each message.
                 ],
               ),
             ],
@@ -479,7 +474,12 @@ class _SenderRow extends StatelessWidget {
       _ when isClinician => (Icons.medical_information_rounded, name ?? fallback),
       // The patient's own words, read by a clinician.
       _ when isUser => (Icons.person_rounded, name ?? 'Patient'),
-      _ => (Icons.smart_toy_rounded, 'AI Assistant'),
+      // Named for the clinic it answers on behalf of, because that is what it
+      // is: it replies only from Dr. Dey's own approved protocols. The
+      // assistant mark stays, though — a patient who believes their doctor
+      // personally wrote something does not question it and may not raise it at
+      // the next visit, and that is the whole reason the mark exists.
+      _ => (Icons.auto_awesome_rounded, 'Dr. Dey\'s Clinic · assistant'),
     };
 
     return Padding(

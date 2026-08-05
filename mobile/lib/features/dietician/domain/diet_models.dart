@@ -65,6 +65,9 @@ class DietPatientOverview {
     required this.allergies,
     required this.medications,
     this.reviewIntervalDays,
+    this.advisedTests = const [],
+    this.latestHba1c,
+    this.hba1cTestedOn,
   });
 
   final String id;
@@ -77,6 +80,13 @@ class DietPatientOverview {
   final List<String> allergies;
   final List<DietMed> medications;
   final int? reviewIntervalDays;
+
+  /// Lab work the doctor ordered, and whether a result has come back. An
+  /// advised-but-missing test is why a diet plan may be resting on stale
+  /// numbers, so it is worth seeing before writing one.
+  final List<AdvisedTest> advisedTests;
+  final num? latestHba1c;
+  final DateTime? hba1cTestedOn;
 
   factory DietPatientOverview.fromJson(Map<String, dynamic> j) {
     final p = j['patient'] as Map<String, dynamic>? ?? const {};
@@ -92,6 +102,21 @@ class DietPatientOverview {
       allergies: (m['allergies'] as List?)?.map((e) => e.toString()).toList() ?? const [],
       medications: (j['medications'] as List?)?.whereType<Map<String, dynamic>>().map(DietMed.fromJson).toList() ?? const [],
       reviewIntervalDays: (j['reviewIntervalDays'] as num?)?.toInt(),
+      advisedTests:
+          ((j['labTests'] as Map<String, dynamic>?)?['advised'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(AdvisedTest.fromJson)
+              .toList() ??
+          const [],
+      latestHba1c:
+          ((j['labTests'] as Map<String, dynamic>?)?['latestHba1c'] as Map<String, dynamic>?)?['percentage']
+              as num?,
+      hba1cTestedOn: DateTime.tryParse(
+        ((j['labTests'] as Map<String, dynamic>?)?['latestHba1c']
+                as Map<String, dynamic>?)?['testedOn']
+                ?.toString() ??
+            '',
+      )?.toLocal(),
     );
   }
 }
@@ -332,6 +357,19 @@ class DietDashboard {
           const [],
     );
   }
+}
+
+/// A lab test the doctor ordered, and whether a result has come back.
+class AdvisedTest {
+  const AdvisedTest({required this.name, required this.reported});
+
+  final String name;
+  final bool reported;
+
+  factory AdvisedTest.fromJson(Map<String, dynamic> j) => AdvisedTest(
+    name: j['name']?.toString() ?? '',
+    reported: j['reported'] == true,
+  );
 }
 
 /// One message in the patient's care thread, as the dietician sees it.

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/data/upload_repository.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/chat_background.dart';
 import '../domain/chat_message.dart';
@@ -40,6 +43,59 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
     super.dispose();
   }
 
+  /// Sends a meal photo. Server-side this also becomes a food-log entry, so the
+  /// patient never has to log the same meal twice — showing it to the dietician
+  /// and recording it are the same act.
+  Future<void> _sendPhoto() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final file = await ImagePicker().pickImage(source: source, maxWidth: 1600, imageQuality: 85);
+    if (file == null) return;
+
+    setState(() => _sending = true);
+    try {
+      final asset = await ref.read(uploadRepositoryProvider).uploadImage(
+        path: file.path,
+        filename: file.name,
+      );
+      await ref.read(apiClientProvider).postJson(
+        '/chat/nutrition',
+        body: {
+          'content': _controller.text.trim(),
+          'attachments': [asset.id],
+        },
+      );
+      _controller.clear();
+      ref.invalidate(nutritionThreadProvider);
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _sending) return;
@@ -52,6 +108,9 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
         body: {'content': text},
       );
       _controller.clear();
+      // Refetch rather than append: the server may have added a plan-bound
+      // assistant turn after the patient's, and re-reading is the only way to
+      // get both in the right order without guessing at sequence numbers.
       ref.invalidate(nutritionThreadProvider);
 
       // The server triages this thread exactly like the care thread. If it
@@ -101,6 +160,16 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
             ),
           ],
         ),
+        actions: [
+          // The log still exists as a list — scrolling back weeks through a
+          // conversation to find one meal is not a search.
+          IconButton(
+            tooltip: 'Meal history',
+            onPressed: () => context.push('/food-log/history'),
+            icon: const Icon(Icons.photo_library_outlined),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: ChatBackground(
         child: Column(
@@ -162,7 +231,12 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
                 },
               ),
             ),
-            _Composer(controller: _controller, sending: _sending, onSend: _send),
+            _Composer(
+              controller: _controller,
+              sending: _sending,
+              onSend: _send,
+              onAttach: _sendPhoto,
+            ),
           ],
         ),
       ),
@@ -171,11 +245,17 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
 }
 
 class _Composer extends StatelessWidget {
-  const _Composer({required this.controller, required this.sending, required this.onSend});
+  const _Composer({
+    required this.controller,
+    required this.sending,
+    required this.onSend,
+    required this.onAttach,
+  });
 
   final TextEditingController controller;
   final bool sending;
   final VoidCallback onSend;
+  final VoidCallback onAttach;
 
   @override
   Widget build(BuildContext context) {
@@ -196,6 +276,11 @@ class _Composer extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            IconButton(
+              tooltip: 'Send a meal photo',
+              onPressed: sending ? null : onAttach,
+              icon: Icon(Icons.add_circle_outline_rounded, size: 27, color: AppColors.primary),
+            ),
             Expanded(
               child: TextField(
                 controller: controller,

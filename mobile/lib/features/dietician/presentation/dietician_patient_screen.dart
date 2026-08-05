@@ -73,6 +73,12 @@ class DieticianPatientScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+              if (o.advisedTests.isNotEmpty || o.latestHba1c != null) ...[
+                const SizedBox(height: AppSpacing.lg),
+                _SectionTitle('Tests ordered by the doctor'),
+                const SizedBox(height: AppSpacing.sm),
+                _LabTests(overview: o),
+              ],
               const SizedBox(height: AppSpacing.lg),
               _SectionTitle('Food log'),
               const SizedBox(height: AppSpacing.sm),
@@ -497,6 +503,79 @@ class _FoodEntry extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Lab work the doctor ordered, with whether a result is actually back.
+///
+/// The pending ones matter as much as the returned: a plan written while an
+/// HbA1c is still outstanding is a plan resting on a number nobody has, and the
+/// dietician should be able to see that before they write it.
+class _LabTests extends StatelessWidget {
+  const _LabTests({required this.overview});
+
+  final DietPatientOverview overview;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hba1c = overview.latestHba1c;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hba1c != null) ...[
+            Row(
+              children: [
+                const Icon(Icons.science_outlined, size: 19, color: AppColors.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  'Last HbA1c  $hba1c%',
+                  style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                ),
+                const Spacer(),
+                if (overview.hba1cTestedOn != null)
+                  Text(
+                    DateFormat('MMM yyyy').format(overview.hba1cTestedOn!),
+                    style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                  ),
+              ],
+            ),
+            if (overview.advisedTests.isNotEmpty) const Divider(height: AppSpacing.lg),
+          ],
+          for (final test in overview.advisedTests)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Icon(
+                    test.reported ? Icons.check_circle_rounded : Icons.schedule_rounded,
+                    size: 17,
+                    color: test.reported ? AppColors.success : AppColors.warning,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(child: Text(test.name, style: const TextStyle(fontSize: 14.5))),
+                  Text(
+                    test.reported ? 'Result in' : 'Awaiting result',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: test.reported ? AppColors.success : AppColors.warning,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
