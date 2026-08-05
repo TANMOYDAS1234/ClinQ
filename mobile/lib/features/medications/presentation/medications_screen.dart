@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/providers/preferences_provider.dart';
 import '../../../l10n/gen/app_localizations.dart';
@@ -11,11 +12,11 @@ import '../data/medications_repository.dart';
 import '../domain/medication.dart';
 import 'medications_providers.dart';
 import 'widgets/scan_prescription_sheet.dart';
-import 'widgets/adherence_ring_card.dart';
 import 'widgets/mark_dose_sheet.dart';
 import 'widgets/medication_slot_tile.dart';
 
-/// The "Medications" tab of the Track screen.
+/// The patient's medicines: the windows their reminders fire in, what they are
+/// currently prescribed, and today's outstanding doses.
 class MedicationsScreen extends ConsumerWidget {
   const MedicationsScreen({super.key});
 
@@ -64,13 +65,14 @@ class MedicationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final medsAsync = ref.watch(medicationsListProvider);
     final scheduleAsync = ref.watch(todayScheduleProvider);
-    final adherenceAsync = ref.watch(medicationAdherenceProvider);
+    final meals = ref.watch(mealTimesProvider).valueOrNull;
 
     // Keep on-device reminders in step with the live medication list: whenever
     // it (re)loads — after a scan, a manual add, or a doctor's prescription —
     // the daily reminders are rebuilt.
-    ref.watch(medicationsListProvider); // activate the provider
     ref.listen<AsyncValue<List<Medication>>>(medicationsListProvider, (_, next) {
       if (ref.read(appPreferencesProvider).medicationReminders) {
         next.whenData(syncMedicationReminders);
@@ -78,86 +80,431 @@ class MedicationsScreen extends ConsumerWidget {
     });
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text('Medicines'),
-        actions: [
+      backgroundColor: scheme.surface,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _onScan(context, ref),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.document_scanner_outlined),
+        label: const Text(
+          'Scan Prescription',
+          style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+        ),
+      ),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const _BrandHeader(),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  _refreshAll(ref);
+                  ref.invalidate(mealTimesProvider);
+                },
+                child: medsAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (error, _) => ListView(
+                    children: [
+                      SizedBox(
+                        height: 400,
+                        child: ErrorView(
+                          error: error,
+                          onRetry: () => ref.invalidate(medicationsListProvider),
+                        ),
+                      ),
+                    ],
+                  ),
+                  data: (meds) {
+                    final active = meds.where((m) => m.isActive).toList();
+
+                    return ListView(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        AppSpacing.md,
+                        AppSpacing.md,
+                        110,
+                      ),
+                      children: [
+                        const Text(
+                          'Medications',
+                          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, height: 1.15),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          'Manage your current prescriptions and daily schedule.',
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            height: 1.4,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+
+                        const _MicroLabel('Reminder windows'),
+                        const SizedBox(height: AppSpacing.sm),
+                        _ReminderWindows(
+                          meals: meals,
+                          onTap: () => context.push('/medications/reminders'),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+
+                        const _MicroLabel('Active prescriptions'),
+                        const SizedBox(height: AppSpacing.sm),
+                        if (active.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: AppSpacing.lg),
+                            child: EmptyView(
+                              icon: Icons.medication_outlined,
+                              title: l10n.medsEmptyTitle,
+                              body: l10n.medsEmptyBody,
+                            ),
+                          )
+                        else
+                          for (final med in active)
+                            _PrescriptionCard(medication: med, meals: meals),
+
+                        // Kept below the design's content rather than dropped:
+                        // ticking a dose is what produces the adherence figure
+                        // the doctor sees, and there is nowhere else to do it.
+                        scheduleAsync.when(
+                          loading: () => const SizedBox.shrink(),
+                          error: (_, _) => const SizedBox.shrink(),
+                          data: (schedule) => schedule.slots.isEmpty
+                              ? const SizedBox.shrink()
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    const SizedBox(height: AppSpacing.lg),
+                                    _MicroLabel(l10n.medsTodaySchedule),
+                                    const SizedBox(height: AppSpacing.sm),
+                                    for (final slot in schedule.slots)
+                                      MedicationSlotTile(
+                                        slot: slot,
+                                        onTap: () => _handleTap(context, ref, schedule, slot),
+                                      ),
+                                  ],
+                                ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BrandHeader extends StatelessWidget {
+  const _BrandHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.sm, AppSpacing.md),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
+      ),
+      child: Row(
+        children: [
+          Image.asset(
+            'assets/brand/logo_emblem.png',
+            height: 30,
+            errorBuilder: (_, _, _) =>
+                const Icon(Icons.medication_rounded, size: 26, color: AppColors.primary),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'ClinQ',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
+          ),
+          const Spacer(),
           IconButton(
-            tooltip: 'Reminder times',
-            onPressed: () => context.push('/medications/reminders'),
-            icon: const Icon(Icons.schedule_rounded),
+            tooltip: 'Notifications',
+            onPressed: () => context.push('/profile/notifications'),
+            icon: Icon(Icons.notifications_none_rounded, size: 26, color: scheme.onSurface),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _onScan(context, ref),
-        icon: const Icon(Icons.document_scanner_outlined),
-        label: const Text('Scan prescription'),
+    );
+  }
+}
+
+class _MicroLabel extends StatelessWidget {
+  const _MicroLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Text(
+      text.toUpperCase(),
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.9,
+        color: scheme.onSurfaceVariant,
       ),
-      body: RefreshIndicator(
-      onRefresh: () async {
-        ref.invalidate(todayScheduleProvider);
-        ref.invalidate(medicationAdherenceProvider);
-        ref.invalidate(medicationsListProvider);
-        await Future.wait([
-          ref.read(todayScheduleProvider.future),
-          ref.read(medicationAdherenceProvider.future),
-        ]);
-      },
-      child: scheduleAsync.when(
-        loading: () => ListView(
-          children: const [
-            SizedBox(height: 300, child: Center(child: CircularProgressIndicator())),
+    );
+  }
+}
+
+// ---- Reminder windows -----------------------------------------------------
+
+class _ReminderWindows extends StatelessWidget {
+  const _ReminderWindows({required this.meals, required this.onTap});
+
+  final ({String breakfast, String lunch, String dinner})? meals;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final windows = <({IconData icon, String label, String time})>[
+      (icon: Icons.wb_twilight_rounded, label: 'Breakfast', time: meals?.breakfast ?? '—'),
+      (icon: Icons.wb_sunny_outlined, label: 'Lunch', time: meals?.lunch ?? '—'),
+      (icon: Icons.nightlight_round, label: 'Dinner', time: meals?.dinner ?? '—'),
+    ];
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < windows.length; i++) ...[
+            if (i > 0) const SizedBox(width: AppSpacing.sm),
+            Expanded(child: _WindowCard(window: windows[i], onTap: onTap)),
           ],
-        ),
-        error: (error, _) => ListView(
-          children: [
-            SizedBox(
-              height: 400,
-              child: ErrorView(error: error, onRetry: () => ref.invalidate(todayScheduleProvider)),
-            ),
-          ],
-        ),
-        data: (schedule) {
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.xxl,
-            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WindowCard extends StatelessWidget {
+  const _WindowCard({required this.window, required this.onTap});
+
+  final ({IconData icon, String label, String time}) window;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.sm),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+          ),
+          child: Column(
             children: [
-              adherenceAsync.when(
-                loading: () => const SizedBox.shrink(),
-                error: (_, _) => const SizedBox.shrink(),
-                data: (adherence) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                  child: AdherenceRingCard(adherence: adherence),
+              Icon(window.icon, size: 24, color: AppColors.primary),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                window.label,
+                style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Text(window.time, style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---- Prescription card ----------------------------------------------------
+
+class _PrescriptionCard extends StatelessWidget {
+  const _PrescriptionCard({required this.medication, required this.meals});
+
+  final Medication medication;
+  final ({String breakfast, String lunch, String dinner})? meals;
+
+  /// Splits "500 mg" into the number and its unit, so the amount can carry the
+  /// weight and the unit sit quietly beside it.
+  static (String, String) _splitStrength(String raw) {
+    final match = RegExp(r'^\s*([\d.]+)\s*(.*)$').firstMatch(raw);
+    if (match == null) return (raw, '');
+    return (match.group(1) ?? raw, (match.group(2) ?? '').trim());
+  }
+
+  /// Which meal window a dose time falls closest to. Uses the patient's own
+  /// meal times, so "1x Dinner" means their dinner, not a generic evening.
+  String _windowFor(String time) {
+    int minutes(String hhmm) {
+      final parts = hhmm.split(':');
+      if (parts.length != 2) return -1;
+      return (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
+    }
+
+    final t = minutes(time);
+    if (t < 0 || meals == null) return '';
+
+    final windows = <String, int>{
+      'Breakfast': minutes(meals!.breakfast),
+      'Lunch': minutes(meals!.lunch),
+      'Dinner': minutes(meals!.dinner),
+    };
+
+    var best = '';
+    var bestDelta = 1 << 30;
+    windows.forEach((label, m) {
+      final delta = (t - m).abs();
+      if (m >= 0 && delta < bestDelta) {
+        bestDelta = delta;
+        best = label;
+      }
+    });
+    return best;
+  }
+
+  ({IconData icon, String label}) _schedule() {
+    final times = medication.schedule.map((s) => s.time).where((t) => t.isNotEmpty).toList();
+    if (times.isEmpty) return (icon: Icons.schedule_rounded, label: 'As needed');
+
+    final windows = times.map(_windowFor).where((w) => w.isNotEmpty).toList();
+
+    if (times.length == 1) {
+      final w = windows.isNotEmpty ? windows.first : times.first;
+      return (
+        icon: switch (w) {
+          'Breakfast' => Icons.wb_twilight_rounded,
+          'Lunch' => Icons.wb_sunny_outlined,
+          'Dinner' => Icons.nightlight_round,
+          _ => Icons.schedule_rounded,
+        },
+        label: '1x $w',
+      );
+    }
+
+    final initials = windows.map((w) => w[0]).join('/');
+    return (
+      icon: Icons.autorenew_rounded,
+      label: initials.isEmpty ? '${times.length}x Daily' : '${times.length}x Daily ($initials)',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final (amount, unit) = _splitStrength(medication.strength);
+    final schedule = _schedule();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      medication.name,
+                      style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, height: 1.2),
+                    ),
+                    // The doctor's own note about this medicine. No invented
+                    // "what it's for" line: the record does not hold one, and a
+                    // guessed indication is a clinical claim.
+                    if (medication.instructions?.isNotEmpty == true) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        medication.instructions!,
+                        style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              Text(l10n.medsTodaySchedule, style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: AppSpacing.sm),
-              if (schedule.slots.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.xl),
-                  child: EmptyView(
-                    icon: Icons.medication_outlined,
-                    title: l10n.medsEmptyTitle,
-                    body: l10n.medsEmptyBody,
+              const SizedBox(width: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.accentSoft,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'ACTIVE',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.7)),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              if (amount.isNotEmpty)
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        amount,
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      if (unit.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        Text(unit, style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
+                      ],
+                    ],
                   ),
                 )
               else
-                for (final slot in schedule.slots)
-                  MedicationSlotTile(
-                    slot: slot,
-                    onTap: () => _handleTap(context, ref, schedule, slot),
-                  ),
+                const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(schedule.icon, size: 18, color: scheme.onSurface),
+                    const SizedBox(width: 8),
+                    Text(
+                      schedule.label,
+                      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
             ],
-          );
-        },
-      ),
+          ),
+        ],
       ),
     );
   }

@@ -117,9 +117,13 @@ router.get(
       return !plan || !plan.sharedAt;
     });
 
+    const weekAgo = dayjs().subtract(7, 'day');
     res.json({
       counts: {
         patients: assigned.length,
+        // Real, not decorative: how many of those records were opened this
+        // week. Rendered only when it is non-zero.
+        newThisWeek: assigned.filter((p) => dayjs(p.createdAt).isAfter(weekAgo)).length,
         reviewsDue: due.length,
         plansMissing: noPlan.length,
       },

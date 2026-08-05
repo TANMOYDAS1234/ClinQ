@@ -11,6 +11,10 @@ import { PatientProfile } from '../models/PatientProfile.js';
 import { Hba1cRecord } from '../models/Hba1cRecord.js';
 import { MedicationLog } from '../models/MedicationLog.js';
 import { Medication } from '../models/Medication.js';
+import { VitalRecord } from '../models/VitalRecord.js';
+import { DietPlan } from '../models/DietPlan.js';
+import { FoodLog } from '../models/FoodLog.js';
+import { getClinicSettings } from '../models/ClinicSettings.js';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth, resolvePatientScope);
@@ -81,9 +85,94 @@ router.get(
       })),
       recommendations: buildRecommendations({ healthScore, trends, adherence, reminders, latest }),
       reminders,
+      ...(await careSummary(patientId, profile, latestHba1c)),
     });
   }),
 );
+
+/**
+ * The "what my care looks like" half of the home screen: who I am clinically,
+ * what I have been told to eat, what I am taking, and what I have logged.
+ *
+ * Folded into the dashboard call rather than added as a second endpoint — the
+ * screen renders as one thing, and a patient on a patchy connection should not
+ * watch half of it arrive.
+ */
+async function careSummary(patientId, profile, latestHba1c) {
+  const [latestWeight, plan, medications, foodLogs, settings] = await Promise.all([
+    VitalRecord.findOne({ patient: patientId, weightKg: { $ne: null } })
+      .sort({ recordedAt: -1 })
+      .select('weightKg')
+      .lean(),
+    // Only a plan the dietician actually sent. A draft they are still editing
+    // is not something the patient should be following.
+    DietPlan.findOne({ patient: patientId, sharedAt: { $ne: null } })
+      .populate('dietician', 'name')
+      .lean(),
+    Medication.find({ patient: patientId, isActive: true })
+      .select('name strength dose schedule instructions')
+      .lean(),
+    FoodLog.find({ patient: patientId }).sort({ createdAt: -1 }).limit(6).lean(),
+    getClinicSettings(),
+  ]);
+
+  const weightKg = latestWeight?.weightKg ?? profile?.baselineWeightKg ?? null;
+  const heightCm = profile?.heightCm ?? null;
+  const bmi =
+    weightKg && heightCm ? Number((weightKg / ((heightCm / 100) * (heightCm / 100))).toFixed(1)) : null;
+
+  const hba1cMax = profile?.targets?.hba1cMax ?? 7;
+
+  return {
+    profile: {
+      diabetesType: profile?.diabetesType ?? null,
+      heightCm,
+      weightKg,
+      bmi,
+      allergies: profile?.allergies ?? [],
+      reviewIntervalDays: profile?.dietReviewIntervalDays ?? settings.dietReviewIntervalDays,
+    },
+    latestHba1c: latestHba1c
+      ? {
+          percentage: latestHba1c.percentage,
+          testedOn: latestHba1c.testedOn,
+          // Against this patient's own target, not a textbook number — the
+          // doctor sets a different ceiling for a frail patient than a young one.
+          isHigh: latestHba1c.percentage > hba1cMax,
+        }
+      : null,
+    dietPlan: plan
+      ? {
+          goal: plan.goal ?? '',
+          meals: (plan.meals ?? []).map((m) => ({
+            name: m.name,
+            time: m.time ?? '',
+            items: m.items ?? [],
+            notes: m.notes ?? '',
+          })),
+          avoid: plan.avoid ?? [],
+          notes: plan.notes ?? '',
+          dieticianName: plan.dietician?.name ?? null,
+          sharedAt: plan.sharedAt,
+        }
+      : null,
+    medications: medications.map((m) => ({
+      id: String(m._id),
+      name: m.name,
+      strength: m.strength ?? '',
+      dose: m.dose ?? '',
+      instructions: m.instructions ?? '',
+      times: (m.schedule ?? []).map((s) => s.time).filter(Boolean),
+    })),
+    recentFoodLogs: foodLogs.map((f) => ({
+      id: String(f._id),
+      mealType: f.mealType,
+      note: f.note ?? '',
+      photoUrl: f.photo ? `/api/v1/uploads/${f.photo}/raw` : null,
+      createdAt: f.createdAt,
+    })),
+  };
+}
 
 function isDue(lastAt, intervalDays) {
   if (!lastAt) return true;

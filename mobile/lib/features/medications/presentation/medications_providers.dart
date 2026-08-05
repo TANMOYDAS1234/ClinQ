@@ -1,8 +1,25 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/providers/core_providers.dart';
 import '../../../shared/services/notification_service.dart';
 import '../data/medications_repository.dart';
 import '../domain/medication.dart';
+
+/// The patient's own meal times, which every "after breakfast" reminder is
+/// anchored to. Shown on the Medicines tab so the schedule below it reads in
+/// the patient's own day rather than in abstract clock times.
+final mealTimesProvider = FutureProvider.autoDispose<({String breakfast, String lunch, String dinner})>(
+  (ref) async {
+    final json = await ref.read(apiClientProvider).getJson('/auth/me');
+    final profile = json['profile'] as Map<String, dynamic>? ?? const {};
+    final meals = profile['mealTimes'] as Map<String, dynamic>? ?? const {};
+    return (
+      breakfast: meals['breakfast']?.toString() ?? '08:00',
+      lunch: meals['lunch']?.toString() ?? '13:30',
+      dinner: meals['dinner']?.toString() ?? '20:30',
+    );
+  },
+);
 
 final FutureProvider<TodaySchedule> todayScheduleProvider = FutureProvider<TodaySchedule>(
   (ref) => ref.watch(medicationsRepositoryProvider).getTodaySchedule(),

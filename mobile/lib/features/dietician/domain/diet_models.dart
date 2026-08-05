@@ -267,6 +267,7 @@ class DietRecentLog {
 class DietDashboard {
   const DietDashboard({
     required this.patients,
+    this.newThisWeek = 0,
     required this.reviewsDue,
     required this.plansMissing,
     required this.reviewsDueList,
@@ -275,11 +276,27 @@ class DietDashboard {
   });
 
   final int patients;
+
+  /// Patients whose record was opened in the last seven days.
+  final int newThisWeek;
+
   final int reviewsDue;
   final int plansMissing;
   final List<DietPatientBrief> reviewsDueList;
   final List<DietPatientBrief> plansMissingList;
   final List<DietRecentLog> recentLogs;
+
+  /// Reviews due, longest-waiting first, with anyone who has no plan at all
+  /// left out — they belong under "waiting for a plan", not under "overdue for
+  /// review", and a patient in both lists twice reads as twice the work.
+  List<DietPatientBrief> get reviewsSorted {
+    final planIds = plansMissingList.map((p) => p.id).toSet();
+    return [...reviewsDueList.where((p) => !planIds.contains(p.id))]
+      ..sort((a, b) => b.sinceDays.compareTo(a.sinceDays));
+  }
+
+  List<DietPatientBrief> get plansSorted =>
+      [...plansMissingList]..sort((a, b) => b.sinceDays.compareTo(a.sinceDays));
 
   /// The two worklists as one queue. Reviews first: a patient already on a plan
   /// whose review has lapsed is care going stale, which outranks care not yet
@@ -305,6 +322,7 @@ class DietDashboard {
         (j[key] as List?)?.whereType<Map<String, dynamic>>().map(DietPatientBrief.fromJson).toList() ?? const [];
     return DietDashboard(
       patients: (counts['patients'] as num?)?.toInt() ?? 0,
+      newThisWeek: (counts['newThisWeek'] as num?)?.toInt() ?? 0,
       reviewsDue: (counts['reviewsDue'] as num?)?.toInt() ?? 0,
       plansMissing: (counts['plansMissing'] as num?)?.toInt() ?? 0,
       reviewsDueList: briefs('reviewsDue'),

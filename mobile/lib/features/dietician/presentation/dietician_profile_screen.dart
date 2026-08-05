@@ -1,0 +1,276 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/config/app_config.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../l10n/gen/app_localizations.dart';
+import '../../../shared/providers/app_lock_provider.dart';
+import '../../../shared/providers/locale_provider.dart';
+import '../../../shared/widgets/user_avatar.dart';
+import '../../auth/presentation/auth_controller.dart';
+import '../../profile/presentation/widgets/profile_section.dart';
+import '../../profile/presentation/widgets/theme_selector.dart';
+
+/// The dietician's profile — the counterpart of the doctor's, minus the clinic
+/// tools they have no business in (alerts, knowledge base, patient feedback).
+/// Appearance, language, their own details, app lock and sign-out.
+class DieticianProfileScreen extends ConsumerStatefulWidget {
+  const DieticianProfileScreen({super.key});
+
+  @override
+  ConsumerState<DieticianProfileScreen> createState() => _DieticianProfileScreenState();
+}
+
+class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen> {
+  Future<void> _changeLanguage(String code) async {
+    await ref.read(localeControllerProvider.notifier).setLanguage(code);
+  }
+
+  Future<void> _toggleAppLock(bool value) async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    if (!value) {
+      await ref.read(appLockProvider.notifier).disable();
+      return;
+    }
+    // Enabling needs one successful unlock first, so nobody can lock themselves
+    // out with a method their phone does not actually support.
+    final ok = await ref.read(appLockProvider.notifier).enable(l10n.profileAppLock);
+    if (!ok) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not turn on app lock — check your device screen lock.')),
+      );
+    }
+  }
+
+  Future<void> _confirmLogout() async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.profileLogout),
+        content: const Text('You will need your number and password to sign in again.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.profileLogout),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(authControllerProvider.notifier).logout();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = isDark ? AppColors.primaryDark : AppColors.primary;
+
+    final user = ref.watch(authControllerProvider).user;
+    final currentLocale = ref.watch(localeControllerProvider);
+    final lockEnabled = ref.watch(appLockProvider).enabled;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Profile',
+          style: TextStyle(color: accent, fontWeight: FontWeight.w700),
+        ),
+        automaticallyImplyLeading: false,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xl),
+        children: [
+          Row(
+            children: [
+              UserAvatar(name: user?.name ?? '', avatarUrl: user?.avatarUrl, accent: accent, size: 64),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user?.name ?? '',
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Dietician${user?.phone != null ? ' · ${user!.phone}' : ''}',
+                      style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+
+          _label(l10n.profileAppearance, scheme),
+          const ThemeSelector(),
+          const SizedBox(height: AppSpacing.lg),
+
+          _label(l10n.profileLanguage, scheme),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              // Each option renders in its own script, so a Bengali speaker can
+              // find "বাংলা" while the app is still in English.
+              _LangChip(
+                label: l10n.languageEnglish,
+                selected: currentLocale?.languageCode == 'en',
+                accent: accent,
+                onTap: () => _changeLanguage('en'),
+              ),
+              _LangChip(
+                label: l10n.languageBengali,
+                selected: currentLocale?.languageCode == 'bn',
+                accent: accent,
+                onTap: () => _changeLanguage('bn'),
+              ),
+              _LangChip(
+                label: l10n.languageHindi,
+                selected: currentLocale?.languageCode == 'hi',
+                accent: accent,
+                onTap: () => _changeLanguage('hi'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          ProfileSection(
+            label: l10n.profileAccount,
+            children: [
+              ProfileRow(
+                icon: Icons.person_outline_rounded,
+                title: l10n.profileEditProfile,
+                showDivider: false,
+                onTap: () => context.push('/dietician/profile/edit'),
+              ),
+            ],
+          ),
+
+          _label(l10n.profileSecurity, scheme),
+          Container(
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              border: Border.all(color: scheme.outlineVariant),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: SwitchListTile.adaptive(
+              value: lockEnabled,
+              onChanged: _toggleAppLock,
+              activeThumbColor: accent,
+              secondary: Icon(Icons.lock_outline_rounded, color: accent),
+              title: Text(l10n.profileAppLock, style: const TextStyle(fontSize: 16)),
+              subtitle: Text(l10n.profileAppLockSub, style: const TextStyle(fontSize: 13)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          ProfileSection(
+            label: 'App',
+            children: [
+              ProfileRow(
+                icon: Icons.info_outline_rounded,
+                title: l10n.profileAbout,
+                value: 'v${AppConfig.appVersion}',
+                showDivider: false,
+                onTap: () => showAboutDialog(
+                  context: context,
+                  applicationName: AppConfig.appName,
+                  applicationVersion: 'v${AppConfig.appVersion}',
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(
+            width: double.infinity,
+            height: AppSpacing.minTapTarget + 8,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.danger,
+                side: const BorderSide(color: AppColors.danger, width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+                ),
+              ),
+              onPressed: _confirmLogout,
+              icon: const Icon(Icons.logout_rounded, size: 22),
+              label: Text(
+                l10n.profileLogout,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _label(String text, ColorScheme scheme) => Padding(
+    padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
+    child: Text(
+      text.toUpperCase(),
+      style: TextStyle(
+        fontSize: 11.5,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.6,
+        color: scheme.onSurfaceVariant,
+      ),
+    ),
+  );
+}
+
+class _LangChip extends StatelessWidget {
+  const _LangChip({
+    required this.label,
+    required this.selected,
+    required this.accent,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final Color accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? accent.withValues(alpha: 0.12) : scheme.surface,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: selected ? accent : scheme.outlineVariant),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14.5,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? accent : scheme.onSurface,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

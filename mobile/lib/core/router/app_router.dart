@@ -11,6 +11,7 @@ import '../../features/chat/presentation/chat_screen.dart';
 import '../../features/medications/presentation/medications_screen.dart';
 import '../../features/medications/presentation/reminder_times_screen.dart';
 import '../../features/foodlog/presentation/food_log_screen.dart';
+import '../../features/home/presentation/home_screen.dart';
 import '../../features/labtests/presentation/lab_tests_screen.dart';
 import '../../features/clinician/presentation/alerts_screen.dart';
 import '../../features/clinician/presentation/appointments_admin_screen.dart';
@@ -32,6 +33,7 @@ import '../../features/dietician/presentation/diet_plan_screen.dart';
 import '../../features/dietician/presentation/dietician_dashboard_screen.dart';
 import '../../features/dietician/presentation/dietician_patients_screen.dart';
 import '../../features/dietician/presentation/dietician_patient_screen.dart';
+import '../../features/dietician/presentation/dietician_profile_screen.dart';
 import '../../features/dietician/presentation/dietician_chat_screen.dart';
 import '../../features/dietician/presentation/dietician_shell.dart';
 import '../../features/onboarding/presentation/language_picker_screen.dart';
@@ -73,7 +75,7 @@ String? _redirect(Ref ref, GoRouterState state) {
   const register = '/register';
   // Landing tabs after login. The patient app now opens on the Assistant and
   // the clinician app on Patients (the former Home/Dashboard tabs were removed).
-  const home = '/chat';
+  const home = '/home';
   const clinicianHome = '/clinician/dashboard';
   const dieticianHome = '/dietician/dashboard';
 
@@ -211,6 +213,17 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/dietician/profile',
+                builder: (context, state) => const DieticianProfileScreen(),
+                routes: [
+                  GoRoute(path: 'edit', builder: (context, state) => const EditProfileScreen()),
+                ],
+              ),
+            ],
+          ),
         ],
       ),
 
@@ -219,6 +232,9 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => AppShell(navigationShell: navigationShell),
         branches: [
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/home', builder: (context, state) => const HomeScreen())],
+          ),
           StatefulShellBranch(
             routes: [GoRoute(path: '/chat', builder: (context, state) => const ChatScreen())],
           ),

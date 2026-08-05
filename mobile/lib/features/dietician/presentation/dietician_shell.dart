@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// Bottom-navigation scaffold for the dietician: Dashboard · Patients.
+/// Bottom-navigation scaffold for the dietician: Dashboard · Patients · Profile.
 ///
-/// Two tabs, not three. A dietician's job is one list deep — the dashboard says
-/// what needs doing today, the patient list is everyone. Anything more would be
-/// navigation for its own sake.
+/// The dashboard says what needs doing today, the patient list is everyone, and
+/// Profile is where their own account lives — the same shape the doctor has.
 class DieticianShell extends StatelessWidget {
   const DieticianShell({super.key, required this.navigationShell});
 
@@ -32,6 +31,11 @@ class DieticianShell extends StatelessWidget {
             icon: Icon(Icons.groups_outlined),
             selectedIcon: Icon(Icons.groups_rounded),
             label: 'Patients',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded),
+            label: 'Profile',
           ),
         ],
       ),
