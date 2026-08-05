@@ -239,10 +239,26 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _SearchField(
-                    controller: _labSearch,
-                    hint: 'Search lab tests...',
-                    onSubmitted: (_) => _addCustomTest(),
+                  // An add control, not a search: what is typed here becomes a
+                  // new chip. The leading + says so; a magnifier would promise
+                  // a lookup that does not exist.
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _PlainField(
+                          controller: _labSearch,
+                          hint: 'Add another test',
+                          icon: Icons.add_rounded,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _addCustomTest(),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      IconButton.filledTonal(
+                        onPressed: _addCustomTest,
+                        icon: const Icon(Icons.add_rounded),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Wrap(
@@ -526,11 +542,23 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-class _SearchField extends StatelessWidget {
-  const _SearchField({required this.controller, required this.hint, this.onSubmitted});
+/// A plain text field. Deliberately no magnifier anywhere on this screen: there
+/// is no lookup behind these fields, and a search icon over a field that only
+/// accepts what you type is a promise the form cannot keep — the doctor types
+/// three letters, waits for a dropdown, and nothing comes.
+class _PlainField extends StatelessWidget {
+  const _PlainField({
+    required this.controller,
+    required this.hint,
+    this.icon,
+    this.textInputAction = TextInputAction.next,
+    this.onSubmitted,
+  });
 
   final TextEditingController controller;
   final String hint;
+  final IconData? icon;
+  final TextInputAction textInputAction;
   final ValueChanged<String>? onSubmitted;
 
   @override
@@ -539,12 +567,12 @@ class _SearchField extends StatelessWidget {
     return TextField(
       controller: controller,
       textCapitalization: TextCapitalization.words,
-      textInputAction: TextInputAction.done,
+      textInputAction: textInputAction,
       onSubmitted: onSubmitted,
       decoration: InputDecoration(
         hintText: hint,
         isDense: true,
-        prefixIcon: Icon(Icons.search_rounded, size: 20, color: scheme.onSurfaceVariant),
+        prefixIcon: icon == null ? null : Icon(icon, size: 20, color: scheme.onSurfaceVariant),
         prefixIconConstraints: const BoxConstraints(minWidth: 42),
         contentPadding: const EdgeInsets.symmetric(vertical: 14),
       ),
@@ -612,7 +640,7 @@ class _MedFields extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          _SearchField(controller: draft.name, hint: 'Search medicine...'),
+          _PlainField(controller: draft.name, hint: 'e.g. Metformin'),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
