@@ -34,9 +34,15 @@ class AppColors {
   static const Color warningBg = Color(0xFFFEF3C7);
   static const Color successBg = Color(0xFFD1FAE5);
 
+  /// The neutral tinted panel behind informational rows and tags on the
+  /// clinician screens — quieter than the alert tints so a red row still reads
+  /// as the exception on a screen full of cards.
+  static const Color infoBg = Color(0xFFE8EFFB);
+
   static const Color dangerBgDark = Color(0xFF3F1414);
   static const Color warningBgDark = Color(0xFF3A2A0A);
   static const Color successBgDark = Color(0xFF0C2E22);
+  static const Color infoBgDark = Color(0xFF16233A);
 
   /// Glucose reading flag → colour, per contract flags:
   /// severe_low, low, in_range, very_high, critical_high.

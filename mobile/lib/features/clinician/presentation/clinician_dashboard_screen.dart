@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -11,11 +12,13 @@ import '../../../shared/widgets/user_avatar.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
 
-/// The doctor's home: the clinic at a glance — headline counts, the alerts that
-/// need attention, the clinic's risk pulse, and a ranked "needs attention"
-/// worklist of the patients to deal with next. Every number is live: pulled from
-/// the API and refreshed on a timer, on resume, and on pull-to-refresh, so it is
-/// never stale while the doctor is looking at it.
+/// The doctor's home: the clinic at a glance — headline counts, what is on
+/// today, the alerts that need attention, the live triage queue, and the
+/// nutrition reviews coming due.
+///
+/// Every number is live: pulled from the API and refreshed on a timer, on
+/// resume, and on pull-to-refresh, so it is never stale while the doctor is
+/// looking at it.
 class ClinicianDashboardScreen extends ConsumerStatefulWidget {
   const ClinicianDashboardScreen({super.key});
 
@@ -27,12 +30,14 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
     with WidgetsBindingObserver {
   Timer? _poll;
 
+  AlertsQuery get _alertsQuery => (status: 'open', severity: null);
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Live updates: re-pull the counts and the diary every 20s so a new message,
-    // a resolved alert or a checked-in patient shows without any manual refresh.
+    // Live updates: re-pull every 20s so a new message, a resolved alert or a
+    // checked-in patient shows without any manual refresh.
     _poll = Timer.periodic(const Duration(seconds: 20), (_) => _refresh());
   }
 
@@ -50,7 +55,7 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
 
   void _refresh() {
     ref.invalidate(overviewProvider);
-    ref.invalidate(attentionPatientsProvider);
+    ref.invalidate(alertsProvider(_alertsQuery));
   }
 
   @override
@@ -58,9 +63,9 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
     final scheme = Theme.of(context).colorScheme;
     // valueOrNull, not .when: on a timer refresh the provider briefly re-enters
     // loading, and reading the last value keeps the screen from flashing a
-    // spinner every 20 seconds.
+    // spinner every twenty seconds.
     final overview = ref.watch(overviewProvider).valueOrNull;
-    final patients = ref.watch(attentionPatientsProvider).valueOrNull;
+    final alerts = ref.watch(alertsProvider(_alertsQuery)).valueOrNull?.items ?? const [];
     final loading = overview == null && ref.watch(overviewProvider).isLoading;
 
     return Scaffold(
@@ -77,17 +82,25 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
                       onRefresh: () async => _refresh(),
                       child: ListView(
                         padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xl),
+                          AppSpacing.md,
+                          AppSpacing.sm,
+                          AppSpacing.md,
+                          AppSpacing.xl,
+                        ),
                         children: [
-                          if (overview != null) _StatsRow(overview: overview),
-                          const SizedBox(height: AppSpacing.lg),
-                          if (overview != null) _ActiveAlerts(overview: overview),
-                          const SizedBox(height: AppSpacing.lg),
-                          if (overview != null) _ClinicPulse(overview: overview),
-                          const SizedBox(height: AppSpacing.lg),
-                          if (overview != null) _NutritionCard(overview: overview),
-                          const SizedBox(height: AppSpacing.lg),
-                          _NeedsAttention(patients: patients ?? const []),
+                          if (overview != null) ...[
+                            _HeadlineRow(overview: overview),
+                            const SizedBox(height: AppSpacing.md),
+                            _ActiveTodayCard(overview: overview),
+                            const SizedBox(height: AppSpacing.md),
+                            _AlertStrip(overview: overview),
+                            const SizedBox(height: AppSpacing.lg),
+                          ],
+                          _TriageQueue(alerts: alerts),
+                          if (overview != null && overview.nutritionReviews.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.lg),
+                            _NutritionReviews(overview: overview),
+                          ],
                         ],
                       ),
                     ),
@@ -108,8 +121,11 @@ class _DashboardHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final user = ref.watch(authControllerProvider).user;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.sm),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
+      ),
       child: Row(
         children: [
           Image.asset(
@@ -123,19 +139,13 @@ class _DashboardHeader extends ConsumerWidget {
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
           ),
           const Spacer(),
-          IconButton(
-            tooltip: 'Search patients',
-            onPressed: () => context.go('/clinician/patients'),
-            icon: Icon(Icons.search_rounded, color: scheme.onSurfaceVariant),
-          ),
-          const SizedBox(width: 2),
           GestureDetector(
-            onTap: () => context.go('/clinician/more'),
+            onTap: () => context.push('/clinician/more'),
             child: UserAvatar(
-              name: user?.name ?? 'Dr',
+              name: user?.name ?? '',
               avatarUrl: user?.avatarUrl,
               accent: AppColors.primary,
-              size: 40,
+              size: 38,
             ),
           ),
         ],
@@ -144,570 +154,671 @@ class _DashboardHeader extends ConsumerWidget {
   }
 }
 
-// ---- Headline stats -------------------------------------------------------
+// ---- Headline counts ------------------------------------------------------
 
-class _StatsRow extends StatelessWidget {
-  const _StatsRow({required this.overview});
+class _HeadlineRow extends StatelessWidget {
+  const _HeadlineRow({required this.overview});
+
+  final ClinicOverview overview;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: _HeadlineCard(
+            label: 'TOTAL PATIENTS',
+            value: '${overview.patientCount}',
+            // Only shown when someone actually registered today; "+0 today" is
+            // noise dressed up as news.
+            suffix: overview.newPatientsToday > 0 ? '+${overview.newPatientsToday} today' : null,
+            suffixColor: AppColors.primary,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: _HeadlineCard(
+            label: 'PENDING SUMMARIES',
+            value: '${overview.pendingReviews}',
+            suffix: 'in queue',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeadlineCard extends StatelessWidget {
+  const _HeadlineCard({
+    required this.label,
+    required this.value,
+    this.suffix,
+    this.suffixColor,
+  });
+
+  final String label;
+  final String value;
+  final String? suffix;
+  final Color? suffixColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.7,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: scheme.onSurface),
+              ),
+              if (suffix != null) ...[
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    suffix!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: suffixColor ?? scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---- Active today ---------------------------------------------------------
+
+class _ActiveTodayCard extends StatelessWidget {
+  const _ActiveTodayCard({required this.overview});
 
   final ClinicOverview overview;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final remaining = (overview.appointmentsToday - overview.completedToday).clamp(0, 9999);
+
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
+        color: AppColors.infoBg,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: _Stat(
-              value: overview.patientCount,
-              label: 'Total\nPatients',
-              icon: Icons.groups_rounded,
-              onTap: () => context.go('/clinician/patients'),
-            ),
+          Row(
+            children: [
+              Text(
+                'ACTIVE TODAY',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.7,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              Icon(Icons.event_available_outlined, size: 20, color: scheme.onSurfaceVariant),
+            ],
           ),
-          _divider(scheme),
-          Expanded(
-            child: _Stat(
-              value: overview.pendingReviews,
-              label: 'Pending\nSummaries',
-              icon: Icons.pending_actions_rounded,
-              onTap: () => context.push('/clinician/chat-review'),
-            ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                '${overview.appointmentsToday}',
+                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: scheme.onSurface),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Scheduled Encounters',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: scheme.onSurface),
+              ),
+            ],
           ),
-          _divider(scheme),
-          Expanded(
-            child: _Stat(
-              value: overview.activeToday,
-              label: 'Active\nToday',
-              icon: Icons.monitor_heart_rounded,
-            ),
+          const SizedBox(height: AppSpacing.md),
+          // The design splits this into in-person and telehealth. ClinQ has no
+          // telehealth appointments, so the split that IS real is used instead:
+          // what has been seen today and what is still to come.
+          Row(
+            children: [
+              _Pill(
+                text: 'Completed: ${overview.completedToday}',
+                bg: AppColors.primary,
+                fg: Colors.white,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _Pill(text: 'Remaining: $remaining', bg: AppColors.accentSoft, fg: AppColors.primary),
+            ],
           ),
         ],
       ),
     );
   }
-
-  Widget _divider(ColorScheme scheme) =>
-      Container(width: 1, height: 44, color: scheme.outlineVariant.withValues(alpha: 0.7));
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label, required this.icon, this.onTap});
+class _Pill extends StatelessWidget {
+  const _Pill({required this.text, required this.bg, required this.fg});
 
-  final int value;
-  final String label;
+  final String text;
+  final Color bg;
+  final Color fg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      child: Text(text, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: fg)),
+    );
+  }
+}
+
+// ---- Alert strip ----------------------------------------------------------
+
+class _AlertStrip extends StatelessWidget {
+  const _AlertStrip({required this.overview});
+
+  final ClinicOverview overview;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _AlertRow(
+          icon: Icons.warning_amber_rounded,
+          iconBg: AppColors.danger,
+          bg: AppColors.dangerBg,
+          label: 'VITALS WARNING',
+          labelColor: AppColors.danger,
+          detail: '${overview.riskCritical} Critical ${overview.riskCritical == 1 ? 'Patient' : 'Patients'}',
+          onTap: () => context.go('/clinician/patients'),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _AlertRow(
+          icon: Icons.priority_high_rounded,
+          iconBg: AppColors.primary,
+          bg: AppColors.infoBg,
+          label: 'HIGH PRIORITY',
+          detail:
+              '${overview.highPriorityAlerts} Action ${overview.highPriorityAlerts == 1 ? 'Item' : 'Items'}',
+          onTap: () => context.push('/clinician/alerts'),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _AlertRow(
+          icon: Icons.mail_outline_rounded,
+          iconBg: AppColors.primary,
+          bg: AppColors.infoBg,
+          label: 'NEW MESSAGES',
+          detail: '${overview.unreadMessages} Unread',
+          onTap: () => context.go('/clinician/patients'),
+        ),
+      ],
+    );
+  }
+}
+
+class _AlertRow extends StatelessWidget {
+  const _AlertRow({
+    required this.icon,
+    required this.iconBg,
+    required this.bg,
+    required this.label,
+    required this.detail,
+    required this.onTap,
+    this.labelColor,
+  });
+
   final IconData icon;
-  final VoidCallback? onTap;
+  final Color iconBg;
+  final Color bg;
+  final String label;
+  final String detail;
+  final Color? labelColor;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-        child: Column(
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+                child: Icon(icon, size: 18, color: Colors.white),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                        color: labelColor ?? scheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      detail,
+                      style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: scheme.onSurface),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---- Live triage queue ----------------------------------------------------
+
+class _TriageQueue extends StatelessWidget {
+  const _TriageQueue({required this.alerts});
+
+  final List<ClinicalAlert> alerts;
+
+  static const _severityOrder = ['emergency', 'urgent', 'warning', 'info'];
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    // Worst first, then newest within a severity — "sorted by urgency" has to
+    // actually be true, since the doctor reads the top row and acts.
+    final sorted = [...alerts]
+      ..sort((a, b) {
+        final bySeverity =
+            _severityOrder.indexOf(a.severity).compareTo(_severityOrder.indexOf(b.severity));
+        if (bySeverity != 0) return bySeverity;
+        return (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0));
+      });
+    final shown = sorted.take(3).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            const Text('Live Triage Queue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            const Spacer(),
             Text(
-              '$value',
-              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.primary),
+              'Sorted by Urgency',
+              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
             ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (shown.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+            ),
+            child: Row(
               children: [
-                Icon(icon, size: 14, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 4),
-                Flexible(
+                const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 26),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
                   child: Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, height: 1.15, color: scheme.onSurfaceVariant),
+                    'No open alerts. Nothing is waiting on triage.',
+                    style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
                   ),
                 ),
               ],
+            ),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                for (var i = 0; i < shown.length; i++) ...[
+                  if (i > 0) Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                  _TriageRow(alert: shown[i]),
+                ],
+              ],
+            ),
+          ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          width: double.infinity,
+          child: Material(
+            color: AppColors.infoBg,
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              onTap: () => context.push('/clinician/alerts'),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                child: Center(
+                  child: Text(
+                    'View All Triage (${alerts.length})',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TriageRow extends StatelessWidget {
+  const _TriageRow({required this.alert});
+
+  final ClinicalAlert alert;
+
+  static Color _dotColor(String severity) => switch (severity) {
+    'emergency' => AppColors.danger,
+    'urgent' => const Color(0xFFEA580C),
+    'warning' => AppColors.warning,
+    _ => const Color(0xFF9CA3AF),
+  };
+
+  static String _severityLabel(String severity) => switch (severity) {
+    'emergency' => 'Critical',
+    'urgent' => 'Urgent',
+    'warning' => 'Elevated',
+    _ => 'Routine',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dot = _dotColor(alert.severity);
+    final isEmergency = alert.severity == 'emergency';
+
+    return InkWell(
+      onTap: alert.patientId == null
+          ? null
+          : () => context.push('/clinician/patients/${alert.patientId}/thread', extra: alert.patientName),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: isEmergency ? dot : Colors.transparent,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: dot, width: 2),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    alert.patientName ?? 'Unknown patient',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (alert.createdAt != null)
+                  Text(
+                    DateFormat('h:mm a').format(alert.createdAt!),
+                    style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.only(left: 20),
+              child: Text(
+                alert.detail?.isNotEmpty == true ? alert.detail! : alert.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 14, height: 1.4, color: scheme.onSurfaceVariant),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Padding(
+              padding: const EdgeInsets.only(left: 20),
+              child: Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: 6,
+                children: [
+                  _Tag(
+                    _severityLabel(alert.severity),
+                    fg: isEmergency ? AppColors.danger : AppColors.primary,
+                    bg: isEmergency ? AppColors.dangerBg : AppColors.infoBg,
+                  ),
+                  if (alert.type.isNotEmpty)
+                    _Tag(_humanise(alert.type), fg: AppColors.primary, bg: AppColors.infoBg),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-// ---- Active alerts --------------------------------------------------------
-
-class _ActiveAlerts extends StatelessWidget {
-  const _ActiveAlerts({required this.overview});
-
-  final ClinicOverview overview;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final pills = <Widget>[
-      if (overview.highPriorityAlerts > 0)
-        _AlertPill(
-          label: 'High Priority',
-          count: overview.highPriorityAlerts,
-          fg: AppColors.danger,
-          bg: AppColors.dangerBg,
-          icon: Icons.priority_high_rounded,
-          onTap: () => context.push('/clinician/alerts'),
-        ),
-      if (overview.unreadMessages > 0)
-        _AlertPill(
-          label: 'New Messages',
-          count: overview.unreadMessages,
-          fg: AppColors.primary,
-          bg: AppColors.accentSoft,
-          icon: Icons.mark_email_unread_rounded,
-          onTap: () => context.go('/clinician/patients'),
-        ),
-      if (overview.warningAlerts > 0)
-        _AlertPill(
-          label: 'Vitals Warning',
-          count: overview.warningAlerts,
-          fg: const Color(0xFF4338CA),
-          bg: const Color(0xFFE0E7FF),
-          icon: Icons.monitor_heart_rounded,
-          onTap: () => context.push('/clinician/alerts'),
-        ),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionTitle('Active Alerts'),
-        const SizedBox(height: AppSpacing.sm),
-        if (pills.isEmpty)
-          Row(
-            children: [
-              Icon(Icons.check_circle_outline_rounded, size: 18, color: AppColors.success),
-              const SizedBox(width: 8),
-              Text('No active alerts right now', style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant)),
-            ],
-          )
-        else
-          Wrap(spacing: 10, runSpacing: 10, children: pills),
-      ],
-    );
+  static String _humanise(String type) {
+    final words = type.replaceAll('_', ' ').replaceAll('-', ' ').trim();
+    if (words.isEmpty) return words;
+    return words[0].toUpperCase() + words.substring(1);
   }
 }
 
-class _AlertPill extends StatelessWidget {
-  const _AlertPill({
-    required this.label,
-    required this.count,
-    required this.fg,
-    required this.bg,
-    required this.icon,
-    required this.onTap,
-  });
+class _Tag extends StatelessWidget {
+  const _Tag(this.text, {required this.fg, required this.bg});
 
-  final String label;
-  final int count;
+  final String text;
   final Color fg;
   final Color bg;
-  final IconData icon;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(24),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 17, color: fg),
-              const SizedBox(width: 7),
-              Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: fg)),
-              const SizedBox(width: 7),
-              Container(
-                constraints: const BoxConstraints(minWidth: 20),
-                height: 20,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: fg, borderRadius: BorderRadius.circular(10)),
-                child: Text(
-                  count > 99 ? '99+' : '$count',
-                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      child: Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
     );
   }
 }
 
-// ---- Clinic pulse ---------------------------------------------------------
+// ---- Nutrition reviews ----------------------------------------------------
 
-/// One segment of the risk-distribution bar.
-class _RiskSeg {
-  const _RiskSeg(this.label, this.count, this.color);
-  final String label;
-  final int count;
-  final Color color;
-}
-
-/// A premium at-a-glance strip: the clinic's risk profile as a segmented bar,
-/// plus a couple of live activity numbers. All from the one overview call.
-class _ClinicPulse extends StatelessWidget {
-  const _ClinicPulse({required this.overview});
+class _NutritionReviews extends StatelessWidget {
+  const _NutritionReviews({required this.overview});
 
   final ClinicOverview overview;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final segs = <_RiskSeg>[
-      _RiskSeg('Low', overview.riskLow, AppColors.success),
-      _RiskSeg('Moderate', overview.riskModerate, AppColors.warning),
-      _RiskSeg('High', overview.riskHigh, const Color(0xFFEA580C)),
-      _RiskSeg('Critical', overview.riskCritical, AppColors.danger),
-    ];
-    final total = segs.fold<int>(0, (s, e) => s + e.count);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionTitle('Clinic Pulse'),
-        const SizedBox(height: AppSpacing.sm),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.35)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Patient risk profile',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 9),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: SizedBox(
-                  height: 10,
-                  child: total == 0
-                      ? ColoredBox(color: scheme.surfaceContainerHighest)
-                      : Row(
-                          children: [
-                            for (final s in segs)
-                              if (s.count > 0) Expanded(flex: s.count, child: ColoredBox(color: s.color)),
-                          ],
-                        ),
-                ),
-              ),
-              const SizedBox(height: 11),
-              Wrap(
-                spacing: 14,
-                runSpacing: 7,
-                children: [for (final s in segs) _legend(s.color, s.label, s.count, scheme)],
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.4)),
-              ),
-              Row(
-                children: [
-                  _pulseStat(Icons.monitor_heart_rounded, overview.activeToday, 'active today', scheme),
-                  const SizedBox(width: 22),
-                  _pulseStat(Icons.notifications_active_rounded, overview.totalOpenAlerts, 'open alerts', scheme),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _legend(Color color, String label, int count, ColorScheme scheme) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 9, height: 9, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 6),
-        Text('$label $count', style: TextStyle(fontSize: 12.5, color: scheme.onSurface)),
-      ],
-    );
-  }
-
-  Widget _pulseStat(IconData icon, int value, String label, ColorScheme scheme) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 17, color: AppColors.primary),
-        const SizedBox(width: 6),
-        Text('$value', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary)),
-        const SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
-      ],
-    );
-  }
-}
-
-// ---- Needs attention ------------------------------------------------------
-
-/// One patient that needs the doctor now, with why and how urgent.
-class _Attention {
-  const _Attention(this.patient, this.tier, this.color, this.reason);
-  final PatientListItem patient;
-  final int tier; // 1 = most urgent
-  final Color color;
-  final String reason;
-}
-
-/// The doctor's worklist: patients ranked by how much they need attention right
-/// now — abnormal glucose and emergencies first, then open alerts and urgent
-/// messages, then high risk, then unanswered messages. Tap opens the thread.
-class _NeedsAttention extends StatelessWidget {
-  const _NeedsAttention({required this.patients});
-
-  final List<PatientListItem> patients;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final items = <_Attention>[];
-    for (final p in patients) {
-      final a = _attentionFor(p);
-      if (a != null) items.add(a);
-    }
-    items.sort((a, b) => a.tier.compareTo(b.tier));
-    final top = items.take(6).toList();
+    final reviews = overview.nutritionReviews;
+    final due = reviews.where((r) => r.isDue).length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const _SectionTitle('Needs Attention'),
+            const Text('Nutrition Reviews', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
             const Spacer(),
-            if (items.isNotEmpty)
+            if (due > 0)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                decoration: BoxDecoration(color: AppColors.danger, borderRadius: BorderRadius.circular(11)),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.accentSoft,
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 child: Text(
-                  '${items.length}',
-                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white),
+                  '$due Due',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
-        if (top.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl, horizontal: AppSpacing.md),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.35)),
-            ),
-            child: Column(
-              children: [
-                Icon(Icons.check_circle_rounded, size: 34, color: AppColors.success),
-                const SizedBox(height: 10),
-                const Text('All caught up', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 3),
-                Text(
-                  'No patients need attention right now',
-                  style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
-                ),
-              ],
-            ),
-          )
-        else
-          Container(
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.35)),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                for (var i = 0; i < top.length; i++) ...[
-                  if (i > 0)
-                    Divider(height: 1, indent: 60, color: scheme.outlineVariant.withValues(alpha: 0.3)),
-                  _AttentionRow(item: top[i]),
-                ],
-              ],
-            ),
-          ),
+        for (final r in reviews) _NutritionCard(review: r),
       ],
-    );
-  }
-
-  _Attention? _attentionFor(PatientListItem p) {
-    final v = p.lastReadingValue;
-    final urgency = p.lastMessage?.urgency;
-    const orange = Color(0xFFEA580C);
-
-    // Tier 1 — clinical red flags.
-    if (v != null && (v >= 250 || v <= 70)) {
-      return _Attention(p, 1, AppColors.danger, 'Glucose ${v.round()} mg/dL');
-    }
-    if (urgency == 'emergency') return _Attention(p, 1, AppColors.danger, 'Emergency flagged');
-
-    // Tier 2 — needs review.
-    if (p.openAlertCount > 0) {
-      return _Attention(
-          p, 2, orange, p.openAlertCount == 1 ? '1 open alert' : '${p.openAlertCount} open alerts');
-    }
-    if (urgency == 'urgent') return _Attention(p, 2, orange, 'Urgent message');
-    if (p.riskBand == 'critical') return _Attention(p, 2, AppColors.danger, 'Critical risk');
-
-    // Tier 3 — elevated risk.
-    if (p.riskBand == 'high') return _Attention(p, 3, AppColors.warning, 'High risk');
-
-    // Tier 4 — waiting for a reply.
-    if (p.unreadCount > 0) {
-      return _Attention(
-          p, 4, AppColors.primary, p.unreadCount == 1 ? '1 new message' : '${p.unreadCount} new messages');
-    }
-    return null;
-  }
-}
-
-class _AttentionRow extends StatelessWidget {
-  const _AttentionRow({required this.item});
-
-  final _Attention item;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final p = item.patient;
-    return InkWell(
-      onTap: () => context.push('/clinician/patients/${p.id}/thread', extra: p.name),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(width: 4, color: item.color),
-            const SizedBox(width: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: UserAvatar(name: p.name, avatarUrl: p.avatarUrl, accent: item.color, size: 42),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      p.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: BoxDecoration(color: item.color, shape: BoxShape.circle),
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            item.reason,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: item.color),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
-            const SizedBox(width: 10),
-          ],
-        ),
-      ),
     );
   }
 }
 
 class _NutritionCard extends StatelessWidget {
-  const _NutritionCard({required this.overview});
+  const _NutritionCard({required this.review});
 
-  final ClinicOverview overview;
+  final NutritionReview review;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionTitle('Nutrition'),
-        const SizedBox(height: AppSpacing.sm),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.35)),
-          ),
-          child: Row(
+    final quiet = review.lastLogAt == null || DateTime.now().difference(review.lastLogAt!).inDays >= 3;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              _stat(Icons.restaurant_menu_rounded, overview.dietPatients, 'with dietician', scheme),
-              const SizedBox(width: 22),
-              _stat(Icons.photo_camera_back_outlined, overview.foodLogsToday, 'meals logged today', scheme),
+              Expanded(
+                child: Text(
+                  review.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ),
+              Text(
+                'Day ${review.day}/${review.intervalDays}',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: review.isDue ? FontWeight.w800 : FontWeight.w500,
+                  color: review.isDue ? AppColors.warning : scheme.onSurfaceVariant,
+                ),
+              ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: quiet ? AppColors.warningBg : AppColors.accentSoft,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  quiet ? Icons.water_drop_outlined : Icons.restaurant_rounded,
+                  size: 20,
+                  color: quiet ? AppColors.warning : AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(review.flag, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(
+                      review.detail,
+                      style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SizedBox(
+            width: double.infinity,
+            child: Material(
+              color: AppColors.accentSoft,
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => context.push('/clinician/patients/${review.patientId}'),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 13),
+                  child: Center(
+                    child: Text(
+                      'Review Log',
+                      style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.primary),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
-  }
-
-  Widget _stat(IconData icon, int value, String label, ColorScheme scheme) => Flexible(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 17, color: AppColors.primary),
-            const SizedBox(width: 6),
-            Text('$value', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary)),
-            const SizedBox(width: 4),
-            Flexible(child: Text(label, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant))),
-          ],
-        ),
-      );
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(text, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800));
   }
 }

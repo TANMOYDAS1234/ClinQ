@@ -4,10 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/authed_image.dart';
 import '../../../shared/widgets/markdown_text.dart';
+import '../../../core/utils/auth_validators.dart';
 import '../../../shared/widgets/user_avatar.dart';
+import '../../auth/presentation/auth_controller.dart';
+import '../data/clinician_repository.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
 
@@ -30,6 +35,7 @@ class PatientsScreen extends ConsumerStatefulWidget {
 class _PatientsScreenState extends ConsumerState<PatientsScreen>
     with WidgetsBindingObserver {
   final _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
   String _search = '';
   Timer? _debounce;
   Timer? _poll;
@@ -59,6 +65,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
     _poll?.cancel();
     _debounce?.cancel();
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -70,7 +77,21 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
   }
 
   void _refresh() {
-    if (mounted) ref.invalidate(patientsProvider(_query));
+    if (!mounted) return;
+    ref.invalidate(patientsProvider(_query));
+    ref.invalidate(worklistProvider);
+  }
+
+  /// Registers a walk-in at the desk. Some patients are enrolled on a clinic
+  /// phone rather than downloading the app first, and without this the doctor
+  /// has no way to start a record for them.
+  Future<void> _addPatient() async {
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const _NewPatientSheet(),
+    );
+    if (created == true) _refresh();
   }
 
   void _onSearchChanged(String v) {
@@ -104,69 +125,99 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
     final async = ref.watch(patientsProvider(_query));
     final scheme = Theme.of(context).colorScheme;
 
+    final worklist = ref.watch(worklistProvider).valueOrNull;
+
     return Scaffold(
       backgroundColor: scheme.surface,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            const _InboxHeader(),
-            _SearchField(controller: _searchController, onChanged: _onSearchChanged),
-            _SectionBar(
-              unreadOnly: _unreadOnly,
-              onToggleFilter: () => setState(() => _unreadOnly = !_unreadOnly),
-            ),
+            _InboxHeader(onSearch: () => _searchFocus.requestFocus()),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async => _refresh(),
-                child: async.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (_, _) => ListView(
-                    children: [
-                      SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-                      const Center(child: Text('Could not load messages')),
-                      const SizedBox(height: AppSpacing.sm),
-                      Center(
-                        child: OutlinedButton(onPressed: _refresh, child: const Text('Retry')),
-                      ),
-                    ],
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.sm,
+                    AppSpacing.md,
+                    AppSpacing.xl,
                   ),
-                  data: (paged) {
-                    var items = _ordered(paged.items);
-                    if (_unreadOnly) items = items.where((p) => p.unreadCount > 0).toList();
+                  children: [
+                    const _Greeting(),
+                    const SizedBox(height: AppSpacing.md),
+                    _NewPatientButton(onTap: _addPatient),
+                    const SizedBox(height: AppSpacing.lg),
+                    if (worklist != null) ...[
+                      _StatTrio(worklist: worklist),
+                      const SizedBox(height: AppSpacing.md),
+                      if (worklist.queue.isNotEmpty) ...[
+                        _ActionQueue(worklist: worklist),
+                        const SizedBox(height: AppSpacing.lg),
+                      ],
+                      if (worklist.recentMeals.isNotEmpty) ...[
+                        _LatestMeals(meals: worklist.recentMeals),
+                        const SizedBox(height: AppSpacing.lg),
+                      ],
+                    ],
 
-                    if (items.isEmpty) {
-                      return ListView(
-                        children: [
-                          SizedBox(height: MediaQuery.of(context).size.height * 0.18),
-                          Icon(
-                            _unreadOnly ? Icons.mark_email_read_outlined : Icons.forum_outlined,
-                            size: 52,
-                            color: scheme.outlineVariant,
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          Center(
-                            child: Text(
-                              _unreadOnly ? 'Nothing unread' : 'No conversations yet',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ],
-                      );
-                    }
-
-                    // One grouped card with hairline dividers, rather than a
-                    // separate floating card per patient — a long inbox of
-                    // detached cards reads as clutter.
-                    return ListView(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md,
-                        0,
-                        AppSpacing.md,
-                        AppSpacing.lg,
+                    // The inbox stays on this tab. The overview above says what
+                    // is outstanding; this is still how the doctor reaches a
+                    // patient who is waiting on a reply.
+                    _SectionBar(
+                      unreadOnly: _unreadOnly,
+                      onToggleFilter: () => setState(() => _unreadOnly = !_unreadOnly),
+                    ),
+                    _SearchField(
+                      controller: _searchController,
+                      focusNode: _searchFocus,
+                      onChanged: _onSearchChanged,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    async.when(
+                      loading: () => const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 60),
+                        child: Center(child: CircularProgressIndicator()),
                       ),
-                      children: [
-                        Container(
+                      error: (_, _) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40),
+                        child: Column(
+                          children: [
+                            const Text('Could not load messages'),
+                            const SizedBox(height: AppSpacing.sm),
+                            OutlinedButton(onPressed: _refresh, child: const Text('Retry')),
+                          ],
+                        ),
+                      ),
+                      data: (paged) {
+                        var items = _ordered(paged.items);
+                        if (_unreadOnly) items = items.where((p) => p.unreadCount > 0).toList();
+
+                        if (items.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  _unreadOnly ? Icons.mark_email_read_outlined : Icons.forum_outlined,
+                                  size: 52,
+                                  color: scheme.outlineVariant,
+                                ),
+                                const SizedBox(height: AppSpacing.md),
+                                Text(
+                                  _unreadOnly ? 'Nothing unread' : 'No conversations yet',
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        // One grouped card with hairline dividers, rather than a
+                        // separate floating card per patient — a long inbox of
+                        // detached cards reads as clutter.
+                        return Container(
                           decoration: BoxDecoration(
                             color: scheme.surfaceContainerLowest,
                             borderRadius: BorderRadius.circular(18),
@@ -206,10 +257,10 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
                               ],
                             ],
                           ),
-                        ),
-                      ],
-                    );
-                  },
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -218,17 +269,565 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
       ),
     );
   }
-
 }
 
-/// Brand row. Uses the app's own mark, not a generic medical cross.
-class _InboxHeader extends StatelessWidget {
-  const _InboxHeader();
+// ---- Greeting -------------------------------------------------------------
+
+class _Greeting extends ConsumerWidget {
+  const _Greeting();
+
+  static String _partOfDay() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final user = ref.watch(authControllerProvider).user;
+    final name = user?.name ?? '';
+    // Their own record already says "Dr."; prefixing again gives "Dr. Dr. Dey".
+    final display = name.toLowerCase().startsWith('dr') ? name : 'Dr. $name';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${_partOfDay()}, $display',
+          style: const TextStyle(
+            fontSize: 27,
+            fontWeight: FontWeight.w800,
+            height: 1.2,
+            letterSpacing: -0.5,
+            color: AppColors.primary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Here is your daily clinical overview.',
+          style: TextStyle(fontSize: 15.5, color: scheme.onSurfaceVariant),
+        ),
+      ],
+    );
+  }
+}
+
+class _NewPatientButton extends StatelessWidget {
+  const _NewPatientButton({required this.onTap});
+
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FilledButton.icon(
+        onPressed: onTap,
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        icon: const Icon(Icons.add_rounded, size: 22),
+        label: const Text('New Patient', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+      ),
+    );
+  }
+}
+
+// ---- Counts ---------------------------------------------------------------
+
+class _StatTrio extends StatelessWidget {
+  const _StatTrio({required this.worklist});
+
+  final DoctorWorklist worklist;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: _StatBox(label: 'Patients', value: worklist.patients)),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: _StatBox(
+            label: 'Reviews',
+            value: worklist.reviews,
+            // Tinted only when there is something to do. A permanently red box
+            // stops meaning anything.
+            accent: worklist.reviews > 0 ? AppColors.danger : null,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: _StatBox(
+            label: 'Plans',
+            value: worklist.plans,
+            accent: worklist.plans > 0 ? AppColors.primary : null,
+            tint: AppColors.infoBg,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatBox extends StatelessWidget {
+  const _StatBox({required this.label, required this.value, this.accent, this.tint});
+
+  final String label;
+  final int value;
+  final Color? accent;
+  final Color? tint;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final border = accent ?? scheme.outlineVariant;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: accent == null
+            ? scheme.surfaceContainerLowest
+            : (tint ?? accent!.withValues(alpha: 0.06)),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: border.withValues(alpha: accent == null ? 0.7 : 0.45)),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 4),
+          Text(
+            '$value',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: accent ?? scheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---- Action queue ---------------------------------------------------------
+
+class _ActionQueue extends StatelessWidget {
+  const _ActionQueue({required this.worklist});
+
+  final DoctorWorklist worklist;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final outstanding = worklist.reviews + worklist.plans;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              children: [
+                Icon(Icons.assignment_outlined, size: 21, color: scheme.onSurface),
+                const SizedBox(width: AppSpacing.sm),
+                const Text('Action Queue', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                const Spacer(),
+                Text(
+                  '$outstanding Pending',
+                  style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          for (final item in worklist.queue) ...[
+            Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+            _QueueRow(item: item),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _QueueRow extends StatelessWidget {
+  const _QueueRow({required this.item});
+
+  final WorklistItem item;
+
+  static String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return (parts.first[0] + parts.last[0]).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final needsPlan = item.needsPlan;
+
+    return InkWell(
+      onTap: () => context.push('/clinician/patients/${item.patientId}/thread', extra: item.name),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: needsPlan ? AppColors.infoBg : AppColors.accentSoft,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                _initials(item.name),
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${needsPlan ? 'Create Plan' : 'Review Due'} · ${item.days}d',
+                    style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+            if (needsPlan)
+              Material(
+                color: AppColors.accentSoft,
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => context.push(
+                    '/clinician/patients/${item.patientId}/prescribe',
+                    extra: item.name,
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    child: Text(
+                      'Create',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---- Latest meals ---------------------------------------------------------
+
+class _LatestMeals extends StatelessWidget {
+  const _LatestMeals({required this.meals});
+
+  final List<RecentMeal> meals;
+
+  static String _ago(DateTime? at) {
+    if (at == null) return '';
+    final d = DateTime.now().difference(at);
+    if (d.inMinutes < 60) return '${d.inMinutes}m ago';
+    if (d.inHours < 24) return '${d.inHours}h ago';
+    return '${d.inDays}d ago';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.restaurant_rounded, size: 21, color: scheme.onSurface),
+            const SizedBox(width: AppSpacing.sm),
+            const Text('Latest Meals', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        SizedBox(
+          height: 200,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: meals.length,
+            separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+            itemBuilder: (context, i) {
+              final meal = meals[i];
+              return SizedBox(
+                width: 190,
+                child: Material(
+                  color: scheme.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => context.push('/clinician/patients/${meal.patientId}'),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Stack(
+                            children: [
+                              SizedBox(
+                                height: 118,
+                                width: double.infinity,
+                                child: meal.photoUrl != null
+                                    ? AuthedImage(path: meal.photoUrl!, fit: BoxFit.cover)
+                                    : Container(
+                                        color: scheme.surfaceContainerHighest,
+                                        child: Icon(
+                                          Icons.restaurant_menu_rounded,
+                                          size: 30,
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                              ),
+                              if (meal.mealType.isNotEmpty)
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      _label(meal.mealType),
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF1F2937),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(AppSpacing.sm),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  meal.patientName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _ago(meal.createdAt),
+                                  style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  static String _label(String mealType) =>
+      mealType.isEmpty ? '' : mealType[0].toUpperCase() + mealType.substring(1);
+}
+
+// ---- New patient ----------------------------------------------------------
+
+/// Enrols a patient from the clinic side. Validated to the same rules as
+/// self-registration, so a desk-created account is not a second-class one.
+class _NewPatientSheet extends ConsumerStatefulWidget {
+  const _NewPatientSheet();
+
+  @override
+  ConsumerState<_NewPatientSheet> createState() => _NewPatientSheetState();
+}
+
+class _NewPatientSheetState extends ConsumerState<_NewPatientSheet> {
+  final _name = TextEditingController();
+  final _phone = TextEditingController();
+  final _password = TextEditingController();
+
+  String? _nameError;
+  String? _phoneError;
+  String? _passwordError;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final name = _name.text.trim();
+    final digits = _phone.text.replaceAll(RegExp(r'\D'), '');
+    final password = _password.text;
+
+    setState(() {
+      _nameError = name.length < 2 ? 'Enter the patient\'s full name.' : null;
+      _phoneError = (digits.length != 10 || !RegExp(r'^[6-9]\d{9}$').hasMatch(digits))
+          ? 'Enter a valid 10-digit mobile number.'
+          : null;
+      _passwordError = password.length < 8 ? 'At least 8 characters.' : null;
+    });
+    if (_nameError != null || _phoneError != null || _passwordError != null) return;
+
+    setState(() => _saving = true);
+    try {
+      await ref.read(clinicianRepositoryProvider).createPatient(
+        name: name,
+        phone: '${AuthValidators.countryCode}$digits',
+        password: password,
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _phoneError = e.message;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.sm),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.md,
+        MediaQuery.viewInsetsOf(context).bottom + AppSpacing.lg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('New patient', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text(
+            'They can sign in with this number and password.',
+            style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          TextField(
+            controller: _name,
+            textCapitalization: TextCapitalization.words,
+            decoration: InputDecoration(labelText: 'Full name', errorText: _nameError),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _phone,
+            keyboardType: TextInputType.phone,
+            maxLength: 10,
+            decoration: InputDecoration(
+              labelText: 'Mobile number',
+              prefixText: '${AuthValidators.countryCode} ',
+              counterText: '',
+              errorText: _phoneError,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _password,
+            obscureText: true,
+            decoration: InputDecoration(labelText: 'Temporary password', errorText: _passwordError),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              TextButton(
+                onPressed: _saving ? null : () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              const Spacer(),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                      )
+                    : const Text('Create'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Brand row. Uses the app's own mark, not a generic medical cross.
+class _InboxHeader extends ConsumerWidget {
+  const _InboxHeader({required this.onSearch});
+
+  final VoidCallback onSearch;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final user = ref.watch(authControllerProvider).user;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
+      ),
       child: Row(
         children: [
           // The app's own emblem, not a generic medical cross.
@@ -243,6 +842,22 @@ class _InboxHeader extends StatelessWidget {
             'ClinQ',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
           ),
+          const Spacer(),
+          IconButton(
+            tooltip: 'Search patients',
+            onPressed: onSearch,
+            icon: Icon(Icons.search_rounded, size: 25, color: scheme.onSurface),
+          ),
+          const SizedBox(width: 2),
+          GestureDetector(
+            onTap: () => context.push('/clinician/more'),
+            child: UserAvatar(
+              name: user?.name ?? '',
+              avatarUrl: user?.avatarUrl,
+              accent: AppColors.primary,
+              size: 38,
+            ),
+          ),
         ],
       ),
     );
@@ -250,18 +865,20 @@ class _InboxHeader extends StatelessWidget {
 }
 
 class _SearchField extends StatelessWidget {
-  const _SearchField({required this.controller, required this.onChanged});
+  const _SearchField({required this.controller, required this.onChanged, this.focusNode});
 
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      padding: EdgeInsets.zero,
       child: TextField(
         controller: controller,
+        focusNode: focusNode,
         onChanged: onChanged,
         style: const TextStyle(fontSize: 15.5),
         decoration: InputDecoration(
@@ -297,13 +914,13 @@ class _SectionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.lg, AppSpacing.sm, AppSpacing.md),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         children: [
           const Expanded(
             child: Text(
               'Patient Messages',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.2),
             ),
           ),
           TextButton(

@@ -128,25 +128,30 @@ Three tabs: **Home · Patients · Profile**.
 
 ### Tab 1 — Home (`/clinician/dashboard`)
 
-The clinic's pulse, top to bottom:
+The clinic's pulse, top to bottom. Everything refreshes on a 20-second timer, on
+resume and on pull-to-refresh, so nothing on screen is stale while the doctor is
+reading it.
 
 | Section | What it shows |
 | --- | --- |
-| **Headline counts** | Total patients · Pending summaries · Active today. |
-| **Priority strip** | High priority · New messages · Vitals warning. |
-| **Active alerts** | Live clinical alerts, worst first, tap to open the patient. |
-| **Clinic pulse** | Activity over the recent period. |
-| **Needs attention** | Patients who have gone quiet or drifted out of range. "All caught up" when there is nothing. |
-| **Nutrition** | Food-log reviews that are due. |
+| **Headline counts** | **Total patients** with `+N today` (shown only when someone actually registered — `+0 today` is noise dressed as news) and **Pending summaries** in queue. |
+| **Active today** | Scheduled encounters, split into **Completed** and **Remaining**. |
+| **Alert strip** | **Vitals warning** — critical-risk patients (red). **High priority** — emergency + urgent open alerts. **New messages** — unread patient messages. Each row opens the list behind it. |
+| **Live triage queue** | The top three open clinical alerts, worst severity first and newest within a severity. Each row: an urgency dot, the patient's name, the time it fired, the alert detail, and tags for severity and category. Tapping opens that patient's conversation. Below it, **View All Triage (N)**. |
+| **Nutrition reviews** | A card per patient on a review cadence, with an `N Due` badge on the heading. Each shows **Day 14/30** through their cycle (amber once due), a flag derived from their actual logging — *Stopped logging*, *Logging patchy*, *Never logged a meal*, *Logging well* — and **Review Log** to open the patient. |
 
 ### Tab 2 — Patients (`/clinician/patients`)
 
-A true inbox, not a directory:
-- One row per patient, newest conversation at the top.
-- Last message preview, its timestamp, and an unread badge.
-- Patient photo on the row, pulled live.
-- Search by name or phone.
-- Polls every few seconds so new messages appear without a manual refresh.
+Opens with what is outstanding, then the inbox for reaching anyone.
+
+| Section | What it does |
+| --- | --- |
+| **Greeting** | *"Good Morning, Dr. Amit Kumar Dey"* — time-aware, and it does not print "Dr. Dr." if the name already carries the title. |
+| **New Patient** | Enrols a walk-in from the clinic side: name, 10-digit mobile, temporary password, validated to the same rules as self-registration. Some patients are signed up at the desk rather than downloading the app first. |
+| **Counts** | Patients · Reviews · Plans. Reviews and Plans are tinted only when non-zero — a permanently red box stops meaning anything. |
+| **Action queue** | The outstanding work as rows: initials, name, and either **Review Due · Nd** (a conversation flagged for the doctor) with a chevron into the thread, or **Create Plan · Nd** (a patient never prescribed for, longest-waiting first) with a **Create** button straight into Prescribe. |
+| **Latest meals** | A horizontal strip of the newest meals logged across the clinic — photo, meal type, patient name, how long ago. Tap to open the patient. |
+| **Patient messages** | The inbox: one row per patient, unread first then newest, with last-message preview, timestamp, unread badge and live photo. Search by name or phone. Polls every 3 seconds so new messages appear without a manual refresh. |
 
 **Patient conversation** (`/clinician/patients/:id/thread`)
 - The patient's full thread — their messages, the assistant's answers and the

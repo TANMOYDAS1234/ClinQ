@@ -13,6 +13,11 @@ final overviewProvider = FutureProvider.autoDispose<ClinicOverview>((ref) {
   return ref.watch(clinicianRepositoryProvider).overview();
 });
 
+/// The Patients tab: counts, the action queue, and the latest meals logged.
+final worklistProvider = FutureProvider.autoDispose<DoctorWorklist>((ref) {
+  return ref.watch(clinicianRepositoryProvider).worklist();
+});
+
 /// Today's clinic diary (kept for the appointments admin screen).
 final appointmentsTodayProvider = FutureProvider.autoDispose<List<Appointment>>((ref) {
   return ref.watch(clinicianRepositoryProvider).appointmentsToday();

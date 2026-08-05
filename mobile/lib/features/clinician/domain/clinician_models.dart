@@ -2,6 +2,7 @@
 class ClinicOverview {
   const ClinicOverview({
     required this.patientCount,
+    this.newPatientsToday = 0,
     required this.activeToday,
     required this.appointmentsToday,
     required this.completedToday,
@@ -17,9 +18,14 @@ class ClinicOverview {
     required this.riskCritical,
     this.dietPatients = 0,
     this.foodLogsToday = 0,
+    this.nutritionReviews = const [],
   });
 
   final int patientCount;
+
+  /// Patients who registered today — the "+3 today" next to the headline count.
+  final int newPatientsToday;
+
   final int activeToday;
   final int appointmentsToday;
 
@@ -45,6 +51,9 @@ class ClinicOverview {
   final int dietPatients;
   final int foodLogsToday;
 
+  /// The patients on a review cadence, closest to their review date first.
+  final List<NutritionReview> nutritionReviews;
+
   /// Open alerts that need immediate eyes — the "High Priority" alert count.
   int get highPriorityAlerts => emergencyAlerts + urgentAlerts;
 
@@ -55,6 +64,7 @@ class ClinicOverview {
     int n(dynamic v) => (v as num?)?.toInt() ?? 0;
     return ClinicOverview(
       patientCount: n(j['patientCount']),
+      newPatientsToday: n(j['newPatientsToday']),
       activeToday: n(j['activeToday']),
       appointmentsToday: n(j['appointmentsToday']),
       completedToday: n(j['completedToday']),
@@ -70,8 +80,152 @@ class ClinicOverview {
       riskCritical: n(risk['critical']),
       dietPatients: n(nutrition['dietPatients']),
       foodLogsToday: n(nutrition['foodLogsToday']),
+      nutritionReviews:
+          (nutrition['reviews'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(NutritionReview.fromJson)
+              .toList() ??
+          const [],
     );
   }
+}
+
+/// One nutrition card on the doctor's home: where a patient is in their review
+/// cycle, and what their logging actually looks like.
+class NutritionReview {
+  const NutritionReview({
+    required this.patientId,
+    required this.name,
+    required this.day,
+    required this.intervalDays,
+    required this.mealsThisWeek,
+    this.lastLogAt,
+  });
+
+  final String patientId;
+  final String name;
+
+  /// Days into the current review cycle — the "Day 14/30" on the card.
+  final int day;
+  final int intervalDays;
+  final int mealsThisWeek;
+  final DateTime? lastLogAt;
+
+  bool get isDue => intervalDays > 0 && day >= intervalDays;
+
+  /// The headline on the card. Derived from logging activity rather than
+  /// nutrient analysis: the app records meals, not sodium, and a card claiming
+  /// otherwise would be inventing a number the doctor might act on.
+  String get flag {
+    if (lastLogAt == null) return 'Never logged a meal';
+    final quiet = DateTime.now().difference(lastLogAt!).inDays;
+    if (quiet >= 3) return 'Stopped logging';
+    if (mealsThisWeek < 7) return 'Logging patchy';
+    return 'Logging well';
+  }
+
+  String get detail {
+    if (lastLogAt == null) return 'No meals recorded since joining';
+    final quiet = DateTime.now().difference(lastLogAt!).inDays;
+    if (quiet >= 3) return 'Nothing logged for $quiet days';
+    return '$mealsThisWeek ${mealsThisWeek == 1 ? 'meal' : 'meals'} in the past week';
+  }
+
+  factory NutritionReview.fromJson(Map<String, dynamic> j) => NutritionReview(
+    patientId: j['patientId']?.toString() ?? '',
+    name: j['name']?.toString() ?? '',
+    day: (j['day'] as num?)?.toInt() ?? 0,
+    intervalDays: (j['intervalDays'] as num?)?.toInt() ?? 0,
+    mealsThisWeek: (j['mealsThisWeek'] as num?)?.toInt() ?? 0,
+    lastLogAt: DateTime.tryParse(j['lastLogAt']?.toString() ?? '')?.toLocal(),
+  );
+}
+
+/// The doctor's Patients tab payload (`GET /doctor/worklist`).
+class DoctorWorklist {
+  const DoctorWorklist({
+    required this.patients,
+    required this.reviews,
+    required this.plans,
+    required this.queue,
+    required this.recentMeals,
+  });
+
+  final int patients;
+  final int reviews;
+  final int plans;
+  final List<WorklistItem> queue;
+  final List<RecentMeal> recentMeals;
+
+  factory DoctorWorklist.fromJson(Map<String, dynamic> j) {
+    final counts = j['counts'] as Map<String, dynamic>? ?? const {};
+    int n(dynamic v) => (v as num?)?.toInt() ?? 0;
+    return DoctorWorklist(
+      patients: n(counts['patients']),
+      reviews: n(counts['reviews']),
+      plans: n(counts['plans']),
+      queue:
+          (j['queue'] as List?)?.whereType<Map<String, dynamic>>().map(WorklistItem.fromJson).toList() ??
+          const [],
+      recentMeals:
+          (j['recentMeals'] as List?)?.whereType<Map<String, dynamic>>().map(RecentMeal.fromJson).toList() ??
+          const [],
+    );
+  }
+}
+
+/// One row in the doctor's action queue.
+class WorklistItem {
+  const WorklistItem({
+    required this.kind,
+    required this.patientId,
+    required this.name,
+    required this.days,
+  });
+
+  /// `review` — a conversation flagged for the doctor to read.
+  /// `plan` — a patient who has never been prescribed for.
+  final String kind;
+  final String patientId;
+  final String name;
+  final int days;
+
+  bool get needsPlan => kind == 'plan';
+
+  factory WorklistItem.fromJson(Map<String, dynamic> j) => WorklistItem(
+    kind: j['kind']?.toString() ?? 'review',
+    patientId: j['patientId']?.toString() ?? '',
+    name: j['name']?.toString() ?? '',
+    days: (j['days'] as num?)?.toInt() ?? 0,
+  );
+}
+
+/// A meal one of the clinic's patients logged, for the Latest Meals strip.
+class RecentMeal {
+  const RecentMeal({
+    required this.id,
+    required this.patientId,
+    required this.patientName,
+    required this.mealType,
+    this.photoUrl,
+    this.createdAt,
+  });
+
+  final String id;
+  final String patientId;
+  final String patientName;
+  final String mealType;
+  final String? photoUrl;
+  final DateTime? createdAt;
+
+  factory RecentMeal.fromJson(Map<String, dynamic> j) => RecentMeal(
+    id: j['id']?.toString() ?? '',
+    patientId: j['patientId']?.toString() ?? '',
+    patientName: j['patientName']?.toString() ?? '',
+    mealType: j['mealType']?.toString() ?? '',
+    photoUrl: j['photoUrl']?.toString(),
+    createdAt: DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal(),
+  );
 }
 
 /// One row in the doctor's patient directory (`GET /doctor/patients`).

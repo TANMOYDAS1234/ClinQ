@@ -18,6 +18,7 @@ import { Hba1cRecord } from '../models/Hba1cRecord.js';
 import { FootAssessment } from '../models/FootAssessment.js';
 import { LabResult } from '../models/LabResult.js';
 import { FoodLog } from '../models/FoodLog.js';
+import { Prescription } from '../models/Prescription.js';
 import { acknowledgeAlert, resolveAlert } from '../services/alerts.js';
 import { computeAdherence, glucoseTrends, computeHealthScore } from '../services/analytics.js';
 import { buildPatientContext } from '../services/patientContext.js';
@@ -73,13 +74,16 @@ router.get(
     const bySeverity = Object.fromEntries(alertCounts.map((a) => [a._id, a.count]));
     const byRisk = Object.fromEntries(riskGroups.map((r) => [r._id ?? 'low', r.count]));
 
-    const [dietPatients, foodLogsToday] = await Promise.all([
+    const [dietPatients, foodLogsToday, newPatientsToday, reviews] = await Promise.all([
       PatientProfile.countDocuments({ assignedDietician: { $ne: null } }),
       FoodLog.countDocuments({ createdAt: { $gte: dayStart } }),
+      User.countDocuments({ role: ROLES.PATIENT, createdAt: { $gte: dayStart } }),
+      nutritionReviews(),
     ]);
 
     res.json({
       patientCount,
+      newPatientsToday,
       activeToday,
       openAlerts: {
         emergency: bySeverity.emergency ?? 0,
@@ -100,8 +104,169 @@ router.get(
       nutrition: {
         dietPatients,
         foodLogsToday,
+        reviews,
       },
     });
+  }),
+);
+
+/**
+ * The nutrition cards on the doctor's home: patients on a review cadence, worst
+ * first, with where they are in the cycle and what their logging actually looks
+ * like.
+ *
+ * The flag is derived from real food-log activity rather than from nutrient
+ * analysis — the app records meals, not sodium, and a card that claimed
+ * otherwise would be inventing a number the doctor might act on.
+ */
+async function nutritionReviews(limit = 4) {
+  const profiles = await PatientProfile.find({
+    assignedDietician: { $ne: null },
+    dietReviewIntervalDays: { $ne: null },
+  })
+    .populate('user', 'name')
+    .lean();
+
+  const weekAgo = dayjs().subtract(7, 'day').toDate();
+  const cards = await Promise.all(
+    profiles
+      .filter((p) => p.user)
+      .map(async (p) => {
+        const since = p.lastDietReviewAt ?? p.createdAt;
+        const day = Math.min(dayjs().diff(dayjs(since), 'day'), p.dietReviewIntervalDays);
+        const [mealsThisWeek, lastLog] = await Promise.all([
+          FoodLog.countDocuments({ patient: p.user._id, createdAt: { $gte: weekAgo } }),
+          FoodLog.findOne({ patient: p.user._id }).sort({ createdAt: -1 }).select('createdAt').lean(),
+        ]);
+        return {
+          patientId: String(p.user._id),
+          name: p.user.name,
+          day,
+          intervalDays: p.dietReviewIntervalDays,
+          mealsThisWeek,
+          lastLogAt: lastLog?.createdAt ?? null,
+        };
+      }),
+  );
+
+  // Closest to (or past) their review date first: those are the ones the doctor
+  // can still do something about today.
+  cards.sort((a, b) => b.day / b.intervalDays - a.day / a.intervalDays);
+  return cards.slice(0, limit);
+}
+
+/**
+ * The doctor's Patients tab: three counts, the queue of what is outstanding, and
+ * the newest meals logged across the clinic.
+ *
+ * One endpoint rather than three so the counts and the queue below them are
+ * always describing the same moment.
+ */
+router.get(
+  '/worklist',
+  asyncHandler(async (req, res) => {
+    const [patients, flaggedSessions, prescribedIds, recentMeals] = await Promise.all([
+      User.find({ role: ROLES.PATIENT, isActive: true }).select('name createdAt').lean(),
+      ChatSession.find({ flaggedForReview: true, isArchived: false })
+        .sort({ lastMessageAt: -1 })
+        .limit(20)
+        .populate('patient', 'name')
+        .lean(),
+      Prescription.distinct('patient'),
+      FoodLog.find({})
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .populate('patient', 'name')
+        .lean(),
+    ]);
+
+    const hasPlan = new Set(prescribedIds.map(String));
+    // A patient with no prescription is the doctor's outstanding work; the
+    // longest-waiting first, because that is the one going cold.
+    const needsPlan = patients
+      .filter((p) => !hasPlan.has(String(p._id)))
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    const queue = [
+      ...flaggedSessions
+        .filter((s) => s.patient)
+        .map((s) => ({
+          kind: 'review',
+          patientId: String(s.patient._id),
+          name: s.patient.name,
+          days: dayjs().diff(dayjs(s.lastMessageAt ?? s.createdAt), 'day'),
+        })),
+      ...needsPlan.map((p) => ({
+        kind: 'plan',
+        patientId: String(p._id),
+        name: p.name,
+        days: dayjs().diff(dayjs(p.createdAt), 'day'),
+      })),
+    ];
+
+    res.json({
+      counts: {
+        patients: patients.length,
+        reviews: flaggedSessions.length,
+        plans: needsPlan.length,
+      },
+      // Capped so the tab stays a worklist and not an archive; `counts` above
+      // still reports the true totals, so a trimmed list never reads as "done".
+      queue: queue.slice(0, 12),
+      recentMeals: recentMeals
+        .filter((f) => f.patient)
+        .map((f) => ({
+          id: String(f._id),
+          patientId: String(f.patient._id),
+          patientName: f.patient.name,
+          mealType: f.mealType,
+          photoUrl: f.photo ? `/api/v1/uploads/${f.photo}/raw` : null,
+          createdAt: f.createdAt,
+        })),
+    });
+  }),
+);
+
+/**
+ * Register a walk-in patient from the clinic side.
+ *
+ * Mirrors the dietician-creation route: some patients are enrolled at the desk
+ * on a clinic phone rather than downloading the app first, and without this the
+ * doctor has no way to start a record for them.
+ */
+router.post(
+  '/patients',
+  validate({
+    body: z.object({
+      name: z.string().trim().min(2).max(120),
+      phone: z
+        .string()
+        .trim()
+        .transform((v) => v.replace(/[\s\-()]/g, ''))
+        .pipe(z.string().regex(/^\+?[1-9]\d{7,14}$/, 'Enter a valid phone number')),
+      password: z.string().min(8, 'At least 8 characters').max(128),
+    }),
+  }),
+  audit('create', 'User'),
+  asyncHandler(async (req, res) => {
+    const { name, phone, password } = req.body;
+    if (await User.exists({ phone })) throw conflict('An account with this phone number already exists');
+
+    const user = new User({
+      name,
+      phone,
+      role: ROLES.PATIENT,
+      consent: {
+        termsAcceptedAt: new Date(),
+        dataProcessingAcceptedAt: new Date(),
+        aiDisclaimerAcceptedAt: new Date(),
+      },
+    });
+    await user.setPassword(password);
+    await user.save();
+    await PatientProfile.create({ user: user._id });
+
+    res.status(201).json({ id: String(user._id), name: user.name, phone: user.phone });
   }),
 );
 

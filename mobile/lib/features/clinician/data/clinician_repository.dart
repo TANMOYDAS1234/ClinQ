@@ -22,6 +22,23 @@ class ClinicianRepository {
     return ClinicOverview.fromJson(json);
   }
 
+  Future<DoctorWorklist> worklist() async {
+    return DoctorWorklist.fromJson(await _client.getJson('/doctor/worklist'));
+  }
+
+  /// Registers a walk-in patient from the clinic side — some patients are
+  /// enrolled at the desk rather than downloading the app first.
+  Future<void> createPatient({
+    required String name,
+    required String phone,
+    required String password,
+  }) async {
+    await _client.postJson(
+      '/doctor/patients',
+      body: {'name': name, 'phone': phone, 'password': password},
+    );
+  }
+
   /// Today's clinic diary, earliest first. The API sorts newest-first and has no
   /// "today" filter of its own, so we pass an explicit day range and re-sort
   /// ascending for a top-to-bottom schedule.
