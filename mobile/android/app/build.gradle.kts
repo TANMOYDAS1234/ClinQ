@@ -44,6 +44,15 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+
+            // R8 runs on release builds. Without these rules it strips the
+            // generic signatures Gson needs and flutter_local_notifications
+            // throws on every read of its scheduled-notification store — which
+            // is why medicine reminders never fired in a release build.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 

@@ -17,6 +17,13 @@ class FoodLogRepository {
     return items.whereType<Map<String, dynamic>>().map(FoodLogEntry.fromJson).toList();
   }
 
+  /// Removes a meal the patient logged by mistake. Hard delete: a photo of the
+  /// wrong plate is an error, not history, and the dietician should not be
+  /// planning around a meal that never happened.
+  Future<void> delete(String id) async {
+    await _client.delete('$_base/$id');
+  }
+
   Future<void> create({required String mealType, String note = '', String? photo}) async {
     await _client.postJson(_base, body: {
       'mealType': mealType,

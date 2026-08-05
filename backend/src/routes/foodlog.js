@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth, resolvePatientScope } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { asyncHandler } from '../middleware/errors.js';
+import { asyncHandler, notFound } from '../middleware/errors.js';
 import { audit } from '../middleware/audit.js';
 import { FoodLog, MEAL_TYPES } from '../models/FoodLog.js';
 
@@ -53,6 +53,24 @@ router.post(
       photo: req.body.photo || undefined,
     });
     res.status(201).json({ entry: serialiseFoodLog(entry) });
+  }),
+);
+
+/**
+ * Removes a meal the patient logged.
+ *
+ * A hard delete, not a soft one: a photo of the wrong plate is a mistake, not
+ * history, and leaving it visible to the dietician would have them planning
+ * around a meal that never happened. Scoped to the owner, so one patient can
+ * never delete another's.
+ */
+router.delete(
+  '/:id',
+  audit('delete', 'FoodLog'),
+  asyncHandler(async (req, res) => {
+    const removed = await FoodLog.findOneAndDelete({ _id: req.params.id, patient: req.patientId });
+    if (!removed) throw notFound('Meal not found');
+    res.status(204).end();
   }),
 );
 

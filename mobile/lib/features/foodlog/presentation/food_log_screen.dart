@@ -70,12 +70,43 @@ class FoodLogScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 96),
               itemCount: entries.length,
               separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-              itemBuilder: (context, i) => _FoodCard(entry: entries[i]),
+              itemBuilder: (context, i) => _FoodCard(
+                entry: entries[i],
+                onDelete: () => _deleteMeal(context, ref, entries[i]),
+              ),
             );
           },
         ),
       ),
     );
+  }
+
+  /// Long-press to remove a meal logged by mistake. Confirmed first: the photo
+  /// is gone for good, and the dietician may already have seen it.
+  Future<void> _deleteMeal(BuildContext context, WidgetRef ref, FoodLogEntry entry) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete this meal?'),
+        content: const Text('It will be removed from your log and your dietician will no longer see it.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(foodLogRepositoryProvider).delete(entry.id);
+      ref.invalidate(foodLogProvider);
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   Future<void> _logMeal(BuildContext context, WidgetRef ref) async {
@@ -90,14 +121,17 @@ class FoodLogScreen extends ConsumerWidget {
 }
 
 class _FoodCard extends StatelessWidget {
-  const _FoodCard({required this.entry});
+  const _FoodCard({required this.entry, required this.onDelete});
 
   final FoodLogEntry entry;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
+    return GestureDetector(
+      onLongPress: onDelete,
+      child: Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
@@ -139,6 +173,7 @@ class _FoodCard extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }
