@@ -31,7 +31,6 @@ class PatientsScreen extends ConsumerStatefulWidget {
 class _PatientsScreenState extends ConsumerState<PatientsScreen>
     with WidgetsBindingObserver {
   final _searchController = TextEditingController();
-  final _searchFocus = FocusNode();
   String _search = '';
   Timer? _debounce;
   Timer? _poll;
@@ -61,7 +60,6 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
     _poll?.cancel();
     _debounce?.cancel();
     _searchController.dispose();
-    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -113,7 +111,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
         bottom: false,
         child: Column(
           children: [
-            _InboxHeader(onSearch: () => _searchFocus.requestFocus()),
+            const _InboxHeader(),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async => _refresh(),
@@ -131,7 +129,6 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
                     ),
                     _SearchField(
                       controller: _searchController,
-                      focusNode: _searchFocus,
                       onChanged: _onSearchChanged,
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -233,9 +230,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
 
 /// Brand row. Uses the app's own mark, not a generic medical cross.
 class _InboxHeader extends ConsumerWidget {
-  const _InboxHeader({required this.onSearch});
-
-  final VoidCallback onSearch;
+  const _InboxHeader();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -262,12 +257,9 @@ class _InboxHeader extends ConsumerWidget {
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
           ),
           const Spacer(),
-          IconButton(
-            tooltip: 'Search patients',
-            onPressed: onSearch,
-            icon: Icon(Icons.search_rounded, size: 25, color: scheme.onSurface),
-          ),
-          const SizedBox(width: 2),
+          // No search icon here: the search field is already on screen a few
+          // pixels below, so the button could only focus what the doctor can
+          // already see and tap.
           GestureDetector(
             onTap: () => context.push('/clinician/more'),
             child: UserAvatar(
@@ -284,11 +276,10 @@ class _InboxHeader extends ConsumerWidget {
 }
 
 class _SearchField extends StatelessWidget {
-  const _SearchField({required this.controller, required this.onChanged, this.focusNode});
+  const _SearchField({required this.controller, required this.onChanged});
 
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
-  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -297,7 +288,6 @@ class _SearchField extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: TextField(
         controller: controller,
-        focusNode: focusNode,
         onChanged: onChanged,
         style: const TextStyle(fontSize: 15.5),
         decoration: InputDecoration(

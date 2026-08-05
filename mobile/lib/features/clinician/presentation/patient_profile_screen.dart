@@ -148,31 +148,13 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(patientSummaryProvider(widget.patientId));
-    final patient = async.valueOrNull;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Patient Profile'),
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) => switch (value) {
-              'record' => context.push('/clinician/patients/${widget.patientId}/record'),
-              'detailed' => context.push(
-                '/clinician/patients/${widget.patientId}/prescribe',
-                extra: patient?.name,
-              ),
-              _ => null,
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'record', child: Text('Clinical record')),
-              // The longer form keeps per-medicine strength, dose, instructions
-              // and meal timing. Kept reachable rather than deleted: this screen
-              // trades those for speed, and some prescriptions need them.
-              PopupMenuItem(value: 'detailed', child: Text('Detailed prescription')),
-            ],
-          ),
-        ],
-      ),
+      // No overflow menu: the two secondary destinations sit at the foot of the
+      // screen instead, after the primary action, where secondary actions
+      // belong. Dropping them entirely would leave the clinical record — HbA1c,
+      // reports, alerts, dietician — with no route to it at all.
+      appBar: AppBar(title: const Text('Patient Profile')),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
@@ -332,6 +314,70 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // Quiet, after the primary action — reachable without competing
+            // with it. The record is where the doctor reads; the longer form
+            // keeps per-medicine strength, dose, instructions and meal timing
+            // for the prescriptions that need them.
+            _SecondaryLink(
+              icon: Icons.folder_open_outlined,
+              label: 'Clinical record',
+              detail: 'HbA1c, reports, alerts, dietician',
+              onTap: () => context.push('/clinician/patients/${widget.patientId}/record'),
+            ),
+            _SecondaryLink(
+              icon: Icons.edit_document,
+              label: 'Detailed prescription',
+              detail: 'Strength, dose, instructions, food timing',
+              onTap: () => context.push(
+                '/clinician/patients/${widget.patientId}/prescribe',
+                extra: p.name,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SecondaryLink extends StatelessWidget {
+  const _SecondaryLink({
+    required this.icon,
+    required this.label,
+    required this.detail,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String detail;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: scheme.onSurfaceVariant),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 1),
+                  Text(detail, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
           ],
         ),
       ),
@@ -363,11 +409,17 @@ class _ProfileHeader extends StatelessWidget {
     final p = patient;
     final band = p.riskBand ?? 'low';
     final atRisk = band == 'high' || band == 'critical';
+    // No patient ID here. The design showed one, but the only id available is a
+    // truncation of the record id — not guaranteed unique, yet it reads like an
+    // official number. The day someone quotes it on a lab form, a collision is
+    // patient misidentification. A real clinic number would have to be stored,
+    // sequential and unique; until it is, showing nothing is safer than showing
+    // something that looks official and is not.
     final meta = [
       if (p.age != null) '${p.age} Yrs',
       if (p.gender != null) _cap(p.gender!),
-      'ID: ${p.shortId}',
-    ].join('  •  ');
+      p.phone,
+    ].where((s) => s.isNotEmpty).join('  •  ');
     final diabetes = _diabetesLabel(p.diabetesType);
 
     return Container(
