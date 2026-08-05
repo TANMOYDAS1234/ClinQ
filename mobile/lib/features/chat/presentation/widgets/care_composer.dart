@@ -171,8 +171,16 @@ class _CareComposerState extends ConsumerState<CareComposer> {
                   isDense: true,
                   filled: true,
                   fillColor: scheme.surfaceContainerHigh.withValues(alpha: 0.55),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(26),
+                  border: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(26)),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(26)),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(26)),
                     borderSide: BorderSide.none,
                   ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),

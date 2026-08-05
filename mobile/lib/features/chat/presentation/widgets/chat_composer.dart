@@ -307,13 +307,11 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                       child: Container(
                         constraints: const BoxConstraints(minHeight: 52),
                         decoration: BoxDecoration(
-                          color: scheme.surface,
+                          // Filled, not outlined. A stroke round the composer
+                          // reads as a form field on a wallpapered thread, and
+                          // it lit up on focus every time the keyboard opened.
+                          color: scheme.surfaceContainerHigh.withValues(alpha: 0.55),
                           borderRadius: BorderRadius.circular(26),
-                          // A plain static border, exactly like the doctor's
-                          // composer. The rotating gradient used to repaint every
-                          // frame as the keyboard slid up, which made the open
-                          // stutter.
-                          border: Border.all(color: scheme.outlineVariant),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.end,

@@ -471,6 +471,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const patientId = req.user._id;
     const text = req.body.content;
+    let askedForMeal = false;
 
     let session = await ChatSession.findOne({
       patient: patientId,
@@ -544,10 +545,15 @@ router.post(
         .select('_id')
         .lean();
 
+      // Only label it if the patient said which meal it was. Otherwise leave it
+      // unlabelled and ask — a wrong label is worse than a missing one, because
+      // the dietician reads it as fact.
+      const stated = mealTypeFromText(text);
+
       for (const photo of photos) {
         await FoodLog.create({
           patient: patientId,
-          mealType: mealTypeForNow(),
+          mealType: stated ?? 'other',
           note: text,
           photo: photo._id,
           // Ties the log back to the message it arrived in, so opening either
@@ -555,6 +561,8 @@ router.post(
           sourceMessage: message._id,
         });
       }
+
+      askedForMeal = stated == null;
     }
 
     if (message.attachments?.length) {
@@ -568,8 +576,44 @@ router.post(
     //
     // Skipped entirely on an escalation: a patient who has just reported a
     // symptom needs the clinic, not a sentence about their meal plan.
+    // A plain text reply that names a meal labels the photo still waiting for
+    // one. This is the other half of asking: the question is only worth putting
+    // to the patient if their answer actually files the meal.
+    if (!req.body.attachments.length) {
+      const answered = mealTypeFromText(text);
+      if (answered) {
+        const pending = await FoodLog.findOne({
+          patient: patientId,
+          mealType: 'other',
+          sourceMessage: { $ne: null },
+        }).sort({ createdAt: -1 });
+
+        // Only the most recent, and only if it is fresh — answering "lunch"
+        // today must not relabel a photo from last week.
+        if (pending && Date.now() - pending.createdAt.getTime() < 24 * 60 * 60 * 1000) {
+          await FoodLog.updateOne({ _id: pending._id }, { mealType: answered });
+        }
+      }
+    }
+
+    // A photo with no meal named: ask, rather than guess from the clock.
     let assistantMessage = null;
-    if (triage.urgency !== 'emergency' && triage.urgency !== 'urgent') {
+    if (askedForMeal) {
+      assistantMessage = await ChatMessage.create({
+        session: session._id,
+        patient: patientId,
+        seq: message.seq + 1,
+        role: 'assistant',
+        content:
+          'Thanks — which meal was this, and roughly when did you eat it? ' +
+          'Breakfast, lunch, dinner or a snack. I will file it against the right one.',
+        language: session.language,
+      });
+      await ChatSession.findByIdAndUpdate(session._id, {
+        lastMessageAt: assistantMessage.createdAt,
+        $inc: { messageCount: 1 },
+      });
+    } else if (triage.urgency !== 'emergency' && triage.urgency !== 'urgent') {
       const reply = await nutritionReply({
         patientId,
         sessionId: session._id,
@@ -683,17 +727,23 @@ function serialiseSession(s) {
 }
 
 /**
- * Which meal a photo sent right now most likely is. Derived from the clock
- * rather than asked: the patient is already telling their dietician what they
- * ate, and a "which meal was this?" prompt in the middle of a conversation is a
- * form where a sentence should be. The dietician can correct it.
+ * Reads the meal from what the patient actually wrote.
+ *
+ * The clock is not the answer. People photograph a plate after they have eaten,
+ * often hours later and often at night — a lunch sent at 2am was being filed as
+ * a snack purely because of when the phone was in their hand. Asking costs one
+ * short question and is the only way to be right.
+ *
+ * Deliberately keyword matching rather than a model call: it is instant, it is
+ * the same every time, and "lunch" is not a sentence that needs interpreting.
  */
-function mealTypeForNow() {
-  const hour = new Date().getHours();
-  if (hour < 11) return 'breakfast';
-  if (hour < 16) return 'lunch';
-  if (hour < 21) return 'dinner';
-  return 'snack';
+function mealTypeFromText(text) {
+  const t = (text ?? '').toLowerCase();
+  if (/breakfast|subah|nashta/.test(t)) return 'breakfast';
+  if (/lunch|dupur|dopahar/.test(t)) return 'lunch';
+  if (/dinner|supper|raat|rati/.test(t)) return 'dinner';
+  if (/snack|tiffin|nasta/.test(t)) return 'snack';
+  return null;
 }
 
 function serialiseMessage(m) {

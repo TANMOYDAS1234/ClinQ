@@ -570,9 +570,9 @@ class _Composer extends StatelessWidget {
                   child: Container(
                   constraints: const BoxConstraints(minHeight: 52),
                   decoration: BoxDecoration(
-                    color: scheme.surface,
+                    // Filled, not outlined — matches the patient's composer.
+                    color: scheme.surfaceContainerHigh.withValues(alpha: 0.55),
                     borderRadius: BorderRadius.circular(26),
-                    border: Border.all(color: scheme.outlineVariant),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.only(left: 4, right: 4),
