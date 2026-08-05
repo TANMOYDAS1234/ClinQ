@@ -169,7 +169,7 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                                   Text(
                                     days == null
                                         ? 'Loading…'
-                                        : 'Every $days days, for every patient',
+                                        : '${intervalLabel(days)}, for every patient',
                                     style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
                                   ),
                                 ],
@@ -256,9 +256,27 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
   }
 }
 
+/// The cadences a clinic actually works to.
+///
+/// Named rhythms rather than raw day counts, and only rhythms someone would
+/// genuinely choose: 21 and 45 days are not intervals anyone thinks in, and
+/// reviewing a *food* log after 60 days means reading what a patient ate two
+/// months ago — an archive, not a review.
+const _intervalOptions = <({int days, String label, String fits})>[
+  (days: 1, label: 'Daily', fits: 'New diagnosis, insulin titration, pregnancy'),
+  (days: 3, label: 'Every 3 days', fits: 'Close watch while something is being changed'),
+  (days: 7, label: 'Weekly', fits: 'Active management'),
+  (days: 14, label: 'Every 2 weeks', fits: 'Steady patients'),
+  (days: 30, label: 'Monthly', fits: 'Stable, maintenance'),
+];
+
+String intervalLabel(int days) =>
+    _intervalOptions.where((o) => o.days == days).map((o) => o.label).firstOrNull ??
+    'Every $days days';
+
 /// Picks the clinic-wide review cadence. Preset chips rather than a free number
-/// field: the useful answers are a handful of intervals, and "every 3 days"
-/// typed by accident would flood the dietician's queue with the whole clinic.
+/// field: the useful answers are a handful of rhythms, and a mistyped number
+/// would drop the entire patient list into the dietician's queue at once.
 class _IntervalSheet extends StatefulWidget {
   const _IntervalSheet({required this.current});
 
@@ -269,8 +287,6 @@ class _IntervalSheet extends StatefulWidget {
 }
 
 class _IntervalSheetState extends State<_IntervalSheet> {
-  static const _options = [7, 14, 21, 30, 45, 60];
-
   late int _selected = widget.current;
 
   @override
@@ -300,18 +316,42 @@ class _IntervalSheetState extends State<_IntervalSheet> {
             style: TextStyle(fontSize: 13.5, height: 1.45, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              for (final days in _options)
-                ChoiceChip(
-                  label: Text('$days days'),
-                  selected: _selected == days,
-                  onSelected: (_) => setState(() => _selected = days),
-                ),
-            ],
-          ),
+          for (final option in _intervalOptions)
+            _IntervalRow(
+              label: option.label,
+              fits: option.fits,
+              selected: _selected == option.days,
+              onTap: () => setState(() => _selected = option.days),
+            ),
+          // A tight cadence is right for one patient and overwhelming as a
+          // clinic default — every patient lands in the queue at once. Said
+          // before they save, not discovered after.
+          if (_selected <= 3) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: AppColors.warningBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFFB45309)),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      _selected == 1
+                          ? 'Every patient will be due for review every day. Useful for a small '
+                                'list; heavy going for a large one.'
+                          : 'Every patient will be due every 3 days.',
+                      style: const TextStyle(fontSize: 12.5, height: 1.4, color: Color(0xFFB45309)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.lg),
           SizedBox(
             height: AppSpacing.minTapTarget + 6,
@@ -333,6 +373,63 @@ class _IntervalSheetState extends State<_IntervalSheet> {
             child: const Text('Cancel'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _IntervalRow extends StatelessWidget {
+  const _IntervalRow({
+    required this.label,
+    required this.fits,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String fits;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? AppColors.accentSoft : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 11),
+          child: Row(
+            children: [
+              Icon(
+                selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                size: 21,
+                color: selected ? AppColors.primary : scheme.outline,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w700,
+                        color: selected ? AppColors.primary : scheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(fits, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
