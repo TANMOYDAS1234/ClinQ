@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../shared/models/paged.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../chat/domain/chat_message.dart';
+import '../../medications/domain/medication.dart';
 import '../domain/appointment.dart';
 import '../domain/chat_review.dart';
 import '../domain/clinician_models.dart';
@@ -251,6 +252,26 @@ class ClinicianRepository {
       body: {if (notes != null && notes.isNotEmpty) 'notes': notes},
     );
     return ClinicalAlert.fromJson(json['alert'] as Map<String, dynamic>);
+  }
+
+  // ---- The patient's current medicines ------------------------------------
+
+  /// What this patient is already on.
+  ///
+  /// The prescribing form had no idea: the doctor wrote a new prescription
+  /// without being shown the running list, which is how a drug gets duplicated
+  /// or prescribed against something already there.
+  Future<List<Medication>> patientMedications(String patientId) async {
+    final json = await _client.getJson('/patients/$patientId/medications');
+    final items = (json['items'] as List?) ?? (json['medications'] as List?) ?? const [];
+    return items.whereType<Map<String, dynamic>>().map(Medication.fromJson).toList();
+  }
+
+  /// Stops a medicine. A soft stop on the server — it keeps `isActive: false`
+  /// with an end date, so past doses and the adherence figure built from them
+  /// stay interpretable.
+  Future<void> stopMedication(String patientId, String medicationId) async {
+    await _client.delete('/patients/$patientId/medications/$medicationId');
   }
 
   // ---- Chat review ------------------------------------------------------

@@ -134,7 +134,14 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         path: '/clinician/clinics/edit',
         builder: (context, state) => ClinicEditScreen(clinic: state.extra as Clinic?),
       ),
-      GoRoute(path: '/clinician/chat-review', builder: (context, state) => const ChatReviewScreen()),
+      GoRoute(
+        path: '/clinician/chat-review',
+        // ?tab=nutrition opens straight on the nutrition threads, so the
+        // dashboard's "N nutrition unread" lands on the messages it counted
+        // rather than on the flagged queue.
+        builder: (context, state) =>
+            ChatReviewScreen(initialTab: state.uri.queryParameters['tab']),
+      ),
       GoRoute(
         path: '/clinician/chat-review/:id',
         builder: (context, state) => ChatReviewDetailScreen(sessionId: state.pathParameters['id']!),

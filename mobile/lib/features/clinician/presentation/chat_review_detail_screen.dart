@@ -291,9 +291,9 @@ class _MessageBubble extends StatelessWidget {
     final align = isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start;
     final bubbleColor =
         isUser
-            ? AppColors.primary.withValues(alpha: 0.12)
+            ? AppColors.accentOn(context).withValues(alpha: 0.12)
             : isClinician
-            ? AppColors.primary.withValues(alpha: 0.22)
+            ? AppColors.accentOn(context).withValues(alpha: 0.22)
             : scheme.surfaceContainerHighest;
 
     return Padding(
@@ -314,7 +314,7 @@ class _MessageBubble extends StatelessWidget {
                     ? Icons.medical_information_rounded
                     : Icons.smart_toy_outlined,
                 size: 15,
-                color: isPerson ? AppColors.primary : scheme.onSurfaceVariant,
+                color: isPerson ? AppColors.accentOn(context) : scheme.onSurfaceVariant,
               ),
               const SizedBox(width: 4),
               Text(
@@ -333,7 +333,7 @@ class _MessageBubble extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: isPerson ? AppColors.primary : scheme.onSurfaceVariant,
+                  color: isPerson ? AppColors.accentOn(context) : scheme.onSurfaceVariant,
                 ),
               ),
               if (m.flaggedByPatient) ...[

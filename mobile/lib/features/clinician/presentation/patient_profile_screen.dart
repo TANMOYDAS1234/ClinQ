@@ -9,6 +9,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/user_avatar.dart';
+import '../../medications/domain/medication.dart';
 import '../data/clinician_repository.dart';
 import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
@@ -138,6 +139,8 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
         _saving = false;
       });
       ref.invalidate(patientSummaryProvider(widget.patientId));
+      // The list above this form has just gained what was written into it.
+      ref.invalidate(patientMedicationsProvider(widget.patientId));
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -187,6 +190,10 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // What the patient is already on, before the box for what to
+                  // add. Prescribing without it is prescribing blind — a repeat
+                  // or an interaction is invisible until the patient reports it.
+                  _CurrentMedicines(patientId: widget.patientId),
                   for (var i = 0; i < _meds.length; i++)
                     _MedFields(
                       draft: _meds[i],
@@ -511,6 +518,180 @@ class _ActionCard extends StatelessWidget {
           child,
         ],
       ),
+    );
+  }
+}
+
+/// The patient's running medication list, with a way to stop any of them.
+///
+/// Stopping is a soft stop on the server: the medicine is marked inactive with
+/// an end date rather than deleted, so the doses already logged against it — and
+/// the adherence figure built from them — stay interpretable.
+class _CurrentMedicines extends ConsumerWidget {
+  const _CurrentMedicines({required this.patientId});
+
+  final String patientId;
+
+  Future<void> _stop(BuildContext context, WidgetRef ref, Medication med) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Stop ${med.name}?'),
+        content: const Text(
+          'The patient stops being reminded about it from now on. Doses already '
+          'recorded are kept.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Stop it'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(clinicianRepositoryProvider).stopMedication(patientId, med.id);
+      ref.invalidate(patientMedicationsProvider(patientId));
+      messenger.showSnackBar(SnackBar(content: Text('${med.name} stopped')));
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final async = ref.watch(patientMedicationsProvider(patientId));
+
+    return async.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.only(bottom: AppSpacing.md),
+        child: LinearProgressIndicator(minHeight: 2),
+      ),
+      // A failure here must not read as "no medicines" — that is the one
+      // wrong answer a prescribing screen can give.
+      error: (_, _) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline_rounded, size: 17, color: AppColors.dangerOn(context)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Could not load current medicines.',
+                style: TextStyle(fontSize: 13, color: AppColors.dangerOn(context)),
+              ),
+            ),
+            TextButton(
+              onPressed: () => ref.invalidate(patientMedicationsProvider(patientId)),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+      data: (meds) {
+        final active = meds.where((m) => m.isActive).toList();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'CURRENTLY ON',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.6,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${active.length}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.accentOn(context),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              if (active.isEmpty)
+                Text(
+                  'Nothing prescribed yet.',
+                  style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                )
+              else
+                for (final med in active)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                [med.name, med.strength].where((s) => s.isNotEmpty).join(' '),
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                [
+                                  if (med.dose.isNotEmpty) med.dose,
+                                  if (med.schedule.isNotEmpty)
+                                    med.schedule.map((s) => s.time).join(', '),
+                                ].join(' · '),
+                                style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton(
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.dangerOn(context),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          onPressed: () => _stop(context, ref, med),
+                          child: const Text(
+                            'Stop',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              const SizedBox(height: AppSpacing.sm),
+              Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'ADD NEW',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+          ),
+        );
+      },
     );
   }
 }

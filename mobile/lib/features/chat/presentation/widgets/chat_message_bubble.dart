@@ -274,11 +274,11 @@ class ChatMessageBubble extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               decoration: BoxDecoration(
                 color: isMine
-                    ? AppColors.primary
+                    ? AppColors.bubbleMine(context)
                     : isClinician
                     // Tinted, not grey: the doctor's own words carry more
                     // weight than the assistant's and should look like it.
-                    ? AppColors.primary.withValues(alpha: 0.10)
+                    ? AppColors.bubbleClinician(context)
                     : scheme.surfaceContainerLow,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
@@ -293,7 +293,7 @@ class ChatMessageBubble extends StatelessWidget {
                     ? null
                     : Border.all(
                         color: isClinician
-                            ? AppColors.primary.withValues(alpha: 0.10)
+                            ? AppColors.bubbleClinician(context)
                             : scheme.outlineVariant.withValues(alpha: 0.20),
                       ),
               ),

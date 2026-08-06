@@ -81,11 +81,11 @@ router.get(
   '/dashboard',
   asyncHandler(async (req, res) => {
     const [profiles, settings] = await Promise.all([
-      PatientProfile.find(await scopeFilter(req)).populate('user', 'name phone avatarAssetId').lean(),
+      PatientProfile.find(await scopeFilter(req)).populate('user', 'name phone avatarAssetId isActive').lean(),
       getClinicSettings(),
     ]);
     const defaultDays = settings.dietReviewIntervalDays;
-    const assigned = profiles.filter((p) => p.user);
+    const assigned = profiles.filter((p) => p.user && p.user.isActive !== false);
     const ids = assigned.map((p) => p.user._id);
 
     const [plans, recentLogs] = await Promise.all([
@@ -153,7 +153,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const [profiles, settings] = await Promise.all([
       PatientProfile.find(await scopeFilter(req))
-        .populate('user', 'name phone avatarAssetId')
+        .populate('user', 'name phone avatarAssetId isActive')
         .sort({ updatedAt: -1 })
         .lean(),
       getClinicSettings(),
@@ -161,7 +161,7 @@ router.get(
     const defaultDays = settings.dietReviewIntervalDays;
 
     const items = profiles
-      .filter((p) => p.user)
+      .filter((p) => p.user && p.user.isActive !== false)
       .map((p) => ({
         id: String(p.user._id),
         name: p.user.name,

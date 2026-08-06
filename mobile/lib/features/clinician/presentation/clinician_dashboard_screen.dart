@@ -177,15 +177,21 @@ class _HeadlineRow extends StatelessWidget {
               // Only shown when someone actually registered today; "+0 today"
               // is noise dressed up as news.
               suffix: overview.newPatientsToday > 0 ? '+${overview.newPatientsToday} today' : null,
-              suffixColor: AppColors.primary,
+              suffixColor: AppColors.accentOn(context),
+              onTap: () => context.go('/clinician/patients'),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
+            // Named for what it counts, and tappable. "Pending summaries" was
+            // borrowed from the reference design and described nothing in this
+            // app: the number is flagged conversations, and there was no way to
+            // reach them from the figure telling you they existed.
             child: _HeadlineCard(
-              label: 'PENDING SUMMARIES',
+              label: 'FLAGGED CHATS',
               value: '${overview.pendingReviews}',
-              suffix: 'in queue',
+              suffix: 'to review',
+              onTap: () => context.push('/clinician/chat-review'),
             ),
           ),
         ],
@@ -200,6 +206,7 @@ class _HeadlineCard extends StatelessWidget {
     required this.value,
     this.suffix,
     this.suffixColor,
+    this.onTap,
   });
 
   final String label;
@@ -207,10 +214,14 @@ class _HeadlineCard extends StatelessWidget {
   final String? suffix;
   final Color? suffixColor;
 
+  /// Where the number leads. A count with nowhere to go is a number the doctor
+  /// has to go and find by hand.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
@@ -256,6 +267,17 @@ class _HeadlineCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) return card;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        onTap: onTap,
+        child: card,
       ),
     );
   }
@@ -382,14 +404,30 @@ class _AlertStrip extends StatelessWidget {
           onTap: () => context.push('/clinician/alerts'),
         ),
         const SizedBox(height: AppSpacing.sm),
-        _AlertRow(
-          icon: Icons.mail_outline_rounded,
-          iconBg: AppColors.primary,
-          bg: AppColors.infoBgOn(context),
-          label: 'NEW MESSAGES',
-          detail: '${overview.unreadMessages} Unread',
-          onTap: () => context.go('/clinician/patients'),
-        ),
+        // Care messages only. The total used to include nutrition threads and
+        // then send the doctor to the Patients tab, which does not show them.
+        if (overview.unreadMessages - overview.unreadNutrition > 0)
+          _AlertRow(
+            icon: Icons.mail_outline_rounded,
+            iconBg: AppColors.primary,
+            bg: AppColors.infoBgOn(context),
+            label: 'NEW MESSAGES',
+            detail: '${overview.unreadMessages - overview.unreadNutrition} Unread',
+            onTap: () => context.go('/clinician/patients'),
+          ),
+        // Its own row, going where these actually live: Chat review, opened on
+        // the Nutrition filter.
+        if (overview.unreadNutrition > 0) ...[
+          const SizedBox(height: AppSpacing.sm),
+          _AlertRow(
+            icon: Icons.restaurant_rounded,
+            iconBg: AppColors.accent,
+            bg: AppColors.successBgOn(context),
+            label: 'NUTRITION MESSAGES',
+            detail: '${overview.unreadNutrition} Unread',
+            onTap: () => context.push('/clinician/chat-review?tab=nutrition'),
+          ),
+        ],
       ],
     );
   }

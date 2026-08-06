@@ -49,6 +49,7 @@ router.get(
       completedToday,
       pendingReviews,
       unreadMessages,
+      unreadNutrition,
       riskGroups,
     ] = await Promise.all([
       User.countDocuments({ role: ROLES.PATIENT, isActive: true }),
@@ -70,6 +71,11 @@ router.get(
       ChatSession.countDocuments({ flaggedForReview: true, isArchived: false }),
       // Patient messages no one at the clinic has opened yet — "New messages".
       ChatMessage.countDocuments({ role: 'user', seenByClinicAt: null }),
+      // How many of those are in a nutrition thread. The doctor's Patients tab
+      // shows only the care conversation; nutrition lives behind Chat review's
+      // Nutrition filter. Without the split, the headline counted messages the
+      // doctor then could not find anywhere on the screen it was shown.
+      unreadNutritionCount(),
       PatientProfile.aggregate([{ $group: { _id: '$riskBand', count: { $sum: 1 } } }]),
     ]);
 
@@ -97,6 +103,7 @@ router.get(
       completedToday,
       pendingReviews,
       unreadMessages,
+      unreadNutrition,
       riskDistribution: {
         low: byRisk.low ?? 0,
         moderate: byRisk.moderate ?? 0,
@@ -113,6 +120,24 @@ router.get(
 );
 
 /**
+ * Unread patient messages sitting in a nutrition thread.
+ *
+ * Split out because the two live in different places in the doctor's app: the
+ * care conversation is on the Patients tab, the nutrition one only behind Chat
+ * review's Nutrition filter. A single "12 unread" sent the doctor to a screen
+ * where some of those twelve were not, with nothing to say where they were.
+ */
+async function unreadNutritionCount() {
+  const sessions = await ChatSession.find({ kind: 'nutrition' }).select('_id').lean();
+  if (sessions.length === 0) return 0;
+  return ChatMessage.countDocuments({
+    role: 'user',
+    seenByClinicAt: null,
+    session: { $in: sessions.map((s) => s._id) },
+  });
+}
+
+/**
  * The nutrition cards on the doctor's home: patients on a review cadence, worst
  * first, with where they are in the cycle and what their logging actually looks
  * like.
@@ -122,20 +147,26 @@ router.get(
  * otherwise would be inventing a number the doctor might act on.
  */
 async function nutritionReviews(limit = 4) {
-  const profiles = await PatientProfile.find({
-    assignedDietician: { $ne: null },
-    dietReviewIntervalDays: { $ne: null },
-  })
-    .populate('user', 'name')
+  // Every patient, on the clinic-wide cadence.
+  //
+  // This used to require `assignedDietician` and a per-patient
+  // `dietReviewIntervalDays`. Both moved: one dietician covers everyone, and
+  // the cadence became a clinic setting. Nothing sets those two fields any
+  // more, so the query matched no one and the whole Nutrition Reviews section
+  // silently disappeared from the doctor's home.
+  const { dietReviewIntervalDays: intervalDays } = await getClinicSettings();
+
+  const profiles = await PatientProfile.find({})
+    .populate('user', 'name isActive')
     .lean();
 
   const weekAgo = dayjs().subtract(7, 'day').toDate();
   const cards = await Promise.all(
     profiles
-      .filter((p) => p.user)
+      .filter((p) => p.user && p.user.isActive !== false)
       .map(async (p) => {
         const since = p.lastDietReviewAt ?? p.createdAt;
-        const day = Math.min(dayjs().diff(dayjs(since), 'day'), p.dietReviewIntervalDays);
+        const day = Math.min(dayjs().diff(dayjs(since), 'day'), intervalDays);
         const [mealsThisWeek, lastLog] = await Promise.all([
           FoodLog.countDocuments({ patient: p.user._id, createdAt: { $gte: weekAgo } }),
           FoodLog.findOne({ patient: p.user._id }).sort({ createdAt: -1 }).select('createdAt').lean(),
@@ -144,7 +175,7 @@ async function nutritionReviews(limit = 4) {
           patientId: String(p.user._id),
           name: p.user.name,
           day,
-          intervalDays: p.dietReviewIntervalDays,
+          intervalDays,
           mealsThisWeek,
           lastLogAt: lastLog?.createdAt ?? null,
         };

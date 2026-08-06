@@ -96,6 +96,20 @@ class AppColors {
   static Color forUrgencyOn(BuildContext context, String urgency) =>
       _lighten(context, forUrgency(urgency));
 
+  /// The sender's own bubble. Lifted off the deep forest green on dark: at
+  /// #064E3B against a #0F1720 thread the bubble barely separates from the
+  /// wallpaper, so your own messages stop reading as a column.
+  static Color bubbleMine(BuildContext context) =>
+      isDark(context) ? const Color(0xFF0C5C46) : primary;
+
+  /// A clinician's reply — tinted rather than grey, so the doctor's own words
+  /// carry more weight than the assistant's. The light-mode 10% wash of a
+  /// near-black green is invisible on a dark surface, so dark tints with the
+  /// bright green instead.
+  static Color bubbleClinician(BuildContext context) => isDark(context)
+      ? primaryDark.withValues(alpha: 0.18)
+      : primary.withValues(alpha: 0.10);
+
   /// Maps a light-mode brand or status colour to its dark-mode counterpart.
   ///
   /// For colours that arrive as plain constants — from a top-level `const`

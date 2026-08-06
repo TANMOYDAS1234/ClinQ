@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/models/paged.dart';
 import '../data/clinician_repository.dart';
 import '../domain/appointment.dart';
+import '../../medications/domain/medication.dart';
 import '../domain/chat_review.dart';
 import '../domain/clinician_models.dart';
 import '../domain/knowledge_chunk.dart';
@@ -63,6 +64,16 @@ final alertsProvider = FutureProvider.autoDispose
           .watch(clinicianRepositoryProvider)
           .alerts(status: q.status, severity: q.severity, limit: 100);
     });
+
+/// The patient's live medication list, for the prescribing screen.
+///
+/// autoDispose so reopening a patient always re-reads it — a list of what
+/// someone is currently taking is the last thing that should be served from a
+/// stale cache.
+final patientMedicationsProvider =
+    FutureProvider.autoDispose.family<List<Medication>, String>((ref, patientId) {
+  return ref.watch(clinicianRepositoryProvider).patientMedications(patientId);
+});
 
 // ---- Chat review --------------------------------------------------------
 

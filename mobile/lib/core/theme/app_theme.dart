@@ -37,6 +37,31 @@ class AppTheme {
         surfaceContainerHighest: const Color(0xFFE8EDF2),
         outlineVariant: const Color(0xFFDDE3EA),
       );
+    } else {
+      // Dark mode used to be left entirely to fromSeed. From a seed as dark as
+      // #064E3B, M3 derives washed, faintly-green surfaces that do not match
+      // the scaffold colour set below — which is why the app bar went dark
+      // while the chat thread behind it stayed pale, and why cards on dark
+      // read as grey smudges rather than as cards.
+      //
+      // The same neutral ladder as light mode, inverted: one step per level,
+      // cool rather than green, so the brand accent is the only colour on the
+      // screen that is actually coloured.
+      colorScheme = colorScheme.copyWith(
+        primary: AppColors.primaryDark,
+        onPrimary: const Color(0xFF00261A),
+        secondary: AppColors.accent,
+        surface: AppColors.surfaceDark,
+        onSurface: const Color(0xFFE6EDF3),
+        surfaceContainerLowest: const Color(0xFF121A23),
+        surfaceContainerLow: const Color(0xFF16202B),
+        surfaceContainer: const Color(0xFF1B2631),
+        surfaceContainerHigh: const Color(0xFF212D39),
+        surfaceContainerHighest: const Color(0xFF283643),
+        onSurfaceVariant: const Color(0xFFA3B2C0),
+        outline: const Color(0xFF43525F),
+        outlineVariant: const Color(0xFF2C3945),
+      );
     }
 
     final base = ThemeData(

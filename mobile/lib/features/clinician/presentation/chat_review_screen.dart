@@ -12,7 +12,10 @@ import 'widgets/clinician_visuals.dart';
 /// Assistant-conversation review: the threads the assistant or a patient
 /// flagged for a clinician to check.
 class ChatReviewScreen extends ConsumerStatefulWidget {
-  const ChatReviewScreen({super.key});
+  const ChatReviewScreen({super.key, this.initialTab});
+
+  /// `nutrition` | `all` | `flagged`. Null opens on the flagged queue.
+  final String? initialTab;
 
   @override
   ConsumerState<ChatReviewScreen> createState() => _ChatReviewScreenState();
@@ -25,7 +28,11 @@ class ChatReviewScreen extends ConsumerStatefulWidget {
 enum _ReviewTab { flagged, all, nutrition }
 
 class _ChatReviewScreenState extends ConsumerState<ChatReviewScreen> {
-  _ReviewTab _tab = _ReviewTab.flagged;
+  late _ReviewTab _tab = switch (widget.initialTab) {
+    'nutrition' => _ReviewTab.nutrition,
+    'all' => _ReviewTab.all,
+    _ => _ReviewTab.flagged,
+  };
 
   /// Nutrition threads are a separate conversation with the dietician, so the
   /// clinical tabs exclude them: a diet question is not a review item.

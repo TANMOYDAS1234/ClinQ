@@ -321,7 +321,7 @@ class _Bubble extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           color:
                               message.role == 'clinician'
-                                  ? AppColors.primary
+                                  ? AppColors.accentOn(context)
                                   : scheme.onSurfaceVariant,
                         ),
                       ),
@@ -332,7 +332,7 @@ class _Bubble extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               decoration: BoxDecoration(
-                color: mine ? AppColors.primary : scheme.surfaceContainerLow,
+                color: mine ? AppColors.bubbleMine(context) : scheme.surfaceContainerLow,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),

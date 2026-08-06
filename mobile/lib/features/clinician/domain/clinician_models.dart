@@ -8,6 +8,7 @@ class ClinicOverview {
     required this.completedToday,
     required this.pendingReviews,
     required this.unreadMessages,
+    this.unreadNutrition = 0,
     required this.emergencyAlerts,
     required this.urgentAlerts,
     required this.warningAlerts,
@@ -37,6 +38,10 @@ class ClinicOverview {
 
   /// Patient messages the clinic has not opened yet — the "New Messages" alert.
   final int unreadMessages;
+
+  /// How many of [unreadMessages] are in a nutrition thread — which the doctor
+  /// reaches through Chat review, not the Patients tab.
+  final int unreadNutrition;
 
   final int emergencyAlerts;
   final int urgentAlerts;
@@ -70,6 +75,7 @@ class ClinicOverview {
       completedToday: n(j['completedToday']),
       pendingReviews: n(j['pendingReviews']),
       unreadMessages: n(j['unreadMessages']),
+      unreadNutrition: n(j['unreadNutrition']),
       emergencyAlerts: n(alerts['emergency']),
       urgentAlerts: n(alerts['urgent']),
       warningAlerts: n(alerts['warning']),
