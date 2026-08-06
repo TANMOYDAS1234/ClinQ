@@ -24,6 +24,12 @@ class LabTestsRepository {
       if (photo != null) 'photo': photo,
     });
   }
+
+  /// Removes a report the patient uploaded by mistake. The server also drops
+  /// the values it read off it, so a wrong file stops influencing their record.
+  Future<void> delete(String id) async {
+    await _client.delete('$_base/$id');
+  }
 }
 
 final labTestsRepositoryProvider = Provider<LabTestsRepository>((ref) {

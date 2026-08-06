@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/authed_image.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../medications/domain/medication.dart';
 import '../data/clinician_repository.dart';
@@ -228,6 +229,10 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Already ordered, and already come back. Without these the
+                  // doctor re-ordered tests that were outstanding and could not
+                  // see the report the patient had already uploaded.
+                  _TestHistory(summary: p),
                   // An add control, not a search: what is typed here becomes a
                   // new chip. The leading + says so; a magnifier would promise
                   // a lookup that does not exist.
@@ -692,6 +697,153 @@ class _CurrentMedicines extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// What has already been ordered for this patient, and what has come back.
+class _TestHistory extends StatelessWidget {
+  const _TestHistory({required this.summary});
+
+  final PatientSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final advised = summary.advisedTests;
+    final reports = summary.labResults;
+    if (advised.isEmpty && reports.isEmpty) return const SizedBox.shrink();
+
+    // A test counts as back when a report carries its name. Matched loosely,
+    // because the patient types the name when they upload against "Other".
+    bool hasReport(String test) => reports.any(
+      (r) => r.testName.trim().toLowerCase() == test.trim().toLowerCase(),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (advised.isNotEmpty) ...[
+            _MicroHeading('ALREADY ORDERED', count: advised.length),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final t in advised)
+                  Chip(
+                    avatar: Icon(
+                      hasReport(t) ? Icons.check_circle_rounded : Icons.hourglass_empty_rounded,
+                      size: 16,
+                      color: hasReport(t)
+                          ? AppColors.successOn(context)
+                          : AppColors.warningOn(context),
+                    ),
+                    label: Text(
+                      t,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    backgroundColor: scheme.surfaceContainerLow,
+                    side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          if (reports.isNotEmpty) ...[
+            _MicroHeading('REPORTS RECEIVED', count: reports.length),
+            const SizedBox(height: AppSpacing.sm),
+            for (final r in reports.take(8))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    // Only a picture gets a thumbnail; a PDF drawn through the
+                    // image loader is the broken box the patient's screen had.
+                    if (r.hasFile && r.isImage)
+                      Padding(
+                        padding: const EdgeInsets.only(right: AppSpacing.sm),
+                        child: AuthedImage(path: r.photoUrl!, width: 44, height: 44, radius: 8),
+                      )
+                    else
+                      Container(
+                        width: 44,
+                        height: 44,
+                        margin: const EdgeInsets.only(right: AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.description_outlined,
+                          size: 21,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            r.testName,
+                            style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            r.createdAt == null
+                                ? (r.originalName ?? '')
+                                : DateFormat('d MMM yyyy').format(r.createdAt!),
+                            style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+        ],
+      ),
+    );
+  }
+}
+
+class _MicroHeading extends StatelessWidget {
+  const _MicroHeading(this.text, {this.count});
+
+  final String text;
+  final int? count;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.6,
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        if (count != null) ...[
+          const SizedBox(width: 6),
+          Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: AppColors.accentOn(context),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

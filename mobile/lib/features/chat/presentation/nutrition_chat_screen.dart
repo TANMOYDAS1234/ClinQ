@@ -45,6 +45,12 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
   /// The list is reversed, so "at the latest" is offset 0.
   bool _showJump = false;
 
+  /// The message being answered, shown above the composer until sent or
+  /// dismissed. The care thread has always had this; the dietician thread
+  /// offered only Copy on a long press, which made a reply to "which of these
+  /// two?" impossible to aim.
+  ChatMessage? _replyingTo;
+
   @override
   void initState() {
     super.initState();
@@ -92,6 +98,19 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
     }
   }
 
+  /// Pins or unpins a message so it stays at the top of the thread.
+  Future<void> _setPinned(ChatMessage m, bool pinned) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(apiClientProvider)
+          .postJson('/chat/messages/${m.id}/pin', body: {'pinned': pinned});
+      ref.invalidate(nutritionThreadProvider);
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _sending) return;
@@ -101,8 +120,15 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
     try {
       final res = await ref
           .read(apiClientProvider)
-          .postJson('/chat/nutrition', body: {'content': text});
+          .postJson(
+            '/chat/nutrition',
+            body: {
+              'content': text,
+              if (_replyingTo != null) 'replyTo': _replyingTo!.id,
+            },
+          );
       _controller.clear();
+      if (mounted) setState(() => _replyingTo = null);
       // Refetch rather than append: the server may have added a plan-bound
       // assistant turn after the patient's, and re-reading is the only way to
       // get both in the right order without guessing at sequence numbers.
@@ -242,10 +268,22 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
                           AppSpacing.md + 48,
                         ),
                         itemCount: shown.length,
-                        itemBuilder:
-                            (context, i) => ChatMessageBubble(
-                              message: shown[shown.length - 1 - i],
-                            ),
+                        itemBuilder: (context, i) {
+                          final m = shown[shown.length - 1 - i];
+                          return ChatMessageBubble(
+                            message: m,
+                            onReply: () => setState(() => _replyingTo = m),
+                            onTogglePin: () => _setPinned(m, !m.pinned),
+                            // Resolve the quoted turn locally when it is still
+                            // loaded; the bubble falls back to the server-sent
+                            // preview when it is not.
+                            repliedTo: m.replyToId == null
+                                ? null
+                                : shown
+                                      .where((x) => x.id == m.replyToId)
+                                      .firstOrNull,
+                          );
+                        },
                       );
                     },
                   ),
@@ -257,6 +295,34 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
                 ],
               ),
             ),
+            // Shows what is being answered while the reply is written, so the
+            // quote is never a surprise after sending.
+            if (_replyingTo != null)
+              Container(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.md, 8, AppSpacing.sm, 8),
+                color: scheme.surfaceContainerHighest,
+                child: Row(
+                  children: [
+                    Container(width: 3, height: 34, color: AppColors.accentOn(context)),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        _replyingTo!.content.trim().isEmpty
+                            ? 'Attachment'
+                            : _replyingTo!.content,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Cancel reply',
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => setState(() => _replyingTo = null),
+                    ),
+                  ],
+                ),
+              ),
             CareComposer(
               controller: _controller,
               hint: 'Message your dietician…',

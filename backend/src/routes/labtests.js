@@ -2,10 +2,14 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth, resolvePatientScope } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { asyncHandler } from '../middleware/errors.js';
+import { asyncHandler, notFound } from '../middleware/errors.js';
 import { audit } from '../middleware/audit.js';
 import { LabResult } from '../models/LabResult.js';
 import { Prescription } from '../models/Prescription.js';
+import { analyseLabResult } from '../services/ai/labReport.js';
+import { Hba1cRecord } from '../models/Hba1cRecord.js';
+import { GlucoseReading } from '../models/GlucoseReading.js';
+import { recomputePatientRisk } from '../services/analytics.js';
 
 /**
  * The patient's lab tests: the tests the doctor advised (pulled from active
@@ -16,11 +20,38 @@ const router = Router({ mergeParams: true });
 router.use(requireAuth, resolvePatientScope);
 
 function serialiseResult(r) {
+  // `photo` is populated, so a report that is a PDF can say so. The field name
+  // is historical — the upload sheet has always offered documents too, and the
+  // client drew every one of them as an image, which is why a PDF report showed
+  // a broken-picture icon.
+  const asset = r.photo && typeof r.photo === 'object' ? r.photo : null;
+  const photoId = asset ? asset._id : r.photo;
   return {
     id: String(r._id),
     testName: r.testName,
     note: r.note ?? '',
-    photoUrl: r.photo ? `/api/v1/uploads/${r.photo}/raw` : null,
+    photoUrl: photoId ? `/api/v1/uploads/${photoId}/raw` : null,
+    mimeType: asset?.mimeType ?? null,
+    originalName: asset?.originalName ?? null,
+    sizeBytes: asset?.sizeBytes ?? null,
+    // What was read off the page. `status` is sent as well as the values so a
+    // report that could not be parsed reads as "needs a human", not as a
+    // report with nothing on it.
+    analysis: r.analysis?.status
+      ? {
+          status: r.analysis.status,
+          summary: r.analysis.summary ?? null,
+          hba1cPercent: r.analysis.hba1cPercent ?? null,
+          fastingGlucoseMgDl: r.analysis.fastingGlucoseMgDl ?? null,
+          postPrandialGlucoseMgDl: r.analysis.postPrandialGlucoseMgDl ?? null,
+          ldl: r.analysis.ldl ?? null,
+          hdl: r.analysis.hdl ?? null,
+          triglycerides: r.analysis.triglycerides ?? null,
+          creatinine: r.analysis.creatinine ?? null,
+          testedOn: r.analysis.testedOn ?? null,
+          abnormal: r.analysis.abnormal ?? [],
+        }
+      : null,
     createdAt: r.createdAt,
   };
 }
@@ -31,7 +62,11 @@ router.get(
   asyncHandler(async (req, res) => {
     const [prescriptions, results] = await Promise.all([
       Prescription.find({ patient: req.patientId, isActive: true }).select('labTestsAdvised').lean(),
-      LabResult.find({ patient: req.patientId }).sort({ createdAt: -1 }).limit(100).lean(),
+      LabResult.find({ patient: req.patientId })
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .populate('photo', 'mimeType originalName sizeBytes')
+        .lean(),
     ]);
     const advised = [...new Set(prescriptions.flatMap((p) => p.labTestsAdvised ?? []).filter(Boolean))];
     res.json({ advised, results: results.map(serialiseResult) });
@@ -57,7 +92,68 @@ router.post(
       note: req.body.note,
       photo: req.body.photo || undefined,
     });
-    res.status(201).json({ result: serialiseResult(entry) });
+    // Populated before serialising so the row the client renders right after
+    // upload knows whether it is a picture or a PDF, exactly as a reloaded one
+    // does. Without it the first render of a freshly uploaded PDF is a broken
+    // thumbnail that only fixes itself on the next refresh.
+    await entry.populate('photo', 'mimeType originalName sizeBytes');
+
+    // Read in the background. The patient sees their report listed at once
+    // rather than waiting on a vision round-trip, and every failure path
+    // leaves the report itself in place with a status saying what happened.
+    if (entry.photo) {
+      analyseLabResult(entry._id).catch(() => {});
+    }
+
+    res.status(201).json({ result: serialiseResult(entry.toObject()) });
+  }),
+);
+
+/**
+ * Removes a report the patient uploaded by mistake.
+ *
+ * The values read off it go too. A wrong report that has already been
+ * transcribed has moved this patient's HbA1c history, their glucose trend and
+ * therefore their risk band — deleting only the row would leave the numbers
+ * behind, still driving what all three panels show, with nothing on screen to
+ * explain where they came from.
+ */
+router.delete(
+  '/:id',
+  audit('delete', 'LabResult'),
+  asyncHandler(async (req, res) => {
+    const entry = await LabResult.findOne({ _id: req.params.id, patient: req.patientId });
+    if (!entry) throw notFound('Report not found');
+
+    const a = entry.analysis ?? {};
+
+    // Keyed the same way they were written, so this can only ever remove what
+    // this report created.
+    if (entry.photo) {
+      await Hba1cRecord.deleteMany({ patient: req.patientId, reportFile: entry.photo });
+    }
+    for (const [context, valueMgDl] of [
+      ['fasting', a.fastingGlucoseMgDl],
+      ['post_meal', a.postPrandialGlucoseMgDl],
+    ]) {
+      if (valueMgDl == null || a.testedOn == null) continue;
+      await GlucoseReading.deleteMany({
+        patient: req.patientId,
+        valueMgDl,
+        context,
+        measuredAt: a.testedOn,
+        source: 'clinic',
+      });
+    }
+
+    await entry.deleteOne();
+
+    // The record this fed has changed, so the band computed from it must be
+    // recomputed — otherwise a deleted report leaves the patient sitting in a
+    // risk band nothing on their record supports any more.
+    recomputePatientRisk(req.patientId).catch(() => {});
+
+    res.status(204).end();
   }),
 );
 

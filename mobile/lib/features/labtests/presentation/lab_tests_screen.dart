@@ -10,6 +10,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/data/upload_repository.dart';
 import '../../../shared/widgets/authed_image.dart';
 import '../data/lab_tests_repository.dart';
+import '../../chat/domain/chat_message.dart';
+import '../../chat/presentation/widgets/chat_document_card.dart';
 import '../domain/lab_tests.dart';
 import 'lab_tests_providers.dart';
 
@@ -106,6 +108,40 @@ class _LabTestsScreenState extends ConsumerState<LabTestsScreen> {
     );
   }
 
+  /// Removes a report uploaded by mistake — the wrong photo, the wrong
+  /// person's report, the same page twice. Confirmed first, because the values
+  /// the clinic read off it go with it.
+  Future<void> _delete(LabResult r) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete this ${r.testName} report?'),
+        content: const Text(
+          'It is removed from your record, along with any readings the clinic '
+          'took from it. You can upload the correct file afterwards.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(labTestsRepositoryProvider).delete(r.id);
+      ref.invalidate(labTestsProvider);
+      messenger.showSnackBar(const SnackBar(content: Text('Report deleted')));
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   Future<void> _uploadOther() async {
     final controller = TextEditingController();
     final name = await showDialog<String>(
@@ -178,7 +214,7 @@ class _LabTestsScreenState extends ConsumerState<LabTestsScreen> {
                 _note(scheme, 'Reports you upload appear here — your doctor and dietician can see them.')
               else
                 for (final r in view.results) ...[
-                  _ResultCard(result: r),
+                  _ResultCard(result: r, onDelete: () => _delete(r)),
                   const SizedBox(height: AppSpacing.sm),
                 ],
             ],
@@ -233,9 +269,10 @@ class _AdvisedRow extends StatelessWidget {
 }
 
 class _ResultCard extends StatelessWidget {
-  const _ResultCard({required this.result});
+  const _ResultCard({required this.result, required this.onDelete});
 
   final LabResult result;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -250,7 +287,10 @@ class _ResultCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (result.photoUrl != null)
+          // Only a picture gets a thumbnail. Drawing a PDF through the image
+          // loader is what produced the broken-thumbnail box; documents get a
+          // file card below instead.
+          if (result.hasFile && result.isImage)
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.sm),
               child: AuthedImage(path: result.photoUrl!, width: 56, height: 56, radius: 10),
@@ -264,11 +304,93 @@ class _ResultCard extends StatelessWidget {
                     Expanded(child: Text(result.testName, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
                     if (result.createdAt != null)
                       Text(DateFormat('d MMM').format(result.createdAt!), style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                    // Uploading the wrong page is easy and, once read, it moves
+                    // the patient's own record — so removing it has to be as
+                    // easy as adding it was.
+                    IconButton(
+                      tooltip: 'Delete this report',
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.only(left: 4),
+                      constraints: const BoxConstraints(),
+                      onPressed: onDelete,
+                      icon: Icon(
+                        Icons.delete_outline_rounded,
+                        size: 19,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
                 if (result.note.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(result.note, style: const TextStyle(fontSize: 13.5)),
+                ],
+                // What the clinic read off the report. Shown to the patient in
+                // the report's own words, never as advice — the numbers go to
+                // their record, the meaning comes from their doctor.
+                if (result.isReading) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.8,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Reading your report…',
+                        style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ] else if (result.analysisSummary?.isNotEmpty == true) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: result.couldNotRead
+                          ? AppColors.warningBgOn(context)
+                          : AppColors.accentSoftOn(context),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      result.analysisSummary!,
+                      style: const TextStyle(fontSize: 12.5, height: 1.35),
+                    ),
+                  ),
+                  if (result.abnormal.isNotEmpty) ...[
+                    const SizedBox(height: 5),
+                    Text(
+                      'Flagged on the report: ${result.abnormal.join(', ')}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.warningOn(context),
+                      ),
+                    ),
+                  ],
+                ],
+                // PDFs, Word files, anything that is not a picture. The same
+                // card the chat uses, so it downloads with the bearer token
+                // (the file is owner-protected — a plain open would 403) and
+                // hands off to the phone's own viewer.
+                if (result.hasFile && !result.isImage) ...[
+                  const SizedBox(height: 8),
+                  ChatDocumentCard(
+                    doc: DocumentAttachment(
+                      url: result.photoUrl!,
+                      name: result.originalName?.isNotEmpty == true
+                          ? result.originalName!
+                          : '${result.testName} report',
+                      mimeType: result.mimeType,
+                      sizeBytes: result.sizeBytes,
+                    ),
+                    onDark: false,
+                  ),
                 ],
               ],
             ),

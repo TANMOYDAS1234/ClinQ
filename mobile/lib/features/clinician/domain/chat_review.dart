@@ -13,6 +13,7 @@ class ChatReviewSession {
     this.flaggedForReview = false,
     this.reviewedAt,
     this.lastMessageAt,
+    this.unreadCount = 0,
   });
 
   final String id;
@@ -25,6 +26,9 @@ class ChatReviewSession {
   final bool flaggedForReview;
   final DateTime? reviewedAt;
   final DateTime? lastMessageAt;
+
+  /// Patient messages nobody at the clinic has opened in this conversation.
+  final int unreadCount;
 
   factory ChatReviewSession.fromJson(Map<String, dynamic> j) =>
       ChatReviewSession(
@@ -40,6 +44,7 @@ class ChatReviewSession {
             DateTime.tryParse(j['reviewedAt']?.toString() ?? '')?.toLocal(),
         lastMessageAt:
             DateTime.tryParse(j['lastMessageAt']?.toString() ?? '')?.toLocal(),
+        unreadCount: (j['unreadCount'] as num?)?.toInt() ?? 0,
       );
 }
 

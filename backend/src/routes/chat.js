@@ -461,6 +461,10 @@ router.post(
       .object({
         content: z.string().trim().max(4000).optional().default(''),
         attachments: z.array(z.string()).max(5).default([]),
+        // The nutrition thread quotes, pins and replies exactly as the care
+        // thread does. It accepted none of it, so the patient's dietician chat
+        // offered only Copy on a long press.
+        replyTo: z.string().optional(),
       })
       .refine((b) => b.content.trim().length > 0 || b.attachments.length > 0, {
         message: 'Add a message or attach a photo',
@@ -504,6 +508,7 @@ router.post(
       content: text,
       language: session.language,
       attachments: req.body.attachments,
+      replyTo: req.body.replyTo,
       triage: {
         urgency: triage.urgency,
         matchedRules: triage.matchedRules,

@@ -91,8 +91,10 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
                           if (overview != null) ...[
                             _HeadlineRow(overview: overview),
                             const SizedBox(height: AppSpacing.md),
-                            _ActiveTodayCard(overview: overview),
-                            const SizedBox(height: AppSpacing.md),
+                            // "Active today" is gone. It counted appointments
+                            // booked through the app, and this clinic does not
+                            // book that way — so it read 0 every day and cost a
+                            // card's worth of the screen saying nothing.
                             _AlertStrip(overview: overview),
                             const SizedBox(height: AppSpacing.lg),
                           ],
@@ -279,96 +281,6 @@ class _HeadlineCard extends StatelessWidget {
         onTap: onTap,
         child: card,
       ),
-    );
-  }
-}
-
-// ---- Active today ---------------------------------------------------------
-
-class _ActiveTodayCard extends StatelessWidget {
-  const _ActiveTodayCard({required this.overview});
-
-  final ClinicOverview overview;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final remaining = (overview.appointmentsToday - overview.completedToday).clamp(0, 9999);
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.infoBgOn(context),
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'ACTIVE TODAY',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.7,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              const Spacer(),
-              Icon(Icons.event_available_outlined, size: 20, color: scheme.onSurfaceVariant),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                '${overview.appointmentsToday}',
-                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: scheme.onSurface),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Scheduled Encounters',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: scheme.onSurface),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          // The design splits this into in-person and telehealth. ClinQ has no
-          // telehealth appointments, so the split that IS real is used instead:
-          // what has been seen today and what is still to come.
-          Row(
-            children: [
-              _Pill(
-                text: 'Completed: ${overview.completedToday}',
-                bg: AppColors.primary,
-                fg: Colors.white,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              _Pill(text: 'Remaining: $remaining', bg: AppColors.accentSoftOn(context), fg: AppColors.primary),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Pill extends StatelessWidget {
-  const _Pill({required this.text, required this.bg, required this.fg});
-
-  final String text;
-  final Color bg;
-  final Color fg;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
-      child: Text(text, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: fg)),
     );
   }
 }

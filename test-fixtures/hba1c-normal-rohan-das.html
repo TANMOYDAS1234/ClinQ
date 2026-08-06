@@ -1,0 +1,240 @@
+<meta charset="utf-8">
+<title>Glycemic Profile — Rohan Das</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 14mm 14mm 10mm;
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    font-size: 10.2pt;
+    color: #111;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .masthead { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #1a4d7a; padding-bottom: 7px; }
+  .lab-name { font-size: 17pt; font-weight: 700; color: #1a4d7a; letter-spacing: .2px; }
+  .lab-sub { font-size: 8.4pt; color: #444; line-height: 1.5; margin-top: 3px; }
+  .lab-right { text-align: right; font-size: 8.4pt; color: #444; line-height: 1.5; }
+  .nabl { display: inline-block; border: 1px solid #1a4d7a; color: #1a4d7a; font-size: 7.4pt; font-weight: 700; padding: 1px 5px; border-radius: 2px; margin-bottom: 4px; }
+
+  .patient { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; margin: 10px 0 4px; font-size: 9.4pt; }
+  .row { display: flex; padding: 2.4px 0; border-bottom: 1px dotted #d5d5d5; }
+  .k { width: 118px; color: #555; flex-shrink: 0; }
+  .v { font-weight: 600; }
+
+  h2.section {
+    margin: 15px 0 0; padding: 5px 8px;
+    background: #eef3f8; border-left: 3.5px solid #1a4d7a;
+    font-size: 10pt; font-weight: 700; color: #1a4d7a;
+    text-transform: uppercase; letter-spacing: .6px;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 2px; }
+  thead th {
+    text-align: left; font-size: 8.6pt; text-transform: uppercase; letter-spacing: .4px;
+    color: #333; border-bottom: 1.2px solid #999; padding: 6px 6px 5px;
+  }
+  tbody td { padding: 5.5px 6px; border-bottom: 1px solid #ececec; vertical-align: top; font-size: 9.6pt; }
+  tbody tr:last-child td { border-bottom: none; }
+  .analyte { width: 40%; }
+  .result { width: 14%; font-weight: 700; font-size: 10.4pt; }
+  .unit { width: 12%; color: #444; }
+  .ref { width: 20%; color: #444; }
+  .method { width: 14%; color: #666; font-size: 8.8pt; }
+  .normal-tag { color: #1c7a4a; font-weight: 700; font-size: 8.4pt; margin-left: 6px; }
+
+  .interp { margin-top: 8px; border: 1px solid #dcdcdc; border-radius: 3px; padding: 8px 10px; background: #fbfbfb; }
+  .interp-title { font-size: 8.8pt; font-weight: 700; color: #1a4d7a; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; }
+  .interp table { width: 60%; }
+  .interp td { border: none; padding: 2px 0; font-size: 9pt; }
+  .interp td:first-child { color: #444; width: 62%; }
+  .interp td:last-child { font-weight: 600; }
+  .note { font-size: 8.4pt; color: #555; margin-top: 6px; line-height: 1.5; }
+
+  .sign { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 26px; }
+  .sig-block { text-align: center; font-size: 8.8pt; line-height: 1.5; }
+  .sig-line { border-top: 1px solid #333; padding-top: 3px; min-width: 175px; }
+  .sig-name { font-weight: 700; font-size: 9.4pt; }
+
+  .end { text-align: center; font-size: 8.4pt; color: #777; letter-spacing: 1.6px; margin-top: 16px; border-top: 1px solid #ddd; padding-top: 7px; }
+  .fixture { text-align: center; font-size: 7.2pt; color: #a8a8a8; margin-top: 7px; }
+</style>
+
+<div class="masthead">
+  <div>
+    <div class="lab-name">Meridian Diagnostics &amp; Pathology Centre</div>
+    <div class="lab-sub">
+      41B, Rashbehari Avenue, Kolkata &ndash; 700029<br>
+      Ph: 033-2464 1180 &nbsp;|&nbsp; reports@meridiandiagnostics.example
+    </div>
+  </div>
+  <div class="lab-right">
+    <div class="nabl">ACCREDITED LABORATORY</div><br>
+    Report No: <b>MDP/26/0841773</b><br>
+    Sample ID: <b>2608051194</b>
+  </div>
+</div>
+
+<div class="patient">
+  <div>
+    <div class="row"><div class="k">Patient Name</div><div class="v">Mr. Rohan Das</div></div>
+    <div class="row"><div class="k">Age / Sex</div><div class="v">34 Years / Male</div></div>
+    <div class="row"><div class="k">Patient ID</div><div class="v">CLQ-10428</div></div>
+    <div class="row"><div class="k">Referred By</div><div class="v">Dr. Amit Kumar Dey</div></div>
+  </div>
+  <div>
+    <div class="row"><div class="k">Collected On</div><div class="v">05-Aug-2026&nbsp; 08:15 AM</div></div>
+    <div class="row"><div class="k">Received On</div><div class="v">05-Aug-2026&nbsp; 10:40 AM</div></div>
+    <div class="row"><div class="k">Reported On</div><div class="v">05-Aug-2026&nbsp; 05:20 PM</div></div>
+    <div class="row"><div class="k">Specimen</div><div class="v">Whole Blood (EDTA) / Serum</div></div>
+  </div>
+</div>
+
+<h2 class="section">Glycemic Profile</h2>
+<table>
+  <thead>
+    <tr>
+      <th class="analyte">Investigation</th>
+      <th class="result">Result</th>
+      <th class="unit">Unit</th>
+      <th class="ref">Reference Interval</th>
+      <th class="method">Method</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="analyte">Glycated Haemoglobin (HbA1c)</td>
+      <td class="result">5.6<span class="normal-tag">NORMAL</span></td>
+      <td class="unit">%</td>
+      <td class="ref">4.0 &ndash; 5.6</td>
+      <td class="method">HPLC</td>
+    </tr>
+    <tr>
+      <td class="analyte">Estimated Average Glucose (eAG)</td>
+      <td class="result">114</td>
+      <td class="unit">mg/dL</td>
+      <td class="ref">&mdash;</td>
+      <td class="method">Calculated</td>
+    </tr>
+    <tr>
+      <td class="analyte">Glucose, Fasting (FBS)</td>
+      <td class="result">92<span class="normal-tag">NORMAL</span></td>
+      <td class="unit">mg/dL</td>
+      <td class="ref">70 &ndash; 100</td>
+      <td class="method">GOD-POD</td>
+    </tr>
+    <tr>
+      <td class="analyte">Glucose, Post Prandial (2 hrs)</td>
+      <td class="result">124<span class="normal-tag">NORMAL</span></td>
+      <td class="unit">mg/dL</td>
+      <td class="ref">70 &ndash; 140</td>
+      <td class="method">GOD-POD</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="interp">
+  <div class="interp-title">HbA1c &mdash; Interpretation (ADA Reference)</div>
+  <table>
+    <tr><td>Non-diabetic range</td><td>&lt; 5.7 %</td></tr>
+    <tr><td>Prediabetes / increased risk</td><td>5.7 &ndash; 6.4 %</td></tr>
+    <tr><td>Consistent with diabetes mellitus</td><td>&ge; 6.5 %</td></tr>
+    <tr><td>Therapeutic goal in known diabetics</td><td>&lt; 7.0 %</td></tr>
+  </table>
+  <div class="note">
+    HbA1c reflects mean glycaemia over the preceding 8&ndash;12 weeks. Result is not affected by
+    short-term dietary variation. Values may be unreliable in haemoglobinopathies, recent
+    transfusion, haemolysis or chronic renal failure.
+  </div>
+</div>
+
+<h2 class="section">Lipid Profile (Fasting)</h2>
+<table>
+  <thead>
+    <tr>
+      <th class="analyte">Investigation</th>
+      <th class="result">Result</th>
+      <th class="unit">Unit</th>
+      <th class="ref">Reference Interval</th>
+      <th class="method">Method</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="analyte">Total Cholesterol</td>
+      <td class="result">168</td>
+      <td class="unit">mg/dL</td>
+      <td class="ref">&lt; 200 (Desirable)</td>
+      <td class="method">CHOD-PAP</td>
+    </tr>
+    <tr>
+      <td class="analyte">LDL Cholesterol</td>
+      <td class="result">96</td>
+      <td class="unit">mg/dL</td>
+      <td class="ref">&lt; 100 (Optimal)</td>
+      <td class="method">Direct</td>
+    </tr>
+    <tr>
+      <td class="analyte">HDL Cholesterol</td>
+      <td class="result">52</td>
+      <td class="unit">mg/dL</td>
+      <td class="ref">&gt; 40</td>
+      <td class="method">Direct</td>
+    </tr>
+    <tr>
+      <td class="analyte">Triglycerides</td>
+      <td class="result">118</td>
+      <td class="unit">mg/dL</td>
+      <td class="ref">&lt; 150 (Normal)</td>
+      <td class="method">GPO-PAP</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 class="section">Renal Function</h2>
+<table>
+  <thead>
+    <tr>
+      <th class="analyte">Investigation</th>
+      <th class="result">Result</th>
+      <th class="unit">Unit</th>
+      <th class="ref">Reference Interval</th>
+      <th class="method">Method</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="analyte">Creatinine, Serum</td>
+      <td class="result">0.9</td>
+      <td class="unit">mg/dL</td>
+      <td class="ref">0.7 &ndash; 1.3</td>
+      <td class="method">Jaffe Kinetic</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="note" style="margin-top:12px">
+  <b>Comment:</b> All analytes in this panel are within their stated biological reference
+  intervals. No critical value flagged. Clinical correlation is advised.
+</div>
+
+<div class="sign">
+  <div class="sig-block">
+    <div class="sig-line">
+      <div class="sig-name">Ananya Sur</div>
+      <div>DMLT, Senior Technologist</div>
+    </div>
+  </div>
+  <div class="sig-block">
+    <div class="sig-line">
+      <div class="sig-name">Dr. S. Bhattacharya</div>
+      <div>MD (Pathology) &nbsp;|&nbsp; Reg. No. WB-44127</div>
+      <div>Consultant Pathologist</div>
+    </div>
+  </div>
+</div>
+
+<div class="end">&mdash;&mdash; END OF REPORT &mdash;&mdash;</div>
+<div class="fixture">Synthetic sample generated for ClinQ software testing. Not a medical document.</div>

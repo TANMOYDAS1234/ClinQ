@@ -488,7 +488,7 @@ router.get(
     if (!patient) throw notFound('Patient not found');
     req.patientId = patient._id;
 
-    const [profile, healthScore, trends, adherence, alerts, latestHba1c, footAssessments, context, labResults] =
+    const [profile, healthScore, trends, adherence, alerts, latestHba1c, footAssessments, context, labResults, rxForTests] =
       await Promise.all([
         PatientProfile.findOne({ user: patient._id }).populate('assignedDietician', 'name phone').lean(),
         computeHealthScore(patient._id, { days: 30 }),
@@ -498,7 +498,17 @@ router.get(
         Hba1cRecord.find({ patient: patient._id }).sort({ testedOn: -1 }).limit(6).lean(),
         FootAssessment.find({ patient: patient._id }).sort({ assessedAt: -1 }).limit(5).lean(),
         buildPatientContext(patient._id),
-        LabResult.find({ patient: patient._id }).sort({ createdAt: -1 }).limit(20).lean(),
+        LabResult.find({ patient: patient._id })
+          .sort({ createdAt: -1 })
+          .limit(20)
+          .populate('photo', 'mimeType originalName sizeBytes')
+          .lean(),
+        // What the doctor has already asked this patient to get done. Without
+        // it the prescribing screen offered a fresh list of tests with no way
+        // to see that HbA1c was ordered a fortnight ago and is still pending.
+        Prescription.find({ patient: patient._id, isActive: true })
+          .select('labTestsAdvised')
+          .lean(),
       ]);
 
     res.json({
@@ -524,13 +534,31 @@ router.get(
         site: f.site,
         finalRiskLevel: f.finalRiskLevel,
       })),
-      labResults: labResults.map((r) => ({
-        id: String(r._id),
-        testName: r.testName,
-        note: r.note ?? '',
-        photoUrl: r.photo ? `/api/v1/uploads/${r.photo}/raw` : null,
-        createdAt: r.createdAt,
-      })),
+      labResults: labResults.map((r) => {
+        const asset = r.photo && typeof r.photo === 'object' ? r.photo : null;
+        const photoId = asset ? asset._id : r.photo;
+        return {
+          id: String(r._id),
+          testName: r.testName,
+          note: r.note ?? '',
+          photoUrl: photoId ? `/api/v1/uploads/${photoId}/raw` : null,
+          // So the doctor's screen can tell a scan from a PDF, as the
+          // patient's now does.
+          mimeType: asset?.mimeType ?? null,
+          originalName: asset?.originalName ?? null,
+          // What was transcribed off the page, so the doctor sees the numbers
+          // without opening the file — and sees plainly when a report could
+          // not be read and still needs their eyes.
+          analysisStatus: r.analysis?.status ?? null,
+          analysisSummary: r.analysis?.summary ?? null,
+          hba1cPercent: r.analysis?.hba1cPercent ?? null,
+          abnormal: r.analysis?.abnormal ?? [],
+          createdAt: r.createdAt,
+        };
+      }),
+      labTestsAdvised: [
+        ...new Set((rxForTests ?? []).flatMap((p) => p.labTestsAdvised ?? []).filter(Boolean)),
+      ],
       alerts: alerts.map(serialiseAlert),
       // The same summary the AI assistant sees — useful for the doctor to
       // understand why it answered the way it did.
@@ -638,6 +666,24 @@ router.get(
       ChatSession.countDocuments(filter),
     ]);
 
+    // Unread patient messages per conversation, so the doctor can see which
+    // rows are new rather than opening each in turn to find out. Counted only
+    // for the page being returned, not the whole collection.
+    const unreadBySession = new Map(
+      (
+        await ChatMessage.aggregate([
+          {
+            $match: {
+              session: { $in: items.map((s) => s._id) },
+              role: 'user',
+              seenByClinicAt: null,
+            },
+          },
+          { $group: { _id: '$session', count: { $sum: 1 } } },
+        ])
+      ).map((u) => [u._id.toString(), u.count]),
+    );
+
     res.json(
       paged(
         items.map((s) => ({
@@ -654,6 +700,7 @@ router.get(
           highestUrgency: s.highestUrgency,
           flaggedForReview: s.flaggedForReview,
           reviewedAt: s.reviewedAt ?? null,
+          unreadCount: unreadBySession.get(s._id.toString()) ?? 0,
           lastMessageAt: s.lastMessageAt,
         })),
         { page, limit, total },

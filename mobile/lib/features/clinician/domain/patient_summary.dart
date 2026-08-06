@@ -14,12 +14,27 @@ class Hba1cPoint {
 
 /// A test report the patient uploaded against a doctor-advised test.
 class LabReport {
-  const LabReport({required this.id, required this.testName, required this.note, this.photoUrl, this.createdAt});
+  const LabReport({
+    required this.id,
+    required this.testName,
+    required this.note,
+    this.photoUrl,
+    this.createdAt,
+    this.mimeType,
+    this.originalName,
+  });
   final String id;
   final String testName;
   final String note;
   final String? photoUrl;
   final DateTime? createdAt;
+  final String? mimeType;
+  final String? originalName;
+
+  /// Labs email PDFs, so most reports are not pictures. Unknown types count as
+  /// documents — a file card that opens beats an image box that cannot load.
+  bool get isImage => mimeType?.startsWith('image/') ?? false;
+  bool get hasFile => photoUrl != null && photoUrl!.isNotEmpty;
 
   factory LabReport.fromJson(Map<String, dynamic> j) => LabReport(
     id: j['id']?.toString() ?? '',
@@ -27,6 +42,8 @@ class LabReport {
     note: j['note']?.toString() ?? '',
     photoUrl: (j['photoUrl'] == null || j['photoUrl'].toString().isEmpty) ? null : j['photoUrl'].toString(),
     createdAt: DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal(),
+    mimeType: j['mimeType']?.toString(),
+    originalName: j['originalName']?.toString(),
   );
 }
 
@@ -54,6 +71,7 @@ class PatientSummary {
     this.estimatedHba1c,
     this.hba1cHistory = const [],
     this.labResults = const [],
+    this.advisedTests = const [],
     this.alerts = const [],
     this.aiContext,
     this.assignedDieticianId,
@@ -86,6 +104,10 @@ class PatientSummary {
 
   final List<Hba1cPoint> hba1cHistory;
   final List<LabReport> labResults;
+
+  /// Tests already ordered on an active prescription — so the doctor can see
+  /// what is outstanding before ordering it again.
+  final List<String> advisedTests;
   final List<ClinicalAlert> alerts;
   final String? aiContext;
 
@@ -121,6 +143,7 @@ class PatientSummary {
           : null,
       reviewIntervalDays: (profile['dietReviewIntervalDays'] as num?)?.toInt(),
       labResults: (j['labResults'] as List?)?.whereType<Map<String, dynamic>>().map(LabReport.fromJson).toList() ?? const [],
+      advisedTests: (j['labTestsAdvised'] as List?)?.map((e) => e.toString()).toList() ?? const [],
       healthScore: (health['score'] as num?)?.toInt(),
       healthBand: health['band']?.toString(),
       adherencePercent: (adherence['percentage'] as num?)?.toInt(),
