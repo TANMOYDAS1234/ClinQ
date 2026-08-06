@@ -48,6 +48,26 @@ class DocumentAttachment {
   final int? sizeBytes;
 }
 
+/// Classifies a serialised attachment `{id, url, kind, mimeType, …}`.
+///
+/// Note what `kind` is NOT: it is the upload's *purpose* (`meal_photo`,
+/// `lab_report`, `voice_note`, `avatar`, `other`), never a media type. Testing
+/// it for `'image'` or `'audio'` matches nothing, which silently files every
+/// photo and every recording as a document. Media type comes from [mimeType];
+/// `kind` is only consulted for `voice_note`, where it is authoritative.
+bool isAudioAttachment(Map a) =>
+    a['kind'] == 'voice_note' || (a['mimeType']?.toString().startsWith('audio/') ?? false);
+
+/// A document — a PDF, Office file, text or CSV. Not an image, not audio.
+bool isDocumentAttachment(Map a) {
+  if (isAudioAttachment(a)) return false;
+  final m = a['mimeType']?.toString() ?? '';
+  return m.startsWith('application/') || m.startsWith('text/');
+}
+
+/// Anything left over is a picture.
+bool isImageAttachment(Map a) => !isAudioAttachment(a) && !isDocumentAttachment(a);
+
 class ChatMessage {
   const ChatMessage({
     required this.id,
@@ -213,14 +233,8 @@ class ChatMessage {
         .toList();
   }
 
-  static bool _isAudio(Map a) =>
-      a['kind'] == 'voice_note' || (a['mimeType']?.toString().startsWith('audio/') ?? false);
-
-  /// A document (not an image, not audio) — a PDF, Office file, text or CSV.
-  static bool _isDocument(Map a) {
-    final m = a['mimeType']?.toString() ?? '';
-    return m.startsWith('application/') || m.startsWith('text/');
-  }
+  static bool _isAudio(Map a) => isAudioAttachment(a);
+  static bool _isDocument(Map a) => isDocumentAttachment(a);
 
   /// Returns a copy with new [content] — used to grow a streaming reply as
   /// tokens arrive, keeping every other field.

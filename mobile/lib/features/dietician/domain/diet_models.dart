@@ -414,12 +414,12 @@ class DietMessage {
         senderName: j['senderName']?.toString(),
         createdAt: DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal(),
         imagePaths: _parts(j)
-            .where((a) => a['kind'] == 'image')
+            .where(isImageAttachment)
             .map((a) => a['url']?.toString() ?? '')
             .where((s) => s.isNotEmpty)
             .toList(),
         voiceNotes: _parts(j)
-            .where((a) => a['kind'] == 'audio')
+            .where(isAudioAttachment)
             .map((a) => VoiceNote(
                   url: a['url']?.toString() ?? '',
                   transcript: a['transcript']?.toString(),
@@ -428,7 +428,7 @@ class DietMessage {
             .where((v) => v.url.isNotEmpty)
             .toList(),
         documents: _parts(j)
-            .where((a) => a['kind'] != 'image' && a['kind'] != 'audio')
+            .where(isDocumentAttachment)
             .map((a) => DocumentAttachment(
                   url: a['url']?.toString() ?? '',
                   name: a['originalName']?.toString() ?? 'Document',

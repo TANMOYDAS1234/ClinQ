@@ -124,13 +124,13 @@ class ChatReviewMessage {
         senderName: j['senderName']?.toString(),
         imagePaths:
             _attachments(j)
-                .where((a) => a['kind'] == 'image')
+                .where(isImageAttachment)
                 .map((a) => a['url']?.toString() ?? '')
                 .where((s) => s.isNotEmpty)
                 .toList(),
         voiceNotes:
             _attachments(j)
-                .where((a) => a['kind'] == 'audio')
+                .where(isAudioAttachment)
                 .map(
                   (a) => VoiceNote(
                     url: a['url']?.toString() ?? '',
@@ -142,7 +142,7 @@ class ChatReviewMessage {
                 .toList(),
         documents:
             _attachments(j)
-                .where((a) => a['kind'] != 'image' && a['kind'] != 'audio')
+                .where(isDocumentAttachment)
                 .map(
                   (a) => DocumentAttachment(
                     url: a['url']?.toString() ?? '',
