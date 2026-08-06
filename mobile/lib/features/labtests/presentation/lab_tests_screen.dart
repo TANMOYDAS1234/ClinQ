@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/data/upload_repository.dart';
 import '../../../shared/widgets/authed_image.dart';
+import '../../../shared/widgets/auto_refresh.dart';
 import '../data/lab_tests_repository.dart';
 import '../../chat/domain/chat_message.dart';
 import '../../chat/presentation/widgets/chat_document_card.dart';
@@ -172,7 +173,13 @@ class _LabTestsScreenState extends ConsumerState<LabTestsScreen> {
         icon: const Icon(Icons.upload_file_outlined),
         label: const Text('Upload report'),
       ),
-      body: RefreshIndicator(
+      // A freshly uploaded report says "Reading your report…" while the server
+      // transcribes it. Without a poll that line stayed there until the patient
+      // thought to pull down — which is exactly when they would conclude it had
+      // not worked.
+      body: AutoRefresh(
+        onTick: (ref) => ref.invalidate(labTestsProvider),
+        child: RefreshIndicator(
         onRefresh: () async => ref.invalidate(labTestsProvider),
         child: async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -220,6 +227,7 @@ class _LabTestsScreenState extends ConsumerState<LabTestsScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

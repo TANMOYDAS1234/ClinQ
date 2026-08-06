@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/authed_image.dart';
+import '../../../shared/widgets/auto_refresh.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/diet_models.dart';
@@ -34,7 +35,14 @@ class DieticianDashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      body: SafeArea(
+      // The dietician's day is made of other people's actions — a patient
+      // logging a meal, a doctor prescribing, a report the server has just
+      // finished reading. Waiting for a pull-to-refresh showed them a morning
+      // that had already moved on.
+      body: AutoRefresh(
+        onTick: (ref) => ref.invalidate(dietDashboardProvider),
+        interval: const Duration(seconds: 30),
+        child: SafeArea(
         bottom: false,
         child: Column(
           children: [
@@ -188,6 +196,7 @@ class DieticianDashboardScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
