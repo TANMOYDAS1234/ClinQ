@@ -415,6 +415,11 @@ export async function clinicAnalytics({ days = 30 } = {}) {
           },
           high: { $sum: { $cond: [{ $gt: ['$valueMgDl', GLUCOSE.POST_PRANDIAL_TARGET_MAX] }, 1, 0] } },
           total: { $sum: 1 },
+          // Clinic-wide daily average/min/max in mg/dL, for the monitoring-style
+          // line chart on the doctor's home tab.
+          average: { $avg: '$valueMgDl' },
+          dayMin: { $min: '$valueMgDl' },
+          dayMax: { $max: '$valueMgDl' },
         },
       },
       { $sort: { _id: 1 } },
@@ -452,6 +457,13 @@ export async function clinicAnalytics({ days = 30 } = {}) {
   return {
     days,
     controlTrend: trend.map((t) => ({ date: t._id, low: t.low, inRange: t.inRange, high: t.high, total: t.total })),
+    // Per-day clinic-wide glucose for the AGP-style monitoring line.
+    glucoseDaily: trend.map((t) => ({
+      date: t._id,
+      average: Math.round(t.average),
+      min: Math.round(t.dayMin),
+      max: Math.round(t.dayMax),
+    })),
     engagement: engagement.map((e) => ({ date: e._id, patients: e.patients })),
     monitoring: { overdueCheckIns, neverCheckedIn, trendingWorse, activePatients: activeIds.length },
   };

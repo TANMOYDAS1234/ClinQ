@@ -11,25 +11,47 @@ import '../../domain/patient_summary.dart';
 const double _targetLow = 70;
 const double _targetHigh = 180;
 
-/// The doctor's continuous-monitoring graph for one patient: an AGP-style view
-/// of the glucose series — a daily-average line riding inside the day's
-/// low→high spread band, over the shaded target range. Reads the per-day
-/// summary the summary endpoint already returns (`trends.daily`), so it needs
-/// no extra call.
+/// An AGP-style glucose monitoring graph: a daily-average line over the shaded
+/// target range, optionally inside the day's low→high spread band.
+///
+/// Reused in two places: one PATIENT's record (with the spread band), and the
+/// doctor's home tab for the whole CLINIC's average (band off — a min/max across
+/// every patient would just span the full range every day). Parameterised so
+/// both read identically apart from that.
 class HealthTrendChart extends StatelessWidget {
-  const HealthTrendChart({super.key, required this.daily});
+  const HealthTrendChart({
+    super.key,
+    required this.daily,
+    this.title = 'Glucose monitoring',
+    this.subtitle,
+    this.emptyHint,
+    this.showSpreadBand = true,
+    this.footer,
+  });
 
   final List<GlucoseDailyPoint> daily;
+  final String title;
+  final String? subtitle;
+  final String? emptyHint;
+
+  /// The low→high band around the average. Meaningful for one patient; off for
+  /// the clinic average, where it would span hypo→hyper every day.
+  final bool showSpreadBand;
+
+  /// Optional widget below the legend (e.g. the clinic's check-in engagement).
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final accent = AppColors.accentOn(context);
 
-    // A single day can't make a trend; keep the record clean until there are
-    // at least two points to draw a line between.
+    // A single day can't make a trend; keep it clean until there are at least
+    // two points to draw a line between.
     if (daily.length < 2) {
       return _Frame(
+        title: title,
+        subtitle: subtitle,
         scheme: scheme,
         accent: accent,
         child: Padding(
@@ -40,9 +62,10 @@ class HealthTrendChart extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  daily.isEmpty
-                      ? 'No glucose readings yet. The graph fills in as the patient checks in.'
-                      : 'One reading so far — the trend appears after the next check-in.',
+                  emptyHint ??
+                      (daily.isEmpty
+                          ? 'No glucose readings yet. The graph fills in as patients check in.'
+                          : 'One reading so far — the trend appears after the next check-in.'),
                   style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant, height: 1.35),
                 ),
               ),
@@ -52,24 +75,59 @@ class HealthTrendChart extends StatelessWidget {
       );
     }
 
-    final mins = daily.map((d) => d.min.toDouble()).toList();
-    final maxs = daily.map((d) => d.max.toDouble()).toList();
-    final lowest = mins.reduce((a, b) => a < b ? a : b);
-    final highest = maxs.reduce((a, b) => a > b ? a : b);
+    final avgs = daily.map((d) => d.average.toDouble()).toList();
+    final double lowest;
+    final double highest;
+    if (showSpreadBand) {
+      lowest = daily.map((d) => d.min.toDouble()).reduce((a, b) => a < b ? a : b);
+      highest = daily.map((d) => d.max.toDouble()).reduce((a, b) => a > b ? a : b);
+    } else {
+      lowest = avgs.reduce((a, b) => a < b ? a : b);
+      highest = avgs.reduce((a, b) => a > b ? a : b);
+    }
 
     // Keep the target band in view even when every reading sits well inside it.
     final minY = ((lowest < _targetLow ? lowest : _targetLow) - 20).clamp(0, double.infinity).toDouble();
     final maxY = (highest > _targetHigh ? highest : _targetHigh) + 20;
     final lastIndex = daily.length - 1;
+    final avgBarIndex = showSpreadBand ? 2 : 0;
+
+    final avgBar = LineChartBarData(
+      spots: [for (var i = 0; i < daily.length; i++) FlSpot(i.toDouble(), daily[i].average.toDouble())],
+      isCurved: true,
+      curveSmoothness: 0.2,
+      color: accent,
+      barWidth: 2.6,
+      belowBarData: BarAreaData(
+        show: !showSpreadBand,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [accent.withValues(alpha: 0.20), accent.withValues(alpha: 0.0)],
+        ),
+      ),
+      dotData: FlDotData(
+        // Emphasise only the latest point — where things are now.
+        checkToShowDot: (spot, _) => spot.x == lastIndex.toDouble(),
+        getDotPainter: (spot, _, __, ___) => FlDotCirclePainter(
+          radius: 4.5,
+          color: accent,
+          strokeWidth: 2.5,
+          strokeColor: scheme.surface,
+        ),
+      ),
+    );
 
     return _Frame(
+      title: title,
+      subtitle: subtitle,
       scheme: scheme,
       accent: accent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            height: 200,
+            height: 196,
             child: LineChart(
               LineChartData(
                 minX: 0,
@@ -102,7 +160,10 @@ class HealthTrendChart extends StatelessWidget {
                       interval: 60,
                       getTitlesWidget: (value, meta) => Text(
                         value.toInt().toString(),
-                        style: TextStyle(fontSize: 10.5, color: scheme.onSurfaceVariant, fontFeatures: const [FontFeature.tabularFigures()]),
+                        style: TextStyle(
+                            fontSize: 10.5,
+                            color: scheme.onSurfaceVariant,
+                            fontFeatures: const [FontFeature.tabularFigures()]),
                       ),
                     ),
                   ),
@@ -128,62 +189,58 @@ class HealthTrendChart extends StatelessWidget {
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipColor: (_) => scheme.inverseSurface,
                     getTooltipItems: (spots) => spots.map((s) {
-                      // Only annotate the average line (bar index 2); the band
-                      // edges would just repeat noise.
-                      if (s.barIndex != 2) return null;
+                      if (s.barIndex != avgBarIndex) return null;
                       final d = daily[s.x.toInt()];
                       return LineTooltipItem(
                         '${d.average} mg/dL\n',
                         TextStyle(color: scheme.onInverseSurface, fontWeight: FontWeight.w700, fontSize: 13),
                         children: [
                           TextSpan(
-                            text: 'range ${d.min}–${d.max} · ${DateFormat('d MMM').format(d.date)}',
-                            style: TextStyle(color: scheme.onInverseSurface.withValues(alpha: 0.75), fontWeight: FontWeight.w400, fontSize: 11),
+                            text: showSpreadBand
+                                ? 'range ${d.min}–${d.max} · ${DateFormat('d MMM').format(d.date)}'
+                                : DateFormat('d MMM').format(d.date),
+                            style: TextStyle(
+                                color: scheme.onInverseSurface.withValues(alpha: 0.75),
+                                fontWeight: FontWeight.w400,
+                                fontSize: 11),
                           ),
                         ],
                       );
                     }).toList(),
                   ),
                 ),
-                // Bars 0/1 are the invisible spread edges; bar 2 is the average.
+                // With the band on, bars 0/1 are the invisible spread edges and
+                // bar 2 is the average; with it off, the average is the only bar.
                 betweenBarsData: [
-                  BetweenBarsData(fromIndex: 0, toIndex: 1, color: accent.withValues(alpha: 0.11)),
+                  if (showSpreadBand) BetweenBarsData(fromIndex: 0, toIndex: 1, color: accent.withValues(alpha: 0.11)),
                 ],
                 lineBarsData: [
-                  _edge([for (var i = 0; i < daily.length; i++) FlSpot(i.toDouble(), daily[i].min.toDouble())]),
-                  _edge([for (var i = 0; i < daily.length; i++) FlSpot(i.toDouble(), daily[i].max.toDouble())]),
-                  LineChartBarData(
-                    spots: [for (var i = 0; i < daily.length; i++) FlSpot(i.toDouble(), daily[i].average.toDouble())],
-                    isCurved: true,
-                    curveSmoothness: 0.2,
-                    color: accent,
-                    barWidth: 2.6,
-                    belowBarData: BarAreaData(show: false),
-                    dotData: FlDotData(
-                      // Emphasise only the latest point — where the patient is now.
-                      checkToShowDot: (spot, _) => spot.x == lastIndex.toDouble(),
-                      getDotPainter: (spot, _, __, ___) => FlDotCirclePainter(
-                        radius: 4.5,
-                        color: accent,
-                        strokeWidth: 2.5,
-                        strokeColor: scheme.surface,
-                      ),
-                    ),
-                  ),
+                  if (showSpreadBand) ...[
+                    _edge([for (var i = 0; i < daily.length; i++) FlSpot(i.toDouble(), daily[i].min.toDouble())]),
+                    _edge([for (var i = 0; i < daily.length; i++) FlSpot(i.toDouble(), daily[i].max.toDouble())]),
+                  ],
+                  avgBar,
                 ],
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
+          Wrap(
+            spacing: 14,
+            runSpacing: 6,
             children: [
-              _LegendDot(color: accent, label: 'Daily average'),
-              const SizedBox(width: 14),
-              _LegendDot(color: accent.withValues(alpha: 0.28), label: 'Low–high range', square: true),
-              const SizedBox(width: 14),
+              _LegendDot(color: accent, label: showSpreadBand ? 'Daily average' : 'Average glucose'),
+              if (showSpreadBand)
+                _LegendDot(color: accent.withValues(alpha: 0.28), label: 'Low–high range', square: true),
               _LegendDot(color: AppColors.successOn(context).withValues(alpha: 0.35), label: 'Target 70–180', square: true),
             ],
           ),
+          if (footer != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.4)),
+            const SizedBox(height: AppSpacing.sm),
+            footer!,
+          ],
         ],
       ),
     );
@@ -202,11 +259,19 @@ class HealthTrendChart extends StatelessWidget {
 
 /// The card chrome shared by the chart and its empty state.
 class _Frame extends StatelessWidget {
-  const _Frame({required this.scheme, required this.accent, required this.child});
+  const _Frame({
+    required this.scheme,
+    required this.accent,
+    required this.child,
+    required this.title,
+    this.subtitle,
+  });
 
   final ColorScheme scheme;
   final Color accent;
   final Widget child;
+  final String title;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -228,8 +293,18 @@ class _Frame extends StatelessWidget {
                 child: Icon(Icons.monitor_heart_rounded, size: 18, color: accent),
               ),
               const SizedBox(width: 10),
-              const Expanded(
-                child: Text('Glucose monitoring', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                    if (subtitle != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1),
+                        child: Text(subtitle!, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+                      ),
+                  ],
+                ),
               ),
             ],
           ),

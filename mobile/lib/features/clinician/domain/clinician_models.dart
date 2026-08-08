@@ -1,3 +1,5 @@
+import 'patient_summary.dart';
+
 /// Dashboard headline numbers from `GET /doctor/overview`.
 class ClinicOverview {
   const ClinicOverview({
@@ -102,6 +104,7 @@ class ClinicOverview {
 class ClinicAnalytics {
   const ClinicAnalytics({
     this.controlTrend = const [],
+    this.glucoseDaily = const [],
     this.engagement = const [],
     this.overdueCheckIns = 0,
     this.neverCheckedIn = 0,
@@ -110,6 +113,10 @@ class ClinicAnalytics {
   });
 
   final List<ControlPoint> controlTrend;
+
+  /// Per-day clinic-wide glucose (average/min/max mg/dL) for the AGP-style line.
+  final List<GlucoseDailyPoint> glucoseDaily;
+
   final List<EngagementPoint> engagement;
   final int overdueCheckIns;
   final int neverCheckedIn;
@@ -121,6 +128,24 @@ class ClinicAnalytics {
   /// clinic-wide signal.
   int get totalReadings => controlTrend.fold(0, (s, p) => s + p.total);
 
+  /// The glucose series for the chart: the server's true daily averages when
+  /// present, otherwise a reasonable approximation from the low/in-range/high
+  /// counts (band midpoints) so the chart still draws against an older deploy
+  /// that doesn't send `glucoseDaily` yet.
+  List<GlucoseDailyPoint> get glucoseDailyOrApprox {
+    if (glucoseDaily.isNotEmpty) return glucoseDaily;
+    return [
+      for (final p in controlTrend)
+        if (p.total > 0)
+          GlucoseDailyPoint(
+            date: p.date,
+            average: ((p.low * 57 + p.inRange * 125 + p.high * 215) / p.total).round(),
+            min: 0,
+            max: 0,
+          ),
+    ];
+  }
+
   factory ClinicAnalytics.fromJson(Map<String, dynamic> j) {
     final m = j['monitoring'] as Map<String, dynamic>? ?? const {};
     int n(dynamic v) => (v as num?)?.toInt() ?? 0;
@@ -128,6 +153,11 @@ class ClinicAnalytics {
       controlTrend: (j['controlTrend'] as List?)
               ?.whereType<Map<String, dynamic>>()
               .map(ControlPoint.fromJson)
+              .toList() ??
+          const [],
+      glucoseDaily: (j['glucoseDaily'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(GlucoseDailyPoint.fromJson)
               .toList() ??
           const [],
       engagement: (j['engagement'] as List?)
