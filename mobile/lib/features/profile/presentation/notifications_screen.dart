@@ -8,6 +8,7 @@ import '../../../shared/providers/preferences_provider.dart';
 import '../../../shared/services/notification_service.dart';
 import '../../glucose/presentation/glucose_providers.dart';
 import '../../medications/presentation/medications_providers.dart';
+import '../../medications/presentation/reminder_setup_sheet.dart';
 
 /// Notification preference toggles. They record intent — push delivery to the
 /// device is still being set up server-side, which the note makes plain.
@@ -83,6 +84,17 @@ class NotificationsScreen extends ConsumerWidget {
                   subtitle: l10n.notifClinicAlertsSub,
                   value: prefs.clinicAlerts,
                   onChanged: controller.setClinicAlerts,
+                ),
+                Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                // Not a toggle — opens the reliability setup (battery exemption +
+                // permissions) so a patient can (re)fix silenced dose alarms.
+                ListTile(
+                  leading: Icon(Icons.alarm_on_rounded, color: accent),
+                  title: const Text('Reminder reliability', style: TextStyle(fontSize: 16)),
+                  subtitle: const Text('Keep dose alarms firing when the phone sleeps', style: TextStyle(fontSize: 13)),
+                  trailing: Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+                  onTap: () => showReminderSetupSheet(context, ref),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
                 ),
               ],
             ),

@@ -2,6 +2,7 @@ import { createApp } from './app.js';
 import { connectDb, disconnectDb } from './config/db.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
+import { startMedicationReminderCron } from './services/medicationReminderCron.js';
 
 async function main() {
   await connectDb();
@@ -14,6 +15,11 @@ async function main() {
   // The evening appointment digest is intentionally NOT started: the app no
   // longer exposes an appointment feature, so a nightly "tomorrow's schedule"
   // push — including the empty "no appointments" one — is just noise.
+
+  // Server-side medication-reminder backstop: pushes a reminder at each dose
+  // time as a safety net for on-device alarms an OEM may have killed. Deduped
+  // against the local alarm by a shared deterministic notification id.
+  startMedicationReminderCron();
 
   // Finish in-flight clinical writes before dying.
   const shutdown = async (signal) => {

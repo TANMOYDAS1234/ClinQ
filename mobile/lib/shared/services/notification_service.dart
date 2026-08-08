@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -15,25 +16,49 @@ void medicationActionHandler(NotificationResponse response) {
   NotificationService.scheduleSnoozeFromBackground(payload);
 }
 
-/// One dose reminder to schedule: a medicine name + a local clock time. The
-/// medications feature flattens its `Medication.schedule` into these so this
-/// service stays unaware of the API model.
-class MedReminder {
-  const MedReminder({
+/// One concrete dose to remind about: a specific medicine at a specific instant
+/// on a specific day, with a deterministic notification [id]. The medications
+/// feature expands each `Medication.schedule` slot across a rolling window into
+/// these, so the service stays unaware of the API model — and so a re-sync
+/// replaces rather than duplicates, and a server push for the same dose collapses
+/// onto the same [id].
+class ScheduledDose {
+  const ScheduledDose({
+    required this.id,
     required this.medId,
     required this.name,
-    required this.time,
+    required this.when,
     this.dose,
     this.relationToMeal,
   });
 
+  /// Deterministic notification id in the medication reserved range, stable for
+  /// a given (medicine, slot time, day) — see `medReminderNotificationId`.
+  final int id;
   final String medId;
   final String name;
 
-  /// "HH:mm" in the clinic's local time.
-  final String time;
+  /// Absolute local time the dose is due. The alarm fires [leadTime] earlier.
+  final DateTime when;
   final String? dose;
   final String? relationToMeal;
+}
+
+/// The deterministic notification id for one dose on one day, shared by the
+/// on-device alarm and the server-sent FCM push so the two collapse into a
+/// single notification instead of double-reminding. FNV-1a over
+/// `medId|HH:mm|yyyy-MM-dd`, folded into the medication reserved id range. The
+/// backend computes the identical value (see backend medReminder id helper).
+int medReminderNotificationId(String medId, String hhmm, DateTime day) {
+  final dateStr =
+      '${day.year.toString().padLeft(4, '0')}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+  final key = '$medId|$hhmm|$dateStr';
+  var hash = 0x811c9dc5;
+  for (final c in key.codeUnits) {
+    hash ^= c;
+    hash = (hash * 0x01000193) & 0xFFFFFFFF;
+  }
+  return NotificationService.medIdBase + (hash % NotificationService.medIdWindow);
 }
 
 /// Local notifications: short in-the-moment updates via [show], and repeating
@@ -59,8 +84,12 @@ class NotificationService {
 
   /// Medication reminder ids live in a reserved range so cancelling/replacing
   /// the whole set never touches the ids [show] hands out.
-  static const int _medIdBase = 700000;
+  static const int medIdBase = 700000;
   static const int _medIdSpan = 100000;
+
+  /// Hashing modulo for a dose's deterministic id — kept below [_medIdSpan] so a
+  /// hashed id can never leave the reserved medication range.
+  static const int medIdWindow = 90000;
 
   /// Snoozes sit outside the daily range so re-syncing the schedule (which
   /// cancels that whole range) does not silently drop a dose the patient just
@@ -163,6 +192,17 @@ class NotificationService {
     _ready = true;
   }
 
+  /// Re-requests the runtime permissions reliable alarms need, and reports
+  /// whether exact alarms are permitted afterwards (false → schedules fall back
+  /// to inexact timing). Safe to call from a "make reminders reliable" prompt.
+  Future<bool> ensureAlarmPermissions() async {
+    await init();
+    final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await android?.requestNotificationsPermission();
+    await android?.requestExactAlarmsPermission();
+    return await android?.canScheduleExactNotifications() ?? true;
+  }
+
   /// Show a notification now. Keep [title]/[body] short and specific. [payload]
   /// (an FCM data map as JSON) is handed back to [onNotificationTap] on tap, so
   /// the app can open the conversation the notification is about.
@@ -181,51 +221,95 @@ class NotificationService {
     await _plugin.show(_id, title, body, details, payload: payload);
   }
 
-  /// Rebuilds the full set of daily medication reminders from [reminders].
+  /// Rebuilds the medication reminder set from [doses] — a rolling window of
+  /// concrete, per-day dose alarms (not a blind daily-repeat), so a slot the
+  /// patient has already taken can simply be left out and today's alarm won't
+  /// nag them. Cancels the previous set first, so re-timing or taking a dose
+  /// takes effect immediately. Idempotent.
   ///
-  /// Cancels the previous set first, so stopping or re-timing a medicine takes
-  /// effect immediately. Each reminder repeats every day at its time (via
-  /// [DateTimeComponents.time]) and survives reboot through the plugin's boot
-  /// receiver. Idempotent — safe to call on every schedule change or app resume.
-  Future<void> scheduleMedicationReminders(List<MedReminder> reminders) async {
+  /// Returns how many alarms actually armed, so the caller can detect a silent
+  /// platform failure (e.g. a withheld permission) and react instead of leaving
+  /// the patient un-reminded with no signal.
+  Future<int> scheduleMedicationReminders(List<ScheduledDose> doses) async {
     await init();
 
     // Drop the previous medication set (reserved id range only).
     for (final p in await _plugin.pendingNotificationRequests()) {
-      if (p.id >= _medIdBase && p.id < _medIdBase + _medIdSpan) {
+      if (p.id >= medIdBase && p.id < medIdBase + _medIdSpan) {
         await _plugin.cancel(p.id);
       }
     }
 
+    final now = tz.TZDateTime.now(tz.local);
     final details = alarmDetails();
+    var armed = 0;
+    for (final d in doses) {
+      if (d.id < medIdBase || d.id >= medIdBase + _medIdSpan) continue; // stay in range
+      final fireAt = tz.TZDateTime.from(d.when, tz.local).subtract(leadTime);
+      if (!fireAt.isAfter(now)) continue; // already past — skip
+      if (await _armDose(d, fireAt, details)) armed++;
+    }
 
-    var id = _medIdBase;
-    for (final r in reminders) {
-      final parts = r.time.split(':');
-      if (parts.length != 2) continue;
-      final hh = int.tryParse(parts[0]);
-      final mm = int.tryParse(parts[1]);
-      if (hh == null || mm == null || hh > 23 || mm > 59) continue;
-      if (id >= _medIdBase + _medIdSpan) break; // safety cap
+    if (doses.isNotEmpty && armed == 0) {
+      debugPrint('medication reminders: armed 0 of ${doses.length} — check notification/exact-alarm permission');
+    }
+    return armed;
+  }
 
+  /// Arms one dose, falling back from exact to inexact timing when the device
+  /// withholds the exact-alarm permission — a reminder a few minutes off beats
+  /// no reminder at all.
+  Future<bool> _armDose(ScheduledDose d, tz.TZDateTime fireAt, NotificationDetails details) async {
+    const modes = [AndroidScheduleMode.exactAllowWhileIdle, AndroidScheduleMode.inexactAllowWhileIdle];
+    for (final mode in modes) {
       try {
         await _plugin.zonedSchedule(
-          id++,
-          '${r.name} in ${leadTime.inMinutes} minutes',
-          _reminderBody(r),
-          _nextInstanceOf(hh, mm).subtract(leadTime),
+          d.id,
+          '${d.name} in ${leadTime.inMinutes} minutes',
+          _doseBody(d),
+          fireAt,
           details,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          androidScheduleMode: mode,
           // iOS-only, but a required param; absolute time is what we schedule.
           uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-          matchDateTimeComponents: DateTimeComponents.time, // repeat daily
-          payload: 'med:${r.medId}',
+          payload: 'med:${d.medId}',
         );
+        return true;
+      } on PlatformException catch (e) {
+        // Exact alarms not permitted → retry the same dose inexactly.
+        if (mode == AndroidScheduleMode.exactAllowWhileIdle) {
+          debugPrint('exact alarm denied for ${d.name} (${e.code}); falling back to inexact');
+          continue;
+        }
+        debugPrint('dose alarm failed for ${d.name}: $e');
+        return false;
       } catch (e) {
-        // A single bad slot must not drop every other reminder.
-        debugPrint('med reminder schedule failed for ${r.name} @ ${r.time}: $e');
+        debugPrint('dose alarm failed for ${d.name}: $e');
+        return false;
       }
     }
+    return false;
+  }
+
+  /// Renders a medication reminder that arrived as a server push (FCM), using
+  /// the SAME id the on-device alarm uses for this dose so the two collapse into
+  /// one notification instead of double-reminding. The backstop for when the OS
+  /// dropped the local alarm (reboot, alarm limits, an OEM that killed it).
+  Future<void> showMedicationReminder({
+    required int id,
+    required String name,
+    String? medId,
+    String? dose,
+    String? relationToMeal,
+    String? time,
+  }) async {
+    await init();
+    final bits = <String>[];
+    if (dose != null && dose.isNotEmpty) bits.add(dose);
+    final meal = _mealLabel(relationToMeal);
+    if (meal != null) bits.add(meal);
+    if (time != null && time.isNotEmpty) bits.add('at $time');
+    await _plugin.show(id, 'Time to take $name', bits.join(' · '), alarmDetails(), payload: 'med:${medId ?? ''}');
   }
 
   /// Clears every scheduled medication reminder (e.g. on sign-out, so the next
@@ -233,7 +317,7 @@ class NotificationService {
   Future<void> cancelMedicationReminders() async {
     await init();
     for (final p in await _plugin.pendingNotificationRequests()) {
-      if (p.id >= _medIdBase && p.id < _medIdBase + _medIdSpan) {
+      if (p.id >= medIdBase && p.id < medIdBase + _medIdSpan) {
         await _plugin.cancel(p.id);
       }
     }
@@ -362,18 +446,50 @@ class NotificationService {
     }
   }
 
-  String _reminderBody(MedReminder r) {
+  String _doseBody(ScheduledDose d) {
     final bits = <String>[];
-    if (r.dose != null && r.dose!.isNotEmpty) bits.add(r.dose!);
-    final meal = _mealLabel(r.relationToMeal);
+    if (d.dose != null && d.dose!.isNotEmpty) bits.add(d.dose!);
+    final meal = _mealLabel(d.relationToMeal);
     if (meal != null) bits.add(meal);
-    // The dose time itself, because the alarm now rings before it: without it
+    // The dose time itself, because the alarm rings before it: without it
     // "in 5 minutes" leaves the patient working out when that actually is.
-    bits.add('at ${r.time}');
+    final hh = d.when.hour.toString().padLeft(2, '0');
+    final mm = d.when.minute.toString().padLeft(2, '0');
+    bits.add('at $hh:$mm');
     return bits.join(' · ');
   }
 
-  String? _mealLabel(String? relation) {
+  /// Renders a medication reminder from a BACKGROUND isolate — a data-only push
+  /// that arrived while the app was terminated. Mirrors
+  /// [scheduleSnoozeFromBackground]: a fresh plugin, no app state, no permission
+  /// prompts (there's no activity to attach them to). Uses the same id as the
+  /// on-device alarm so the two collapse instead of double-reminding.
+  static Future<void> showMedicationReminderFromBackground(Map<String, dynamic> data) async {
+    final id = int.tryParse(data['notifId']?.toString() ?? '');
+    if (id == null) return;
+    final plugin = FlutterLocalNotificationsPlugin();
+    // The alarm channel is created on first app run and persists system-side;
+    // recreating it here is idempotent and covers a fresh install edge case.
+    final android = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await android?.createNotificationChannel(_medsChannel);
+
+    final name = (data['name']?.toString().isNotEmpty ?? false) ? data['name'].toString() : 'your medicine';
+    final bits = <String>[];
+    final dose = data['dose']?.toString();
+    if (dose != null && dose.isNotEmpty) bits.add(dose);
+    final meal = _mealLabel(data['relationToMeal']?.toString());
+    if (meal != null) bits.add(meal);
+    final time = data['time']?.toString();
+    if (time != null && time.isNotEmpty) bits.add('at $time');
+
+    try {
+      await plugin.show(id, 'Time to take $name', bits.join(' · '), alarmDetails(), payload: 'med:${data['medicationId'] ?? ''}');
+    } catch (e) {
+      debugPrint('background med reminder show failed: $e');
+    }
+  }
+
+  static String? _mealLabel(String? relation) {
     switch (relation) {
       case 'before_meal':
         return 'before food';

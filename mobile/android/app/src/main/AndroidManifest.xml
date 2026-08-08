@@ -24,6 +24,10 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <!-- Lets the app ask to be exempted from battery optimization, so aggressive
+         OEMs (MIUI/Oppo/Vivo) don't kill the scheduled dose alarms. Requested
+         once, in-app, with an explanation — never silently. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
     <!-- Android 11+ package visibility: required for speech_to_text to see
          the system speech recogniser. -->

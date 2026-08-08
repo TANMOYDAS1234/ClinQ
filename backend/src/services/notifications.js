@@ -67,6 +67,67 @@ async function deliver({ tokens, title, body, data }) {
   }
 }
 
+/**
+ * Data-only delivery. No `notification` block, so the CLIENT builds the local
+ * notification itself — which lets a medication-reminder push carry the same
+ * notification id as the on-device alarm and collapse onto it instead of
+ * double-reminding. (A notification-block message is drawn by the system with
+ * its own id and cannot be deduped against the local alarm.)
+ */
+async function deliverData({ tokens, data }) {
+  if (!tokens?.length) return { delivered: 0 };
+  const messaging = getMessaging();
+  if (!messaging) {
+    logger.info({ data, tokenCount: tokens.length }, '[push] no credentials; data push logged only');
+    return { delivered: 0 };
+  }
+  try {
+    const response = await messaging.sendEachForMulticast({
+      tokens,
+      data: Object.fromEntries(Object.entries(data ?? {}).map(([k, v]) => [k, String(v ?? '')])),
+      android: { priority: 'high' },
+    });
+    const dead = [];
+    response.responses.forEach((r, i) => {
+      const code = r.error?.code;
+      if (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-argument') {
+        dead.push(tokens[i]);
+      }
+    });
+    if (dead.length) {
+      await User.updateMany({ deviceTokens: { $in: dead } }, { $pull: { deviceTokens: { $in: dead } } });
+    }
+    return { delivered: response.successCount };
+  } catch (err) {
+    logger.error({ err }, 'data push delivery failed');
+    return { delivered: 0 };
+  }
+}
+
+/**
+ * Fires one medication-reminder push (data-only) to a patient's devices — the
+ * cron's backstop for the on-device alarm. [notifId] MUST equal the client's
+ * deterministic id for this (med, slot, day) so the two collapse into a single
+ * notification rather than reminding twice.
+ */
+export async function sendMedicationReminderPush({ patientId, med, time, relationToMeal, notifId }) {
+  const patient = await User.findById(patientId).select('deviceTokens').lean();
+  const tokens = patient?.deviceTokens ?? [];
+  if (!tokens.length) return { delivered: 0 };
+  return deliverData({
+    tokens,
+    data: {
+      kind: 'medication_reminder',
+      notifId,
+      medicationId: med._id?.toString?.() ?? String(med._id),
+      name: med.name ?? 'your medicine',
+      dose: med.dose ?? '',
+      relationToMeal: relationToMeal ?? '',
+      time: time ?? '',
+    },
+  });
+}
+
 export async function notifyClinicStaff(alert) {
   const staff = await User.find({ role: { $in: [ROLES.DOCTOR, ROLES.STAFF] }, isActive: true })
     .select('deviceTokens name')

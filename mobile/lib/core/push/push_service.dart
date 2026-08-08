@@ -64,6 +64,22 @@ class PushService {
     // surface it ourselves and carry the routing data as the tap payload.
     _onMessage?.cancel();
     _onMessage = FirebaseMessaging.onMessage.listen((m) {
+      // Data-only medication reminder: render it with the SAME id as the local
+      // alarm so the two collapse instead of double-reminding.
+      if (m.data['kind'] == 'medication_reminder') {
+        final id = int.tryParse(m.data['notifId']?.toString() ?? '');
+        if (id != null) {
+          NotificationService.instance.showMedicationReminder(
+            id: id,
+            name: m.data['name']?.toString() ?? 'your medicine',
+            medId: m.data['medicationId']?.toString(),
+            dose: m.data['dose']?.toString(),
+            relationToMeal: m.data['relationToMeal']?.toString(),
+            time: m.data['time']?.toString(),
+          );
+        }
+        return;
+      }
       final n = m.notification;
       if (n == null) return;
       NotificationService.instance.show(

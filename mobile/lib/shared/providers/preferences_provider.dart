@@ -42,6 +42,7 @@ class AppPreferences {
     this.checkInReminders = true,
     this.appointmentAlerts = true,
     this.clinicAlerts = true,
+    this.reminderSetupDone = false,
   });
 
   final GlucoseUnit glucoseUnit;
@@ -50,18 +51,24 @@ class AppPreferences {
   final bool appointmentAlerts;
   final bool clinicAlerts;
 
+  /// Whether the one-time "make reminders reliable" prompt (battery exemption +
+  /// permissions) has been shown, so it never nags on later launches.
+  final bool reminderSetupDone;
+
   AppPreferences copyWith({
     GlucoseUnit? glucoseUnit,
     bool? medicationReminders,
     bool? checkInReminders,
     bool? appointmentAlerts,
     bool? clinicAlerts,
+    bool? reminderSetupDone,
   }) => AppPreferences(
     glucoseUnit: glucoseUnit ?? this.glucoseUnit,
     medicationReminders: medicationReminders ?? this.medicationReminders,
     checkInReminders: checkInReminders ?? this.checkInReminders,
     appointmentAlerts: appointmentAlerts ?? this.appointmentAlerts,
     clinicAlerts: clinicAlerts ?? this.clinicAlerts,
+    reminderSetupDone: reminderSetupDone ?? this.reminderSetupDone,
   );
 }
 
@@ -75,6 +82,7 @@ class AppPreferencesController extends StateNotifier<AppPreferences> {
   static const _checkInKey = 'akd_notif_checkin';
   static const _apptKey = 'akd_notif_appointment';
   static const _clinicKey = 'akd_notif_clinic';
+  static const _reminderSetupKey = 'akd_reminder_setup_done';
 
   static AppPreferences _read(SharedPreferences p) => AppPreferences(
     glucoseUnit: p.getString(_unitKey) == 'mmol' ? GlucoseUnit.mmol : GlucoseUnit.mgdl,
@@ -82,6 +90,7 @@ class AppPreferencesController extends StateNotifier<AppPreferences> {
     checkInReminders: p.getBool(_checkInKey) ?? true,
     appointmentAlerts: p.getBool(_apptKey) ?? true,
     clinicAlerts: p.getBool(_clinicKey) ?? true,
+    reminderSetupDone: p.getBool(_reminderSetupKey) ?? false,
   );
 
   Future<void> setGlucoseUnit(GlucoseUnit unit) async {
@@ -97,6 +106,11 @@ class AppPreferencesController extends StateNotifier<AppPreferences> {
   Future<void> setCheckInReminders(bool v) async {
     state = state.copyWith(checkInReminders: v);
     await _prefs.setBool(_checkInKey, v);
+  }
+
+  Future<void> setReminderSetupDone(bool v) async {
+    state = state.copyWith(reminderSetupDone: v);
+    await _prefs.setBool(_reminderSetupKey, v);
   }
 
   Future<void> setAppointmentAlerts(bool v) async {

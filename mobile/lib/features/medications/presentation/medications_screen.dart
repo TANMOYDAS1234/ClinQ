@@ -13,6 +13,7 @@ import '../../../shared/widgets/error_view.dart';
 import '../data/medications_repository.dart';
 import '../domain/medication.dart';
 import 'medications_providers.dart';
+import 'reminder_setup_sheet.dart';
 import 'widgets/scan_prescription_sheet.dart';
 import 'widgets/mark_dose_sheet.dart';
 import 'widgets/medication_slot_tile.dart';
@@ -41,6 +42,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _poll = Timer.periodic(_pollInterval, (_) => _refreshFromServer());
+    // One-time: if reminders are on but the OS could sleep them, offer the
+    // reliability fix. Post-frame so a sheet has a mounted context to open in.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) maybePromptReminderSetup(context, ref);
+    });
   }
 
   @override
@@ -118,7 +124,23 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen>
     // the daily reminders are rebuilt.
     ref.listen<AsyncValue<List<Medication>>>(medicationsListProvider, (_, next) {
       if (ref.read(appPreferencesProvider).medicationReminders) {
-        next.whenData(syncMedicationReminders);
+        next.whenData(
+          (meds) => syncMedicationReminders(meds, today: ref.read(todayScheduleProvider).valueOrNull),
+        );
+      }
+    });
+
+    // Re-arm when today's statuses change too — so marking a dose taken cancels
+    // today's alarm for that slot (the refetched schedule shows it taken, and
+    // the rebuild leaves it out) instead of nagging for a dose already taken.
+    ref.listen<AsyncValue<TodaySchedule>>(todayScheduleProvider, (_, next) {
+      if (ref.read(appPreferencesProvider).medicationReminders) {
+        next.whenData(
+          (today) => syncMedicationReminders(
+            ref.read(medicationsListProvider).valueOrNull ?? const [],
+            today: today,
+          ),
+        );
       }
     });
 

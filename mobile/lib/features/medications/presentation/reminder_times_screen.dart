@@ -121,8 +121,10 @@ class _ReminderTimesScreenState extends ConsumerState<ReminderTimesScreen> {
     ref.invalidate(todayScheduleProvider);
     ref.invalidate(medicationsListProvider);
     final meds = await ref.read(medicationsRepositoryProvider).getMedications();
-    await syncMedicationReminders(meds);
     if (mounted) setState(() => _meds = meds.where((m) => m.isActive).toList());
+    // Robust re-arm: pulls fresh meds + today's statuses so a re-timed dose is
+    // taken-aware and never re-fires a slot already taken.
+    await refreshAndScheduleMedicationReminders(ref);
   }
 
   @override

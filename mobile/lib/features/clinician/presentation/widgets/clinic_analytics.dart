@@ -97,9 +97,11 @@ class ClinicControlTrendCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final low = AppColors.dangerOn(context);
-    final inRange = AppColors.successOn(context);
-    final high = AppColors.warningOn(context);
+    // A refined, lower-saturation palette for the chart itself — the status
+    // colours read as an alarm; these read as an analytic.
+    const inRange = Color(0xFF2FBF87); // calm emerald — the hero band
+    const high = Color(0xFFE7A13D); // warm amber, not alarm-orange
+    const low = Color(0xFFDE7A76); // soft rose
 
     // Only days that actually have readings; a no-reading day carries no
     // proportion and would otherwise read as "all high".
@@ -113,6 +115,16 @@ class ClinicControlTrendCard extends StatelessWidget {
         ? null
         : '${analytics.totalReadings} readings · last ${analytics.controlTrend.length} days';
 
+    // Window averages for the hero figure and the mini stats.
+    var sumLow = 0, sumIn = 0, sumHigh = 0, sumTot = 0;
+    for (final p in pts) {
+      sumLow += p.low;
+      sumIn += p.inRange;
+      sumHigh += p.high;
+      sumTot += p.total;
+    }
+    int pct(int n) => sumTot == 0 ? 0 : (n / sumTot * 100).round();
+
     return _Card(
       icon: Icons.insights_rounded,
       title: 'Clinic glucose control',
@@ -122,7 +134,27 @@ class ClinicControlTrendCard extends StatelessWidget {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: 170, child: _StackedArea(pts: pts, low: low, inRange: inRange, high: high)),
+                // Hero: the one figure a doctor scans for — clinic-wide time in range.
+                Row(
+                  children: [
+                    Text('${pct(sumIn)}%',
+                        style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, height: 1, color: inRange)),
+                    const SizedBox(width: 7),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 3),
+                      child: Text('in range', style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
+                    ),
+                    const Spacer(),
+                    _MiniPct(label: 'High', value: pct(sumHigh), color: high),
+                    const SizedBox(width: 8),
+                    _MiniPct(label: 'Low', value: pct(sumLow), color: low),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(height: 158, child: _StackedArea(pts: pts, low: low, inRange: inRange, high: high)),
+                ),
                 const SizedBox(height: AppSpacing.sm),
                 Wrap(
                   spacing: 14,
@@ -163,6 +195,31 @@ class ClinicControlTrendCard extends StatelessWidget {
   }
 }
 
+/// A compact "18% High" pill for the control-trend hero row.
+class _MiniPct extends StatelessWidget {
+  const _MiniPct({required this.label, required this.value, required this.color});
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(9)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$value%', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 11.5, color: color.withValues(alpha: 0.95))),
+        ],
+      ),
+    );
+  }
+}
+
 class _StackedArea extends StatelessWidget {
   const _StackedArea({required this.pts, required this.low, required this.inRange, required this.high});
 
@@ -179,13 +236,12 @@ class _StackedArea extends StatelessWidget {
     double lowFrac(int i) => pts[i].low / pts[i].total;
     double midCum(int i) => (pts[i].low + pts[i].inRange) / pts[i].total;
 
-    LineChartBarData band(double Function(int) y, Color color) => LineChartBarData(
-          spots: [for (var i = 0; i < pts.length; i++) FlSpot(i.toDouble(), y(i))],
-          isCurved: true,
-          curveSmoothness: 0.15,
-          barWidth: 0,
-          color: color,
-          dotData: const FlDotData(show: false),
+    List<FlSpot> spotsOf(double Function(int) y) =>
+        [for (var i = 0; i < pts.length; i++) FlSpot(i.toDouble(), y(i))];
+    LinearGradient grad(Color c, double a1, double a2) => LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [c.withValues(alpha: a1), c.withValues(alpha: a2)],
         );
 
     return LineChart(
@@ -198,7 +254,7 @@ class _StackedArea extends StatelessWidget {
           show: true,
           drawVerticalLine: false,
           horizontalInterval: 0.25,
-          getDrawingHorizontalLine: (_) => FlLine(color: scheme.outlineVariant.withValues(alpha: 0.35), strokeWidth: 0.5),
+          getDrawingHorizontalLine: (_) => FlLine(color: scheme.outlineVariant.withValues(alpha: 0.25), strokeWidth: 0.5),
         ),
         titlesData: FlTitlesData(
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -231,24 +287,34 @@ class _StackedArea extends StatelessWidget {
         ),
         borderData: FlBorderData(show: false),
         lineTouchData: const LineTouchData(enabled: false),
-        // Bars: 0 = low edge, 1 = low+inRange edge, 2 = top (1.0). Fills stack.
+        // Bars: 0 = low top edge, 1 = in-range top edge, 2 = ceiling (1.0).
+        // Fills stack: below bar 0 = low, 0→1 = in-range, 1→2 = high.
         betweenBarsData: [
-          BetweenBarsData(fromIndex: 0, toIndex: 1, color: inRange.withValues(alpha: 0.55)),
-          BetweenBarsData(fromIndex: 1, toIndex: 2, color: high.withValues(alpha: 0.5)),
+          BetweenBarsData(fromIndex: 0, toIndex: 1, gradient: grad(inRange, 0.55, 0.20)),
+          BetweenBarsData(fromIndex: 1, toIndex: 2, gradient: grad(high, 0.42, 0.15)),
         ],
         lineBarsData: [
           LineChartBarData(
-            spots: [for (var i = 0; i < pts.length; i++) FlSpot(i.toDouble(), lowFrac(i))],
+            spots: spotsOf(lowFrac),
             isCurved: true,
-            curveSmoothness: 0.15,
-            barWidth: 0,
-            color: low,
+            curveSmoothness: 0.28,
+            barWidth: 1.4,
+            color: low.withValues(alpha: 0.85),
             dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(show: true, color: low.withValues(alpha: 0.55)),
+            belowBarData: BarAreaData(show: true, gradient: grad(low, 0.42, 0.15)),
           ),
-          band(midCum, inRange),
+          // The crisp emerald line defining the top of "in range" — the detail
+          // that turns three flat bands into a considered chart.
           LineChartBarData(
-            spots: [for (var i = 0; i < pts.length; i++) FlSpot(i.toDouble(), 1)],
+            spots: spotsOf(midCum),
+            isCurved: true,
+            curveSmoothness: 0.28,
+            barWidth: 2,
+            color: inRange,
+            dotData: const FlDotData(show: false),
+          ),
+          LineChartBarData(
+            spots: spotsOf((_) => 1.0),
             barWidth: 0,
             color: Colors.transparent,
             dotData: const FlDotData(show: false),

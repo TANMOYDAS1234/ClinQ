@@ -90,7 +90,15 @@ router.get(
       // Nutrition filter. Without the split, the headline counted messages the
       // doctor then could not find anywhere on the screen it was shown.
       unreadNutritionCount(),
-      PatientProfile.aggregate([{ $group: { _id: '$riskBand', count: { $sum: 1 } } }]),
+      // Only profiles belonging to an ACTIVE patient. A deactivated or removed
+      // patient can leave a lingering profile behind, and counting those inflated
+      // the risk donut past the real headcount (the "9 vs 7" on the dashboard).
+      PatientProfile.aggregate([
+        { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'u' } },
+        { $unwind: '$u' },
+        { $match: { 'u.isActive': true, 'u.role': ROLES.PATIENT } },
+        { $group: { _id: '$riskBand', count: { $sum: 1 } } },
+      ]),
     ]);
 
     const bySeverity = Object.fromEntries(alertCounts.map((a) => [a._id, a.count]));

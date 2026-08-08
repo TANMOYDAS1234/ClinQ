@@ -18,6 +18,12 @@ import 'shared/services/notification_service.dart';
 @pragma('vm:entry-point')
 Future<void> _onBackgroundMessage(RemoteMessage message) async {
   await Firebase.initializeApp();
+  // A data-only medication reminder must be drawn by us — FCM only auto-displays
+  // messages that carry a notification block. Rendered with the same id the
+  // on-device alarm uses, so if both arrive they collapse into one.
+  if (message.data['kind'] == 'medication_reminder') {
+    await NotificationService.showMedicationReminderFromBackground(message.data);
+  }
 }
 
 Future<void> main() async {
