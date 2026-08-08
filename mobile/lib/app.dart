@@ -9,6 +9,7 @@ import 'shared/providers/locale_provider.dart';
 import 'shared/providers/preferences_provider.dart';
 import 'core/push/push_service.dart';
 import 'features/auth/presentation/auth_controller.dart';
+import 'features/glucose/presentation/glucose_providers.dart';
 import 'features/medications/presentation/medications_providers.dart';
 import 'shared/providers/theme_provider.dart';
 import 'shared/services/notification_service.dart';
@@ -44,9 +45,13 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
 
   void _syncMedsIfPatient() {
     final user = ref.read(authControllerProvider).user;
-    if (user?.role == 'patient' && ref.read(appPreferencesProvider).medicationReminders) {
+    if (user?.role != 'patient') return;
+    if (ref.read(appPreferencesProvider).medicationReminders) {
       refreshAndScheduleMedicationReminders(ref).catchError((_) {});
     }
+    // Re-arm the adaptive check-in nudge from the latest reading. Honours the
+    // toggle internally, so it is safe to call unconditionally for a patient.
+    syncCheckInReminder(ref).catchError((_) {});
   }
 
   @override
@@ -64,8 +69,10 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
       } else if (wasAuthed && !isAuthed) {
         ref.read(pushServiceProvider).stop();
         // Call signalling is gone with the calling feature — nothing to stop.
-        // Clear a departing patient's dose reminders from a shared phone.
+        // Clear a departing patient's dose and check-in reminders from a shared
+        // phone.
         NotificationService.instance.cancelMedicationReminders();
+        NotificationService.instance.cancelCheckInReminder();
       }
     });
 

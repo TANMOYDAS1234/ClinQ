@@ -10,6 +10,10 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/authed_image.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../glucose/presentation/glucose_providers.dart';
+import '../../glucose/presentation/log_glucose_sheet.dart';
+import '../../glucose/presentation/widgets/glucose_stats_row.dart';
+import '../../glucose/presentation/widgets/glucose_trend_chart.dart';
 import '../../medications/presentation/medications_providers.dart';
 import '../domain/care_summary.dart';
 import 'home_providers.dart';
@@ -144,6 +148,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
                       _FactGrid(care: care),
 
+                      const SizedBox(height: AppSpacing.md),
+                      const _GlucoseCard(),
+
                       if (care.profile.allergies.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.md),
                         _Allergies(items: care.profile.allergies),
@@ -230,6 +237,105 @@ class _BrandHeader extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ---- Glucose monitoring ---------------------------------------------------
+
+/// The patient's own glucose trend on their home — the same picture the clinic
+/// watches, so "how am I doing?" has an answer right here — with the one
+/// low-friction place to add a reading, since forgetting to check in is the
+/// thing that quietly breaks continuous monitoring.
+class _GlucoseCard extends ConsumerWidget {
+  const _GlucoseCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final accent = AppColors.accentOn(context);
+    final trends = ref.watch(glucoseTrendsProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+                child: Icon(Icons.monitor_heart_rounded, size: 18, color: accent),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(child: Text('Your glucose', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
+              TextButton.icon(
+                onPressed: () => showLogGlucoseSheet(context),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Add'),
+                style: TextButton.styleFrom(foregroundColor: accent, padding: const EdgeInsets.symmetric(horizontal: 8)),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          trends.when(
+            loading: () => const SizedBox(height: 120, child: Center(child: CircularProgressIndicator())),
+            error: (_, _) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: Text('Could not load your readings.', style: TextStyle(color: scheme.onSurfaceVariant)),
+            ),
+            data: (t) {
+              if (t.series.length < 2) return _CheckInPrompt(accent: accent);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GlucoseStatsRow(stats: t.stats),
+                  const SizedBox(height: AppSpacing.md),
+                  GlucoseTrendChart(trends: t),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown when there are too few readings to draw a trend — a friendly first
+/// check-in nudge in place of an empty chart.
+class _CheckInPrompt extends StatelessWidget {
+  const _CheckInPrompt({required this.accent});
+
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Log a glucose reading every few days and your trend builds here — the same one your doctor sees.',
+          style: TextStyle(fontSize: 13.5, height: 1.4, color: scheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () => showLogGlucoseSheet(context),
+            icon: const Icon(Icons.add_rounded, size: 20),
+            label: const Text('Add your first reading'),
+            style: FilledButton.styleFrom(backgroundColor: accent, minimumSize: const Size.fromHeight(46)),
+          ),
+        ),
+      ],
     );
   }
 }

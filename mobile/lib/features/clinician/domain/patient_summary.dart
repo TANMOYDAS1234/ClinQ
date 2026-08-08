@@ -12,6 +12,22 @@ class Hba1cPoint {
   );
 }
 
+/// One day's glucose summary — the point the continuous-monitoring graph plots.
+class GlucoseDailyPoint {
+  const GlucoseDailyPoint({required this.date, required this.average, required this.min, required this.max});
+  final DateTime date;
+  final int average;
+  final int min;
+  final int max;
+
+  factory GlucoseDailyPoint.fromJson(Map<String, dynamic> j) => GlucoseDailyPoint(
+    date: DateTime.tryParse(j['date']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
+    average: (j['average'] as num?)?.toInt() ?? 0,
+    min: (j['min'] as num?)?.toInt() ?? 0,
+    max: (j['max'] as num?)?.toInt() ?? 0,
+  );
+}
+
 /// A test report the patient uploaded against a doctor-advised test.
 class LabReport {
   const LabReport({
@@ -70,6 +86,7 @@ class PatientSummary {
     this.timeInRangePercent,
     this.estimatedHba1c,
     this.hba1cHistory = const [],
+    this.glucoseDaily = const [],
     this.labResults = const [],
     this.advisedTests = const [],
     this.alerts = const [],
@@ -103,6 +120,10 @@ class PatientSummary {
   final double? estimatedHba1c;
 
   final List<Hba1cPoint> hba1cHistory;
+
+  /// Per-day glucose averages (with min/max) — the continuous-monitoring series.
+  final List<GlucoseDailyPoint> glucoseDaily;
+
   final List<LabReport> labResults;
 
   /// Tests already ordered on an active prescription — so the doctor can see
@@ -153,6 +174,11 @@ class PatientSummary {
       hba1cHistory: (j['hba1cHistory'] as List?)
               ?.whereType<Map<String, dynamic>>()
               .map(Hba1cPoint.fromJson)
+              .toList() ??
+          const [],
+      glucoseDaily: (trends['daily'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(GlucoseDailyPoint.fromJson)
               .toList() ??
           const [],
       alerts: (j['alerts'] as List?)

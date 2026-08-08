@@ -83,6 +83,12 @@ const patientProfileSchema = new mongoose.Schema(
     dietReviewIntervalDays: { type: Number, min: 1, max: 30, default: null },
     lastDietReviewAt: Date,
 
+    // Continuous monitoring. How often the doctor expects this patient to
+    // self-report a glucose check-in (in days). null = fall back to the app
+    // default cadence. Drives the "overdue check-in" surfacing and the
+    // patient's own (adaptive, non-nagging) reminder.
+    checkInIntervalDays: { type: Number, min: 1, max: 30, default: null },
+
     notes: { type: String, maxlength: 4000 },
   },
   { timestamps: true },

@@ -6,6 +6,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../shared/providers/preferences_provider.dart';
 import '../../../shared/services/notification_service.dart';
+import '../../glucose/presentation/glucose_providers.dart';
 import '../../medications/presentation/medications_providers.dart';
 
 /// Notification preference toggles. They record intent — push delivery to the
@@ -53,6 +54,24 @@ class NotificationsScreen extends ConsumerWidget {
                       refreshAndScheduleMedicationReminders(ref).catchError((_) {});
                     } else {
                       NotificationService.instance.cancelMedicationReminders();
+                    }
+                  },
+                ),
+                // A gentle, self-rearming nudge to log a glucose reading — the
+                // patient's own control over the check-in prompt.
+                _tile(
+                  context,
+                  accent: accent,
+                  icon: Icons.monitor_heart_outlined,
+                  title: 'Check-in reminders',
+                  subtitle: 'A gentle nudge if you go quiet',
+                  value: prefs.checkInReminders,
+                  onChanged: (v) {
+                    controller.setCheckInReminders(v);
+                    if (v) {
+                      syncCheckInReminder(ref).catchError((_) {});
+                    } else {
+                      NotificationService.instance.cancelCheckInReminder();
                     }
                   },
                 ),

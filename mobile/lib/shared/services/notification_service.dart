@@ -67,6 +67,11 @@ class NotificationService {
   /// pushed back by ten minutes.
   static const int _snoozeIdBase = 900000;
 
+  /// The single, gentle check-in reminder. Above the medication range (which is
+  /// cancelled and rebuilt wholesale on every sync) and below the snooze range,
+  /// so re-syncing medicines never drops the check-in nudge.
+  static const int _checkInId = 850000;
+
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'clinq_updates',
     'ClinQ updates',
@@ -104,6 +109,17 @@ class NotificationService {
     audioAttributesUsage: AudioAttributesUsage.alarm,
   );
 
+  /// A deliberately gentle channel — default importance, ordinary sound, no
+  /// alarm behaviour — so a nudge to check in never feels like the medication
+  /// alarm. Nagging is exactly what makes people mute reminders, and a muted
+  /// reminder helps no one.
+  static const AndroidNotificationChannel _checkInChannel = AndroidNotificationChannel(
+    'clinq_checkin',
+    'Check-in reminders',
+    description: 'A gentle nudge to log a glucose reading',
+    importance: Importance.defaultImportance,
+  );
+
   /// Safe to call more than once; the first call does the work.
   Future<void> init() async {
     if (_ready) return;
@@ -131,6 +147,7 @@ class NotificationService {
     final android_ = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await android_?.createNotificationChannel(_channel);
     await android_?.createNotificationChannel(_medsChannel);
+    await android_?.createNotificationChannel(_checkInChannel);
     // Android 13+ requires an explicit runtime permission for notifications.
     await android_?.requestNotificationsPermission();
     // Android 12+ gate for exact alarms. A medicine reminder that fires whenever
@@ -221,6 +238,59 @@ class NotificationService {
       }
     }
   }
+
+  /// Arms the single, adaptive check-in reminder.
+  ///
+  /// "Adaptive" because it is re-armed from the LAST reading each time the
+  /// patient logs one: a patient who checks in on cadence keeps pushing the
+  /// nudge forward and never actually sees it — only a lapse lets it fire.
+  /// That is the whole trick to reminding without nagging: one pending nudge,
+  /// always aimed at the next due date, never a backlog of missed ones. Uses
+  /// inexact timing (a nudge, not an alarm) so it needs no exact-alarm grant.
+  Future<void> scheduleCheckInReminder({DateTime? lastReadingAt, int intervalDays = 3, int hour = 10}) async {
+    await init();
+    await _plugin.cancel(_checkInId);
+
+    final now = tz.TZDateTime.now(tz.local);
+    final base = lastReadingAt != null ? tz.TZDateTime.from(lastReadingAt, tz.local) : now;
+    final due = base.add(Duration(days: intervalDays < 1 ? 1 : intervalDays));
+    var when = tz.TZDateTime(tz.local, due.year, due.month, due.day, hour);
+    // Already overdue → the next civilised hour, not this very instant.
+    if (!when.isAfter(now)) when = _nextInstanceOf(hour, 0);
+
+    try {
+      await _plugin.zonedSchedule(
+        _checkInId,
+        'Time for a quick check-in',
+        "Log a glucose reading so your doctor can see how you're doing.",
+        when,
+        _checkInDetails(),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        // One-shot on purpose: no matchDateTimeComponents. The next reading
+        // re-arms it, and if none comes this fires exactly once, not daily.
+      );
+    } catch (e) {
+      debugPrint('check-in reminder schedule failed: $e');
+    }
+  }
+
+  /// Clears the check-in reminder (toggle off, or sign-out).
+  Future<void> cancelCheckInReminder() async {
+    await init();
+    await _plugin.cancel(_checkInId);
+  }
+
+  static NotificationDetails _checkInDetails() => const NotificationDetails(
+    android: AndroidNotificationDetails(
+      'clinq_checkin',
+      'Check-in reminders',
+      channelDescription: 'A gentle nudge to log a glucose reading',
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+      category: AndroidNotificationCategory.reminder,
+    ),
+  );
 
   /// The alarm-style presentation shared by the scheduled reminder and its
   /// snooze, so a snoozed dose rings exactly as the original did.

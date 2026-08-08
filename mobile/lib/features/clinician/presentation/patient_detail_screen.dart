@@ -12,6 +12,7 @@ import '../data/clinician_repository.dart';
 import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
 import 'widgets/clinician_visuals.dart';
+import 'widgets/health_trend_chart.dart';
 
 /// The read side of a patient: health score, adherence, glucose control, HbA1c
 /// history, test reports, recent alerts, the dietician's review cadence, and
@@ -34,6 +35,8 @@ class PatientRecordSections extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _MetricsGrid(summary: p),
+        const SizedBox(height: AppSpacing.lg),
+        HealthTrendChart(daily: p.glucoseDaily),
         const SizedBox(height: AppSpacing.lg),
         _DieticianSection(summary: p, patientId: patientId),
         if (p.hba1cHistory.isNotEmpty) ...[

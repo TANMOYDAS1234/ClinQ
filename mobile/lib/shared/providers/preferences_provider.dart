@@ -39,23 +39,27 @@ class AppPreferences {
   const AppPreferences({
     this.glucoseUnit = GlucoseUnit.mgdl,
     this.medicationReminders = true,
+    this.checkInReminders = true,
     this.appointmentAlerts = true,
     this.clinicAlerts = true,
   });
 
   final GlucoseUnit glucoseUnit;
   final bool medicationReminders;
+  final bool checkInReminders;
   final bool appointmentAlerts;
   final bool clinicAlerts;
 
   AppPreferences copyWith({
     GlucoseUnit? glucoseUnit,
     bool? medicationReminders,
+    bool? checkInReminders,
     bool? appointmentAlerts,
     bool? clinicAlerts,
   }) => AppPreferences(
     glucoseUnit: glucoseUnit ?? this.glucoseUnit,
     medicationReminders: medicationReminders ?? this.medicationReminders,
+    checkInReminders: checkInReminders ?? this.checkInReminders,
     appointmentAlerts: appointmentAlerts ?? this.appointmentAlerts,
     clinicAlerts: clinicAlerts ?? this.clinicAlerts,
   );
@@ -68,12 +72,14 @@ class AppPreferencesController extends StateNotifier<AppPreferences> {
 
   static const _unitKey = 'akd_glucose_unit';
   static const _medKey = 'akd_notif_medication';
+  static const _checkInKey = 'akd_notif_checkin';
   static const _apptKey = 'akd_notif_appointment';
   static const _clinicKey = 'akd_notif_clinic';
 
   static AppPreferences _read(SharedPreferences p) => AppPreferences(
     glucoseUnit: p.getString(_unitKey) == 'mmol' ? GlucoseUnit.mmol : GlucoseUnit.mgdl,
     medicationReminders: p.getBool(_medKey) ?? true,
+    checkInReminders: p.getBool(_checkInKey) ?? true,
     appointmentAlerts: p.getBool(_apptKey) ?? true,
     clinicAlerts: p.getBool(_clinicKey) ?? true,
   );
@@ -86,6 +92,11 @@ class AppPreferencesController extends StateNotifier<AppPreferences> {
   Future<void> setMedicationReminders(bool v) async {
     state = state.copyWith(medicationReminders: v);
     await _prefs.setBool(_medKey, v);
+  }
+
+  Future<void> setCheckInReminders(bool v) async {
+    state = state.copyWith(checkInReminders: v);
+    await _prefs.setBool(_checkInKey, v);
   }
 
   Future<void> setAppointmentAlerts(bool v) async {

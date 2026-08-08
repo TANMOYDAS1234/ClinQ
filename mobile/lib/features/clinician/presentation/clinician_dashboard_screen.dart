@@ -96,6 +96,8 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
                             // book that way — so it read 0 every day and cost a
                             // card's worth of the screen saying nothing.
                             _AlertStrip(overview: overview),
+                            const SizedBox(height: AppSpacing.sm),
+                            _MonitoringStrip(overview: overview),
                             const SizedBox(height: AppSpacing.lg),
                           ],
                           _TriageQueue(alerts: alerts),
@@ -410,6 +412,72 @@ class _AlertRow extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ---- Continuous-monitoring roll-up ----------------------------------------
+
+/// The dashboard answer to "I have 100+ patients, I can't watch 100 graphs":
+/// two counts that surface who needs a look — patients who have gone quiet past
+/// their check-in cadence, and patients whose control is drifting out of range.
+/// Both drill into the patient list, where each row carries its own sparkline.
+class _MonitoringStrip extends StatelessWidget {
+  const _MonitoringStrip({required this.overview});
+
+  final ClinicOverview overview;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+
+    if (overview.overdueCheckIns > 0) {
+      rows.add(
+        _AlertRow(
+          icon: Icons.schedule_rounded,
+          iconBg: AppColors.warning,
+          bg: AppColors.warningBgOn(context),
+          label: 'CHECK-INS OVERDUE',
+          labelColor: AppColors.warningOn(context),
+          detail:
+              '${overview.overdueCheckIns} ${overview.overdueCheckIns == 1 ? 'patient has' : 'patients have'} gone quiet',
+          onTap: () => context.go('/clinician/patients'),
+        ),
+      );
+    }
+
+    if (overview.trendingWorse > 0) {
+      if (rows.isNotEmpty) rows.add(const SizedBox(height: AppSpacing.sm));
+      rows.add(
+        _AlertRow(
+          icon: Icons.trending_up_rounded,
+          iconBg: AppColors.danger,
+          bg: AppColors.dangerBgOn(context),
+          label: 'TRENDING WORSE',
+          labelColor: AppColors.danger,
+          detail:
+              '${overview.trendingWorse} ${overview.trendingWorse == 1 ? 'patient' : 'patients'} drifting out of range',
+          onTap: () => context.go('/clinician/patients'),
+        ),
+      );
+    }
+
+    // Nothing needs attention — a quiet, reassuring confirmation rather than a
+    // blank gap, so the doctor knows monitoring is actually running.
+    if (rows.isEmpty) {
+      if (overview.patientCount == 0) return const SizedBox.shrink();
+      rows.add(
+        _AlertRow(
+          icon: Icons.check_circle_outline_rounded,
+          iconBg: AppColors.accent,
+          bg: AppColors.successBgOn(context),
+          label: 'MONITORING',
+          detail: 'All patients up to date on check-ins',
+          onTap: () => context.go('/clinician/patients'),
+        ),
+      );
+    }
+
+    return Column(children: rows);
   }
 }
 

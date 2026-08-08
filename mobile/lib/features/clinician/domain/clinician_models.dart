@@ -20,6 +20,9 @@ class ClinicOverview {
     this.dietPatients = 0,
     this.foodLogsToday = 0,
     this.nutritionReviews = const [],
+    this.overdueCheckIns = 0,
+    this.neverCheckedIn = 0,
+    this.trendingWorse = 0,
   });
 
   final int patientCount;
@@ -59,6 +62,11 @@ class ClinicOverview {
   /// The patients on a review cadence, closest to their review date first.
   final List<NutritionReview> nutritionReviews;
 
+  /// Continuous-monitoring roll-up across the whole roster.
+  final int overdueCheckIns; // logged before, now past their check-in cadence
+  final int neverCheckedIn; // no glucose reading ever
+  final int trendingWorse; // recent average rising and already out of range
+
   /// Open alerts that need immediate eyes — the "High Priority" alert count.
   int get highPriorityAlerts => emergencyAlerts + urgentAlerts;
 
@@ -86,6 +94,9 @@ class ClinicOverview {
       riskCritical: n(risk['critical']),
       dietPatients: n(nutrition['dietPatients']),
       foodLogsToday: n(nutrition['foodLogsToday']),
+      overdueCheckIns: n((j['monitoring'] as Map<String, dynamic>?)?['overdueCheckIns']),
+      neverCheckedIn: n((j['monitoring'] as Map<String, dynamic>?)?['neverCheckedIn']),
+      trendingWorse: n((j['monitoring'] as Map<String, dynamic>?)?['trendingWorse']),
       nutritionReviews:
           (nutrition['reviews'] as List?)
               ?.whereType<Map<String, dynamic>>()
@@ -283,6 +294,11 @@ class PatientListItem {
     this.lastReadingAt,
     this.lastReadingValue,
     this.openAlertCount = 0,
+    this.spark = const [],
+    this.trend = 'flat',
+    this.trendDelta,
+    this.checkInIntervalDays,
+    this.checkInOverdue = false,
   });
 
   final String id;
@@ -304,6 +320,21 @@ class PatientListItem {
   final num? lastReadingValue;
   final int openAlertCount;
 
+  /// Recent glucose values (oldest→newest) for the row's inline sparkline.
+  final List<double> spark;
+
+  /// Where control is heading: 'up' | 'down' | 'flat'.
+  final String trend;
+
+  /// Change in the recent average vs the prior window, mg/dL (null if unknown).
+  final int? trendDelta;
+
+  /// The doctor's expected days between check-ins (null = app default).
+  final int? checkInIntervalDays;
+
+  /// True when the last reading is older than the check-in cadence.
+  final bool checkInOverdue;
+
   factory PatientListItem.fromJson(Map<String, dynamic> j) => PatientListItem(
     id: j['id']?.toString() ?? '',
     name: j['name']?.toString() ?? '',
@@ -321,6 +352,11 @@ class PatientListItem {
     lastReadingAt: DateTime.tryParse(j['lastReadingAt']?.toString() ?? '')?.toLocal(),
     lastReadingValue: j['lastReadingValue'] as num?,
     openAlertCount: (j['openAlertCount'] as num?)?.toInt() ?? 0,
+    spark: (j['spark'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? const [],
+    trend: j['trend']?.toString() ?? 'flat',
+    trendDelta: (j['trendDelta'] as num?)?.toInt(),
+    checkInIntervalDays: (j['checkInIntervalDays'] as num?)?.toInt(),
+    checkInOverdue: j['checkInOverdue'] == true,
   );
 }
 

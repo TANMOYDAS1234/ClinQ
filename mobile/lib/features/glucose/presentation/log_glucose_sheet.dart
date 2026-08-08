@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -93,6 +95,9 @@ class _LogGlucoseSheetState extends ConsumerState<_LogGlucoseSheet> {
           );
       ref.invalidate(glucoseReadingsProvider);
       ref.invalidate(glucoseTrendsProvider);
+      // Push the adaptive check-in nudge forward from this reading, so a patient
+      // who logs on cadence never actually sees it.
+      unawaited(syncCheckInReminder(ref, knownLast: _measuredAt));
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(

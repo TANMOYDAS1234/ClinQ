@@ -11,6 +11,7 @@ import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
+import 'widgets/sparkline.dart';
 
 /// The clinician's inbox.
 ///
@@ -505,11 +506,85 @@ class _ConversationRow extends StatelessWidget {
                       icon: Icons.priority_high_rounded,
                     ),
                   ],
+                  _MonitorStrip(patient: patient),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The continuous-monitoring mark on an inbox row: a glucose sparkline, when the
+/// patient last checked in, which way control is heading, and an amber flag when
+/// they are overdue. A glance-able mark, not a reorganisation of the list.
+class _MonitorStrip extends StatelessWidget {
+  const _MonitorStrip({required this.patient});
+
+  final PatientListItem patient;
+
+  /// `today`, `1d ago`, `5d ago`, `3w ago`.
+  String _ago(DateTime at) {
+    final days = DateTime.now().difference(at).inDays;
+    if (days <= 0) return 'today';
+    if (days == 1) return '1d ago';
+    if (days < 21) return '${days}d ago';
+    return '${(days / 7).round()}w ago';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hasSpark = patient.spark.length >= 2;
+    final last = patient.lastReadingAt;
+    // Nothing to monitor yet — keep the row clean.
+    if (!hasSpark && last == null) return const SizedBox.shrink();
+
+    final overdue = patient.checkInOverdue;
+    final trendColor = switch (patient.trend) {
+      'up' => AppColors.warningOn(context),
+      'down' => AppColors.successOn(context),
+      _ => scheme.onSurfaceVariant,
+    };
+    final trendIcon = switch (patient.trend) {
+      'up' => Icons.trending_up_rounded,
+      'down' => Icons.trending_down_rounded,
+      _ => Icons.trending_flat_rounded,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          if (hasSpark) ...[
+            Sparkline(values: patient.spark, color: AppColors.accentOn(context), width: 64, height: 22),
+            const SizedBox(width: 10),
+          ],
+          if (patient.lastReadingValue != null) ...[
+            Icon(trendIcon, size: 15, color: trendColor),
+            const SizedBox(width: 3),
+            Text(
+              '${patient.lastReadingValue!.round()}',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: scheme.onSurface),
+            ),
+            Text(' mg/dL', style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+          ],
+          if (last != null) ...[
+            const SizedBox(width: 8),
+            Text('· ${_ago(last)}', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+          ],
+          if (overdue) ...[
+            const SizedBox(width: 8),
+            _Chip(
+              label: 'Check-in due',
+              fg: AppColors.warningOn(context),
+              bg: AppColors.warningBgOn(context),
+              icon: Icons.schedule_rounded,
+            ),
+          ],
+        ],
       ),
     );
   }

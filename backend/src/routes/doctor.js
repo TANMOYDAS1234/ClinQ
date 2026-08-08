@@ -22,7 +22,7 @@ import { Prescription } from '../models/Prescription.js';
 import { toE164 } from '../utils/phone.js';
 import { ClinicSettings, getClinicSettings } from '../models/ClinicSettings.js';
 import { acknowledgeAlert, resolveAlert } from '../services/alerts.js';
-import { computeAdherence, glucoseTrends, computeHealthScore } from '../services/analytics.js';
+import { computeAdherence, glucoseTrends, computeHealthScore, monitoringSignals } from '../services/analytics.js';
 import { buildPatientContext } from '../services/patientContext.js';
 import { embed } from '../services/ai/gemini.js';
 import { paged, pageParams } from '../utils/pagination.js';
@@ -30,6 +30,17 @@ import { logger } from '../config/logger.js';
 
 const router = Router();
 router.use(requireAuth, requireClinician);
+
+// How many days a patient may go between glucose check-ins before the doctor's
+// dashboard flags them as overdue, when no per-patient cadence is set.
+const DEFAULT_CHECKIN_DAYS = 3;
+
+/** A last-reading timestamp older than the cadence (or never) reads as overdue. */
+function isCheckInOverdue(lastReadingAt, intervalDays) {
+  if (!lastReadingAt) return false; // "never logged" is an onboarding state, counted separately
+  const cadenceMs = (intervalDays || DEFAULT_CHECKIN_DAYS) * 86400000;
+  return Date.now() - new Date(lastReadingAt).getTime() > cadenceMs;
+}
 
 // ---------------------------------------------------------------------------
 // Overview
@@ -89,6 +100,32 @@ router.get(
       nutritionReviews(),
     ]);
 
+    // Continuous-monitoring roll-up across the whole active roster: how many
+    // patients have gone quiet past their check-in cadence, and how many are
+    // drifting the wrong way. Computed here (not per-page) so the dashboard
+    // headline reflects everyone, not just the current list page.
+    const activePatients = await User.find({ role: ROLES.PATIENT, isActive: true }).select('_id').lean();
+    const activeIds = activePatients.map((u) => u._id);
+    const [cadenceProfiles, monitorSignals] = await Promise.all([
+      PatientProfile.find({ user: { $in: activeIds } }).select('user checkInIntervalDays').lean(),
+      monitoringSignals(activeIds),
+    ]);
+    const cadenceMap = new Map(cadenceProfiles.map((p) => [p.user.toString(), p.checkInIntervalDays]));
+    let overdueCheckIns = 0;
+    let neverCheckedIn = 0;
+    let trendingWorse = 0;
+    for (const id of activeIds) {
+      const key = id.toString();
+      const s = monitorSignals.get(key);
+      if (!s?.lastReadingAt) {
+        neverCheckedIn += 1;
+      } else if (isCheckInOverdue(s.lastReadingAt, cadenceMap.get(key))) {
+        overdueCheckIns += 1;
+      }
+      // "Worse" = control drifting up AND the recent average already out of range.
+      if (s?.direction === 'up' && (s.recentAvg ?? 0) > 180) trendingWorse += 1;
+    }
+
     res.json({
       patientCount,
       newPatientsToday,
@@ -114,6 +151,11 @@ router.get(
         dietPatients,
         foodLogsToday,
         reviews,
+      },
+      monitoring: {
+        overdueCheckIns,
+        neverCheckedIn,
+        trendingWorse,
       },
     });
   }),
@@ -334,7 +376,9 @@ router.get(
     let profileFilter = {};
     if (riskBand) profileFilter = { riskBand };
 
-    const matchingProfiles = await PatientProfile.find(profileFilter).select('user riskScore riskBand').lean();
+    const matchingProfiles = await PatientProfile.find(profileFilter)
+      .select('user riskScore riskBand checkInIntervalDays')
+      .lean();
     const profileMap = new Map(matchingProfiles.map((p) => [p.user.toString(), p]));
 
     if (riskBand) userFilter._id = { $in: matchingProfiles.map((p) => p.user) };
@@ -354,7 +398,7 @@ router.get(
     ]);
 
     const ids = users.map((u) => u._id);
-    const [lastReadings, alertCounts, lastMessages, unreadCounts] = await Promise.all([
+    const [lastReadings, alertCounts, lastMessages, unreadCounts, signals] = await Promise.all([
       GlucoseReading.aggregate([
         { $match: { patient: { $in: ids } } },
         { $sort: { measuredAt: -1 } },
@@ -387,6 +431,8 @@ router.get(
         { $match: { patient: { $in: ids }, role: 'user', seenByClinicAt: null } },
         { $group: { _id: '$patient', count: { $sum: 1 } } },
       ]),
+      // Sparkline + trend + recency for each row's monitoring strip.
+      monitoringSignals(ids),
     ]);
 
     const readingMap = new Map(lastReadings.map((r) => [r._id.toString(), r]));
@@ -468,6 +514,12 @@ router.get(
         lastReadingAt: reading?.measuredAt ?? null,
         lastReadingValue: reading?.value ?? null,
         openAlertCount: alertMap.get(id) ?? 0,
+        // Continuous-monitoring signals for the row's sparkline + trend badge.
+        spark: signals.get(id)?.spark ?? [],
+        trend: signals.get(id)?.direction ?? 'flat',
+        trendDelta: signals.get(id)?.trendDelta ?? null,
+        checkInIntervalDays: profile?.checkInIntervalDays ?? null,
+        checkInOverdue: isCheckInOverdue(reading?.measuredAt ?? null, profile?.checkInIntervalDays),
       };
     });
 

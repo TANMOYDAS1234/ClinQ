@@ -14,6 +14,7 @@ import '../../medications/domain/medication.dart';
 import '../data/clinician_repository.dart';
 import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
+import 'patient_detail_screen.dart' show PatientRecordSections;
 
 /// The doctor's working screen for one patient: who they are at the top, and
 /// everything the doctor might do about it underneath.
@@ -178,6 +179,14 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
           padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.xl),
           children: [
             _ProfileHeader(patient: p),
+            const SizedBox(height: AppSpacing.lg),
+
+            // The read side of the record — health metrics, the trend graph,
+            // HbA1c history, uploaded reports, alerts and the dietician
+            // assignment — above the actions so the doctor sees the patient's
+            // status before prescribing. (This whole block was orphaned by an
+            // earlier refactor; the data was fetched but never shown.)
+            PatientRecordSections(summary: p, patientId: widget.patientId),
             const SizedBox(height: AppSpacing.lg),
 
             const Text('Clinical Actions', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),

@@ -49,7 +49,13 @@ export const resolvePatientScope = asyncHandler(async (req, res, next) => {
     return next();
   }
 
-  // Clinician path.
+  // Clinician path — DOCTOR or STAFF only. A dietician reaches their assigned
+  // patients through /dietician/* (which enforces the assignment); they must
+  // never get blanket access to every patient's clinical record here. Treating
+  // "not a patient" as "clinician" was the hole the dietician role opened.
+  if (req.user.role !== ROLES.DOCTOR && req.user.role !== ROLES.STAFF) {
+    throw forbidden('You do not have access to this patient');
+  }
   if (!requested || requested === 'me') {
     throw forbidden('A patient must be specified for clinician access');
   }

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import dayjs from 'dayjs';
 import { inClinicTz, clinicDateTime } from '../utils/clinicTime.js';
 import { GlucoseReading } from '../models/GlucoseReading.js';
@@ -286,6 +287,78 @@ export async function glucoseTrends(patientId, { days = 30 } = {}) {
     },
     distribution,
   };
+}
+
+/**
+ * Batched monitoring signals for a whole roster of patients — one pair of
+ * aggregations for everyone rather than a query per patient, so the doctor's
+ * list and dashboard stay fast at 100+ patients.
+ *
+ * Returns a Map keyed by patient-id string → {
+ *   lastReadingAt: Date|null,   // most recent glucose reading, ever (recency)
+ *   recentCount:   number,      // readings inside the trend window
+ *   spark:         number[],    // up to `sparkMax` most recent values, oldest→newest
+ *   recentAvg:     number|null, // mean of the recent half of the window
+ *   trendDelta:    number|null, // recent-half mean − prior-half mean (mg/dL)
+ *   direction:     'up'|'down'|'flat',  // where control is heading
+ * }
+ * Every requested id is present in the map (with the empty shape) even when the
+ * patient has no readings, so callers never have to null-check membership.
+ */
+export async function monitoringSignals(patientIds, { window = 28, sparkMax = 12 } = {}) {
+  const ids = patientIds.map((id) =>
+    id instanceof mongoose.Types.ObjectId ? id : new mongoose.Types.ObjectId(String(id)),
+  );
+  const out = new Map(
+    ids.map((id) => [
+      id.toString(),
+      { lastReadingAt: null, recentCount: 0, spark: [], recentAvg: null, trendDelta: null, direction: 'flat' },
+    ]),
+  );
+  if (ids.length === 0) return out;
+
+  const since = dayjs().subtract(window, 'day').toDate();
+  const midpoint = dayjs().subtract(Math.round(window / 2), 'day').toDate();
+
+  const [recency, windowed] = await Promise.all([
+    // Recency is unbounded by the window: an overdue patient must still report
+    // WHEN they last checked in, even if that was months ago.
+    GlucoseReading.aggregate([
+      { $match: { patient: { $in: ids } } },
+      { $group: { _id: '$patient', lastReadingAt: { $max: '$measuredAt' } } },
+    ]),
+    // Readings inside the window, newest first, for the sparkline and trend.
+    GlucoseReading.aggregate([
+      { $match: { patient: { $in: ids }, measuredAt: { $gte: since } } },
+      { $sort: { measuredAt: -1 } },
+      { $group: { _id: '$patient', values: { $push: { v: '$valueMgDl', at: '$measuredAt' } } } },
+    ]),
+  ]);
+
+  for (const r of recency) {
+    const e = out.get(r._id.toString());
+    if (e) e.lastReadingAt = r.lastReadingAt ?? null;
+  }
+
+  const mean = (a) => a.reduce((s, v) => s + v, 0) / a.length;
+  for (const g of windowed) {
+    const e = out.get(g._id.toString());
+    if (!e) continue;
+    const desc = g.values; // newest → oldest
+    e.recentCount = desc.length;
+    // Spark: the most recent `sparkMax` values, flipped to oldest→newest to draw.
+    e.spark = desc.slice(0, sparkMax).map((x) => x.v).reverse();
+    // Trend: recent half of the window vs the prior half. A deadband keeps a
+    // steady patient from flickering between up/down on noise.
+    const recent = desc.filter((x) => x.at >= midpoint).map((x) => x.v);
+    const prior = desc.filter((x) => x.at < midpoint).map((x) => x.v);
+    if (recent.length) e.recentAvg = Math.round(mean(recent));
+    if (recent.length && prior.length) {
+      e.trendDelta = Math.round(mean(recent) - mean(prior));
+      e.direction = e.trendDelta > 8 ? 'up' : e.trendDelta < -8 ? 'down' : 'flat';
+    }
+  }
+  return out;
 }
 
 /**
