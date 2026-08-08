@@ -16,6 +16,7 @@ class Sparkline extends StatelessWidget {
     this.height = 30,
     this.targetLow = 70,
     this.targetHigh = 180,
+    this.showBand = true,
   });
 
   final List<double> values;
@@ -24,6 +25,10 @@ class Sparkline extends StatelessWidget {
   final double height;
   final double targetLow;
   final double targetHigh;
+
+  /// The 70-180 target band is glucose-specific; turn it off (and let the line
+  /// scale to its own data) when plotting anything else, e.g. a daily count.
+  final bool showBand;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +43,7 @@ class Sparkline extends StatelessWidget {
           band: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
           targetLow: targetLow,
           targetHigh: targetHigh,
+          showBand: showBand,
         ),
       ),
     );
@@ -51,6 +57,7 @@ class _SparkPainter extends CustomPainter {
     required this.band,
     required this.targetLow,
     required this.targetHigh,
+    required this.showBand,
   });
 
   final List<double> values;
@@ -58,23 +65,28 @@ class _SparkPainter extends CustomPainter {
   final Color band;
   final double targetLow;
   final double targetHigh;
+  final bool showBand;
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Scale the Y axis to the data, but always keep the target band inside the
-    // frame so the line's position relative to "in range" stays meaningful.
+    // Scale the Y axis to the data. When the target band is shown, keep it in
+    // frame too so the line's position relative to "in range" stays meaningful.
     var lo = values.reduce((a, b) => a < b ? a : b);
     var hi = values.reduce((a, b) => a > b ? a : b);
-    lo = lo < targetLow ? lo : targetLow;
-    hi = hi > targetHigh ? hi : targetHigh;
+    if (showBand) {
+      lo = lo < targetLow ? lo : targetLow;
+      hi = hi > targetHigh ? hi : targetHigh;
+    }
     final span = (hi - lo).abs() < 1 ? 1.0 : hi - lo;
 
     double y(double v) => size.height - ((v - lo) / span) * size.height;
     double x(int i) => (i / (values.length - 1)) * size.width;
 
     // Target band.
-    final bandRect = Rect.fromLTRB(0, y(targetHigh), size.width, y(targetLow));
-    canvas.drawRect(bandRect, Paint()..color = band);
+    if (showBand) {
+      final bandRect = Rect.fromLTRB(0, y(targetHigh), size.width, y(targetLow));
+      canvas.drawRect(bandRect, Paint()..color = band);
+    }
 
     // Build the line path.
     final path = Path()..moveTo(x(0), y(values[0]));

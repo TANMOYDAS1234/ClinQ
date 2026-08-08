@@ -554,36 +554,44 @@ class _MonitorStrip extends StatelessWidget {
       _ => Icons.trending_flat_rounded,
     };
 
+    // A Wrap, not a Row: on a narrow phone the sparkline + reading + "due" chip
+    // can exceed the row width, and a Row would clip the chip off the edge. Wrap
+    // flows the chip onto a second line instead, so nothing is ever cut.
     return Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: Row(
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          if (hasSpark) ...[
-            Sparkline(values: patient.spark, color: AppColors.accentOn(context), width: 64, height: 22),
-            const SizedBox(width: 10),
-          ],
-          if (patient.lastReadingValue != null) ...[
-            Icon(trendIcon, size: 15, color: trendColor),
-            const SizedBox(width: 3),
-            Text(
-              '${patient.lastReadingValue!.round()}',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: scheme.onSurface),
-            ),
-            Text(' mg/dL', style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
-          ],
-          if (last != null) ...[
-            const SizedBox(width: 8),
-            Text('· ${_ago(last)}', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
-          ],
-          if (overdue) ...[
-            const SizedBox(width: 8),
+          if (hasSpark)
+            Sparkline(values: patient.spark, color: AppColors.accentOn(context), width: 60, height: 22),
+          if (patient.lastReadingValue != null)
+            // The reading + trend + recency stay glued together as one unit so
+            // they wrap as a block, never splitting "153" from "mg/dL".
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(trendIcon, size: 15, color: trendColor),
+                const SizedBox(width: 3),
+                Text(
+                  '${patient.lastReadingValue!.round()}',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: scheme.onSurface),
+                ),
+                Text(' mg/dL', style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                if (last != null)
+                  Text('  ·  ${_ago(last)}', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+              ],
+            )
+          else if (last != null)
+            Text(_ago(last), style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+          if (overdue)
             _Chip(
               label: 'Check-in due',
               fg: AppColors.warningOn(context),
               bg: AppColors.warningBgOn(context),
               icon: Icons.schedule_rounded,
             ),
-          ],
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import dayjs from 'dayjs';
 import { inClinicTz, clinicDateTime } from '../utils/clinicTime.js';
+import { User, ROLES } from '../models/User.js';
 import { GlucoseReading } from '../models/GlucoseReading.js';
 import { MedicationLog } from '../models/MedicationLog.js';
 import { Medication } from '../models/Medication.js';
@@ -359,6 +360,101 @@ export async function monitoringSignals(patientIds, { window = 28, sparkMax = 12
     }
   }
   return out;
+}
+
+/**
+ * Days a patient may go between glucose check-ins before the dashboard flags
+ * them overdue, when no per-patient cadence is set.
+ */
+export const DEFAULT_CHECKIN_DAYS = 3;
+
+/** A last-reading timestamp older than the cadence reads as overdue. "Never
+ * logged" is an onboarding state, counted separately, so it returns false. */
+export function isCheckInOverdue(lastReadingAt, intervalDays) {
+  if (!lastReadingAt) return false;
+  const cadenceMs = (intervalDays || DEFAULT_CHECKIN_DAYS) * 86400000;
+  return Date.now() - new Date(lastReadingAt).getTime() > cadenceMs;
+}
+
+/**
+ * Clinic-wide analytics for the doctor's dashboard — POPULATION aggregates, not
+ * per-patient series. The trap on a 100+ patient dashboard is plotting per
+ * patient; instead the database collapses everyone into a handful of daily
+ * buckets, so the payload is ~`days` points however many readings exist.
+ *
+ * Everything here is bounded to the window and runs off indexed fields, and the
+ * whole result is meant to sit behind a short cache (it changes slowly and the
+ * dashboard polls often) — so this never runs on the per-poll hot path.
+ */
+export async function clinicAnalytics({ days = 30 } = {}) {
+  const since = dayjs().subtract(days, 'day').toDate();
+  const tz = 'Asia/Kolkata';
+  const dayKey = { $dateToString: { format: '%Y-%m-%d', date: '$measuredAt', timezone: tz } };
+
+  const [trend, engagement, activePatients] = await Promise.all([
+    // Share of readings low / in-range / high, per day, across the whole clinic.
+    GlucoseReading.aggregate([
+      { $match: { measuredAt: { $gte: since } } },
+      {
+        $group: {
+          _id: dayKey,
+          low: { $sum: { $cond: [{ $lt: ['$valueMgDl', GLUCOSE.LOW] }, 1, 0] } },
+          inRange: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $gte: ['$valueMgDl', GLUCOSE.LOW] },
+                    { $lte: ['$valueMgDl', GLUCOSE.POST_PRANDIAL_TARGET_MAX] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          high: { $sum: { $cond: [{ $gt: ['$valueMgDl', GLUCOSE.POST_PRANDIAL_TARGET_MAX] }, 1, 0] } },
+          total: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+    // Distinct patients who logged at least one reading each day — is monitoring
+    // actually happening across the clinic? Two-stage group keeps it distinct.
+    GlucoseReading.aggregate([
+      { $match: { measuredAt: { $gte: since } } },
+      { $group: { _id: { day: dayKey, patient: '$patient' } } },
+      { $group: { _id: '$_id.day', patients: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]),
+    User.find({ role: ROLES.PATIENT, isActive: true }).select('_id').lean(),
+  ]);
+
+  // Roster monitoring counts, folded in here so they compute once behind the
+  // cache rather than on every 15s /overview poll.
+  const activeIds = activePatients.map((u) => u._id);
+  const [cadenceProfiles, signals] = await Promise.all([
+    PatientProfile.find({ user: { $in: activeIds } }).select('user checkInIntervalDays').lean(),
+    monitoringSignals(activeIds),
+  ]);
+  const cadenceMap = new Map(cadenceProfiles.map((p) => [p.user.toString(), p.checkInIntervalDays]));
+  let overdueCheckIns = 0;
+  let neverCheckedIn = 0;
+  let trendingWorse = 0;
+  for (const id of activeIds) {
+    const key = id.toString();
+    const s = signals.get(key);
+    if (!s?.lastReadingAt) neverCheckedIn += 1;
+    else if (isCheckInOverdue(s.lastReadingAt, cadenceMap.get(key))) overdueCheckIns += 1;
+    if (s?.direction === 'up' && (s.recentAvg ?? 0) > GLUCOSE.POST_PRANDIAL_TARGET_MAX) trendingWorse += 1;
+  }
+
+  return {
+    days,
+    controlTrend: trend.map((t) => ({ date: t._id, low: t.low, inRange: t.inRange, high: t.high, total: t.total })),
+    engagement: engagement.map((e) => ({ date: e._id, patients: e.patients })),
+    monitoring: { overdueCheckIns, neverCheckedIn, trendingWorse, activePatients: activeIds.length },
+  };
 }
 
 /**

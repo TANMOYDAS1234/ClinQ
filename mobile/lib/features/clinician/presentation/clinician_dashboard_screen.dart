@@ -11,6 +11,7 @@ import '../../auth/presentation/auth_controller.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
+import 'widgets/clinic_analytics.dart';
 
 /// The doctor's home: the clinic at a glance — headline counts, what is on
 /// today, the alerts that need attention, the live triage queue, and the
@@ -55,6 +56,8 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
 
   void _refresh() {
     ref.invalidate(overviewProvider);
+    ref.invalidate(clinicAnalyticsProvider);
+    ref.invalidate(attentionPatientsProvider);
     ref.invalidate(alertsProvider(_alertsQuery));
   }
 
@@ -65,6 +68,8 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
     // loading, and reading the last value keeps the screen from flashing a
     // spinner every twenty seconds.
     final overview = ref.watch(overviewProvider).valueOrNull;
+    final analytics = ref.watch(clinicAnalyticsProvider).valueOrNull;
+    final attention = ref.watch(attentionPatientsProvider).valueOrNull ?? const <PatientListItem>[];
     final alerts = ref.watch(alertsProvider(_alertsQuery)).valueOrNull?.items ?? const [];
     final loading = overview == null && ref.watch(overviewProvider).isLoading;
 
@@ -96,8 +101,23 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
                             // book that way — so it read 0 every day and cost a
                             // card's worth of the screen saying nothing.
                             _AlertStrip(overview: overview),
-                            const SizedBox(height: AppSpacing.sm),
-                            _MonitoringStrip(overview: overview),
+                            if (analytics != null) ...[
+                              const SizedBox(height: AppSpacing.sm),
+                              _MonitoringStrip(analytics: analytics),
+                            ],
+                            const SizedBox(height: AppSpacing.lg),
+                          ],
+                          // Population analytics — clinic-wide, never 100 lines.
+                          if (analytics != null) ...[
+                            ClinicControlTrendCard(analytics: analytics),
+                            const SizedBox(height: AppSpacing.lg),
+                          ],
+                          if (overview != null) ...[
+                            RiskDonutCard(overview: overview),
+                            const SizedBox(height: AppSpacing.lg),
+                          ],
+                          if (attention.isNotEmpty) ...[
+                            AttentionListCard(patients: attention),
                             const SizedBox(height: AppSpacing.lg),
                           ],
                           _TriageQueue(alerts: alerts),
@@ -422,15 +442,15 @@ class _AlertRow extends StatelessWidget {
 /// their check-in cadence, and patients whose control is drifting out of range.
 /// Both drill into the patient list, where each row carries its own sparkline.
 class _MonitoringStrip extends StatelessWidget {
-  const _MonitoringStrip({required this.overview});
+  const _MonitoringStrip({required this.analytics});
 
-  final ClinicOverview overview;
+  final ClinicAnalytics analytics;
 
   @override
   Widget build(BuildContext context) {
     final rows = <Widget>[];
 
-    if (overview.overdueCheckIns > 0) {
+    if (analytics.overdueCheckIns > 0) {
       rows.add(
         _AlertRow(
           icon: Icons.schedule_rounded,
@@ -439,13 +459,13 @@ class _MonitoringStrip extends StatelessWidget {
           label: 'CHECK-INS OVERDUE',
           labelColor: AppColors.warningOn(context),
           detail:
-              '${overview.overdueCheckIns} ${overview.overdueCheckIns == 1 ? 'patient has' : 'patients have'} gone quiet',
+              '${analytics.overdueCheckIns} ${analytics.overdueCheckIns == 1 ? 'patient has' : 'patients have'} gone quiet',
           onTap: () => context.go('/clinician/patients'),
         ),
       );
     }
 
-    if (overview.trendingWorse > 0) {
+    if (analytics.trendingWorse > 0) {
       if (rows.isNotEmpty) rows.add(const SizedBox(height: AppSpacing.sm));
       rows.add(
         _AlertRow(
@@ -455,7 +475,7 @@ class _MonitoringStrip extends StatelessWidget {
           label: 'TRENDING WORSE',
           labelColor: AppColors.danger,
           detail:
-              '${overview.trendingWorse} ${overview.trendingWorse == 1 ? 'patient' : 'patients'} drifting out of range',
+              '${analytics.trendingWorse} ${analytics.trendingWorse == 1 ? 'patient' : 'patients'} drifting out of range',
           onTap: () => context.go('/clinician/patients'),
         ),
       );
@@ -464,7 +484,7 @@ class _MonitoringStrip extends StatelessWidget {
     // Nothing needs attention — a quiet, reassuring confirmation rather than a
     // blank gap, so the doctor knows monitoring is actually running.
     if (rows.isEmpty) {
-      if (overview.patientCount == 0) return const SizedBox.shrink();
+      if (analytics.activePatients == 0) return const SizedBox.shrink();
       rows.add(
         _AlertRow(
           icon: Icons.check_circle_outline_rounded,

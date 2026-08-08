@@ -22,7 +22,14 @@ import { Prescription } from '../models/Prescription.js';
 import { toE164 } from '../utils/phone.js';
 import { ClinicSettings, getClinicSettings } from '../models/ClinicSettings.js';
 import { acknowledgeAlert, resolveAlert } from '../services/alerts.js';
-import { computeAdherence, glucoseTrends, computeHealthScore, monitoringSignals } from '../services/analytics.js';
+import {
+  computeAdherence,
+  glucoseTrends,
+  computeHealthScore,
+  monitoringSignals,
+  clinicAnalytics,
+  isCheckInOverdue,
+} from '../services/analytics.js';
 import { buildPatientContext } from '../services/patientContext.js';
 import { embed } from '../services/ai/gemini.js';
 import { paged, pageParams } from '../utils/pagination.js';
@@ -31,16 +38,12 @@ import { logger } from '../config/logger.js';
 const router = Router();
 router.use(requireAuth, requireClinician);
 
-// How many days a patient may go between glucose check-ins before the doctor's
-// dashboard flags them as overdue, when no per-patient cadence is set.
-const DEFAULT_CHECKIN_DAYS = 3;
-
-/** A last-reading timestamp older than the cadence (or never) reads as overdue. */
-function isCheckInOverdue(lastReadingAt, intervalDays) {
-  if (!lastReadingAt) return false; // "never logged" is an onboarding state, counted separately
-  const cadenceMs = (intervalDays || DEFAULT_CHECKIN_DAYS) * 86400000;
-  return Date.now() - new Date(lastReadingAt).getTime() > cadenceMs;
-}
+// Clinic-wide analytics are recomputed at most this often. The dashboard polls
+// every ~20s, but this aggregation over every reading changes slowly, so it is
+// served from a short in-process cache rather than run on each hit — the one
+// thing that would melt at 100k+ readings.
+const ANALYTICS_TTL_MS = 120000;
+let analyticsCache = { key: null, at: 0, data: null };
 
 // ---------------------------------------------------------------------------
 // Overview
@@ -100,32 +103,6 @@ router.get(
       nutritionReviews(),
     ]);
 
-    // Continuous-monitoring roll-up across the whole active roster: how many
-    // patients have gone quiet past their check-in cadence, and how many are
-    // drifting the wrong way. Computed here (not per-page) so the dashboard
-    // headline reflects everyone, not just the current list page.
-    const activePatients = await User.find({ role: ROLES.PATIENT, isActive: true }).select('_id').lean();
-    const activeIds = activePatients.map((u) => u._id);
-    const [cadenceProfiles, monitorSignals] = await Promise.all([
-      PatientProfile.find({ user: { $in: activeIds } }).select('user checkInIntervalDays').lean(),
-      monitoringSignals(activeIds),
-    ]);
-    const cadenceMap = new Map(cadenceProfiles.map((p) => [p.user.toString(), p.checkInIntervalDays]));
-    let overdueCheckIns = 0;
-    let neverCheckedIn = 0;
-    let trendingWorse = 0;
-    for (const id of activeIds) {
-      const key = id.toString();
-      const s = monitorSignals.get(key);
-      if (!s?.lastReadingAt) {
-        neverCheckedIn += 1;
-      } else if (isCheckInOverdue(s.lastReadingAt, cadenceMap.get(key))) {
-        overdueCheckIns += 1;
-      }
-      // "Worse" = control drifting up AND the recent average already out of range.
-      if (s?.direction === 'up' && (s.recentAvg ?? 0) > 180) trendingWorse += 1;
-    }
-
     res.json({
       patientCount,
       newPatientsToday,
@@ -152,12 +129,28 @@ router.get(
         foodLogsToday,
         reviews,
       },
-      monitoring: {
-        overdueCheckIns,
-        neverCheckedIn,
-        trendingWorse,
-      },
     });
+  }),
+);
+
+/**
+ * Clinic-wide analytics for the dashboard's population charts: the daily
+ * low/in-range/high control trend, check-in engagement, and the roster
+ * monitoring counts. Served from a short in-process cache so the dashboard's
+ * frequent polling never runs the full aggregation more than once per TTL.
+ */
+router.get(
+  '/analytics',
+  asyncHandler(async (req, res) => {
+    const days = Math.min(180, Math.max(7, Number(req.query.days) || 30));
+    const key = `d${days}`;
+    const now = Date.now();
+    if (analyticsCache.key === key && now - analyticsCache.at < ANALYTICS_TTL_MS && analyticsCache.data) {
+      return res.json({ ...analyticsCache.data, cached: true });
+    }
+    const data = await clinicAnalytics({ days });
+    analyticsCache = { key, at: now, data };
+    res.json({ ...data, cached: false });
   }),
 );
 

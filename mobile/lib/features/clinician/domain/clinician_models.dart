@@ -20,9 +20,6 @@ class ClinicOverview {
     this.dietPatients = 0,
     this.foodLogsToday = 0,
     this.nutritionReviews = const [],
-    this.overdueCheckIns = 0,
-    this.neverCheckedIn = 0,
-    this.trendingWorse = 0,
   });
 
   final int patientCount;
@@ -62,11 +59,6 @@ class ClinicOverview {
   /// The patients on a review cadence, closest to their review date first.
   final List<NutritionReview> nutritionReviews;
 
-  /// Continuous-monitoring roll-up across the whole roster.
-  final int overdueCheckIns; // logged before, now past their check-in cadence
-  final int neverCheckedIn; // no glucose reading ever
-  final int trendingWorse; // recent average rising and already out of range
-
   /// Open alerts that need immediate eyes — the "High Priority" alert count.
   int get highPriorityAlerts => emergencyAlerts + urgentAlerts;
 
@@ -94,9 +86,6 @@ class ClinicOverview {
       riskCritical: n(risk['critical']),
       dietPatients: n(nutrition['dietPatients']),
       foodLogsToday: n(nutrition['foodLogsToday']),
-      overdueCheckIns: n((j['monitoring'] as Map<String, dynamic>?)?['overdueCheckIns']),
-      neverCheckedIn: n((j['monitoring'] as Map<String, dynamic>?)?['neverCheckedIn']),
-      trendingWorse: n((j['monitoring'] as Map<String, dynamic>?)?['trendingWorse']),
       nutritionReviews:
           (nutrition['reviews'] as List?)
               ?.whereType<Map<String, dynamic>>()
@@ -105,6 +94,91 @@ class ClinicOverview {
           const [],
     );
   }
+}
+
+/// Clinic-wide population analytics for the dashboard (`GET /doctor/analytics`).
+/// Aggregates, not per-patient series — the database collapses everyone into a
+/// handful of daily buckets so this stays small however many readings exist.
+class ClinicAnalytics {
+  const ClinicAnalytics({
+    this.controlTrend = const [],
+    this.engagement = const [],
+    this.overdueCheckIns = 0,
+    this.neverCheckedIn = 0,
+    this.trendingWorse = 0,
+    this.activePatients = 0,
+  });
+
+  final List<ControlPoint> controlTrend;
+  final List<EngagementPoint> engagement;
+  final int overdueCheckIns;
+  final int neverCheckedIn;
+  final int trendingWorse;
+  final int activePatients;
+
+  /// Total readings across the whole window — used to gate the "not enough data
+  /// yet" empty state so a line built from a handful of points isn't read as a
+  /// clinic-wide signal.
+  int get totalReadings => controlTrend.fold(0, (s, p) => s + p.total);
+
+  factory ClinicAnalytics.fromJson(Map<String, dynamic> j) {
+    final m = j['monitoring'] as Map<String, dynamic>? ?? const {};
+    int n(dynamic v) => (v as num?)?.toInt() ?? 0;
+    return ClinicAnalytics(
+      controlTrend: (j['controlTrend'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(ControlPoint.fromJson)
+              .toList() ??
+          const [],
+      engagement: (j['engagement'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(EngagementPoint.fromJson)
+              .toList() ??
+          const [],
+      overdueCheckIns: n(m['overdueCheckIns']),
+      neverCheckedIn: n(m['neverCheckedIn']),
+      trendingWorse: n(m['trendingWorse']),
+      activePatients: n(m['activePatients']),
+    );
+  }
+}
+
+/// One day's clinic-wide glucose split (counts of readings low/in-range/high).
+class ControlPoint {
+  const ControlPoint({
+    required this.date,
+    required this.low,
+    required this.inRange,
+    required this.high,
+    required this.total,
+  });
+
+  final DateTime date;
+  final int low;
+  final int inRange;
+  final int high;
+  final int total;
+
+  factory ControlPoint.fromJson(Map<String, dynamic> j) => ControlPoint(
+    date: DateTime.tryParse(j['date']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
+    low: (j['low'] as num?)?.toInt() ?? 0,
+    inRange: (j['inRange'] as num?)?.toInt() ?? 0,
+    high: (j['high'] as num?)?.toInt() ?? 0,
+    total: (j['total'] as num?)?.toInt() ?? 0,
+  );
+}
+
+/// One day's count of distinct patients who logged at least one reading.
+class EngagementPoint {
+  const EngagementPoint({required this.date, required this.patients});
+
+  final DateTime date;
+  final int patients;
+
+  factory EngagementPoint.fromJson(Map<String, dynamic> j) => EngagementPoint(
+    date: DateTime.tryParse(j['date']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
+    patients: (j['patients'] as num?)?.toInt() ?? 0,
+  );
 }
 
 /// One nutrition card on the doctor's home: where a patient is in their review

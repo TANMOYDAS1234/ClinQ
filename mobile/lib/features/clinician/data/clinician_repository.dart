@@ -23,6 +23,11 @@ class ClinicianRepository {
     return ClinicOverview.fromJson(json);
   }
 
+  Future<ClinicAnalytics> analytics({int days = 30}) async {
+    final json = await _client.getJson('/doctor/analytics?days=$days');
+    return ClinicAnalytics.fromJson(json);
+  }
+
   Future<DoctorWorklist> worklist() async {
     return DoctorWorklist.fromJson(await _client.getJson('/doctor/worklist'));
   }

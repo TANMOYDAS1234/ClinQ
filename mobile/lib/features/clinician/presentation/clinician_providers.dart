@@ -14,6 +14,12 @@ final overviewProvider = FutureProvider.autoDispose<ClinicOverview>((ref) {
   return ref.watch(clinicianRepositoryProvider).overview();
 });
 
+/// Clinic-wide population analytics for the dashboard charts. Cached server-side
+/// (~2 min TTL), so the dashboard's poll re-fetches it cheaply.
+final clinicAnalyticsProvider = FutureProvider.autoDispose<ClinicAnalytics>((ref) {
+  return ref.watch(clinicianRepositoryProvider).analytics();
+});
+
 /// The Patients tab: counts, the action queue, and the latest meals logged.
 final worklistProvider = FutureProvider.autoDispose<DoctorWorklist>((ref) {
   return ref.watch(clinicianRepositoryProvider).worklist();
