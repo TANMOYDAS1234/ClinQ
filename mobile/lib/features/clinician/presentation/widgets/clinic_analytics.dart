@@ -1,7 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -153,7 +153,7 @@ class ClinicControlTrendCard extends StatelessWidget {
                 const SizedBox(height: AppSpacing.md),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(14),
-                  child: SizedBox(height: 158, child: _StackedArea(pts: pts, low: low, inRange: inRange, high: high)),
+                  child: SizedBox(height: 172, child: _IsoBars(pts: pts, low: low, inRange: inRange, high: high)),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Wrap(
@@ -220,8 +220,11 @@ class _MiniPct extends StatelessWidget {
   }
 }
 
-class _StackedArea extends StatelessWidget {
-  const _StackedArea({required this.pts, required this.low, required this.inRange, required this.high});
+/// The clinic control trend as isometric 3D bars — one column per day (bucketed
+/// when the window is long), each a full-height stack of low / in-range / high
+/// proportions, extruded with darker side faces and lighter top faces for depth.
+class _IsoBars extends StatelessWidget {
+  const _IsoBars({required this.pts, required this.low, required this.inRange, required this.high});
 
   final List<ControlPoint> pts;
   final Color low;
@@ -231,98 +234,164 @@ class _StackedArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-
-    // Cumulative fractions: bottom band = low, then +in-range, top always 1.
-    double lowFrac(int i) => pts[i].low / pts[i].total;
-    double midCum(int i) => (pts[i].low + pts[i].inRange) / pts[i].total;
-
-    List<FlSpot> spotsOf(double Function(int) y) =>
-        [for (var i = 0; i < pts.length; i++) FlSpot(i.toDouble(), y(i))];
-    LinearGradient grad(Color c, double a1, double a2) => LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [c.withValues(alpha: a1), c.withValues(alpha: a2)],
-        );
-
-    return LineChart(
-      LineChartData(
-        minX: 0,
-        maxX: (pts.length - 1).toDouble(),
-        minY: 0,
-        maxY: 1,
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: 0.25,
-          getDrawingHorizontalLine: (_) => FlLine(color: scheme.outlineVariant.withValues(alpha: 0.25), strokeWidth: 0.5),
-        ),
-        titlesData: FlTitlesData(
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 32,
-              interval: 0.25,
-              getTitlesWidget: (v, _) => Text('${(v * 100).round()}%',
-                  style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant)),
-            ),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 22,
-              interval: (pts.length / 4).clamp(1, double.infinity).toDouble(),
-              getTitlesWidget: (v, _) {
-                final i = v.toInt();
-                if (i < 0 || i >= pts.length) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(DateFormat('d/M').format(pts[i].date),
-                      style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant)),
-                );
-              },
-            ),
-          ),
-        ),
-        borderData: FlBorderData(show: false),
-        lineTouchData: const LineTouchData(enabled: false),
-        // Bars: 0 = low top edge, 1 = in-range top edge, 2 = ceiling (1.0).
-        // Fills stack: below bar 0 = low, 0→1 = in-range, 1→2 = high.
-        betweenBarsData: [
-          BetweenBarsData(fromIndex: 0, toIndex: 1, gradient: grad(inRange, 0.55, 0.20)),
-          BetweenBarsData(fromIndex: 1, toIndex: 2, gradient: grad(high, 0.42, 0.15)),
-        ],
-        lineBarsData: [
-          LineChartBarData(
-            spots: spotsOf(lowFrac),
-            isCurved: true,
-            curveSmoothness: 0.28,
-            barWidth: 1.4,
-            color: low.withValues(alpha: 0.85),
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(show: true, gradient: grad(low, 0.42, 0.15)),
-          ),
-          // The crisp emerald line defining the top of "in range" — the detail
-          // that turns three flat bands into a considered chart.
-          LineChartBarData(
-            spots: spotsOf(midCum),
-            isCurved: true,
-            curveSmoothness: 0.28,
-            barWidth: 2,
-            color: inRange,
-            dotData: const FlDotData(show: false),
-          ),
-          LineChartBarData(
-            spots: spotsOf((_) => 1.0),
-            barWidth: 0,
-            color: Colors.transparent,
-            dotData: const FlDotData(show: false),
-          ),
-        ],
+    return CustomPaint(
+      painter: _IsoBarsPainter(
+        bars: _bucket(pts, 12),
+        low: low,
+        inRange: inRange,
+        high: high,
+        grid: scheme.outlineVariant.withValues(alpha: 0.30),
+        axis: scheme.onSurfaceVariant,
       ),
+      child: const SizedBox.expand(),
     );
   }
+
+  /// Keep the columns chunky and legible: fold a long day-by-day window into at
+  /// most [maxBars] buckets, summing counts so the proportions stay honest.
+  static List<ControlPoint> _bucket(List<ControlPoint> pts, int maxBars) {
+    if (pts.length <= maxBars) return pts;
+    final size = (pts.length / maxBars).ceil();
+    final out = <ControlPoint>[];
+    for (var i = 0; i < pts.length; i += size) {
+      final end = (i + size) < pts.length ? i + size : pts.length;
+      var l = 0, r = 0, h = 0, t = 0;
+      for (var j = i; j < end; j++) {
+        l += pts[j].low;
+        r += pts[j].inRange;
+        h += pts[j].high;
+        t += pts[j].total;
+      }
+      out.add(ControlPoint(date: pts[(i + end - 1) ~/ 2].date, low: l, inRange: r, high: h, total: t));
+    }
+    return out;
+  }
+}
+
+class _IsoBarsPainter extends CustomPainter {
+  _IsoBarsPainter({
+    required this.bars,
+    required this.low,
+    required this.inRange,
+    required this.high,
+    required this.grid,
+    required this.axis,
+  });
+
+  final List<ControlPoint> bars;
+  final Color low;
+  final Color inRange;
+  final Color high;
+  final Color grid;
+  final Color axis;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (bars.isEmpty) return;
+    const padL = 30.0, padTBase = 12.0, padB = 20.0, depMax = 15.0;
+    const padR = depMax + 6;
+    final chartW = size.width - padL - padR;
+    if (chartW <= 0) return;
+
+    final n = bars.length;
+    final slotW = chartW / n;
+    final barW = (slotW * 0.6).clamp(6.0, 42.0);
+    final gap = slotW - barW;
+    final dep = [barW * 0.5, gap * 0.9, depMax].reduce((a, b) => a < b ? a : b);
+    final depX = dep, depY = dep * 0.52;
+    final padT = padTBase + depY;
+    final chartH = size.height - padT - padB;
+    if (chartH <= 0) return;
+    final baseY = padT + chartH;
+    double y(double p) => baseY - p * chartH;
+
+    // Faint reference grid + left % axis.
+    final gridPaint = Paint()
+      ..color = grid
+      ..strokeWidth = 0.6;
+    for (final p in const [0.0, 0.25, 0.5, 0.75, 1.0]) {
+      canvas.drawLine(Offset(padL, y(p)), Offset(padL + chartW, y(p)), gridPaint);
+    }
+    for (final p in const [0.0, 0.5, 1.0]) {
+      _label(canvas, '${(p * 100).round()}%', Offset(padL - 5, y(p)), anchorRight: true, vCenter: true);
+    }
+
+    Color side(Color c) => Color.lerp(c, Colors.black, 0.34)!;
+    Color topFace(Color c) => Color.lerp(c, Colors.white, 0.30)!;
+
+    for (var i = 0; i < n; i++) {
+      final b = bars[i];
+      if (b.total <= 0) continue;
+      final l = padL + i * slotW + (slotW - barW) / 2;
+      final r = l + barW;
+      final lf = b.low / b.total, inf = b.inRange / b.total, hf = b.high / b.total;
+      final segs = <(double, double, Color)>[
+        (0.0, lf, low),
+        (lf, lf + inf, inRange),
+        (lf + inf, 1.0, high),
+      ];
+      final topColor = hf > 0 ? high : (inf > 0 ? inRange : low);
+
+      // Right side faces (darker) — the depth of the column.
+      for (final s in segs) {
+        if (s.$2 - s.$1 <= 0.0001) continue;
+        final p = Path()
+          ..moveTo(r, y(s.$2))
+          ..lineTo(r + depX, y(s.$2) - depY)
+          ..lineTo(r + depX, y(s.$1) - depY)
+          ..lineTo(r, y(s.$1))
+          ..close();
+        canvas.drawPath(p, Paint()..color = side(s.$3));
+      }
+      // Single top face (lighter) at the column's ceiling.
+      final topP = Path()
+        ..moveTo(l, y(1.0))
+        ..lineTo(r, y(1.0))
+        ..lineTo(r + depX, y(1.0) - depY)
+        ..lineTo(l + depX, y(1.0) - depY)
+        ..close();
+      canvas.drawPath(topP, Paint()..color = topFace(topColor));
+      // Front faces, with a subtle top-lit gradient for a glossy 3D read.
+      for (final s in segs) {
+        if (s.$2 - s.$1 <= 0.0001) continue;
+        final rect = Rect.fromLTRB(l, y(s.$2), r, y(s.$1));
+        canvas.drawRect(
+          rect,
+          Paint()
+            ..shader = LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color.lerp(s.$3, Colors.white, 0.14)!, s.$3],
+            ).createShader(rect),
+        );
+      }
+    }
+
+    // A few date labels along the bottom.
+    final step = (n / 4).ceil().clamp(1, n);
+    for (var i = 0; i < n; i += step) {
+      final l = padL + i * slotW + (slotW - barW) / 2;
+      _label(canvas, DateFormat('d/M').format(bars[i].date), Offset(l + barW / 2, baseY + 5), hCenter: true);
+    }
+  }
+
+  void _label(Canvas canvas, String text, Offset at,
+      {bool anchorRight = false, bool hCenter = false, bool vCenter = false}) {
+    final tp = TextPainter(
+      text: TextSpan(text: text, style: TextStyle(color: axis, fontSize: 9.5)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    var dx = at.dx;
+    if (anchorRight) dx = at.dx - tp.width;
+    if (hCenter) dx = at.dx - tp.width / 2;
+    var dy = at.dy;
+    if (vCenter) dy = at.dy - tp.height / 2;
+    tp.paint(canvas, Offset(dx, dy));
+  }
+
+  @override
+  bool shouldRepaint(_IsoBarsPainter old) =>
+      old.bars != bars || old.low != low || old.inRange != inRange || old.high != high;
 }
 
 // ---------------------------------------------------------------------------
