@@ -151,10 +151,8 @@ class ClinicControlTrendCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: SizedBox(height: 172, child: _IsoBars(pts: pts, low: low, inRange: inRange, high: high)),
-                ),
+                // No clip — the raised slab casts a soft shadow that must spill.
+                SizedBox(height: 176, child: _RaisedArea(pts: pts, low: low, inRange: inRange, high: high)),
                 const SizedBox(height: AppSpacing.sm),
                 Wrap(
                   spacing: 14,
@@ -220,11 +218,12 @@ class _MiniPct extends StatelessWidget {
   }
 }
 
-/// The clinic control trend as isometric 3D bars — one column per day (bucketed
-/// when the window is long), each a full-height stack of low / in-range / high
-/// proportions, extruded with darker side faces and lighter top faces for depth.
-class _IsoBars extends StatelessWidget {
-  const _IsoBars({required this.pts, required this.low, required this.inRange, required this.high});
+/// The clinic control trend as a raised 2.5D slab — the smooth stacked bands
+/// (low / in-range / high proportions) as the front face, extruded with a darker
+/// right side and a lighter top face and floated over a soft drop shadow, so the
+/// chart lifts off the card while staying fully readable.
+class _RaisedArea extends StatelessWidget {
+  const _RaisedArea({required this.pts, required this.low, required this.inRange, required this.high});
 
   final List<ControlPoint> pts;
   final Color low;
@@ -235,143 +234,168 @@ class _IsoBars extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return CustomPaint(
-      painter: _IsoBarsPainter(
-        bars: _bucket(pts, 12),
+      painter: _RaisedAreaPainter(
+        pts: pts,
         low: low,
         inRange: inRange,
         high: high,
-        grid: scheme.outlineVariant.withValues(alpha: 0.30),
         axis: scheme.onSurfaceVariant,
+        shadow: scheme.shadow,
       ),
       child: const SizedBox.expand(),
     );
   }
-
-  /// Keep the columns chunky and legible: fold a long day-by-day window into at
-  /// most [maxBars] buckets, summing counts so the proportions stay honest.
-  static List<ControlPoint> _bucket(List<ControlPoint> pts, int maxBars) {
-    if (pts.length <= maxBars) return pts;
-    final size = (pts.length / maxBars).ceil();
-    final out = <ControlPoint>[];
-    for (var i = 0; i < pts.length; i += size) {
-      final end = (i + size) < pts.length ? i + size : pts.length;
-      var l = 0, r = 0, h = 0, t = 0;
-      for (var j = i; j < end; j++) {
-        l += pts[j].low;
-        r += pts[j].inRange;
-        h += pts[j].high;
-        t += pts[j].total;
-      }
-      out.add(ControlPoint(date: pts[(i + end - 1) ~/ 2].date, low: l, inRange: r, high: h, total: t));
-    }
-    return out;
-  }
 }
 
-class _IsoBarsPainter extends CustomPainter {
-  _IsoBarsPainter({
-    required this.bars,
+class _RaisedAreaPainter extends CustomPainter {
+  _RaisedAreaPainter({
+    required this.pts,
     required this.low,
     required this.inRange,
     required this.high,
-    required this.grid,
     required this.axis,
+    required this.shadow,
   });
 
-  final List<ControlPoint> bars;
+  final List<ControlPoint> pts;
   final Color low;
   final Color inRange;
   final Color high;
-  final Color grid;
   final Color axis;
+  final Color shadow;
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (bars.isEmpty) return;
-    const padL = 30.0, padTBase = 12.0, padB = 20.0, depMax = 15.0;
-    const padR = depMax + 6;
+    if (pts.length < 2) return;
+    const padL = 30.0, padTBase = 12.0, padB = 20.0, depX = 13.0, depY = 9.0;
+    const padR = depX + 6;
     final chartW = size.width - padL - padR;
-    if (chartW <= 0) return;
-
-    final n = bars.length;
-    final slotW = chartW / n;
-    final barW = (slotW * 0.6).clamp(6.0, 42.0);
-    final gap = slotW - barW;
-    final dep = [barW * 0.5, gap * 0.9, depMax].reduce((a, b) => a < b ? a : b);
-    final depX = dep, depY = dep * 0.52;
     final padT = padTBase + depY;
     final chartH = size.height - padT - padB;
-    if (chartH <= 0) return;
+    if (chartW <= 0 || chartH <= 0) return;
     final baseY = padT + chartH;
+    final n = pts.length;
+    double x(int i) => padL + i / (n - 1) * chartW;
     double y(double p) => baseY - p * chartH;
+    final rightX = x(n - 1);
 
-    // Faint reference grid + left % axis.
-    final gridPaint = Paint()
-      ..color = grid
-      ..strokeWidth = 0.6;
-    for (final p in const [0.0, 0.25, 0.5, 0.75, 1.0]) {
-      canvas.drawLine(Offset(padL, y(p)), Offset(padL + chartW, y(p)), gridPaint);
+    List<Offset> boundary(double Function(int) frac) => [for (var i = 0; i < n; i++) Offset(x(i), y(frac(i)))];
+    final baseLine = [for (var i = 0; i < n; i++) Offset(x(i), baseY)];
+    final lowLine = boundary((i) => pts[i].low / pts[i].total);
+    final midLine = boundary((i) => (pts[i].low + pts[i].inRange) / pts[i].total);
+    final topLine = [for (var i = 0; i < n; i++) Offset(x(i), y(1.0))];
+
+    Color darker(Color c) => Color.lerp(c, Colors.black, 0.34)!;
+    Color lighter(Color c) => Color.lerp(c, Colors.white, 0.28)!;
+
+    // Soft ground shadow — the whole slab silhouette, blurred and dropped, so
+    // the chart reads as lifted off the card.
+    final slab = RRect.fromRectAndRadius(
+      Rect.fromLTRB(padL, y(1.0), rightX + depX, baseY),
+      const Radius.circular(10),
+    );
+    canvas.drawRRect(
+      slab.shift(const Offset(2, 7)),
+      Paint()
+        ..color = shadow.withValues(alpha: 0.30)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
+    );
+
+    // Right side face (extruded, darker), split by the last day's mix.
+    final lastTot = pts[n - 1].total;
+    final lf = pts[n - 1].low / lastTot;
+    final inf = pts[n - 1].inRange / lastTot;
+    final hf = pts[n - 1].high / lastTot;
+    void sideSeg(double pa, double pb, Color c) {
+      if (pb - pa <= 0.0001) return;
+      final p = Path()
+        ..moveTo(rightX, y(pb))
+        ..lineTo(rightX + depX, y(pb) - depY)
+        ..lineTo(rightX + depX, y(pa) - depY)
+        ..lineTo(rightX, y(pa))
+        ..close();
+      canvas.drawPath(p, Paint()..color = darker(c));
     }
+
+    sideSeg(0, lf, low);
+    sideSeg(lf, lf + inf, inRange);
+    sideSeg(lf + inf, 1, high);
+
+    // Top face — the ceiling extruded up-right, lit.
+    final topFace = Path()
+      ..moveTo(padL, y(1.0))
+      ..lineTo(rightX, y(1.0))
+      ..lineTo(rightX + depX, y(1.0) - depY)
+      ..lineTo(padL + depX, y(1.0) - depY)
+      ..close();
+    canvas.drawPath(topFace, Paint()..color = lighter(hf > 0 ? high : (inf > 0 ? inRange : low)));
+
+    // Front faces — the smooth stacked bands with a top-lit gradient.
+    final plotRect = Rect.fromLTRB(padL, y(1.0), rightX, baseY);
+    void band(List<Offset> top, List<Offset> bottom, Color c) {
+      canvas.drawPath(
+        _smoothClosed(top, bottom),
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [lighter(c), c],
+          ).createShader(plotRect),
+      );
+    }
+
+    band(lowLine, baseLine, low);
+    band(midLine, lowLine, inRange);
+    band(topLine, midLine, high);
+
+    // A crisp light line along the top of "in range".
+    canvas.drawPath(
+      _smoothOpen(midLine),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8
+        ..color = lighter(inRange),
+    );
+
+    // Axes.
     for (final p in const [0.0, 0.5, 1.0]) {
       _label(canvas, '${(p * 100).round()}%', Offset(padL - 5, y(p)), anchorRight: true, vCenter: true);
     }
-
-    Color side(Color c) => Color.lerp(c, Colors.black, 0.34)!;
-    Color topFace(Color c) => Color.lerp(c, Colors.white, 0.30)!;
-
-    for (var i = 0; i < n; i++) {
-      final b = bars[i];
-      if (b.total <= 0) continue;
-      final l = padL + i * slotW + (slotW - barW) / 2;
-      final r = l + barW;
-      final lf = b.low / b.total, inf = b.inRange / b.total, hf = b.high / b.total;
-      final segs = <(double, double, Color)>[
-        (0.0, lf, low),
-        (lf, lf + inf, inRange),
-        (lf + inf, 1.0, high),
-      ];
-      final topColor = hf > 0 ? high : (inf > 0 ? inRange : low);
-
-      // Right side faces (darker) — the depth of the column.
-      for (final s in segs) {
-        if (s.$2 - s.$1 <= 0.0001) continue;
-        final p = Path()
-          ..moveTo(r, y(s.$2))
-          ..lineTo(r + depX, y(s.$2) - depY)
-          ..lineTo(r + depX, y(s.$1) - depY)
-          ..lineTo(r, y(s.$1))
-          ..close();
-        canvas.drawPath(p, Paint()..color = side(s.$3));
-      }
-      // Single top face (lighter) at the column's ceiling.
-      final topP = Path()
-        ..moveTo(l, y(1.0))
-        ..lineTo(r, y(1.0))
-        ..lineTo(r + depX, y(1.0) - depY)
-        ..lineTo(l + depX, y(1.0) - depY)
-        ..close();
-      canvas.drawPath(topP, Paint()..color = topFace(topColor));
-      // Front faces, with a subtle top-lit gradient for a glossy 3D read.
-      for (final s in segs) {
-        if (s.$2 - s.$1 <= 0.0001) continue;
-        final rect = Rect.fromLTRB(l, y(s.$2), r, y(s.$1));
-        canvas.drawRect(
-          rect,
-          Paint()
-            ..shader = LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color.lerp(s.$3, Colors.white, 0.14)!, s.$3],
-            ).createShader(rect),
-        );
-      }
-    }
-
-    // A few date labels along the bottom.
-    final step = (n / 4).ceil().clamp(1, n);
+    final step = ((n - 1) / 4).ceil().clamp(1, n);
     for (var i = 0; i < n; i += step) {
-      final l = padL + i * slotW + (slotW - barW) / 2;
-      _label(canvas, DateFormat('d/M').format(bars[i].date), Offset(l + barW / 2, baseY + 5), hCenter: true);
+      _label(canvas, DateFormat('d/M').format(pts[i].date), Offset(x(i), baseY + 5), hCenter: true);
+    }
+  }
+
+  Path _smoothOpen(List<Offset> pts) {
+    final path = Path();
+    if (pts.isEmpty) return path;
+    path.moveTo(pts.first.dx, pts.first.dy);
+    _appendSmooth(path, pts);
+    return path;
+  }
+
+  /// A closed band between a smoothed [top] boundary and a smoothed [bottom]
+  /// (appended in reverse), ready to fill.
+  Path _smoothClosed(List<Offset> top, List<Offset> bottom) {
+    final path = Path()..moveTo(top.first.dx, top.first.dy);
+    _appendSmooth(path, top);
+    path.lineTo(bottom.last.dx, bottom.last.dy);
+    _appendSmooth(path, bottom.reversed.toList());
+    path.close();
+    return path;
+  }
+
+  /// Catmull-Rom cubic smoothing from the path's current point through [pts].
+  void _appendSmooth(Path path, List<Offset> pts) {
+    for (var i = 0; i < pts.length - 1; i++) {
+      final p0 = i == 0 ? pts[i] : pts[i - 1];
+      final p1 = pts[i];
+      final p2 = pts[i + 1];
+      final p3 = (i + 2 < pts.length) ? pts[i + 2] : p2;
+      final c1 = Offset(p1.dx + (p2.dx - p0.dx) / 6, p1.dy + (p2.dy - p0.dy) / 6);
+      final c2 = Offset(p2.dx - (p3.dx - p1.dx) / 6, p2.dy - (p3.dy - p1.dy) / 6);
+      path.cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, p2.dx, p2.dy);
     }
   }
 
@@ -390,8 +414,8 @@ class _IsoBarsPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_IsoBarsPainter old) =>
-      old.bars != bars || old.low != low || old.inRange != inRange || old.high != high;
+  bool shouldRepaint(_RaisedAreaPainter old) =>
+      old.pts != pts || old.low != low || old.inRange != inRange || old.high != high;
 }
 
 // ---------------------------------------------------------------------------
