@@ -61,6 +61,20 @@ int medReminderNotificationId(String medId, String hhmm, DateTime day) {
   return NotificationService.medIdBase + (hash % NotificationService.medIdWindow);
 }
 
+/// A stable per-(medicine, slot-time) id for a DAILY-repeating reminder — no
+/// date in the key, so the single alarm repeats every day and never needs
+/// re-arming (the reason a morning dose stopped firing under the rolling-window
+/// scheme when the app wasn't reopened overnight).
+int medDailyReminderId(String medId, String hhmm) {
+  final key = '$medId|$hhmm';
+  var hash = 0x811c9dc5;
+  for (final c in key.codeUnits) {
+    hash ^= c;
+    hash = (hash * 0x01000193) & 0xFFFFFFFF;
+  }
+  return NotificationService.medIdBase + (hash % NotificationService.medIdWindow);
+}
+
 /// Local notifications: short in-the-moment updates via [show], and repeating
 /// medication reminders via [scheduleMedicationReminders].
 ///
@@ -245,8 +259,11 @@ class NotificationService {
     var armed = 0;
     for (final d in doses) {
       if (d.id < medIdBase || d.id >= medIdBase + _medIdSpan) continue; // stay in range
-      final fireAt = tz.TZDateTime.from(d.when, tz.local).subtract(leadTime);
-      if (!fireAt.isAfter(now)) continue; // already past — skip
+      // Anchor the daily repeat at the next occurrence of this dose's clock time,
+      // [leadTime] early. `_armDose` repeats it every day, so it keeps firing
+      // each morning without the app having to re-arm overnight.
+      var fireAt = _nextInstanceOf(d.when.hour, d.when.minute).subtract(leadTime);
+      if (!fireAt.isAfter(now)) fireAt = fireAt.add(const Duration(days: 1));
       if (await _armDose(d, fireAt, details)) armed++;
     }
 
@@ -272,6 +289,9 @@ class NotificationService {
           androidScheduleMode: mode,
           // iOS-only, but a required param; absolute time is what we schedule.
           uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          // Repeat every day at this clock time — survives reboot (boot receiver)
+          // and needs no re-arming, so a morning dose fires every morning.
+          matchDateTimeComponents: DateTimeComponents.time,
           payload: 'med:${d.medId}',
         );
         return true;

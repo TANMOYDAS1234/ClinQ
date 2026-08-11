@@ -52,7 +52,7 @@ async function tick() {
     for (const slot of med.schedule ?? []) {
       if (slot.time !== hhmm) continue;
 
-      const notifId = medReminderNotificationId(String(med._id), slot.time, today);
+      const notifId = medReminderNotificationId(String(med._id), slot.time);
       if (sentThisMinute.has(notifId)) continue;
 
       // Already taken or skipped today → don't nag.

@@ -36,72 +36,51 @@ final FutureProvider<List<Medication>> medicationsListProvider = FutureProvider<
   (ref) => ref.watch(medicationsRepositoryProvider).getMedications(),
 );
 
-/// Rolling window (in days) of concrete dose alarms armed at once. Long enough
-/// to bridge a normal gap between app opens; the server push (Tier 3) covers
-/// longer silences, and every open re-extends the window.
-const int _reminderWindowDays = 5;
-
-/// Expands active medications into concrete upcoming dose alarms over the window,
-/// skipping any slot the patient has ALREADY handled today (taken or skipped) so
-/// a taken dose never nags and re-timing never re-fires it. [today] carries
-/// today's per-slot status; without it, the today filter is simply skipped.
+/// Expands active medications into their DAILY-REPEATING dose reminders — one
+/// alarm per (medicine, slot time), which the OS then fires every day at that
+/// time (see NotificationService: matchDateTimeComponents + exactAllowWhileIdle).
+///
+/// This is deliberately a daily repeat rather than a rolling window of one-shots:
+/// the one-shot scheme silently stopped firing when the app wasn't reopened
+/// overnight, which is exactly why a morning dose stopped alarming. A daily
+/// repeat survives reboot and needs no re-arming.
+///
+/// PRN/Stat carry no reminders. Every-other-day / day-of-week nuances aren't
+/// expressible as a plain daily repeat, so they fire daily — an occasional extra
+/// reminder (safe) rather than a missed morning one. [today] is accepted for
+/// call-site compatibility but no longer used.
 List<ScheduledDose> buildUpcomingDoses(List<Medication> meds, {TodaySchedule? today}) {
   final now = DateTime.now();
-  final midnight = DateTime(now.year, now.month, now.day);
-
-  final handledToday = <String>{};
-  for (final s in today?.slots ?? const <MedicationScheduleSlot>[]) {
-    if (s.status == 'taken' || s.status == 'skipped') handledToday.add('${s.medicationId}@${s.time}');
-  }
-
   final doses = <ScheduledDose>[];
-  for (var d = 0; d < _reminderWindowDays; d++) {
-    final day = midnight.add(Duration(days: d));
-    for (final m in meds) {
-      if (!m.isActive) continue;
-      if (m.asNeeded || m.stat) continue; // PRN/Stat carry no scheduled reminders
-      if (m.startDate != null && day.isBefore(_dateOnly(m.startDate!))) continue;
-      if (m.endDate != null && day.isAfter(_dateOnly(m.endDate!))) continue;
-      // Every-other-day (and longer intervals) only fire on matching days.
-      if (m.dayInterval > 1 && m.startDate != null) {
-        final since = _dateOnly(day).difference(_dateOnly(m.startDate!)).inDays;
-        if (since % m.dayInterval != 0) continue;
-      }
-      if (!_activeOnWeekday(m, day)) continue;
-      for (final s in m.schedule) {
-        if (s.time.isEmpty) continue;
-        final parts = s.time.split(':');
-        if (parts.length != 2) continue;
-        final hh = int.tryParse(parts[0]);
-        final mm = int.tryParse(parts[1]);
-        if (hh == null || mm == null || hh > 23 || mm > 59) continue;
-        final when = DateTime(day.year, day.month, day.day, hh, mm);
-        if (when.isBefore(now)) continue; // dose time already passed
-        if (d == 0 && handledToday.contains('${m.id}@${s.time}')) continue; // taken-aware
-        doses.add(
-          ScheduledDose(
-            id: medReminderNotificationId(m.id, s.time, day),
-            medId: m.id,
-            name: m.name,
-            when: when,
-            dose: m.dose.isNotEmpty ? m.dose : null,
-            relationToMeal: s.relationToMeal,
-          ),
-        );
-      }
+  final seen = <int>{};
+  for (final m in meds) {
+    if (!m.isActive || m.asNeeded || m.stat) continue;
+    if (m.endDate != null && _dateOnly(m.endDate!).isBefore(_dateOnly(now))) continue;
+    for (final s in m.schedule) {
+      if (s.time.isEmpty) continue;
+      final parts = s.time.split(':');
+      if (parts.length != 2) continue;
+      final hh = int.tryParse(parts[0]);
+      final mm = int.tryParse(parts[1]);
+      if (hh == null || mm == null || hh > 23 || mm > 59) continue;
+      final id = medDailyReminderId(m.id, s.time);
+      if (!seen.add(id)) continue; // one alarm per distinct slot time
+      doses.add(
+        ScheduledDose(
+          id: id,
+          medId: m.id,
+          name: m.name,
+          when: DateTime(now.year, now.month, now.day, hh, mm),
+          dose: m.dose.isNotEmpty ? m.dose : null,
+          relationToMeal: s.relationToMeal,
+        ),
+      );
     }
   }
   return doses;
 }
 
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
-
-bool _activeOnWeekday(Medication m, DateTime day) {
-  if (m.daysOfWeek.isEmpty) return true;
-  // Backend stores 0=Sun..6=Sat; Dart weekday is Mon=1..Sun=7, so % 7 maps back.
-  final backendDow = day.weekday % 7;
-  return m.daysOfWeek.contains(backendDow.toString());
-}
 
 /// (Re)builds and arms the device reminders from [meds] and today's [today]
 /// statuses. Returns how many alarms armed.
