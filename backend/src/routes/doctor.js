@@ -17,6 +17,7 @@ import { KnowledgeChunk } from '../models/KnowledgeChunk.js';
 import { Hba1cRecord } from '../models/Hba1cRecord.js';
 import { FootAssessment } from '../models/FootAssessment.js';
 import { LabResult } from '../models/LabResult.js';
+import { buildAnalytes } from '../services/analyteCatalog.js';
 import { FoodLog } from '../models/FoodLog.js';
 import { Prescription } from '../models/Prescription.js';
 import { toE164 } from '../utils/phone.js';
@@ -606,6 +607,9 @@ router.get(
           analysisSummary: r.analysis?.summary ?? null,
           hba1cPercent: r.analysis?.hba1cPercent ?? null,
           abnormal: r.analysis?.abnormal ?? [],
+          // Uniform value/range/flag list for the record's structured display.
+          analytes: buildAnalytes(r.analysis),
+          testedOn: r.analysis?.testedOn ?? null,
           createdAt: r.createdAt,
         };
       }),

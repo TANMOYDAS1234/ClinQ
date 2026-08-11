@@ -28,6 +28,49 @@ class GlucoseDailyPoint {
   );
 }
 
+/// One structured reading transcribed from a report — value, unit, reference
+/// window and a low/normal/high flag.
+class Analyte {
+  const Analyte({
+    required this.code,
+    required this.label,
+    required this.value,
+    required this.flag,
+    this.unit,
+    this.refLow,
+    this.refHigh,
+  });
+
+  final String code;
+  final String label;
+  final num value;
+  final String? unit;
+  final num? refLow;
+  final num? refHigh;
+  final String flag; // low | normal | high | critical
+
+  bool get abnormal => flag == 'low' || flag == 'high' || flag == 'critical';
+
+  /// A compact reference window, e.g. "70–130", "<100", ">40".
+  String get rangeText {
+    String n(num v) => v == v.roundToDouble() ? v.toInt().toString() : v.toString();
+    if (refLow != null && refHigh != null) return '${n(refLow!)}–${n(refHigh!)}';
+    if (refHigh != null) return '<${n(refHigh!)}';
+    if (refLow != null) return '>${n(refLow!)}';
+    return '';
+  }
+
+  factory Analyte.fromJson(Map<String, dynamic> j) => Analyte(
+    code: j['code']?.toString() ?? '',
+    label: j['label']?.toString() ?? '',
+    value: (j['value'] as num?) ?? 0,
+    unit: j['unit']?.toString(),
+    refLow: j['refLow'] as num?,
+    refHigh: j['refHigh'] as num?,
+    flag: j['flag']?.toString() ?? 'normal',
+  );
+}
+
 /// A test report the patient uploaded against a doctor-advised test.
 class LabReport {
   const LabReport({
@@ -38,6 +81,9 @@ class LabReport {
     this.createdAt,
     this.mimeType,
     this.originalName,
+    this.analysisStatus,
+    this.analysisSummary,
+    this.analytes = const [],
   });
   final String id;
   final String testName;
@@ -46,6 +92,14 @@ class LabReport {
   final DateTime? createdAt;
   final String? mimeType;
   final String? originalName;
+
+  /// pending | done | failed | unsupported — so "couldn't read it" reads
+  /// differently from "nothing on it".
+  final String? analysisStatus;
+  final String? analysisSummary;
+
+  /// The structured values transcribed off the report, with ranges + flags.
+  final List<Analyte> analytes;
 
   /// Labs email PDFs, so most reports are not pictures. Unknown types count as
   /// documents — a file card that opens beats an image box that cannot load.
@@ -60,6 +114,9 @@ class LabReport {
     createdAt: DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal(),
     mimeType: j['mimeType']?.toString(),
     originalName: j['originalName']?.toString(),
+    analysisStatus: j['analysisStatus']?.toString(),
+    analysisSummary: j['analysisSummary']?.toString(),
+    analytes: (j['analytes'] as List?)?.whereType<Map<String, dynamic>>().map(Analyte.fromJson).toList() ?? const [],
   );
 }
 

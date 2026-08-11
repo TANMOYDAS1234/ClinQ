@@ -7,6 +7,7 @@ import { audit } from '../middleware/audit.js';
 import { LabResult } from '../models/LabResult.js';
 import { Prescription } from '../models/Prescription.js';
 import { analyseLabResult } from '../services/ai/labReport.js';
+import { buildAnalytes } from '../services/analyteCatalog.js';
 import { Hba1cRecord } from '../models/Hba1cRecord.js';
 import { GlucoseReading } from '../models/GlucoseReading.js';
 import { recomputePatientRisk } from '../services/analytics.js';
@@ -50,6 +51,8 @@ function serialiseResult(r) {
           creatinine: r.analysis.creatinine ?? null,
           testedOn: r.analysis.testedOn ?? null,
           abnormal: r.analysis.abnormal ?? [],
+          // Uniform value/range/flag list built from the extracted numbers.
+          analytes: buildAnalytes(r.analysis),
         }
       : null,
     createdAt: r.createdAt,

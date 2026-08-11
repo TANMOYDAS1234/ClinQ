@@ -15,6 +15,7 @@ import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
 import 'widgets/clinician_visuals.dart';
 import 'widgets/health_trend_chart.dart';
+import 'widgets/sparkline.dart';
 
 /// The read side of a patient: health score, adherence, glucose control, HbA1c
 /// history, test reports, recent alerts, the dietician's review cadence, and
@@ -56,6 +57,7 @@ class PatientRecordSections extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: _LabReportRow(report: r),
             ),
+          _AnalyteTrends(reports: p.labResults),
         ],
         if (p.alerts.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.lg),
@@ -666,6 +668,20 @@ class _LabReportRow extends StatelessWidget {
                     style: TextStyle(fontSize: 11.5, color: AppColors.accentOn(context), fontWeight: FontWeight.w600),
                   ),
                 ],
+                // The structured values transcribed off the report, each with
+                // its reference range and a low/high flag.
+                if (report.analytes.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [for (final a in report.analytes) _AnalyteChip(analyte: a)],
+                  ),
+                ] else if (report.analysisStatus == 'failed' || report.analysisStatus == 'unsupported') ...[
+                  const SizedBox(height: 6),
+                  Text('Could not read automatically — needs a look',
+                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.warningOn(context))),
+                ],
               ],
             ),
           ),
@@ -680,6 +696,147 @@ class _LabReportRow extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
       onTap: () => FullscreenPhoto.show(context, report.photoUrl),
       child: tile,
+    );
+  }
+}
+
+/// One transcribed value: "HbA1c 9.9 %" with a coloured border + arrow when it
+/// is out of its reference range.
+class _AnalyteChip extends StatelessWidget {
+  const _AnalyteChip({required this.analyte});
+
+  final Analyte analyte;
+
+  static String _fmt(num v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final abnormal = analyte.abnormal;
+    final color = switch (analyte.flag) {
+      'high' || 'critical' => AppColors.dangerOn(context),
+      'low' => AppColors.warningOn(context),
+      _ => AppColors.successOn(context),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: abnormal ? color.withValues(alpha: 0.12) : scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: abnormal ? color.withValues(alpha: 0.4) : scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('${analyte.label} ', style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+          Text(_fmt(analyte.value),
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: abnormal ? color : scheme.onSurface)),
+          if (analyte.unit != null && analyte.unit!.isNotEmpty)
+            Text(' ${analyte.unit}', style: TextStyle(fontSize: 10.5, color: scheme.onSurfaceVariant)),
+          if (abnormal) ...[
+            const SizedBox(width: 3),
+            Icon(analyte.flag == 'low' ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: 12, color: color),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Per-analyte trends across the patient's uploaded reports — for any marker
+/// that appears on two or more reports, its history sparkline + latest value.
+class _AnalyteTrends extends StatelessWidget {
+  const _AnalyteTrends({required this.reports});
+
+  final List<LabReport> reports;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final sorted = [...reports]..sort((a, b) => (a.createdAt ?? DateTime(0)).compareTo(b.createdAt ?? DateTime(0)));
+    final series = <String, List<Analyte>>{};
+    final labels = <String, String>{};
+    for (final r in sorted) {
+      for (final a in r.analytes) {
+        (series[a.code] ??= []).add(a);
+        labels[a.code] = a.label;
+      }
+    }
+    final trended = series.entries.where((e) => e.value.length >= 2).toList();
+    if (trended.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: AppSpacing.md),
+        Text('LAB TRENDS',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
+        const SizedBox(height: AppSpacing.sm),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+          ),
+          child: Column(
+            children: [
+              for (var i = 0; i < trended.length; i++) ...[
+                if (i > 0) Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.4)),
+                _AnalyteTrendRow(label: labels[trended[i].key]!, readings: trended[i].value),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AnalyteTrendRow extends StatelessWidget {
+  const _AnalyteTrendRow({required this.label, required this.readings});
+
+  final String label;
+  final List<Analyte> readings;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final latest = readings.last;
+    final abnormal = latest.abnormal;
+    final color = switch (latest.flag) {
+      'high' || 'critical' => AppColors.dangerOn(context),
+      'low' => AppColors.warningOn(context),
+      _ => AppColors.successOn(context),
+    };
+    String fmt(num v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                if (latest.rangeText.isNotEmpty)
+                  Text('target ${latest.rangeText}${latest.unit != null ? ' ${latest.unit}' : ''}',
+                      style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          Sparkline(
+            values: [for (final a in readings) a.value.toDouble()],
+            color: AppColors.accentOn(context),
+            width: 64,
+            height: 24,
+            showBand: false,
+          ),
+          const SizedBox(width: 10),
+          Text(fmt(latest.value),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: abnormal ? color : scheme.onSurface)),
+        ],
+      ),
     );
   }
 }
