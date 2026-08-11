@@ -71,6 +71,7 @@ router.post(
             frequency: z.string().max(120).optional(),
             durationDays: z.number().int().min(1).max(365).optional(),
             relationToMeal: z.enum(['before_meal', 'after_meal', 'with_meal', 'any']).default('any'),
+            route: z.enum(['oral', 'iv', 'sc', 'im', 'topical', 'inhaled']).default('oral'),
             instructions: z.string().max(400).optional(),
           }),
         )
@@ -114,6 +115,13 @@ async function syncMedications(prescription, patientId, doctorId) {
   const profile = await PatientProfile.findOne({ user: patientId }).select('mealTimes').lean();
   const mealTimes = profile?.mealTimes;
   for (const item of prescription.items) {
+    // Special dosing is carried in the frequency shorthand (PRN/SOS/Stat/EOD);
+    // derive the flags so the tracker and the device scheduler treat them right.
+    const f = String(item.frequency ?? '').toLowerCase();
+    const asNeeded = /\b(prn|sos)\b/.test(f);
+    const stat = /\bstat\b/.test(f);
+    const dayInterval = /\b(eod|qod)\b/.test(f) ? 2 : 1;
+
     await Medication.findOneAndUpdate(
       { patient: patientId, name: item.name, isActive: true },
       {
@@ -123,7 +131,12 @@ async function syncMedications(prescription, patientId, doctorId) {
           strength: item.strength,
           dose: item.dose,
           form: /insulin/i.test(item.name) ? 'insulin' : 'tablet',
-          schedule: buildSchedule(item.frequency, mealTimes, item.relationToMeal),
+          // PRN/Stat carry no recurring schedule, so they arm no reminders.
+          schedule: asNeeded || stat ? [] : buildSchedule(item.frequency, mealTimes, item.relationToMeal),
+          route: item.route ?? 'oral',
+          asNeeded,
+          stat,
+          dayInterval,
           startDate: prescription.issuedOn,
           endDate: item.durationDays
             ? dayjs(prescription.issuedOn).add(item.durationDays, 'day').toDate()

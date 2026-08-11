@@ -436,11 +436,13 @@ class _PrescriptionCard extends StatelessWidget {
   }
 
   ({IconData icon, String label}) _schedule() {
+    // The label is the shared plain-language dosing phrase ("Twice a day, after
+    // food") — the same expansion the doctor's shorthand produces.
+    final summary = medication.doseSummary;
     final times = medication.schedule.map((s) => s.time).where((t) => t.isNotEmpty).toList();
-    if (times.isEmpty) return (icon: Icons.schedule_rounded, label: 'As needed');
+    if (times.isEmpty) return (icon: Icons.schedule_rounded, label: summary);
 
     final windows = times.map(_windowFor).where((w) => w.isNotEmpty).toList();
-
     if (times.length == 1) {
       final w = windows.isNotEmpty ? windows.first : times.first;
       return (
@@ -450,15 +452,10 @@ class _PrescriptionCard extends StatelessWidget {
           'Dinner' => Icons.nightlight_round,
           _ => Icons.schedule_rounded,
         },
-        label: '1x $w',
+        label: summary,
       );
     }
-
-    final initials = windows.map((w) => w[0]).join('/');
-    return (
-      icon: Icons.autorenew_rounded,
-      label: initials.isEmpty ? '${times.length}x Daily' : '${times.length}x Daily ($initials)',
-    );
+    return (icon: Icons.autorenew_rounded, label: summary);
   }
 
   @override

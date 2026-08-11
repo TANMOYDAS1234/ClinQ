@@ -1,3 +1,5 @@
+import 'med_shorthand.dart';
+
 /// `Medication` object from API_CONTRACT.md §4.
 class Medication {
   const Medication({
@@ -13,6 +15,10 @@ class Medication {
     this.startDate,
     this.endDate,
     this.instructions,
+    this.route = 'oral',
+    this.asNeeded = false,
+    this.stat = false,
+    this.dayInterval = 1,
   });
 
   final String id;
@@ -27,6 +33,18 @@ class Medication {
   final DateTime? endDate;
   final bool isActive;
   final String? instructions;
+
+  /// oral | iv | sc | im | topical | inhaled.
+  final String route;
+
+  /// PRN/SOS — taken as needed, so it arms no reminders.
+  final bool asNeeded;
+
+  /// Stat — a single immediate dose.
+  final bool stat;
+
+  /// 1 = daily, 2 = every other day (EOD).
+  final int dayInterval;
 
   factory Medication.fromJson(Map<String, dynamic> json) {
     return Medication(
@@ -46,6 +64,10 @@ class Medication {
       endDate: json['endDate'] == null ? null : DateTime.tryParse(json['endDate'].toString()),
       isActive: json['isActive'] as bool? ?? true,
       instructions: json['instructions'] as String?,
+      route: json['route']?.toString() ?? 'oral',
+      asNeeded: json['asNeeded'] as bool? ?? false,
+      stat: json['stat'] as bool? ?? false,
+      dayInterval: (json['dayInterval'] as num?)?.toInt() ?? 1,
     );
   }
 }
@@ -71,8 +93,23 @@ class PrescriptionScanResult {
   }
 }
 
+/// The patient/dietician-facing plain-language dosing phrase, derived from the
+/// medicine's shape (dose count, meal relation, route, and the PRN/Stat/EOD/HS
+/// flags) via the shared shorthand dictionary — e.g. "Twice a day, after food".
+extension MedicationDoseSummary on Medication {
+  String get doseSummary => doseSummaryFrom(
+    doseCount: schedule.length,
+    relationToMeal: schedule.isNotEmpty ? schedule.first.relationToMeal : null,
+    route: route,
+    asNeeded: asNeeded,
+    stat: stat,
+    everyOtherDay: dayInterval > 1,
+    atBedtime: schedule.any((s) => s.slot == 'bedtime'),
+  );
+}
+
 class MedicationScheduleEntry {
-  const MedicationScheduleEntry({required this.time, required this.relationToMeal});
+  const MedicationScheduleEntry({required this.time, required this.relationToMeal, this.slot});
 
   /// "HH:mm".
   final String time;
@@ -80,10 +117,15 @@ class MedicationScheduleEntry {
   /// before_meal | after_meal | with_meal | anytime.
   final String relationToMeal;
 
+  /// morning | noon | afternoon | night | bedtime — so a bedtime (HS) dose can
+  /// read "at bedtime" rather than a bare time.
+  final String? slot;
+
   factory MedicationScheduleEntry.fromJson(Map<String, dynamic> json) {
     return MedicationScheduleEntry(
       time: json['time']?.toString() ?? '',
       relationToMeal: json['relationToMeal']?.toString() ?? 'anytime',
+      slot: json['slot']?.toString(),
     );
   }
 }

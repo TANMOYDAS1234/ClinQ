@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../medications/domain/med_shorthand.dart';
+
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -90,8 +92,9 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
           (m) => <String, dynamic>{
             'name': m.name.text.trim(),
             if (m.dosage.text.trim().isNotEmpty) 'strength': m.dosage.text.trim(),
-            'frequency': m.frequency,
-            'relationToMeal': 'any',
+            'frequency': m.frequency.apiFrequency,
+            'relationToMeal': m.frequency.takesMealRelation ? m.relation.api : 'any',
+            'route': m.route.api,
             if (int.tryParse(m.duration.text.trim()) != null)
               'durationDays': int.parse(m.duration.text.trim()),
           },
@@ -102,14 +105,6 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
     if (items.isEmpty) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Add at least one medicine (a name is required).')),
-      );
-      return;
-    }
-    // Guard the silent mistake: a medicine with no dosing schedule reaches the
-    // patient's tracker with no reminder times, so it simply never reminds them.
-    if (_meds.any((m) => m.name.text.trim().isNotEmpty && m.frequency == '0-0-0')) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Pick at least one time (B / L / D) for each medicine.')),
       );
       return;
     }
@@ -699,6 +694,7 @@ class _CurrentMedicines extends ConsumerWidget {
                               Text(
                                 [
                                   if (med.dose.isNotEmpty) med.dose,
+                                  med.doseSummary,
                                   if (med.schedule.isNotEmpty)
                                     med.schedule.map((s) => s.time).join(', '),
                                 ].join(' · '),
@@ -944,22 +940,20 @@ class _PlainField extends StatelessWidget {
 
 // ---- Medication -----------------------------------------------------------
 
-/// One medicine being written. `frequency` is the three-slot string the API and
-/// the patient's reminder scheduler already speak — B/L/D map straight onto its
-/// morning/noon/night positions, so the friendlier control needs no translation.
+/// One medicine being written. The doctor picks in medical shorthand
+/// (frequency + meal relation + route); the composed short form ("BDPC") and the
+/// patient's plain phrase ("Twice a day, after food") both come from
+/// [med_shorthand], so the two can never drift.
 class _MedDraft {
   final name = TextEditingController();
   final dosage = TextEditingController();
   final duration = TextEditingController();
-  String frequency = '0-0-0';
+  DoseFrequency frequency = DoseFrequency.bd;
+  MealRelation relation = MealRelation.after;
+  MedRoute route = MedRoute.oral;
 
-  bool slot(int i) => frequency.split('-')[i] == '1';
-
-  void toggle(int i) {
-    final parts = frequency.split('-');
-    parts[i] = parts[i] == '1' ? '0' : '1';
-    frequency = parts.join('-');
-  }
+  String get shorthand => composeShorthand(frequency: frequency, relation: relation, route: route);
+  String get plain => expandToPlain(frequency: frequency, relation: relation, route: route);
 
   void dispose() {
     name.dispose();
@@ -974,8 +968,6 @@ class _MedFields extends StatelessWidget {
   final _MedDraft draft;
   final VoidCallback onChanged;
   final VoidCallback? onRemove;
-
-  static const _slots = ['B', 'L', 'D'];
 
   @override
   Widget build(BuildContext context) {
@@ -1038,33 +1030,93 @@ class _MedFields extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          const _FieldLabel('Frequency'),
-          const SizedBox(height: 6),
           Row(
             children: [
-              for (var i = 0; i < _slots.length; i++) ...[
-                if (i > 0) const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _SlotButton(
-                    label: _slots[i],
-                    selected: draft.slot(i),
+              const _FieldLabel('Frequency'),
+              const Spacer(),
+              // Live composed medical shorthand, e.g. "BDPC" / "TDS AC" / "HS".
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(color: AppColors.accentSoftOn(context), borderRadius: BorderRadius.circular(7)),
+                child: Text(draft.shorthand,
+                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.accentOn(context))),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final f in DoseFrequency.values)
+                _ShChip(
+                  label: f.code,
+                  selected: draft.frequency == f,
+                  onTap: () {
+                    draft.frequency = f;
+                    onChanged();
+                  },
+                ),
+            ],
+          ),
+          if (draft.frequency.takesMealRelation) ...[
+            const SizedBox(height: AppSpacing.sm),
+            const _FieldLabel('Timing'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final r in MealRelation.values)
+                  _ShChip(
+                    label: _relLabel(r),
+                    selected: draft.relation == r,
                     onTap: () {
-                      draft.toggle(i);
+                      draft.relation = r;
                       onChanged();
                     },
                   ),
-                ),
               ],
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          const _FieldLabel('Route'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final rt in MedRoute.values)
+                _ShChip(
+                  label: rt.code,
+                  selected: draft.route == rt,
+                  onTap: () {
+                    draft.route = rt;
+                    onChanged();
+                  },
+                ),
             ],
           ),
+          const SizedBox(height: 8),
+          Text('Patient sees: ${draft.plain}',
+              style: TextStyle(
+                  fontSize: 12, fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
       ),
     );
   }
 }
 
-class _SlotButton extends StatelessWidget {
-  const _SlotButton({required this.label, required this.selected, required this.onTap});
+String _relLabel(MealRelation r) => switch (r) {
+  MealRelation.anytime => 'Any',
+  MealRelation.before => 'AC',
+  MealRelation.withFood => 'With',
+  MealRelation.after => 'PC',
+};
+
+/// A small selectable shorthand chip (frequency / timing / route).
+class _ShChip extends StatelessWidget {
+  const _ShChip({required this.label, required this.selected, required this.onTap});
 
   final String label;
   final bool selected;
@@ -1080,8 +1132,7 @@ class _SlotButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: Container(
-          height: 46,
-          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
@@ -1091,7 +1142,7 @@ class _SlotButton extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 13.5,
               fontWeight: FontWeight.w700,
               color: selected ? AppColors.primary : scheme.onSurface,
             ),

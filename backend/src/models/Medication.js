@@ -33,7 +33,7 @@ const medicationSchema = new mongoose.Schema(
         time: { type: String, required: true, match: [/^([01]\d|2[0-3]):[0-5]\d$/, 'time must be HH:mm'] },
         // The meal slot this dose is anchored to, so its time can be re-derived
         // when the patient changes their meal times. Absent for a manual time.
-        slot: { type: String, enum: ['morning', 'noon', 'afternoon', 'night'] },
+        slot: { type: String, enum: ['morning', 'noon', 'afternoon', 'night', 'bedtime'] },
         relationToMeal: {
           type: String,
           enum: ['before_meal', 'after_meal', 'with_meal', 'any'],
@@ -47,6 +47,22 @@ const medicationSchema = new mongoose.Schema(
       default: [],
       validate: [(v) => v.every((d) => d >= 0 && d <= 6), 'daysOfWeek must be 0-6'],
     },
+
+    // How the dose is given (PO/IV/SC/…). Presentation only; does not affect the
+    // schedule.
+    route: {
+      type: String,
+      enum: ['oral', 'iv', 'sc', 'im', 'topical', 'inhaled'],
+      default: 'oral',
+    },
+    // PRN/SOS — taken only when required, so it carries an empty schedule and
+    // arms no reminders.
+    asNeeded: { type: Boolean, default: false },
+    // Stat — a single immediate dose, not a recurring one.
+    stat: { type: Boolean, default: false },
+    // Every-other-day (EOD) etc.: 1 = daily, 2 = every other day. The device
+    // scheduler only arms a dose on days matching this interval from startDate.
+    dayInterval: { type: Number, default: 1, min: 1, max: 30 },
 
     startDate: { type: Date, default: Date.now },
     endDate: Date,

@@ -32,6 +32,9 @@ function slotBase(slot, meals) {
       return addMinutes(meals.lunch, 180);
     case 'night':
       return meals.dinner;
+    case 'bedtime':
+      // ~90 min after dinner — HS ("hora somni", at bedtime).
+      return addMinutes(meals.dinner, 90);
     default:
       return meals.breakfast;
   }
@@ -66,7 +69,10 @@ export function frequencyToSlots(frequency) {
   }
 
   const lower = String(frequency).toLowerCase();
-  if (/\b(od|once)\b/.test(lower)) return ['morning'];
+  // As-needed / immediate one-off carry no recurring schedule at all.
+  if (/\b(prn|sos|stat)\b/.test(lower)) return [];
+  if (/\b(hs|bedtime|nocte|on)\b/.test(lower)) return ['bedtime'];
+  if (/\b(od|qd|once|om)\b/.test(lower)) return ['morning'];
   if (/\b(bd|bid|twice)\b/.test(lower)) return ['morning', 'night'];
   if (/\b(tds|tid|thrice|three times)\b/.test(lower)) return ['morning', 'noon', 'night'];
   if (/\b(qid|qds|four times)\b/.test(lower)) return ['morning', 'noon', 'afternoon', 'night'];

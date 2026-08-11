@@ -59,8 +59,14 @@ List<ScheduledDose> buildUpcomingDoses(List<Medication> meds, {TodaySchedule? to
     final day = midnight.add(Duration(days: d));
     for (final m in meds) {
       if (!m.isActive) continue;
+      if (m.asNeeded || m.stat) continue; // PRN/Stat carry no scheduled reminders
       if (m.startDate != null && day.isBefore(_dateOnly(m.startDate!))) continue;
       if (m.endDate != null && day.isAfter(_dateOnly(m.endDate!))) continue;
+      // Every-other-day (and longer intervals) only fire on matching days.
+      if (m.dayInterval > 1 && m.startDate != null) {
+        final since = _dateOnly(day).difference(_dateOnly(m.startDate!)).inDays;
+        if (since % m.dayInterval != 0) continue;
+      }
       if (!_activeOnWeekday(m, day)) continue;
       for (final s in m.schedule) {
         if (s.time.isEmpty) continue;
