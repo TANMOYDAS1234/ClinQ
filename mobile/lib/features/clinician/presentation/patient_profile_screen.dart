@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../medications/domain/med_shorthand.dart';
+import '../domain/lab_catalog.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
@@ -40,10 +41,6 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
   final _advice = TextEditingController();
   final _labSearch = TextEditingController();
 
-  /// The tests the clinic orders most. Offered as chips so the common case is a
-  /// tap; anything else is typed into the search box and added as its own chip.
-  static const _commonTests = ['HbA1c', 'Lipid Profile', 'CBC', 'TSH'];
-
   final Set<String> _selectedTests = {};
   final List<String> _customTests = [];
 
@@ -65,11 +62,13 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
     final text = _labSearch.text.trim();
     if (text.isEmpty) return;
     setState(() {
-      if (!_commonTests.any((t) => t.toLowerCase() == text.toLowerCase()) &&
-          !_customTests.any((t) => t.toLowerCase() == text.toLowerCase())) {
+      // If it's a known panel, order it by its canonical catalog name.
+      final panel = labPanelFor(text);
+      final name = panel?.name ?? text;
+      if (panel == null && !_customTests.any((t) => t.toLowerCase() == text.toLowerCase())) {
         _customTests.add(text);
       }
-      _selectedTests.add(text);
+      _selectedTests.add(name);
       _labSearch.clear();
     });
   }
@@ -270,20 +269,75 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
-                      for (final test in [..._commonTests, ..._customTests])
-                        _TestChip(
-                          label: test,
-                          selected: _selectedTests.contains(test),
-                          onTap: () => setState(() {
-                            if (!_selectedTests.remove(test)) _selectedTests.add(test);
-                          }),
+                  // The diabetes lab catalog, grouped by category. The doctor
+                  // orders at the PANEL level; each panel's sub-tests are shown
+                  // beneath the selection so "what the report includes" is clear.
+                  for (final entry in labCatalogByCategory().entries) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2, bottom: 6),
+                      child: Text(
+                        entry.key.toUpperCase(),
+                        style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      ),
+                    ),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: [
+                        for (final panel in entry.value)
+                          _TestChip(
+                            label: panel.name,
+                            selected: _selectedTests.contains(panel.name),
+                            onTap: () => setState(() {
+                              if (!_selectedTests.remove(panel.name)) _selectedTests.add(panel.name);
+                            }),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                  if (_customTests.isNotEmpty)
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: [
+                        for (final test in _customTests)
+                          _TestChip(
+                            label: test,
+                            selected: _selectedTests.contains(test),
+                            onTap: () => setState(() {
+                              if (!_selectedTests.remove(test)) _selectedTests.add(test);
+                            }),
+                          ),
+                      ],
+                    ),
+                  // Sub-tests under each selected panel.
+                  for (final t in _selectedTests)
+                    if ((labPanelFor(t)?.analytes ?? const []).isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.subdirectory_arrow_right_rounded,
+                                size: 15, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '$t: ${labPanelFor(t)!.analytes.join(' · ')}',
+                                style: TextStyle(
+                                    fontSize: 11.5,
+                                    height: 1.3,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                              ),
+                            ),
+                          ],
                         ),
-                    ],
-                  ),
+                      ),
                 ],
               ),
             ),
