@@ -1,4 +1,5 @@
 import '../../chat/domain/chat_message.dart';
+import 'clinician_models.dart' show MessagePreview;
 
 /// A patient chat thread flagged for clinician review (`/doctor/chat-review`).
 class ChatReviewSession {
@@ -8,11 +9,13 @@ class ChatReviewSession {
     required this.highestUrgency,
     this.patientId,
     this.patientName,
+    this.avatarUrl,
     this.language,
     this.messageCount = 0,
     this.flaggedForReview = false,
     this.reviewedAt,
     this.lastMessageAt,
+    this.lastMessage,
     this.unreadCount = 0,
   });
 
@@ -21,11 +24,19 @@ class ChatReviewSession {
   final String highestUrgency; // routine | advice | urgent | emergency
   final String? patientId;
   final String? patientName;
+
+  /// The patient's profile photo, so the inbox row shows a face rather than an
+  /// initial. Null when they have not set one.
+  final String? avatarUrl;
   final String? language;
   final int messageCount;
   final bool flaggedForReview;
   final DateTime? reviewedAt;
   final DateTime? lastMessageAt;
+
+  /// The newest turn in the thread — who spoke, what they said, and when — so
+  /// the row reads like an inbox instead of a static title.
+  final MessagePreview? lastMessage;
 
   /// Patient messages nobody at the clinic has opened in this conversation.
   final int unreadCount;
@@ -37,6 +48,7 @@ class ChatReviewSession {
         highestUrgency: j['highestUrgency']?.toString() ?? 'routine',
         patientId: j['patientId']?.toString(),
         patientName: j['patientName']?.toString(),
+        avatarUrl: j['avatarUrl']?.toString(),
         language: j['language']?.toString(),
         messageCount: (j['messageCount'] as num?)?.toInt() ?? 0,
         flaggedForReview: j['flaggedForReview'] == true,
@@ -44,6 +56,9 @@ class ChatReviewSession {
             DateTime.tryParse(j['reviewedAt']?.toString() ?? '')?.toLocal(),
         lastMessageAt:
             DateTime.tryParse(j['lastMessageAt']?.toString() ?? '')?.toLocal(),
+        lastMessage: j['lastMessage'] is Map<String, dynamic>
+            ? MessagePreview.fromJson(j['lastMessage'] as Map<String, dynamic>)
+            : null,
         unreadCount: (j['unreadCount'] as num?)?.toInt() ?? 0,
       );
 }

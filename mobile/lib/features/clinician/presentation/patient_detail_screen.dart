@@ -14,7 +14,6 @@ import '../domain/clinician_models.dart';
 import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
 import 'widgets/clinician_visuals.dart';
-import 'widgets/health_trend_chart.dart';
 import 'widgets/sparkline.dart';
 
 /// The read side of a patient: health score, adherence, glucose control, HbA1c
@@ -39,14 +38,22 @@ class PatientRecordSections extends ConsumerWidget {
       children: [
         _MetricsGrid(summary: p),
         const SizedBox(height: AppSpacing.lg),
-        HealthTrendChart(daily: p.glucoseDaily),
-        const SizedBox(height: AppSpacing.lg),
         _DieticianSection(summary: p, patientId: patientId),
         if (p.hba1cHistory.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.lg),
-          const _SectionTitle('HbA1c history'),
+          Row(
+            children: [
+              const Expanded(child: _SectionTitle('HbA1c history')),
+              if (p.hba1cHistory.length > 4)
+                TextButton(
+                  onPressed: () => _showAllHba1c(context, p.hba1cHistory),
+                  child: Text('View all (${p.hba1cHistory.length})'),
+                ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.sm),
-          _Hba1cList(points: p.hba1cHistory),
+          // Latest four; the rest are behind "View all".
+          _Hba1cList(points: p.hba1cHistory.take(4).toList()),
         ],
         if (p.labResults.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.lg),
@@ -82,6 +89,29 @@ class PatientRecordSections extends ConsumerWidget {
           _AiContextCard(text: p.aiContext!),
         ],
       ],
+    );
+  }
+
+  /// The full HbA1c history in a scrollable sheet, behind the "View all" action.
+  void _showAllHba1c(BuildContext context, List<Hba1cPoint> points) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        builder: (ctx, controller) => ListView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.lg),
+          children: [
+            const _SectionTitle('HbA1c history'),
+            const SizedBox(height: AppSpacing.md),
+            _Hba1cList(points: points),
+          ],
+        ),
+      ),
     );
   }
 }

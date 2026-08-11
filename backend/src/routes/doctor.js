@@ -719,7 +719,7 @@ router.get(
         .sort({ lastMessageAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate('patient', 'name phone')
+        .populate('patient', 'name phone avatarAssetId')
         .lean(),
       ChatSession.countDocuments(filter),
     ]);
@@ -742,25 +742,97 @@ router.get(
       ).map((u) => [u._id.toString(), u.count]),
     );
 
+    // Newest turn per session — whoever wrote it — so each row reads like an
+    // inbox entry (what was last said, by whom, and when), matching the
+    // Patients tab rather than showing only the static thread title.
+    const lastMessages = await ChatMessage.aggregate([
+      { $match: { session: { $in: items.map((s) => s._id) } } },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: '$session',
+          content: { $first: '$content' },
+          role: { $first: '$role' },
+          createdAt: { $first: '$createdAt' },
+          attachments: { $first: '$attachments' },
+        },
+      },
+    ]);
+    const lastMsgBySession = new Map(lastMessages.map((m) => [m._id.toString(), m]));
+
+    // Resolve media-only turns to a type label + icon hint, exactly as the
+    // Patients inbox does, so a photo or voice note previews as its kind
+    // instead of an empty line.
+    const attachmentIds = lastMessages.flatMap((m) => m.attachments ?? []);
+    const assetMap = new Map(
+      (await MediaAsset.find({ _id: { $in: attachmentIds } }).select('_id kind mimeType').lean()).map((a) => [
+        a._id.toString(),
+        a,
+      ]),
+    );
+    const mediaInfo = (m) => {
+      const atts = (m?.attachments ?? []).map((a) => assetMap.get(a.toString())).filter(Boolean);
+      if (atts.some((a) => a.kind === 'voice_note' || (a.mimeType || '').startsWith('audio/'))) {
+        return { preview: 'Voice message', mediaType: 'voice' };
+      }
+      const doc = atts.find(
+        (a) => (a.mimeType || '').startsWith('application/') || (a.mimeType || '').startsWith('text/'),
+      );
+      let mediaType = null;
+      if (doc) mediaType = doc.mimeType === 'application/pdf' ? 'pdf' : 'document';
+      else if (atts.some((a) => (a.mimeType || '').startsWith('image/'))) mediaType = 'photo';
+      else if (atts.length) mediaType = 'file';
+      const text = (m?.content || '').trim();
+      if (text) return { preview: text.slice(0, 140), mediaType };
+      switch (mediaType) {
+        case 'pdf':
+          return { preview: 'PDF document', mediaType };
+        case 'document':
+          return { preview: 'Document', mediaType };
+        case 'photo':
+          return { preview: 'Photo', mediaType };
+        case 'file':
+          return { preview: 'Attachment', mediaType };
+        default:
+          return { preview: '', mediaType: null };
+      }
+    };
+
     res.json(
       paged(
-        items.map((s) => ({
-          id: s._id,
-          patientId: s.patient?._id,
-          patientName: s.patient?.name ?? null,
-          title: s.title,
-          // `care` (assistant + doctor) or `nutrition` (the dietician's own
-          // thread). Both are reviewable; the doctor needs to know which one
-          // they are reading before they judge what was said in it.
-          kind: s.kind ?? 'care',
-          language: s.language,
-          messageCount: s.messageCount,
-          highestUrgency: s.highestUrgency,
-          flaggedForReview: s.flaggedForReview,
-          reviewedAt: s.reviewedAt ?? null,
-          unreadCount: unreadBySession.get(s._id.toString()) ?? 0,
-          lastMessageAt: s.lastMessageAt,
-        })),
+        items.map((s) => {
+          const lastMsg = lastMsgBySession.get(s._id.toString());
+          const media = lastMsg ? mediaInfo(lastMsg) : null;
+          return {
+            id: s._id,
+            patientId: s.patient?._id,
+            patientName: s.patient?.name ?? null,
+            // `lean()` skips the schema's toJSON, so build the avatar URL by hand.
+            avatarUrl: s.patient?.avatarAssetId ? `/api/v1/uploads/${s.patient.avatarAssetId}/raw` : null,
+            title: s.title,
+            // `care` (assistant + doctor) or `nutrition` (the dietician's own
+            // thread). Both are reviewable; the doctor needs to know which one
+            // they are reading before they judge what was said in it.
+            kind: s.kind ?? 'care',
+            language: s.language,
+            messageCount: s.messageCount,
+            highestUrgency: s.highestUrgency,
+            flaggedForReview: s.flaggedForReview,
+            reviewedAt: s.reviewedAt ?? null,
+            unreadCount: unreadBySession.get(s._id.toString()) ?? 0,
+            lastMessageAt: s.lastMessageAt,
+            // The newest turn, trimmed, so the row shows what was actually said
+            // (and by whom) rather than the thread title. Null on an empty thread.
+            lastMessage: lastMsg
+              ? {
+                  preview: media.preview,
+                  mediaType: media.mediaType,
+                  role: lastMsg.role,
+                  at: lastMsg.createdAt,
+                }
+              : null,
+          };
+        }),
         { page, limit, total },
       ),
     );

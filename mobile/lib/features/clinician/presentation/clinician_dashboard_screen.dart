@@ -107,15 +107,6 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
                             ],
                             const SizedBox(height: AppSpacing.lg),
                           ],
-                          // Population analytics — clinic-wide, never 100 lines.
-                          if (analytics != null) ...[
-                            ClinicControlTrendCard(analytics: analytics),
-                            const SizedBox(height: AppSpacing.lg),
-                          ],
-                          if (overview != null) ...[
-                            RiskDonutCard(overview: overview),
-                            const SizedBox(height: AppSpacing.lg),
-                          ],
                           if (attention.isNotEmpty) ...[
                             AttentionListCard(patients: attention),
                             const SizedBox(height: AppSpacing.lg),
