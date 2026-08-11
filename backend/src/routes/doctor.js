@@ -12,6 +12,7 @@ import { Appointment } from '../models/Appointment.js';
 import { GlucoseReading } from '../models/GlucoseReading.js';
 import { ChatSession } from '../models/ChatSession.js';
 import { ChatMessage } from '../models/ChatMessage.js';
+import { notifyPatientOfClinicianReply } from '../services/notifications.js';
 import { MediaAsset } from '../models/MediaAsset.js';
 import { KnowledgeChunk } from '../models/KnowledgeChunk.js';
 import { Hba1cRecord } from '../models/Hba1cRecord.js';
@@ -839,6 +840,41 @@ router.post(
     );
     if (!session) throw notFound('Conversation not found');
     res.status(204).end();
+  }),
+);
+
+/**
+ * Reply into ANY of a patient's conversations by session id — care OR nutrition.
+ * This is how a doctor steps into a dietician↔patient nutrition thread to guide
+ * it; the care-only `/chat/patients/:id/clinician-message` path can't reach a
+ * nutrition session. Posts `role: 'clinician'` and notifies the patient.
+ */
+router.post(
+  '/chat-review/:sessionId/message',
+  validate({ body: z.object({ content: z.string().trim().min(1).max(4000) }) }),
+  audit('create', 'ChatMessage'),
+  asyncHandler(async (req, res) => {
+    const session = await ChatSession.findById(req.params.sessionId);
+    if (!session || session.isArchived) throw notFound('Conversation not found');
+
+    const last = await ChatMessage.findOne({ session: session._id }).sort({ seq: -1 }).select('seq').lean();
+    const message = await ChatMessage.create({
+      session: session._id,
+      patient: session.patient,
+      seq: (last?.seq ?? -1) + 1,
+      role: 'clinician',
+      sender: req.user._id,
+      content: req.body.content,
+      language: session.language,
+    });
+    await ChatSession.findByIdAndUpdate(session._id, {
+      lastMessageAt: message.createdAt,
+      $inc: { messageCount: 1 },
+      flaggedForReview: false,
+    });
+    notifyPatientOfClinicianReply(session.patient, req.user, req.body.content).catch(() => {});
+
+    res.status(201).json({ ok: true, sessionId: String(session._id) });
   }),
 );
 

@@ -28,6 +28,7 @@ import '../../features/clinician/presentation/dieticians_screen.dart';
 import '../../features/clinician/presentation/feedback_inbox_screen.dart';
 import '../../features/clinician/presentation/knowledge_screen.dart';
 import '../../features/clinician/presentation/patient_thread_screen.dart';
+import '../../features/clinician/presentation/nutrition_inbox_screen.dart';
 import '../../features/clinician/presentation/patients_screen.dart';
 import '../../features/clinician/presentation/patient_profile_screen.dart';
 import '../../features/dietician/presentation/diet_plan_screen.dart';
@@ -312,6 +313,14 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/clinician/patients',
                 builder: (context, state) => const PatientsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/clinician/nutrition',
+                builder: (context, state) => const NutritionInboxScreen(),
               ),
             ],
           ),

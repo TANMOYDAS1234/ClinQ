@@ -320,6 +320,12 @@ class ClinicianRepository {
     await _client.postJson('/doctor/chat-review/$sessionId/reviewed');
   }
 
+  /// Reply into a conversation by session id — works for care AND nutrition, so
+  /// the doctor can step into a dietician↔patient nutrition thread to guide it.
+  Future<void> replyInSession(String sessionId, String content) async {
+    await _client.postJson('/doctor/chat-review/$sessionId/message', body: {'content': content});
+  }
+
   // ---- Knowledge base ---------------------------------------------------
 
   Future<Paged<KnowledgeChunk>> knowledge({

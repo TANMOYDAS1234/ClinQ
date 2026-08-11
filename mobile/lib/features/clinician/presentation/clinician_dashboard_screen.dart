@@ -359,7 +359,7 @@ class _AlertStrip extends StatelessWidget {
             bg: AppColors.successBgOn(context),
             label: 'NUTRITION MESSAGES',
             detail: '${overview.unreadNutrition} Unread',
-            onTap: () => context.push('/clinician/chat-review?tab=nutrition'),
+            onTap: () => context.go('/clinician/nutrition'),
           ),
         ],
       ],

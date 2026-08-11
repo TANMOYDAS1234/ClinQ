@@ -23,25 +23,18 @@ class ChatReviewScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatReviewScreen> createState() => _ChatReviewScreenState();
 }
 
-/// The three views of the review queue. One field rather than two booleans:
-/// as a pair they allowed "flagged *and* nutrition", and the nutrition case
-/// only ever cleared the flag — so the Nutrition tab sent the same query as
-/// All chats and listed every clinical thread alongside the diet ones.
-enum _ReviewTab { flagged, all, nutrition }
+/// The two views of the review queue. (Nutrition conversations now have their
+/// own top-level Nutrition tab, so they are no longer a filter here — chat
+/// review is purely the clinical care threads.)
+enum _ReviewTab { flagged, all }
 
 class _ChatReviewScreenState extends ConsumerState<ChatReviewScreen> {
-  late _ReviewTab _tab = switch (widget.initialTab) {
-    'nutrition' => _ReviewTab.nutrition,
-    'all' => _ReviewTab.all,
-    _ => _ReviewTab.flagged,
-  };
+  late _ReviewTab _tab = widget.initialTab == 'all' ? _ReviewTab.all : _ReviewTab.flagged;
 
-  /// Nutrition threads are a separate conversation with the dietician, so the
-  /// clinical tabs exclude them: a diet question is not a review item.
   ChatReviewQuery get _query => (
     flagged: _tab == _ReviewTab.flagged,
     urgency: null,
-    kind: _tab == _ReviewTab.nutrition ? 'nutrition' : 'care',
+    kind: 'care',
   );
 
   @override
@@ -62,7 +55,6 @@ class _ChatReviewScreenState extends ConsumerState<ChatReviewScreen> {
                 for (final (tab, label) in const [
                   (_ReviewTab.flagged, 'Flagged'),
                   (_ReviewTab.all, 'All chats'),
-                  (_ReviewTab.nutrition, 'Nutrition'),
                 ]) ...[
                   ChoiceChip(
                     label: Text(label),
@@ -110,7 +102,6 @@ class _ChatReviewScreenState extends ConsumerState<ChatReviewScreen> {
                     child: Text(
                       switch (_tab) {
                         _ReviewTab.flagged => 'No flagged conversations',
-                        _ReviewTab.nutrition => 'No nutrition conversations',
                         _ReviewTab.all => 'No conversations',
                       },
                       style: const TextStyle(

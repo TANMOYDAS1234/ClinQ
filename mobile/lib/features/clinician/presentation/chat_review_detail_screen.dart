@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/chat_background.dart';
 import '../../../shared/widgets/markdown_text.dart';
 import '../../chat/presentation/widgets/chat_attachment_thumbs.dart';
 import '../../chat/presentation/widgets/chat_document_card.dart';
@@ -69,24 +70,22 @@ class ChatReviewDetailScreen extends ConsumerWidget {
               children: [
                 _SessionHeader(session: detail.session),
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    itemCount: detail.messages.length,
-                    itemBuilder:
-                        (context, i) =>
-                            _MessageBubble(message: detail.messages[i]),
+                  // Same WhatsApp-style wallpaper as the Patients-tab thread.
+                  child: ChatBackground(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      itemCount: detail.messages.length,
+                      itemBuilder: (context, i) => _MessageBubble(message: detail.messages[i]),
+                    ),
                   ),
                 ),
-                // Reply from inside the conversation. Reading the exchange and
-                // answering it are one action for a doctor, so making them two
-                // screens only costs time at the moment a patient is waiting.
-                if (detail.session.patientId != null)
-                  _ClinicianComposer(
-                    patientId: detail.session.patientId!,
-                    onSent:
-                        () =>
-                            ref.invalidate(chatReviewDetailProvider(sessionId)),
-                  ),
+                // Reply from inside the conversation — by session id, so this
+                // works for a nutrition thread too (the doctor guiding a
+                // dietician↔patient conversation), not just the care thread.
+                _ClinicianComposer(
+                  sessionId: sessionId,
+                  onSent: () => ref.invalidate(chatReviewDetailProvider(sessionId)),
+                ),
               ],
             ),
       ),
@@ -115,9 +114,9 @@ class ChatReviewDetailScreen extends ConsumerWidget {
 /// Posts as `role: 'clinician'`, so the words land in the patient's own
 /// Health Assistant thread rather than a parallel inbox.
 class _ClinicianComposer extends ConsumerStatefulWidget {
-  const _ClinicianComposer({required this.patientId, required this.onSent});
+  const _ClinicianComposer({required this.sessionId, required this.onSent});
 
-  final String patientId;
+  final String sessionId;
   final VoidCallback onSent;
 
   @override
@@ -143,7 +142,7 @@ class _ClinicianComposerState extends ConsumerState<_ClinicianComposer> {
     try {
       await ref
           .read(clinicianRepositoryProvider)
-          .messagePatient(patientId: widget.patientId, content: text);
+          .replyInSession(widget.sessionId, text);
       _controller.clear();
       widget.onSent();
       messenger.showSnackBar(
