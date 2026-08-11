@@ -8,7 +8,9 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/auth_validators.dart';
 import '../../../shared/widgets/authed_image.dart';
+import '../../../shared/widgets/fullscreen_photo.dart';
 import '../data/clinician_repository.dart';
+import '../domain/clinician_models.dart';
 import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
 import 'widgets/clinician_visuals.dart';
@@ -70,6 +72,7 @@ class PatientRecordSections extends ConsumerWidget {
               ),
             ),
         ],
+        _ConsultationHistory(patientId: patientId),
         if (p.aiContext != null && p.aiContext!.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.lg),
           const _SectionTitle('Assistant context'),
@@ -77,6 +80,93 @@ class PatientRecordSections extends ConsumerWidget {
           _AiContextCard(text: p.aiContext!),
         ],
       ],
+    );
+  }
+}
+
+/// The record's consultation history — past prescriptions latest-first, each
+/// collapsible to reveal that visit's diagnosis, advice, tests and follow-up.
+/// Renders nothing until at least one prescription exists.
+class _ConsultationHistory extends ConsumerWidget {
+  const _ConsultationHistory({required this.patientId});
+
+  final String patientId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final list = ref.watch(patientPrescriptionsProvider(patientId)).valueOrNull ?? const [];
+    if (list.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: AppSpacing.lg),
+        const _SectionTitle('Previous consultations'),
+        const SizedBox(height: AppSpacing.sm),
+        for (final rx in list.take(12))
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: _ConsultationTile(rx: rx),
+          ),
+      ],
+    );
+  }
+}
+
+class _ConsultationTile extends StatelessWidget {
+  const _ConsultationTile({required this.rx});
+
+  final PrescriptionSummary rx;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final date = rx.issuedOn != null ? DateFormat('d MMM yyyy').format(rx.issuedOn!) : '—';
+    final dx = rx.diagnosis.isNotEmpty ? rx.diagnosis.join(', ') : 'No diagnosis recorded';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          title: Text(date, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+          subtitle: Text(dx,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+          children: [
+            if (rx.diagnosis.isNotEmpty) _kv(context, 'Diagnosis', rx.diagnosis.join('\n')),
+            if (rx.itemCount > 0) _kv(context, 'Medicines', '${rx.itemCount} prescribed'),
+            if (rx.labTestsAdvised.isNotEmpty) _kv(context, 'Tests advised', rx.labTestsAdvised.join(', ')),
+            if (rx.generalAdvice != null) _kv(context, 'Advice', rx.generalAdvice!),
+            if (rx.followUpOn != null) _kv(context, 'Follow-up', DateFormat('d MMM yyyy').format(rx.followUpOn!)),
+            if (rx.doctorName != null) _kv(context, 'By', rx.doctorName!),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _kv(BuildContext context, String k, String v) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(k.toUpperCase(),
+              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 2),
+          Text(v, style: const TextStyle(fontSize: 13.5, height: 1.3)),
+        ],
+      ),
     );
   }
 }
@@ -226,8 +316,9 @@ class _DieticianSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final name = summary.assignedDieticianName;
-    final cadence = summary.reviewIntervalDays;
-    final assigned = name != null && name.isNotEmpty;
+    // An explicit assignment is a *restriction*, not a grant: by default the
+    // clinic dietician covers every patient (see the dietician panel's scope).
+    final restricted = name != null && name.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -251,14 +342,16 @@ class _DieticianSection extends ConsumerWidget {
               children: [
                 Text('DIETICIAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
                 const SizedBox(height: 2),
-                Text(assigned ? name : 'Not assigned', style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
-                if (assigned && cadence != null)
-                  Text('Reviews food log every $cadence day${cadence == 1 ? '' : 's'}',
-                      style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                Text(restricted ? name : 'Covered by clinic dietician',
+                    style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                Text(
+                  restricted ? 'Restricted to this dietician only' : 'The clinic dietician covers this patient',
+                  style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                ),
               ],
             ),
           ),
-          TextButton(onPressed: () => _openAssign(context, ref), child: Text(assigned ? 'Change' : 'Assign')),
+          TextButton(onPressed: () => _openAssign(context, ref), child: Text(restricted ? 'Change' : 'Restrict')),
         ],
       ),
     );
@@ -278,7 +371,6 @@ class _DieticianSection extends ConsumerWidget {
     if (!context.mounted) return;
 
     String? selectedId = summary.assignedDieticianId;
-    int cadence = summary.reviewIntervalDays ?? 3;
 
     final saved = await showModalBottomSheet<bool>(
       context: context,
@@ -291,8 +383,13 @@ class _DieticianSection extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Assign dietician', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-              const SizedBox(height: AppSpacing.sm),
+              const Text('Nutrition care', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(
+                'By default the clinic dietician covers this patient. Restrict to a specific dietician only if this patient should be handled by that person alone.',
+                style: TextStyle(fontSize: 12.5, height: 1.35, color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: AppSpacing.md),
               if (options.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
@@ -323,20 +420,26 @@ class _DieticianSection extends ConsumerWidget {
                   label: const Text('Add a new dietician'),
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              const Text('Review the food log every', style: TextStyle(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final (days, label) in const [(1, 'Daily'), (3, 'Every 3 days'), (7, 'Weekly')])
-                    ChoiceChip(
-                      label: Text(label),
-                      selected: cadence == days,
-                      onSelected: (_) => setSheet(() => cadence = days),
-                    ),
-                ],
-              ),
+              if (selectedId != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(color: AppColors.warningBgOn(ctx), borderRadius: BorderRadius.circular(10)),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline_rounded, size: 16, color: AppColors.warningOn(ctx)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This limits the chosen dietician to only the patients you restrict to them — they stop seeing the rest of the clinic by default.',
+                          style: TextStyle(fontSize: 12, height: 1.3, color: AppColors.warningOn(ctx)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.lg),
               Row(
                 children: [
@@ -351,7 +454,7 @@ class _DieticianSection extends ConsumerWidget {
                           if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Could not save')));
                         }
                       },
-                      child: const Text('Unassign'),
+                      child: const Text('Back to clinic default'),
                     ),
                   const Spacer(),
                   FilledButton(
@@ -359,13 +462,15 @@ class _DieticianSection extends ConsumerWidget {
                         ? null
                         : () async {
                             try {
-                              await repo.assignDietician(patientId, dieticianId: selectedId, reviewIntervalDays: cadence);
+                              // Cadence is clinic-wide now, so we never set the
+                              // dead per-patient field.
+                              await repo.assignDietician(patientId, dieticianId: selectedId, reviewIntervalDays: null);
                               if (ctx.mounted) Navigator.pop(ctx, true);
                             } catch (_) {
                               if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Could not save')));
                             }
                           },
-                    child: const Text('Save'),
+                    child: const Text('Restrict to this dietician'),
                   ),
                 ],
               ),
@@ -377,7 +482,7 @@ class _DieticianSection extends ConsumerWidget {
 
     if (saved == true) {
       ref.invalidate(patientSummaryProvider(patientId));
-      messenger.showSnackBar(const SnackBar(content: Text('Dietician updated')));
+      messenger.showSnackBar(const SnackBar(content: Text('Nutrition care updated')));
     }
   }
 
@@ -501,10 +606,21 @@ class _LabReportRow extends StatelessWidget {
 
   final LabReport report;
 
+  IconData _fileIcon() {
+    final m = report.mimeType ?? '';
+    if (m == 'application/pdf') return Icons.picture_as_pdf_rounded;
+    if (m.startsWith('image/')) return Icons.image_rounded;
+    return Icons.description_rounded;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
+    // Only an actual image gets loaded as a thumbnail; a PDF/doc drawn through
+    // the image loader is the broken box the doctor was seeing.
+    final showThumb = report.hasFile && report.isImage;
+
+    final tile = Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
@@ -514,11 +630,20 @@ class _LabReportRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (report.photoUrl != null)
-            Padding(
-              padding: const EdgeInsets.only(right: AppSpacing.sm),
-              child: AuthedImage(path: report.photoUrl!, width: 52, height: 52, radius: 10),
-            ),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: showThumb
+                ? AuthedImage(path: report.photoUrl!, width: 52, height: 52, radius: 10)
+                : Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(_fileIcon(), color: scheme.onSurfaceVariant, size: 24),
+                  ),
+          ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -534,11 +659,27 @@ class _LabReportRow extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(report.note, style: const TextStyle(fontSize: 13)),
                 ],
+                if (report.hasFile) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    showThumb ? 'Tap to view' : (report.mimeType == 'application/pdf' ? 'PDF report' : 'Document'),
+                    style: TextStyle(fontSize: 11.5, color: AppColors.accentOn(context), fontWeight: FontWeight.w600),
+                  ),
+                ],
               ],
             ),
           ),
         ],
       ),
+    );
+
+    // A photo report opens full-screen; a PDF/doc simply reads as a labelled
+    // file tile (no more broken box) until an in-app PDF viewer lands.
+    if (!showThumb) return tile;
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      onTap: () => FullscreenPhoto.show(context, report.photoUrl),
+      child: tile,
     );
   }
 }

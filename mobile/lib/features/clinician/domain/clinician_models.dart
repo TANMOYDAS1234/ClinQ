@@ -211,6 +211,43 @@ class EngagementPoint {
   );
 }
 
+/// A past prescription/consultation for the record's history
+/// (`GET /patients/:id/prescriptions`).
+class PrescriptionSummary {
+  const PrescriptionSummary({
+    required this.id,
+    this.issuedOn,
+    this.doctorName,
+    this.diagnosis = const [],
+    this.labTestsAdvised = const [],
+    this.generalAdvice,
+    this.followUpOn,
+    this.itemCount = 0,
+  });
+
+  final String id;
+  final DateTime? issuedOn;
+  final String? doctorName;
+  final List<String> diagnosis;
+  final List<String> labTestsAdvised;
+  final String? generalAdvice;
+  final DateTime? followUpOn;
+  final int itemCount;
+
+  factory PrescriptionSummary.fromJson(Map<String, dynamic> j) => PrescriptionSummary(
+    id: j['id']?.toString() ?? '',
+    issuedOn: DateTime.tryParse(j['issuedOn']?.toString() ?? '')?.toLocal(),
+    doctorName: j['doctorName']?.toString(),
+    diagnosis: (j['diagnosis'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+    labTestsAdvised: (j['labTestsAdvised'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+    generalAdvice: (j['generalAdvice'] == null || j['generalAdvice'].toString().isEmpty)
+        ? null
+        : j['generalAdvice'].toString(),
+    followUpOn: DateTime.tryParse(j['followUpOn']?.toString() ?? '')?.toLocal(),
+    itemCount: (j['items'] as List?)?.length ?? 0,
+  );
+}
+
 /// One nutrition card on the doctor's home: where a patient is in their review
 /// cycle, and what their logging actually looks like.
 class NutritionReview {

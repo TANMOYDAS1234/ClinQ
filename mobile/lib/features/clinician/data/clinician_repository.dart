@@ -155,6 +155,13 @@ class ClinicianRepository {
     );
   }
 
+  /// The patient's past prescriptions/consultations, latest first.
+  Future<List<PrescriptionSummary>> patientPrescriptions(String patientId) async {
+    final json = await _client.getJson('/patients/$patientId/prescriptions?limit=20');
+    final items = json['items'] as List? ?? const [];
+    return items.whereType<Map<String, dynamic>>().map(PrescriptionSummary.fromJson).toList();
+  }
+
   /// Dieticians the doctor can assign a patient to.
   Future<List<({String id, String name})>> dieticians() async {
     final json = await _client.getJson('/doctor/dieticians');

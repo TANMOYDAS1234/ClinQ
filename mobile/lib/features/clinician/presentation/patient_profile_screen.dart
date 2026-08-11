@@ -34,6 +34,7 @@ class PatientProfileScreen extends ConsumerStatefulWidget {
 
 class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
   final List<_MedDraft> _meds = [_MedDraft()];
+  final _diagnosis = TextEditingController();
   final _advice = TextEditingController();
   final _labSearch = TextEditingController();
 
@@ -52,6 +53,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
     for (final m in _meds) {
       m.dispose();
     }
+    _diagnosis.dispose();
     _advice.dispose();
     _labSearch.dispose();
     super.dispose();
@@ -117,7 +119,13 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
       await ref.read(clinicianRepositoryProvider).createPrescription(
         patientId: widget.patientId,
         items: items,
-        diagnosis: const [],
+        // Each non-empty line is a diagnosis item — matches how the AI context
+        // and the prescription PDF list them.
+        diagnosis: _diagnosis.text
+            .split('\n')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList(),
         labTestsAdvised: _selectedTests.toList(),
         generalAdvice: _advice.text.trim().isEmpty ? null : _advice.text.trim(),
         followUpOn: _followUp,
@@ -135,6 +143,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
         _meds
           ..clear()
           ..add(_MedDraft());
+        _diagnosis.clear();
         _advice.clear();
         _selectedTests.clear();
         _followUp = null;
@@ -143,6 +152,8 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
       ref.invalidate(patientSummaryProvider(widget.patientId));
       // The list above this form has just gained what was written into it.
       ref.invalidate(patientMedicationsProvider(widget.patientId));
+      // Today's consultation now shows in the record's history.
+      ref.invalidate(patientPrescriptionsProvider(widget.patientId));
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -286,16 +297,37 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
             _ActionCard(
               icon: Icons.edit_note_rounded,
               title: 'Clinical Advice',
-              child: TextField(
-                controller: _advice,
-                minLines: 3,
-                maxLines: 8,
-                maxLength: 2000,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  hintText: 'Enter diagnosis and general instructions...',
-                  counterText: '',
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _FieldLabel('Diagnosis'),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _diagnosis,
+                    minLines: 1,
+                    maxLines: 4,
+                    maxLength: 600,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      hintText: 'e.g. Type 2 DM, Hypertension (one per line)',
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  const _FieldLabel('General advice'),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _advice,
+                    minLines: 3,
+                    maxLines: 8,
+                    maxLength: 2000,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      hintText: 'Diet, lifestyle and general instructions...',
+                      counterText: '',
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: AppSpacing.md),

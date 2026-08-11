@@ -62,6 +62,12 @@ final patientSummaryProvider = FutureProvider.autoDispose
       return ref.watch(clinicianRepositoryProvider).patientSummary(id);
     });
 
+/// The patient's past prescriptions/consultations, for the record's history.
+final patientPrescriptionsProvider = FutureProvider.autoDispose
+    .family<List<PrescriptionSummary>, String>((ref, id) {
+      return ref.watch(clinicianRepositoryProvider).patientPrescriptions(id);
+    });
+
 typedef AlertsQuery = ({String? status, String? severity});
 
 final alertsProvider = FutureProvider.autoDispose
