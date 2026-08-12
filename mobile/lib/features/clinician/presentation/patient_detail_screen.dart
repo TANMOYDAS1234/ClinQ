@@ -211,13 +211,12 @@ class _MetricsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = summary;
-    // Adherence shown as raw doses (taken / expected due) when we have them —
-    // an honest "how much of what was prescribed is actually being taken" — and
-    // falls back to the percentage only if the counts are missing.
+    // Adherence: the percentage as the headline (familiar, dynamic) with the
+    // raw doses taken/due underneath, so the doctor sees the rate at a glance
+    // and the actual counts that reveal when the number is thin (1/6 vs 55/60).
     final hasDoses = (p.adherenceExpected ?? 0) > 0;
-    final adherenceValue = hasDoses
-        ? '${p.adherenceTaken ?? 0}/${p.adherenceExpected}'
-        : (p.adherencePercent != null ? '${p.adherencePercent}%' : '—');
+    final adherenceValue = p.adherencePercent != null ? '${p.adherencePercent}%' : '—';
+    final adherenceSub = hasDoses ? '${p.adherenceTaken ?? 0}/${p.adherenceExpected} doses taken' : null;
 
     final tiles = <Widget>[
       _Metric(
@@ -229,7 +228,7 @@ class _MetricsGrid extends StatelessWidget {
       _Metric(
         label: 'Adherence',
         value: adherenceValue,
-        unit: hasDoses ? 'doses' : null,
+        sub: adherenceSub,
         color: AppColors.accentOn(context),
         icon: Icons.medication_rounded,
       ),
@@ -269,18 +268,24 @@ class _MetricsGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: AppSpacing.sm,
       crossAxisSpacing: AppSpacing.sm,
-      childAspectRatio: 2.1,
+      // A touch taller than square-ish so the adherence sub-line ("1/6 doses
+      // taken") fits without crowding the other tiles.
+      childAspectRatio: 1.9,
       children: tiles,
     );
   }
 }
 
 class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value, required this.color, required this.icon, this.unit});
+  const _Metric({required this.label, required this.value, required this.color, required this.icon, this.unit, this.sub});
 
   final String label;
   final String value;
   final String? unit;
+
+  /// A small secondary line under the value — e.g. the raw "1/6 doses" behind
+  /// an adherence percentage.
+  final String? sub;
   final Color color;
   final IconData icon;
 
@@ -317,6 +322,15 @@ class _Metric extends StatelessWidget {
               ],
             ],
           ),
+          if (sub != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              sub!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
+            ),
+          ],
         ],
       ),
     );

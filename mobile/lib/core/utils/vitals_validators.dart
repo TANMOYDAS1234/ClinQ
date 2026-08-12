@@ -19,6 +19,7 @@ class VitalsValidators {
 
   static String? height(String? v) => _range(v, 50, 250, 'cm');
   static String? weight(String? v) => _range(v, 10, 400, 'kg');
+  static String? waist(String? v) => _range(v, 30, 250, 'cm');
   static String? systolic(String? v) => _range(v, 50, 300, 'mmHg');
   static String? pulse(String? v) => _range(v, 25, 250, 'bpm');
   static String? spo2(String? v) => _range(v, 50, 100, '%');

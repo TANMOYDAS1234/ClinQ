@@ -46,6 +46,14 @@ const List<DiagnosisOption> kDiagnosisCatalog = [
   // Thyroid
   DiagnosisOption(code: 'Hypothyroid', label: 'Hypothyroidism', category: 'Thyroid'),
   DiagnosisOption(code: 'Hyperthyroid', label: 'Hyperthyroidism', category: 'Thyroid'),
+
+  // Examination signs — physical findings that point to insulin resistance /
+  // diabetes on exam. Selected findings print alongside the diagnosis.
+  DiagnosisOption(code: 'Acanthosis', label: 'Acanthosis Nigricans (neck skin patches)', category: 'Examination signs'),
+  DiagnosisOption(code: 'Central obesity', label: 'Central obesity', category: 'Examination signs'),
+  DiagnosisOption(code: 'Skin tags', label: 'Skin tags (acrochordons)', category: 'Examination signs'),
+  DiagnosisOption(code: 'Dermopathy', label: 'Diabetic dermopathy', category: 'Examination signs'),
+  DiagnosisOption(code: 'Neuropathy signs', label: 'Reduced foot sensation', category: 'Examination signs'),
 ];
 
 /// The options grouped by category, in catalog order — for a sectioned picker.

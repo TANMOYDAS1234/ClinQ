@@ -423,6 +423,7 @@ router.post(
     body: z.object({
       heightCm: z.coerce.number().min(50).max(250).optional(),
       weightKg: z.coerce.number().min(10).max(400).optional(),
+      waistCm: z.coerce.number().min(30).max(250).optional(),
       systolic: z.coerce.number().min(50).max(300).optional(),
       diastolic: z.coerce.number().min(30).max(200).optional(),
       pulse: z.coerce.number().min(25).max(250).optional(),
@@ -451,6 +452,7 @@ router.post(
     if (b.pulse != null) vitals.pulse = b.pulse;
     if (b.spo2 != null) vitals.spo2 = b.spo2;
     if (b.weightKg != null) vitals.weightKg = b.weightKg;
+    if (b.waistCm != null) vitals.waistCm = b.waistCm;
     if (Object.keys(vitals).length) await VitalRecord.create({ patient: patient._id, ...vitals });
     if (b.glucoseMgDl != null) {
       await GlucoseReading.create({

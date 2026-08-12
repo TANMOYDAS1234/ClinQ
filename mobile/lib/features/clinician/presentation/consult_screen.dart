@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/vitals_validators.dart';
+import '../../../shared/data/upload_repository.dart';
 import '../../../shared/widgets/error_view.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../medications/domain/med_shorthand.dart';
 import '../data/clinician_repository.dart';
 import '../domain/diagnosis_catalog.dart';
@@ -35,6 +38,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
   // Vitals + complaint
   final _height = TextEditingController();
   final _weight = TextEditingController();
+  final _waist = TextEditingController();
   final _systolic = TextEditingController();
   final _diastolic = TextEditingController();
   final _pulse = TextEditingController();
@@ -59,17 +63,20 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
 
   final _vitalsFormKey = GlobalKey<FormState>();
   AutovalidateMode _vitalsAutovalidate = AutovalidateMode.disabled;
+  final _diagFormKey = GlobalKey<FormState>();
+  AutovalidateMode _diagAutovalidate = AutovalidateMode.disabled;
 
   /// Whether the presenting complaint is printed on the prescription.
   bool _showComplaintOnRx = true;
 
+  bool _uploadingSignature = false;
   bool _submitting = false;
   String? _error;
 
   @override
   void dispose() {
     for (final c in [
-      _height, _weight, _systolic, _diastolic, _pulse, _sugar, _spo2, _complaint,
+      _height, _weight, _waist, _systolic, _diastolic, _pulse, _sugar, _spo2, _complaint,
       _customDx, _customTest, _advice,
     ]) {
       c.dispose();
@@ -92,6 +99,13 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
       setState(() {
         _step = 0;
         _vitalsAutovalidate = AutovalidateMode.onUserInteraction;
+      });
+      return;
+    }
+    if (!(_diagFormKey.currentState?.validate() ?? true)) {
+      setState(() {
+        _step = 1;
+        _diagAutovalidate = AutovalidateMode.onUserInteraction;
       });
       return;
     }
@@ -136,6 +150,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
         complaint: complaint,
         heightCm: _double(_height),
         weightKg: _double(_weight),
+        waistCm: _double(_waist),
         systolic: _int(_systolic),
         diastolic: _int(_diastolic),
         pulse: _int(_pulse),
@@ -189,6 +204,10 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
                 ),
               ),
       ),
+      // The nav bar lives here (not in the body Column) so Flutter always keeps
+      // it pinned above the system bar and lifts it above the keyboard — the
+      // Next/Generate action is never scrolled off or hidden behind a field.
+      bottomNavigationBar: _navBar(),
       body: Column(
         children: [
           _StepBar(step: _step, labels: _steps),
@@ -198,7 +217,6 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
               children: [_vitalsStep(), _diagnosisStep(), _adviceStep()],
             ),
           ),
-          _navBar(),
         ],
       ),
     );
@@ -211,6 +229,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
       autovalidateMode: _vitalsAutovalidate,
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         children: [
           const _StepTitle('Vitals', 'Measured at this visit — all optional'),
           const SizedBox(height: AppSpacing.md),
@@ -271,9 +290,17 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
   // ---- Step 2: Diagnosis ----------------------------------------------
   Widget _diagnosisStep() {
     final groups = diagnosisByCategory();
-    return ListView(
+    return Form(
+      key: _diagFormKey,
+      autovalidateMode: _diagAutovalidate,
+      child: ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: [
+        const _StepTitle('Examination', 'Waist circumference (belly), optional'),
+        const SizedBox(height: AppSpacing.sm),
+        _num(_waist, 'Waist circumference', 'cm', VitalsValidators.waist),
+        const SizedBox(height: AppSpacing.lg),
         const _StepTitle('Diagnosis', 'Tap to select — printed on the prescription'),
         const SizedBox(height: AppSpacing.sm),
         for (final entry in groups.entries) ...[
@@ -334,6 +361,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
           ),
         ],
       ],
+      ),
     );
   }
 
@@ -450,6 +478,11 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
             child: TextButton(onPressed: () => setState(() => _followUp = null), child: const Text('Clear')),
           ),
 
+        const SizedBox(height: AppSpacing.lg),
+        const _StepTitle('Digital signature', 'Signs the generated prescription'),
+        const SizedBox(height: AppSpacing.sm),
+        _signatureRow(),
+
         if (_error != null) ...[
           const SizedBox(height: AppSpacing.md),
           Container(
@@ -491,11 +524,98 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
     if (picked != null) setState(() => _followUp = picked);
   }
 
+  /// The doctor's signature — stored once on their profile and reused on every
+  /// prescription. Shown here so it can be set/changed without leaving the
+  /// consult. When none is set the PDF still prints a signature line.
+  Widget _signatureRow() {
+    final scheme = Theme.of(context).colorScheme;
+    final hasSig = ref.watch(authControllerProvider).user?.signatureUrl != null;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            hasSig ? Icons.verified_rounded : Icons.draw_outlined,
+            size: 22,
+            color: hasSig ? AppColors.primary : scheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              hasSig
+                  ? 'Signature added — it signs this prescription'
+                  : 'No signature yet — a signature line is printed instead',
+              style: TextStyle(fontSize: 13.5, height: 1.3, color: scheme.onSurface),
+            ),
+          ),
+          _uploadingSignature
+              ? const Padding(
+                  padding: EdgeInsets.all(10),
+                  child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                )
+              : TextButton(onPressed: _changeSignature, child: Text(hasSig ? 'Change' : 'Upload')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _changeSignature() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Camera'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    final file = await ImagePicker().pickImage(source: source, maxWidth: 1200, maxHeight: 600, imageQuality: 90);
+    if (file == null) return;
+    setState(() => _uploadingSignature = true);
+    try {
+      final asset = await ref.read(uploadRepositoryProvider).uploadImage(
+            path: file.path,
+            filename: file.name,
+            kind: UploadKind.signature,
+          );
+      final user = await ref.read(authRepositoryProvider).updateMe(signatureAssetId: asset.id);
+      ref.read(authControllerProvider.notifier).replaceUser(user);
+      messenger.showSnackBar(const SnackBar(content: Text('Signature saved')));
+    } catch (_) {
+      if (mounted) messenger.showSnackBar(const SnackBar(content: Text('Could not upload the signature')));
+    } finally {
+      if (mounted) setState(() => _uploadingSignature = false);
+    }
+  }
+
   /// Advance a step. Leaving the Vitals step first validates it, so a bad
   /// measurement is caught before the doctor moves on.
   void _next() {
     if (_step == 0 && !(_vitalsFormKey.currentState?.validate() ?? true)) {
       setState(() => _vitalsAutovalidate = AutovalidateMode.onUserInteraction);
+      return;
+    }
+    if (_step == 1 && !(_diagFormKey.currentState?.validate() ?? true)) {
+      setState(() => _diagAutovalidate = AutovalidateMode.onUserInteraction);
       return;
     }
     setState(() => _step += 1);
@@ -504,34 +624,50 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
   // ---- Nav + shared bits ----------------------------------------------
   Widget _navBar() {
     final last = _step == _steps.length - 1;
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.md, 8, AppSpacing.md, 8),
-        child: Row(
-          children: [
-            if (_step > 0)
-              OutlinedButton(
-                onPressed: _submitting ? null : () => setState(() => _step -= 1),
-                child: const Text('Back'),
-              ),
-            const Spacer(),
-            if (!last)
-              FilledButton(
-                onPressed: _next,
-                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-                child: const Text('Next'),
-              )
-            else
-              FilledButton.icon(
-                onPressed: _submitting ? null : _generate,
-                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-                icon: _submitting
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.check_rounded),
-                label: Text(_submitting ? 'Generating…' : 'Generate prescription'),
-              ),
-          ],
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border(top: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.md, 10, AppSpacing.md, 10),
+          child: Row(
+            children: [
+              if (_step > 0)
+                OutlinedButton(
+                  onPressed: _submitting ? null : () => setState(() => _step -= 1),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14)),
+                  child: const Text('Back', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                ),
+              const Spacer(),
+              if (!last)
+                FilledButton.icon(
+                  onPressed: _next,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                  ),
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  label: const Text('Next', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: _submitting ? null : _generate,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  ),
+                  icon: _submitting
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.check_rounded),
+                  label: Text(_submitting ? 'Generating…' : 'Generate prescription',
+                      style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                ),
+            ],
+          ),
         ),
       ),
     );
