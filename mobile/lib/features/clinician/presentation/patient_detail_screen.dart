@@ -1,12 +1,18 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // FilteringTextInputFormatter, LengthLimitingTextInputFormatter
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/auth_validators.dart';
+import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/authed_image.dart';
 import '../../../shared/widgets/fullscreen_photo.dart';
 import '../data/clinician_repository.dart';
@@ -954,10 +960,19 @@ class _DieticianSection extends ConsumerWidget {
   }
 }
 
-class _LabReportRow extends StatelessWidget {
+class _LabReportRow extends ConsumerStatefulWidget {
   const _LabReportRow({required this.report});
 
   final LabReport report;
+
+  @override
+  ConsumerState<_LabReportRow> createState() => _LabReportRowState();
+}
+
+class _LabReportRowState extends ConsumerState<_LabReportRow> {
+  bool _busy = false;
+
+  LabReport get report => widget.report;
 
   IconData _fileIcon() {
     final m = report.mimeType ?? '';
@@ -966,12 +981,42 @@ class _LabReportRow extends StatelessWidget {
     return Icons.description_rounded;
   }
 
+  /// A photo opens full-screen; a PDF/document is downloaded (with the auth
+  /// header — an in-browser open would 403) and handed to the phone's viewer.
+  Future<void> _open() async {
+    if (!report.hasFile || report.photoUrl == null) return;
+    if (report.isImage) {
+      FullscreenPhoto.show(context, report.photoUrl);
+      return;
+    }
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final dir = await getTemporaryDirectory();
+      final ext = report.mimeType == 'application/pdf' ? 'pdf' : 'bin';
+      final cached = File('${dir.path}/lab_${report.photoUrl.hashCode}.$ext');
+      if (!await cached.exists() || await cached.length() == 0) {
+        final bytes = await ref.read(apiClientProvider).getBytes('${AppConfig.apiOrigin}${report.photoUrl}');
+        if (bytes.isEmpty) throw Exception('empty report download');
+        await cached.writeAsBytes(bytes, flush: true);
+      }
+      final res = await OpenFilex.open(cached.path);
+      if (res.type != ResultType.done && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No app on this phone can open that report')));
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open the report')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // Only an actual image gets loaded as a thumbnail; a PDF/doc drawn through
-    // the image loader is the broken box the doctor was seeing.
     final showThumb = report.hasFile && report.isImage;
+    // The out-of-range markers, for the red summary line.
+    final abnormal = report.analytes.where((a) => a.abnormal).toList();
 
     final tile = Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
@@ -990,11 +1035,14 @@ class _LabReportRow extends StatelessWidget {
                 : Container(
                     width: 52,
                     height: 52,
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: scheme.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(_fileIcon(), color: scheme.onSurfaceVariant, size: 24),
+                    child: _busy
+                        ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4))
+                        : Icon(_fileIcon(), color: scheme.onSurfaceVariant, size: 24),
                   ),
           ),
           Expanded(
@@ -1014,9 +1062,32 @@ class _LabReportRow extends StatelessWidget {
                 ],
                 if (report.hasFile) ...[
                   const SizedBox(height: 4),
-                  Text(
-                    showThumb ? 'Tap to view' : (report.mimeType == 'application/pdf' ? 'PDF report' : 'Document'),
-                    style: TextStyle(fontSize: 11.5, color: AppColors.accentOn(context), fontWeight: FontWeight.w600),
+                  Row(
+                    children: [
+                      Icon(showThumb ? Icons.visibility_outlined : Icons.open_in_new_rounded, size: 13, color: AppColors.accentOn(context)),
+                      const SizedBox(width: 4),
+                      Text(
+                        showThumb ? 'Tap to view' : (report.mimeType == 'application/pdf' ? 'Tap to open PDF' : 'Tap to open'),
+                        style: TextStyle(fontSize: 11.5, color: AppColors.accentOn(context), fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ],
+                // Red at-a-glance summary of what's out of range.
+                if (abnormal.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.warning_amber_rounded, size: 14, color: AppColors.dangerOn(context)),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Out of range: ${abnormal.map((a) => '${a.label} ${a.flag == 'low' ? '↓' : '↑'}').join(', ')}',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.dangerOn(context)),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
                 // The structured values transcribed off the report, each with
@@ -1040,12 +1111,12 @@ class _LabReportRow extends StatelessWidget {
       ),
     );
 
-    // A photo report opens full-screen; a PDF/doc simply reads as a labelled
-    // file tile (no more broken box) until an in-app PDF viewer lands.
-    if (!showThumb) return tile;
+    // The whole tile is tappable when there's a file — image → full-screen,
+    // PDF/doc → download and open in the phone's viewer.
+    if (!report.hasFile) return tile;
     return InkWell(
       borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-      onTap: () => FullscreenPhoto.show(context, report.photoUrl),
+      onTap: _open,
       child: tile,
     );
   }
