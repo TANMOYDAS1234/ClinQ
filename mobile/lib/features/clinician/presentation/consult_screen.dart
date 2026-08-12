@@ -13,6 +13,7 @@ import '../../../shared/widgets/error_view.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../medications/domain/med_shorthand.dart';
 import '../data/clinician_repository.dart';
+import '../domain/advice_catalog.dart';
 import '../domain/diagnosis_catalog.dart';
 import '../domain/lab_catalog.dart';
 import 'clinician_providers.dart';
@@ -374,12 +375,66 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
     });
   }
 
+  /// The patient's most recent prescription, collapsed — diagnosis, medicines,
+  /// tests and advice — so the doctor can see what was last given.
+  Widget _previousRxCard() {
+    final list = ref.watch(patientPrescriptionsProvider(widget.patientId)).valueOrNull ?? const [];
+    if (list.isEmpty) return const SizedBox.shrink();
+    final rx = list.first;
+    final scheme = Theme.of(context).colorScheme;
+    final date = rx.issuedOn != null ? DateFormat('d MMM yyyy').format(rx.issuedOn!) : '';
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          leading: Icon(Icons.history_rounded, color: scheme.onSurfaceVariant),
+          title: const Text('Last prescription', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+          subtitle: Text(date, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+          children: [
+            if (rx.diagnosis.isNotEmpty) _refRow('Diagnosis', rx.diagnosis.join(', ')),
+            if (rx.medicines.isNotEmpty) _refRow('Medicines', rx.medicines.join('\n')),
+            if (rx.labTestsAdvised.isNotEmpty) _refRow('Tests advised', rx.labTestsAdvised.join(', ')),
+            if (rx.generalAdvice != null && rx.generalAdvice!.isNotEmpty) _refRow('Advice', rx.generalAdvice!),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _refRow(String k, String v) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(k.toUpperCase(),
+              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 2),
+          Text(v, style: const TextStyle(fontSize: 13.5, height: 1.3)),
+        ],
+      ),
+    );
+  }
+
   // ---- Step 3: Clinical advice ----------------------------------------
   Widget _adviceStep() {
     final labGroups = labCatalogByCategory();
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
+        // The patient's last prescription, for reference while writing this one.
+        _previousRxCard(),
         // A recap of what was diagnosed in step 2, so the doctor writes the
         // prescription with the diagnosis in view. Editable back in that step.
         _StepTitle('Diagnosis', _diagnoses.isEmpty ? 'None selected — add it in the Diagnosis step' : 'From the Diagnosis step'),
@@ -466,13 +521,37 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
         ),
 
         const SizedBox(height: AppSpacing.lg),
-        const _StepTitle('General advice', 'Diet, lifestyle, precautions'),
+        const _StepTitle('General advice', 'Tap a common one, or type your own'),
+        const SizedBox(height: AppSpacing.sm),
+        // Common advice the doctor writes repeatedly — tap to add to the text.
+        for (final entry in adviceByCategory().entries) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 6),
+            child: Text(
+              entry.key,
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final a in entry.value)
+                _SelectChip(
+                  label: a.text,
+                  selected: _adviceHas(a.text),
+                  onTap: () => _toggleAdvice(a.text),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+        ],
         const SizedBox(height: AppSpacing.sm),
         TextField(
           controller: _advice,
           textCapitalization: TextCapitalization.sentences,
           minLines: 3,
-          maxLines: 6,
+          maxLines: 8,
           decoration: const InputDecoration(
             labelText: 'Advice',
             alignLabelWithHint: true,
@@ -530,6 +609,25 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
     setState(() {
       _labs.add(v);
       _customTest.clear();
+    });
+  }
+
+  /// Advice snippets are one-per-line; a chip is "selected" when its line is
+  /// already present, and tapping it adds or removes that line.
+  List<String> get _adviceLines =>
+      _advice.text.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+
+  bool _adviceHas(String text) => _adviceLines.any((l) => l.toLowerCase() == text.toLowerCase());
+
+  void _toggleAdvice(String text) {
+    final lines = _adviceLines;
+    setState(() {
+      if (_adviceHas(text)) {
+        lines.removeWhere((l) => l.toLowerCase() == text.toLowerCase());
+      } else {
+        lines.add(text);
+      }
+      _advice.text = lines.join('\n');
     });
   }
 
