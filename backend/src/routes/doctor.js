@@ -673,6 +673,7 @@ router.get(
       rxForTests,
       medicationCount,
       lastFasting,
+      latestVitals,
     ] = await Promise.all([
       PatientProfile.findOne({ user: patient._id }).populate('assignedDietician', 'name phone').lean(),
       computeHealthScore(patient._id, { days: 30 }),
@@ -698,6 +699,11 @@ router.get(
         .sort({ measuredAt: -1 })
         .select('valueMgDl measuredAt')
         .lean(),
+      // The most recent measured vitals, for the profile's physical-details.
+      VitalRecord.findOne({ patient: patient._id })
+        .sort({ recordedAt: -1 })
+        .select('systolic diastolic pulse spo2 weightKg waistCm recordedAt')
+        .lean(),
     ]);
 
     res.json({
@@ -722,6 +728,18 @@ router.get(
       adherence,
       medicationCount,
       lastFasting: lastFasting ? { value: lastFasting.valueMgDl, at: lastFasting.measuredAt } : null,
+      // Latest measured vitals for the profile's physical-details section.
+      latestVitals: latestVitals
+        ? {
+            systolic: latestVitals.systolic ?? null,
+            diastolic: latestVitals.diastolic ?? null,
+            pulse: latestVitals.pulse ?? null,
+            spo2: latestVitals.spo2 ?? null,
+            weightKg: latestVitals.weightKg ?? null,
+            waistCm: latestVitals.waistCm ?? null,
+            at: latestVitals.recordedAt,
+          }
+        : null,
       hba1cHistory: latestHba1c.map((h) => ({ percentage: h.percentage, testedOn: h.testedOn })),
       footAssessments: footAssessments.map((f) => ({
         id: f._id,
@@ -762,6 +780,18 @@ router.get(
       // understand why it answered the way it did.
       aiContext: context.text,
     });
+  }),
+);
+
+/** Medication adherence for a chosen window (week/month/year), for the sheet's filter. */
+router.get(
+  '/patients/:id/adherence',
+  validate({ query: z.object({ days: z.coerce.number().int().min(1).max(400).default(30) }) }),
+  audit('read', 'Medication'),
+  asyncHandler(async (req, res) => {
+    const patient = await User.findOne({ _id: req.params.id, role: ROLES.PATIENT }).select('_id').lean();
+    if (!patient) throw notFound('Patient not found');
+    res.json(await computeAdherence(patient._id, { days: q(req).days }));
   }),
 );
 

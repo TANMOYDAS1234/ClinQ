@@ -217,6 +217,13 @@ class ClinicianRepository {
     await _client.postJson('/doctor/patients/$patientId/vitals', body: body);
   }
 
+  /// Medication adherence over a window (days) — for the profile's adherence
+  /// sheet week/month/year filter.
+  Future<AdherenceReport> patientAdherence(String patientId, {int days = 30}) async {
+    final json = await _client.getJson('/doctor/patients/$patientId/adherence', query: {'days': days});
+    return AdherenceReport.fromJson(json);
+  }
+
   /// The patient's past prescriptions/consultations, latest first.
   Future<List<PrescriptionSummary>> patientPrescriptions(String patientId) async {
     final json = await _client.getJson('/patients/$patientId/prescriptions?limit=20');

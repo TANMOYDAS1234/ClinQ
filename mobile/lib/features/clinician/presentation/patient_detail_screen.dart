@@ -37,6 +37,7 @@ class PatientRecordSections extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _MetricsGrid(summary: p),
+        _MeasurementsSection(summary: p),
         const SizedBox(height: AppSpacing.lg),
         _DieticianSection(summary: p, patientId: patientId),
         if (p.hba1cHistory.isNotEmpty) ...[
@@ -270,93 +271,241 @@ class _MetricsGrid extends StatelessWidget {
     );
   }
 
-  /// The adherence breakdown — overall doses, per-medicine, and the honest
-  /// caveat about what the number does and doesn't capture.
+  /// The adherence breakdown — with a week/month/year filter, overall doses,
+  /// per-medicine, and the honest caveat about what the number captures.
   void _showAdherenceSheet(BuildContext context, PatientSummary p) {
-    final expected = p.adherenceExpected ?? 0;
-    final taken = p.adherenceTaken ?? 0;
-    final pct = p.adherencePercent;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (ctx) {
-        final scheme = Theme.of(ctx).colorScheme;
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.55,
-          minChildSize: 0.3,
-          maxChildSize: 0.9,
-          builder: (ctx, controller) => ListView(
-            controller: controller,
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.xl),
+      builder: (ctx) => _AdherenceSheet(
+        patientId: p.id,
+        // Seed with the summary's 30-day figures so the sheet opens instantly.
+        initial: AdherenceReport(
+          taken: p.adherenceTaken ?? 0,
+          expected: p.adherenceExpected ?? 0,
+          percentage: p.adherencePercent,
+          perMed: p.adherencePerMed,
+        ),
+      ),
+    );
+  }
+}
+
+class _AdherenceSheet extends ConsumerStatefulWidget {
+  const _AdherenceSheet({required this.patientId, required this.initial});
+  final String patientId;
+  final AdherenceReport initial;
+
+  @override
+  ConsumerState<_AdherenceSheet> createState() => _AdherenceSheetState();
+}
+
+class _AdherenceSheetState extends ConsumerState<_AdherenceSheet> {
+  static const _periods = [(label: 'Week', days: 7), (label: 'Month', days: 30), (label: 'Year', days: 365)];
+  int _days = 30;
+  late AdherenceReport _report = widget.initial;
+  bool _loading = false;
+
+  Future<void> _select(int days) async {
+    setState(() {
+      _days = days;
+      _loading = true;
+    });
+    try {
+      final r = await ref.read(clinicianRepositoryProvider).patientAdherence(widget.patientId, days: days);
+      if (mounted) setState(() => _report = r);
+    } catch (_) {
+      // Keep whatever was showing.
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final r = _report;
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.92,
+      builder: (ctx, controller) => ListView(
+        controller: controller,
+        padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.xl),
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(Icons.medication_rounded, color: AppColors.accentOn(ctx)),
-                  const SizedBox(width: 8),
-                  const Text('Adherence', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
-                  const Spacer(),
-                  Text('Last 30 days', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                  border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-                ),
-                child: expected == 0
-                    ? Text('No scheduled doses have come due yet.', style: TextStyle(color: scheme.onSurfaceVariant))
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text('$taken/$expected',
-                              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: AppColors.accentOn(ctx))),
-                          const SizedBox(width: 6),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Text('doses taken', style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
-                          ),
-                          const Spacer(),
-                          if (pct != null) Text('$pct%', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
-                        ],
-                      ),
-              ),
-              if (p.adherencePerMed.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.lg),
-                Text('By medicine',
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant)),
-                const SizedBox(height: AppSpacing.sm),
-                for (final m in p.adherencePerMed) _AdherenceRow(med: m),
-              ],
-              const SizedBox(height: AppSpacing.lg),
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline_rounded, size: 16, color: scheme.onSurfaceVariant),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Counts only doses whose time has already passed, and only those the patient marked as taken in the app. A low figure can mean doses were not logged, not necessarily missed.',
-                        style: TextStyle(fontSize: 12.5, height: 1.35, color: scheme.onSurfaceVariant),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              Icon(Icons.medication_rounded, color: AppColors.accentOn(context)),
+              const SizedBox(width: 8),
+              const Text('Adherence', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+              const Spacer(),
+              if (_loading) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
             ],
           ),
-        );
-      },
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              for (final period in _periods) ...[
+                _PeriodChip(label: period.label, selected: _days == period.days, onTap: () => _select(period.days)),
+                const SizedBox(width: 8),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+            ),
+            child: r.expected == 0
+                ? Text('No scheduled doses have come due in this period.', style: TextStyle(color: scheme.onSurfaceVariant))
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('${r.taken}/${r.expected}',
+                          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: AppColors.accentOn(context))),
+                      const SizedBox(width: 6),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text('doses taken', style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
+                      ),
+                      const Spacer(),
+                      if (r.percentage != null)
+                        Text('${r.percentage}%', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+          ),
+          if (r.perMed.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Text('By medicine', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant)),
+            const SizedBox(height: AppSpacing.sm),
+            for (final m in r.perMed) _AdherenceRow(med: m),
+          ],
+          const SizedBox(height: AppSpacing.lg),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline_rounded, size: 16, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Counts only doses whose time has already passed, and only those the patient marked as taken in the app. A low figure can mean doses were not logged, not necessarily missed.',
+                    style: TextStyle(fontSize: 12.5, height: 1.35, color: scheme.onSurfaceVariant),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PeriodChip extends StatelessWidget {
+  const _PeriodChip({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? AppColors.primary : scheme.outlineVariant.withValues(alpha: 0.5)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13.5,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? Colors.white : scheme.onSurface,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The patient's physical measurements — height, weight, BMI, waist, BP, pulse,
+/// SpO2 — from registration and the latest consult. Hidden until at least one
+/// value exists.
+class _MeasurementsSection extends StatelessWidget {
+  const _MeasurementsSection({required this.summary});
+  final PatientSummary summary;
+
+  static String _n(double v) => v == v.roundToDouble() ? v.round().toString() : v.toStringAsFixed(1);
+
+  @override
+  Widget build(BuildContext context) {
+    final p = summary;
+    final scheme = Theme.of(context).colorScheme;
+    final chips = <Widget>[];
+    if (p.heightCm != null) chips.add(_MeasureChip(label: 'Height', value: '${_n(p.heightCm!)} cm'));
+    if (p.weightKg != null) chips.add(_MeasureChip(label: 'Weight', value: '${_n(p.weightKg!)} kg'));
+    if (p.bmi != null) chips.add(_MeasureChip(label: 'BMI', value: p.bmi!.toStringAsFixed(1)));
+    if (p.waistCm != null) chips.add(_MeasureChip(label: 'Waist', value: '${_n(p.waistCm!)} cm'));
+    if (p.systolic != null && p.diastolic != null) {
+      chips.add(_MeasureChip(label: 'BP', value: '${p.systolic}/${p.diastolic}'));
+    }
+    if (p.pulse != null) chips.add(_MeasureChip(label: 'Pulse', value: '${p.pulse} bpm'));
+    if (p.spo2 != null) chips.add(_MeasureChip(label: 'SpO₂', value: '${p.spo2}%'));
+
+    if (chips.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AppSpacing.lg),
+        const _SectionTitle('Measurements'),
+        const SizedBox(height: AppSpacing.sm),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+          ),
+          child: Wrap(spacing: AppSpacing.md, runSpacing: AppSpacing.md, children: chips),
+        ),
+      ],
+    );
+  }
+}
+
+class _MeasureChip extends StatelessWidget {
+  const _MeasureChip({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+        const SizedBox(height: 2),
+        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+      ],
     );
   }
 }

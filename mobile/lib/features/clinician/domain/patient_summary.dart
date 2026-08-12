@@ -28,6 +28,24 @@ class MedAdherence {
   );
 }
 
+/// Medication adherence for a chosen window — the tap-through sheet fetches this
+/// per period (week / month / year) via `/doctor/patients/:id/adherence`.
+class AdherenceReport {
+  const AdherenceReport({required this.taken, required this.expected, this.percentage, this.perMed = const []});
+  final int taken;
+  final int expected;
+  final int? percentage;
+  final List<MedAdherence> perMed;
+
+  factory AdherenceReport.fromJson(Map<String, dynamic> j) => AdherenceReport(
+    taken: (j['taken'] as num?)?.toInt() ?? 0,
+    expected: (j['expected'] as num?)?.toInt() ?? 0,
+    percentage: (j['percentage'] as num?)?.toInt(),
+    perMed: (j['perMedication'] as List?)?.whereType<Map<String, dynamic>>().map(MedAdherence.fromJson).toList() ??
+        const [],
+  );
+}
+
 /// One day's glucose summary — the point the continuous-monitoring graph plots.
 class GlucoseDailyPoint {
   const GlucoseDailyPoint({required this.date, required this.average, required this.min, required this.max});
@@ -176,6 +194,13 @@ class PatientSummary {
     this.medicationCount,
     this.lastFasting,
     this.lastFastingAt,
+    this.heightCm,
+    this.weightKg,
+    this.systolic,
+    this.diastolic,
+    this.pulse,
+    this.spo2,
+    this.waistCm,
   });
 
   final String id;
@@ -241,6 +266,25 @@ class PatientSummary {
   final int? lastFasting;
   final DateTime? lastFastingAt;
 
+  /// Physical measurements — height from the profile, the rest from the latest
+  /// VitalRecord. Shown in the profile's measurements section.
+  final double? heightCm;
+  final double? weightKg;
+  final int? systolic;
+  final int? diastolic;
+  final int? pulse;
+  final int? spo2;
+  final double? waistCm;
+
+  /// Body-mass index from height + weight, or null if either is missing.
+  double? get bmi {
+    final h = heightCm;
+    final w = weightKg;
+    if (h == null || w == null || h <= 0) return null;
+    final m = h / 100;
+    return w / (m * m);
+  }
+
   /// The latest lab HbA1c on record (the measured value, not the estimate).
   num? get lastHba1c => hba1cHistory.isNotEmpty ? hba1cHistory.first.percentage : null;
 
@@ -249,6 +293,7 @@ class PatientSummary {
     final profile = j['profile'] as Map<String, dynamic>? ?? const {};
     final health = j['healthScore'] as Map<String, dynamic>? ?? const {};
     final adherence = j['adherence'] as Map<String, dynamic>? ?? const {};
+    final vitals = j['latestVitals'] as Map<String, dynamic>? ?? const {};
     final trends = j['trends'] as Map<String, dynamic>? ?? const {};
     final stats = trends['stats'] as Map<String, dynamic>?;
 
@@ -310,6 +355,13 @@ class PatientSummary {
       lastFastingAt: j['lastFasting'] is Map
           ? DateTime.tryParse((j['lastFasting'] as Map)['at']?.toString() ?? '')?.toLocal()
           : null,
+      heightCm: (profile['heightCm'] as num?)?.toDouble(),
+      weightKg: (vitals['weightKg'] as num?)?.toDouble() ?? (profile['baselineWeightKg'] as num?)?.toDouble(),
+      systolic: (vitals['systolic'] as num?)?.toInt(),
+      diastolic: (vitals['diastolic'] as num?)?.toInt(),
+      pulse: (vitals['pulse'] as num?)?.toInt(),
+      spo2: (vitals['spo2'] as num?)?.toInt(),
+      waistCm: (vitals['waistCm'] as num?)?.toDouble(),
     );
   }
 }

@@ -604,30 +604,35 @@ class _ProfileHeader extends StatelessWidget {
           ),
           if ((p.chiefComplaint ?? '').trim().isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.assignment_outlined, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          const TextSpan(
-                            text: 'Complaint   ',
-                            style: TextStyle(fontWeight: FontWeight.w800),
+            Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => _showComplaintSheet(context, p.chiefComplaint!.trim()),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    children: [
+                      Icon(Icons.assignment_outlined, size: 16, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              const TextSpan(text: 'Complaint   ', style: TextStyle(fontWeight: FontWeight.w800)),
+                              TextSpan(text: p.chiefComplaint!.trim()),
+                            ],
                           ),
-                          TextSpan(text: p.chiefComplaint!.trim()),
-                        ],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13.5, height: 1.35, color: Colors.black87),
+                        ),
                       ),
-                      style: const TextStyle(fontSize: 13.5, height: 1.35, color: Colors.black87),
-                    ),
+                      Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.primary),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ],
@@ -635,6 +640,35 @@ class _ProfileHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The full presenting complaint in a bottom-up sheet — the header shows a
+/// one-line preview; tapping opens this for the whole thing.
+void _showComplaintSheet(BuildContext context, String text) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.assignment_outlined, color: AppColors.primary),
+                const SizedBox(width: 8),
+                const Text('Presenting complaint', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(text, style: const TextStyle(fontSize: 15, height: 1.5)),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _HeaderPill extends StatelessWidget {
