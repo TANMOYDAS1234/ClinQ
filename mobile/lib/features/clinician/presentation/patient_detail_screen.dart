@@ -231,6 +231,7 @@ class _MetricsGrid extends StatelessWidget {
         sub: adherenceSub,
         color: AppColors.accentOn(context),
         icon: Icons.medication_rounded,
+        onTap: () => _showAdherenceSheet(context, p),
       ),
       _Metric(
         label: 'Medicines',
@@ -274,10 +275,151 @@ class _MetricsGrid extends StatelessWidget {
       children: tiles,
     );
   }
+
+  /// The adherence breakdown — overall doses, per-medicine, and the honest
+  /// caveat about what the number does and doesn't capture.
+  void _showAdherenceSheet(BuildContext context, PatientSummary p) {
+    final expected = p.adherenceExpected ?? 0;
+    final taken = p.adherenceTaken ?? 0;
+    final pct = p.adherencePercent;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        final scheme = Theme.of(ctx).colorScheme;
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.55,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          builder: (ctx, controller) => ListView(
+            controller: controller,
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.xl),
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.medication_rounded, color: AppColors.accentOn(ctx)),
+                  const SizedBox(width: 8),
+                  const Text('Adherence', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+                  const Spacer(),
+                  Text('Last 30 days', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                  border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+                ),
+                child: expected == 0
+                    ? Text('No scheduled doses have come due yet.', style: TextStyle(color: scheme.onSurfaceVariant))
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('$taken/$expected',
+                              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: AppColors.accentOn(ctx))),
+                          const SizedBox(width: 6),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Text('doses taken', style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
+                          ),
+                          const Spacer(),
+                          if (pct != null) Text('$pct%', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+              ),
+              if (p.adherencePerMed.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.lg),
+                Text('By medicine',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant)),
+                const SizedBox(height: AppSpacing.sm),
+                for (final m in p.adherencePerMed) _AdherenceRow(med: m),
+              ],
+              const SizedBox(height: AppSpacing.lg),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 16, color: scheme.onSurfaceVariant),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Counts only doses whose time has already passed, and only those the patient marked as taken in the app. A low figure can mean doses were not logged, not necessarily missed.',
+                        style: TextStyle(fontSize: 12.5, height: 1.35, color: scheme.onSurfaceVariant),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AdherenceRow extends StatelessWidget {
+  const _AdherenceRow({required this.med});
+  final MedAdherence med;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final frac = med.expected > 0 ? (med.taken / med.expected).clamp(0.0, 1.0) : 0.0;
+    final pct = med.percentage;
+    final color = pct == null
+        ? scheme.onSurfaceVariant
+        : (pct >= 80 ? AppColors.success : (pct >= 50 ? AppColors.warning : AppColors.danger));
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(med.name,
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
+              ),
+              Text('${med.taken}/${med.expected}${pct != null ? '  ·  $pct%' : ''}',
+                  style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: frac,
+              minHeight: 6,
+              backgroundColor: scheme.surfaceContainerHighest,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value, required this.color, required this.icon, this.unit, this.sub});
+  const _Metric({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+    this.unit,
+    this.sub,
+    this.onTap,
+  });
 
   final String label;
   final String value;
@@ -289,10 +431,14 @@ class _Metric extends StatelessWidget {
   final Color color;
   final IconData icon;
 
+  /// When set, the tile is tappable (a chevron hints it) — used to open the
+  /// adherence breakdown sheet.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
+    final tile = Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
@@ -308,6 +454,7 @@ class _Metric extends StatelessWidget {
               Icon(icon, size: 16, color: color),
               const SizedBox(width: 4),
               Expanded(child: Text(label, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              if (onTap != null) Icon(Icons.chevron_right_rounded, size: 18, color: scheme.onSurfaceVariant),
             ],
           ),
           const SizedBox(height: 6),
@@ -333,6 +480,13 @@ class _Metric extends StatelessWidget {
           ],
         ],
       ),
+    );
+
+    if (onTap == null) return tile;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      child: tile,
     );
   }
 }

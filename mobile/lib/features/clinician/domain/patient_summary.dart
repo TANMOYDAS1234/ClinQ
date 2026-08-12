@@ -12,6 +12,22 @@ class Hba1cPoint {
   );
 }
 
+/// One medicine's dose adherence over the window — taken vs due doses.
+class MedAdherence {
+  const MedAdherence({required this.name, required this.taken, required this.expected, this.percentage});
+  final String name;
+  final int taken;
+  final int expected;
+  final int? percentage;
+
+  factory MedAdherence.fromJson(Map<String, dynamic> j) => MedAdherence(
+    name: j['name']?.toString() ?? 'Medicine',
+    taken: (j['taken'] as num?)?.toInt() ?? 0,
+    expected: (j['expected'] as num?)?.toInt() ?? 0,
+    percentage: (j['percentage'] as num?)?.toInt(),
+  );
+}
+
 /// One day's glucose summary — the point the continuous-monitoring graph plots.
 class GlucoseDailyPoint {
   const GlucoseDailyPoint({required this.date, required this.average, required this.min, required this.max});
@@ -155,6 +171,8 @@ class PatientSummary {
     this.reviewIntervalDays,
     this.adherenceTaken,
     this.adherenceExpected,
+    this.adherenceMissed,
+    this.adherencePerMed = const [],
     this.medicationCount,
     this.lastFasting,
     this.lastFastingAt,
@@ -211,6 +229,10 @@ class PatientSummary {
   /// honest form behind the percentage.
   final int? adherenceTaken;
   final int? adherenceExpected;
+  final int? adherenceMissed;
+
+  /// Per-medicine dose adherence, for the tap-through breakdown.
+  final List<MedAdherence> adherencePerMed;
 
   /// How many medicines the patient is currently on.
   final int? medicationCount;
@@ -277,6 +299,12 @@ class PatientSummary {
       aiContext: j['aiContext']?.toString(),
       adherenceTaken: (adherence['taken'] as num?)?.toInt(),
       adherenceExpected: (adherence['expected'] as num?)?.toInt(),
+      adherenceMissed: (adherence['missed'] as num?)?.toInt(),
+      adherencePerMed: (adherence['perMedication'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(MedAdherence.fromJson)
+              .toList() ??
+          const [],
       medicationCount: (j['medicationCount'] as num?)?.toInt(),
       lastFasting: j['lastFasting'] is Map ? ((j['lastFasting'] as Map)['value'] as num?)?.toInt() : null,
       lastFastingAt: j['lastFasting'] is Map
