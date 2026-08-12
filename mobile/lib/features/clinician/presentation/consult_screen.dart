@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/vitals_validators.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../medications/domain/med_shorthand.dart';
 import '../data/clinician_repository.dart';
@@ -56,6 +57,12 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
   final _advice = TextEditingController();
   DateTime? _followUp;
 
+  final _vitalsFormKey = GlobalKey<FormState>();
+  AutovalidateMode _vitalsAutovalidate = AutovalidateMode.disabled;
+
+  /// Whether the presenting complaint is printed on the prescription.
+  bool _showComplaintOnRx = true;
+
   bool _submitting = false;
   String? _error;
 
@@ -79,6 +86,15 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
   bool get _hasMedicine => _meds.any((m) => m.name.text.trim().isNotEmpty);
 
   Future<void> _generate() async {
+    // Bad vitals (out of range, or a diastolic ≥ systolic) block generation and
+    // send the doctor back to the Vitals step to fix them.
+    if (!(_vitalsFormKey.currentState?.validate() ?? true)) {
+      setState(() {
+        _step = 0;
+        _vitalsAutovalidate = AutovalidateMode.onUserInteraction;
+      });
+      return;
+    }
     if (!_hasMedicine) {
       setState(() {
         _step = 2;
@@ -129,7 +145,9 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
       await repo.createPrescription(
         patientId: widget.patientId,
         items: items,
-        complaint: complaint.isEmpty ? null : complaint,
+        // Recorded to the profile above regardless; only printed on the Rx when
+        // the doctor left the checkbox ticked.
+        complaint: (complaint.isEmpty || !_showComplaintOnRx) ? null : complaint,
         diagnosis: _diagnoses.toList(),
         labTestsAdvised: labs.toList(),
         generalAdvice: _advice.text.trim(),
@@ -188,45 +206,65 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
 
   // ---- Step 1: Vitals --------------------------------------------------
   Widget _vitalsStep() {
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      children: [
-        const _StepTitle('Vitals', 'Measured at this visit — all optional'),
-        const SizedBox(height: AppSpacing.md),
-        Row(children: [
-          Expanded(child: _num(_height, 'Height', 'cm')),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(child: _num(_weight, 'Weight', 'kg')),
-        ]),
-        const SizedBox(height: AppSpacing.md),
-        Row(children: [
-          Expanded(child: _num(_systolic, 'BP systolic', 'mmHg', integer: true)),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(child: _num(_diastolic, 'BP diastolic', 'mmHg', integer: true)),
-        ]),
-        const SizedBox(height: AppSpacing.md),
-        Row(children: [
-          Expanded(child: _num(_pulse, 'Heart rate', 'bpm', integer: true)),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(child: _num(_spo2, 'SpO₂', '%', integer: true)),
-        ]),
-        const SizedBox(height: AppSpacing.md),
-        _num(_sugar, 'Blood sugar', 'mg/dL', integer: true),
-        const SizedBox(height: AppSpacing.lg),
-        const _StepTitle('Complaint', 'Prints on the prescription'),
-        const SizedBox(height: AppSpacing.sm),
-        TextField(
-          controller: _complaint,
-          textCapitalization: TextCapitalization.sentences,
-          minLines: 2,
-          maxLines: 4,
-          decoration: const InputDecoration(
-            labelText: 'Presenting complaint',
-            alignLabelWithHint: true,
-            hintText: 'e.g. increased thirst and fatigue for 2 weeks',
+    return Form(
+      key: _vitalsFormKey,
+      autovalidateMode: _vitalsAutovalidate,
+      child: ListView(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        children: [
+          const _StepTitle('Vitals', 'Measured at this visit — all optional'),
+          const SizedBox(height: AppSpacing.md),
+          Row(children: [
+            Expanded(child: _num(_height, 'Height', 'cm', VitalsValidators.height)),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(child: _num(_weight, 'Weight', 'kg', VitalsValidators.weight)),
+          ]),
+          const SizedBox(height: AppSpacing.md),
+          Row(children: [
+            Expanded(child: _num(_systolic, 'BP systolic', 'mmHg', VitalsValidators.systolic, integer: true)),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: _num(
+                _diastolic,
+                'BP diastolic',
+                'mmHg',
+                (v) => VitalsValidators.diastolic(v, systolicText: _systolic.text),
+                integer: true,
+              ),
+            ),
+          ]),
+          const SizedBox(height: AppSpacing.md),
+          Row(children: [
+            Expanded(child: _num(_pulse, 'Heart rate', 'bpm', VitalsValidators.pulse, integer: true)),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(child: _num(_spo2, 'SpO₂', '%', VitalsValidators.spo2, integer: true)),
+          ]),
+          const SizedBox(height: AppSpacing.md),
+          _num(_sugar, 'Blood sugar', 'mg/dL', VitalsValidators.sugar, integer: true),
+          const SizedBox(height: AppSpacing.lg),
+          const _StepTitle('Complaint', 'Add the reason for this visit'),
+          const SizedBox(height: AppSpacing.sm),
+          TextFormField(
+            controller: _complaint,
+            textCapitalization: TextCapitalization.sentences,
+            minLines: 2,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Presenting complaint',
+              alignLabelWithHint: true,
+              hintText: 'e.g. increased thirst and fatigue for 2 weeks',
+            ),
           ),
-        ),
-      ],
+          CheckboxListTile(
+            value: _showComplaintOnRx,
+            onChanged: (v) => setState(() => _showComplaintOnRx = v ?? true),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            activeColor: AppColors.primary,
+            title: const Text('Show this complaint on the prescription', style: TextStyle(fontSize: 14.5)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -453,6 +491,16 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
     if (picked != null) setState(() => _followUp = picked);
   }
 
+  /// Advance a step. Leaving the Vitals step first validates it, so a bad
+  /// measurement is caught before the doctor moves on.
+  void _next() {
+    if (_step == 0 && !(_vitalsFormKey.currentState?.validate() ?? true)) {
+      setState(() => _vitalsAutovalidate = AutovalidateMode.onUserInteraction);
+      return;
+    }
+    setState(() => _step += 1);
+  }
+
   // ---- Nav + shared bits ----------------------------------------------
   Widget _navBar() {
     final last = _step == _steps.length - 1;
@@ -470,7 +518,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
             const Spacer(),
             if (!last)
               FilledButton(
-                onPressed: () => setState(() => _step += 1),
+                onPressed: _next,
                 style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
                 child: const Text('Next'),
               )
@@ -489,8 +537,14 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
     );
   }
 
-  Widget _num(TextEditingController c, String label, String unit, {bool integer = false}) {
-    return TextField(
+  Widget _num(
+    TextEditingController c,
+    String label,
+    String unit,
+    String? Function(String?) validator, {
+    bool integer = false,
+  }) {
+    return TextFormField(
       controller: c,
       keyboardType: TextInputType.numberWithOptions(decimal: !integer),
       inputFormatters: [
@@ -498,6 +552,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
         LengthLimitingTextInputFormatter(6),
       ],
       decoration: InputDecoration(labelText: label, suffixText: unit),
+      validator: validator,
     );
   }
 }

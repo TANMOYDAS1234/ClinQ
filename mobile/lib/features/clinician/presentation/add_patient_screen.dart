@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/auth_validators.dart';
+import '../../../core/utils/vitals_validators.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../data/clinician_repository.dart';
 import 'clinician_providers.dart';
@@ -206,29 +207,37 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
-                  Expanded(child: _numField(_height, 'Height', 'cm')),
+                  Expanded(child: _numField(_height, 'Height', 'cm', VitalsValidators.height)),
                   const SizedBox(width: AppSpacing.md),
-                  Expanded(child: _numField(_weight, 'Weight', 'kg')),
+                  Expanded(child: _numField(_weight, 'Weight', 'kg', VitalsValidators.weight)),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
-                  Expanded(child: _numField(_systolic, 'BP systolic', 'mmHg', integer: true)),
+                  Expanded(child: _numField(_systolic, 'BP systolic', 'mmHg', VitalsValidators.systolic, integer: true)),
                   const SizedBox(width: AppSpacing.md),
-                  Expanded(child: _numField(_diastolic, 'BP diastolic', 'mmHg', integer: true)),
+                  Expanded(
+                    child: _numField(
+                      _diastolic,
+                      'BP diastolic',
+                      'mmHg',
+                      (v) => VitalsValidators.diastolic(v, systolicText: _systolic.text),
+                      integer: true,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
-                  Expanded(child: _numField(_pulse, 'Heart rate', 'bpm', integer: true)),
+                  Expanded(child: _numField(_pulse, 'Heart rate', 'bpm', VitalsValidators.pulse, integer: true)),
                   const SizedBox(width: AppSpacing.md),
-                  Expanded(child: _numField(_spo2, 'SpO₂', '%', integer: true)),
+                  Expanded(child: _numField(_spo2, 'SpO₂', '%', VitalsValidators.spo2, integer: true)),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
-              _numField(_sugar, 'Blood sugar', 'mg/dL', integer: true),
+              _numField(_sugar, 'Blood sugar', 'mg/dL', VitalsValidators.sugar, integer: true),
 
               const SizedBox(height: AppSpacing.lg),
               const _SectionLabel('Complaints', trailing: 'optional'),
@@ -290,7 +299,13 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
 
   /// A numeric vitals field with a unit suffix. Optional — never validates,
   /// only constrains the keyboard and character set.
-  Widget _numField(TextEditingController c, String label, String unit, {bool integer = false}) {
+  Widget _numField(
+    TextEditingController c,
+    String label,
+    String unit,
+    String? Function(String?) validator, {
+    bool integer = false,
+  }) {
     return TextFormField(
       controller: c,
       keyboardType: TextInputType.numberWithOptions(decimal: !integer),
@@ -301,6 +316,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
         LengthLimitingTextInputFormatter(6),
       ],
       decoration: InputDecoration(labelText: label, suffixText: unit),
+      validator: validator,
     );
   }
 }

@@ -109,8 +109,11 @@ export function buildPrescriptionPdf({ prescription: p, patient, doctor, profile
     y = Math.max(ly, doc.y) + 10;
 
     // --- Chief complaint --------------------------------------------------
-    if (p.complaint || profile?.chiefComplaint) {
-      y = labelledBlock(doc, 'Chief complaint', String(p.complaint || profile.chiefComplaint), M, y, contentW);
+    // The prescription's OWN snapshot only — no profile fallback — so the
+    // consult's "show on prescription" checkbox genuinely controls whether it
+    // prints (the complaint is still recorded on the profile either way).
+    if (p.complaint) {
+      y = labelledBlock(doc, 'Chief complaint', String(p.complaint), M, y, contentW);
     }
 
     // --- Diagnosis --------------------------------------------------------

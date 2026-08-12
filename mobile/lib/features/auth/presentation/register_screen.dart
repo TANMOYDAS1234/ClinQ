@@ -7,6 +7,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/auth_validators.dart';
+import '../../../core/utils/vitals_validators.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../shared/providers/locale_provider.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -29,6 +30,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _addressController = TextEditingController();
+  final _heightController = TextEditingController();
+  final _weightController = TextEditingController();
+  final _systolicController = TextEditingController();
+  final _diastolicController = TextEditingController();
+  final _pulseController = TextEditingController();
+  final _spo2Controller = TextEditingController();
+  final _sugarController = TextEditingController();
+  final _complaintsController = TextEditingController();
   final _inviteController = TextEditingController();
 
   /// Errors stay hidden until the first submit attempt. `onUserInteraction`
@@ -53,6 +62,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _addressController.dispose();
+    _heightController.dispose();
+    _weightController.dispose();
+    _systolicController.dispose();
+    _diastolicController.dispose();
+    _pulseController.dispose();
+    _spo2Controller.dispose();
+    _sugarController.dispose();
+    _complaintsController.dispose();
     _inviteController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -67,6 +84,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       lastDate: now,
     );
     if (picked != null) setState(() => _dateOfBirth = picked);
+  }
+
+  /// An optional numeric vitals field with a unit suffix and a range validator.
+  Widget _vital(
+    TextEditingController c,
+    String label,
+    String unit,
+    String? Function(String?) validator, {
+    bool integer = false,
+  }) {
+    return TextFormField(
+      controller: c,
+      keyboardType: TextInputType.numberWithOptions(decimal: !integer),
+      inputFormatters: [
+        integer
+            ? FilteringTextInputFormatter.digitsOnly
+            : FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+        LengthLimitingTextInputFormatter(6),
+      ],
+      decoration: InputDecoration(labelText: label, suffixText: unit),
+      validator: validator,
+    );
   }
 
   Future<void> _submit() async {
@@ -96,6 +135,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     '${_dateOfBirth!.day.toString().padLeft(2, '0')}',
           gender: _gender,
           address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+          heightCm: double.tryParse(_heightController.text.trim()),
+          weightKg: double.tryParse(_weightController.text.trim()),
+          systolic: int.tryParse(_systolicController.text.trim()),
+          diastolic: int.tryParse(_diastolicController.text.trim()),
+          pulse: int.tryParse(_pulseController.text.trim()),
+          spo2: int.tryParse(_spo2Controller.text.trim()),
+          glucoseMgDl: int.tryParse(_sugarController.text.trim()),
+          complaints: _complaintsController.text.trim().isEmpty ? null : _complaintsController.text.trim(),
           inviteCode: _inviteController.text.trim().isEmpty ? null : _inviteController.text.trim(),
           // Deliberately not sent from this screen — diabetes type is no
           // longer collected at signup. The server therefore applies its
@@ -353,6 +400,64 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     if (v == null || v.trim().isEmpty) return 'Enter your address';
                     return null;
                   },
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Health details (optional)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Expanded(child: _vital(_heightController, 'Height', 'cm', VitalsValidators.height)),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(child: _vital(_weightController, 'Weight', 'kg', VitalsValidators.weight)),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Expanded(child: _vital(_systolicController, 'BP systolic', 'mmHg', VitalsValidators.systolic, integer: true)),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: _vital(
+                        _diastolicController,
+                        'BP diastolic',
+                        'mmHg',
+                        (v) => VitalsValidators.diastolic(v, systolicText: _systolicController.text),
+                        integer: true,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Expanded(child: _vital(_pulseController, 'Heart rate', 'bpm', VitalsValidators.pulse, integer: true)),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(child: _vital(_spo2Controller, 'SpO₂', '%', VitalsValidators.spo2, integer: true)),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _vital(_sugarController, 'Blood sugar', 'mg/dL', VitalsValidators.sugar, integer: true),
+                const SizedBox(height: AppSpacing.md),
+                TextFormField(
+                  controller: _complaintsController,
+                  textCapitalization: TextCapitalization.sentences,
+                  minLines: 2,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Complaints (optional)',
+                    alignLabelWithHint: true,
+                    prefixIcon: Icon(Icons.assignment_outlined),
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 TextFormField(

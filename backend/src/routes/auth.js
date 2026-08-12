@@ -3,6 +3,8 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { User, ROLES, LANGUAGES } from '../models/User.js';
 import { PatientProfile } from '../models/PatientProfile.js';
+import { VitalRecord } from '../models/VitalRecord.js';
+import { GlucoseReading } from '../models/GlucoseReading.js';
 import { signAccessToken, issueRefreshToken, rotateRefreshToken, revokeAllForUser } from '../services/tokens.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
@@ -43,6 +45,17 @@ const registerSchema = z.object({
   dateOfBirth: z.coerce.date().optional(),
   gender: z.enum(['male', 'female', 'other', 'undisclosed']).default('undisclosed'),
   address: z.string().trim().max(300).optional(),
+  // Optional health details a patient may self-report at sign-up. Ignored for a
+  // dietician account. A VitalRecord / GlucoseReading is written only when a
+  // value is present.
+  heightCm: z.coerce.number().min(50).max(250).optional(),
+  weightKg: z.coerce.number().min(10).max(400).optional(),
+  systolic: z.coerce.number().min(50).max(300).optional(),
+  diastolic: z.coerce.number().min(30).max(200).optional(),
+  pulse: z.coerce.number().min(25).max(250).optional(),
+  spo2: z.coerce.number().min(50).max(100).optional(),
+  glucoseMgDl: z.coerce.number().min(10).max(900).optional(),
+  complaints: z.string().trim().max(1000).optional(),
   diabetesType: z.enum(['type1', 'type2', 'gestational', 'prediabetes', 'none']).default('type2'),
   // A dietician onboarding code turns this sign-up into a dietician account
   // instead of a patient. Anything else (or empty) registers a patient.
@@ -85,12 +98,28 @@ router.post(
     // Only patients get a clinical profile; a dietician has no diabetes record.
     if (!isDietician) {
       const doctor = await User.findOne({ role: ROLES.DOCTOR }).select('_id').lean();
+      const { heightCm, weightKg, systolic, diastolic, pulse, spo2, glucoseMgDl, complaints } = req.body;
       await PatientProfile.create({
         user: user._id,
         diabetesType,
         assignedDoctor: doctor?._id,
         ...(address ? { address } : {}),
+        ...(heightCm != null ? { heightCm } : {}),
+        ...(weightKg != null ? { baselineWeightKg: weightKg } : {}),
+        ...(complaints ? { chiefComplaint: complaints } : {}),
       });
+
+      // Self-reported intake vitals, written only when a value was given.
+      const vitals = {};
+      if (systolic != null) vitals.systolic = systolic;
+      if (diastolic != null) vitals.diastolic = diastolic;
+      if (pulse != null) vitals.pulse = pulse;
+      if (spo2 != null) vitals.spo2 = spo2;
+      if (weightKg != null) vitals.weightKg = weightKg;
+      if (Object.keys(vitals).length) await VitalRecord.create({ patient: user._id, ...vitals });
+      if (glucoseMgDl != null) {
+        await GlucoseReading.create({ patient: user._id, valueMgDl: glucoseMgDl, context: 'random', source: 'manual' });
+      }
     }
 
     const accessToken = signAccessToken(user);
