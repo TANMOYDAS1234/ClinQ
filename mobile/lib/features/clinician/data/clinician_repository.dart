@@ -167,6 +167,7 @@ class ClinicianRepository {
   Future<void> createPrescription({
     required String patientId,
     required List<Map<String, dynamic>> items,
+    String? complaint,
     List<String> diagnosis = const [],
     List<String> labTestsAdvised = const [],
     String? generalAdvice,
@@ -176,6 +177,7 @@ class ClinicianRepository {
       '/patients/$patientId/prescriptions',
       body: {
         'items': items,
+        if (complaint != null && complaint.isNotEmpty) 'complaint': complaint,
         if (diagnosis.isNotEmpty) 'diagnosis': diagnosis,
         if (labTestsAdvised.isNotEmpty) 'labTestsAdvised': labTestsAdvised,
         if (generalAdvice != null && generalAdvice.isNotEmpty)
@@ -183,6 +185,34 @@ class ClinicianRepository {
         if (followUpOn != null) 'followUpOn': followUpOn.toIso8601String(),
       },
     );
+  }
+
+  /// Records a consult-time vitals snapshot (height/weight to the profile, the
+  /// rest as a VitalRecord + glucose reading). All values optional — only the
+  /// ones the doctor measured are sent.
+  Future<void> recordConsultVitals({
+    required String patientId,
+    String? complaint,
+    double? heightCm,
+    double? weightKg,
+    int? systolic,
+    int? diastolic,
+    int? pulse,
+    int? spo2,
+    int? glucoseMgDl,
+  }) async {
+    final body = <String, dynamic>{
+      if (complaint != null && complaint.isNotEmpty) 'complaint': complaint,
+      if (heightCm != null) 'heightCm': heightCm,
+      if (weightKg != null) 'weightKg': weightKg,
+      if (systolic != null) 'systolic': systolic,
+      if (diastolic != null) 'diastolic': diastolic,
+      if (pulse != null) 'pulse': pulse,
+      if (spo2 != null) 'spo2': spo2,
+      if (glucoseMgDl != null) 'glucoseMgDl': glucoseMgDl,
+    };
+    if (body.isEmpty) return;
+    await _client.postJson('/doctor/patients/$patientId/vitals', body: body);
   }
 
   /// The patient's past prescriptions/consultations, latest first.

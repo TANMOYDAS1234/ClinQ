@@ -116,6 +116,10 @@ class AuthRepository {
     String? dateOfBirth,
     String? gender,
     String? avatarAssetId,
+    String? qualifications,
+    String? specialty,
+    String? registrationNo,
+    String? signatureAssetId,
   }) async {
     final json = await _client.patchJson(
       '/auth/me',
@@ -126,6 +130,10 @@ class AuthRepository {
         if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
         if (gender != null) 'gender': gender,
         if (avatarAssetId != null) 'avatarAssetId': avatarAssetId,
+        if (qualifications != null) 'qualifications': qualifications,
+        if (specialty != null) 'specialty': specialty,
+        if (registrationNo != null) 'registrationNo': registrationNo,
+        if (signatureAssetId != null) 'signatureAssetId': signatureAssetId,
       },
     );
     return AppUser.fromJson(json['user'] as Map<String, dynamic>);

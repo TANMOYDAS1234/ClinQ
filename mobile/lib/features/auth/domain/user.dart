@@ -10,6 +10,10 @@ class AppUser {
     this.dateOfBirth,
     this.gender,
     this.avatarUrl,
+    this.qualifications,
+    this.specialty,
+    this.registrationNo,
+    this.signatureUrl,
     this.createdAt,
   });
 
@@ -33,6 +37,14 @@ class AppUser {
   /// Relative `/api/v1/uploads/:id/raw` path of the profile photo, or null.
   final String? avatarUrl;
 
+  /// Doctor letterhead fields (null for patients/staff). `qualifications` like
+  /// "MBBS, MD"; `registrationNo` the medical-council number; `signatureUrl` the
+  /// uploaded signature image, embedded into prescription PDFs.
+  final String? qualifications;
+  final String? specialty;
+  final String? registrationNo;
+  final String? signatureUrl;
+
   final DateTime? createdAt;
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
@@ -46,6 +58,10 @@ class AppUser {
       dateOfBirth: _parseDate(json['dateOfBirth']),
       gender: json['gender'] as String?,
       avatarUrl: json['avatarUrl'] as String?,
+      qualifications: json['qualifications'] as String?,
+      specialty: json['specialty'] as String?,
+      registrationNo: json['registrationNo'] as String?,
+      signatureUrl: json['signatureUrl'] as String?,
       createdAt: _parseDate(json['createdAt']),
     );
   }
@@ -66,6 +82,10 @@ class AppUser {
       dateOfBirth: dateOfBirth,
       gender: gender,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      qualifications: qualifications,
+      specialty: specialty,
+      registrationNo: registrationNo,
+      signatureUrl: signatureUrl,
       createdAt: createdAt,
     );
   }

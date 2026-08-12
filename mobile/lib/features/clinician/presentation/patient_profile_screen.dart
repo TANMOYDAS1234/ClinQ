@@ -571,6 +571,37 @@ class _ProfileHeader extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => context.push('/clinician/patients/${p.id}/consult', extra: p.name),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.medical_services_outlined, size: 19),
+                  label: const Text('Consult', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => context.push('/clinician/patients/${p.id}/prescriptions', extra: p.name),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.receipt_long_outlined, size: 19),
+                  label: const Text('Prescription', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
           if ((p.chiefComplaint ?? '').trim().isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
             Container(

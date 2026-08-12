@@ -42,6 +42,14 @@ const userSchema = new mongoose.Schema(
     // Optional profile photo — a MediaAsset id, served from /uploads/:id/raw.
     avatarAssetId: { type: mongoose.Schema.Types.ObjectId, ref: 'MediaAsset' },
 
+    // Doctor letterhead + signature (unused for patients). `qualifications` e.g.
+    // "MBBS, MD"; `registrationNo` is the medical-council number; `signatureAssetId`
+    // is an uploaded image embedded into generated prescription PDFs.
+    qualifications: { type: String, trim: true, maxlength: 120 },
+    specialty: { type: String, trim: true, maxlength: 120 },
+    registrationNo: { type: String, trim: true, maxlength: 60 },
+    signatureAssetId: { type: mongoose.Schema.Types.ObjectId, ref: 'MediaAsset' },
+
     isActive: { type: Boolean, default: true },
     lastLoginAt: Date,
 
@@ -74,6 +82,11 @@ userSchema.methods.toPublic = function toPublic() {
     dateOfBirth: this.dateOfBirth ?? null,
     gender: this.gender,
     avatarUrl: this.avatarAssetId ? `/api/v1/uploads/${this.avatarAssetId}/raw` : null,
+    // Doctor letterhead fields; null for patients/staff who never set them.
+    qualifications: this.qualifications ?? null,
+    specialty: this.specialty ?? null,
+    registrationNo: this.registrationNo ?? null,
+    signatureUrl: this.signatureAssetId ? `/api/v1/uploads/${this.signatureAssetId}/raw` : null,
     createdAt: this.createdAt,
   };
 };

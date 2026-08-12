@@ -203,6 +203,11 @@ router.patch(
       dateOfBirth: z.coerce.date().optional(),
       gender: z.enum(['male', 'female', 'other', 'undisclosed']).optional(),
       avatarAssetId: z.string().optional(),
+      // Doctor letterhead + signature.
+      qualifications: z.string().trim().max(120).optional(),
+      specialty: z.string().trim().max(120).optional(),
+      registrationNo: z.string().trim().max(60).optional(),
+      signatureAssetId: z.string().optional(),
     }),
   }),
   asyncHandler(async (req, res) => {

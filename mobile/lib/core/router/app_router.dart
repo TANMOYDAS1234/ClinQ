@@ -30,8 +30,10 @@ import '../../features/clinician/presentation/knowledge_screen.dart';
 import '../../features/clinician/presentation/patient_thread_screen.dart';
 import '../../features/clinician/presentation/nutrition_inbox_screen.dart';
 import '../../features/clinician/presentation/add_patient_screen.dart';
+import '../../features/clinician/presentation/consult_screen.dart';
 import '../../features/clinician/presentation/patients_screen.dart';
 import '../../features/clinician/presentation/patient_profile_screen.dart';
+import '../../features/clinician/presentation/prescription_list_screen.dart';
 import '../../features/dietician/presentation/diet_plan_screen.dart';
 import '../../features/dietician/presentation/dietician_dashboard_screen.dart';
 import '../../features/dietician/presentation/dietician_patients_screen.dart';
@@ -165,6 +167,22 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/clinician/patients/:id/thread',
         builder: (context, state) => PatientThreadScreen(
+          patientId: state.pathParameters['id']!,
+          patientName: state.extra as String?,
+        ),
+      ),
+      // The patient's prescriptions, with per-document PDF download.
+      GoRoute(
+        path: '/clinician/patients/:id/prescriptions',
+        builder: (context, state) => PrescriptionListScreen(
+          patientId: state.pathParameters['id']!,
+          patientName: state.extra as String?,
+        ),
+      ),
+      // The consultation flow: vitals → diagnosis → advice → prescription.
+      GoRoute(
+        path: '/clinician/patients/:id/consult',
+        builder: (context, state) => ConsultScreen(
           patientId: state.pathParameters['id']!,
           patientName: state.extra as String?,
         ),

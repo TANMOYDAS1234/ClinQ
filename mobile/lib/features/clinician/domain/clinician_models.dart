@@ -216,28 +216,40 @@ class EngagementPoint {
 class PrescriptionSummary {
   const PrescriptionSummary({
     required this.id,
+    this.referenceNo,
     this.issuedOn,
     this.doctorName,
+    this.complaint,
     this.diagnosis = const [],
     this.labTestsAdvised = const [],
     this.generalAdvice,
     this.followUpOn,
     this.itemCount = 0,
+    this.pdfUrl,
   });
 
   final String id;
+
+  /// Human-readable reference printed on the PDF, e.g. `AKD-2026-000412`.
+  final String? referenceNo;
   final DateTime? issuedOn;
   final String? doctorName;
+  final String? complaint;
   final List<String> diagnosis;
   final List<String> labTestsAdvised;
   final String? generalAdvice;
   final DateTime? followUpOn;
   final int itemCount;
 
+  /// Relative path to the downloadable PDF (`/api/v1/.../prescriptions/:id/pdf`).
+  final String? pdfUrl;
+
   factory PrescriptionSummary.fromJson(Map<String, dynamic> j) => PrescriptionSummary(
     id: j['id']?.toString() ?? '',
+    referenceNo: j['referenceNo']?.toString(),
     issuedOn: DateTime.tryParse(j['issuedOn']?.toString() ?? '')?.toLocal(),
     doctorName: j['doctorName']?.toString(),
+    complaint: (j['complaint'] == null || j['complaint'].toString().isEmpty) ? null : j['complaint'].toString(),
     diagnosis: (j['diagnosis'] as List?)?.map((e) => e.toString()).toList() ?? const [],
     labTestsAdvised: (j['labTestsAdvised'] as List?)?.map((e) => e.toString()).toList() ?? const [],
     generalAdvice: (j['generalAdvice'] == null || j['generalAdvice'].toString().isEmpty)
@@ -245,6 +257,7 @@ class PrescriptionSummary {
         : j['generalAdvice'].toString(),
     followUpOn: DateTime.tryParse(j['followUpOn']?.toString() ?? '')?.toLocal(),
     itemCount: (j['items'] as List?)?.length ?? 0,
+    pdfUrl: j['pdfUrl']?.toString(),
   );
 }
 

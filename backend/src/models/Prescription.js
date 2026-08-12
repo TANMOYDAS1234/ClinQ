@@ -16,6 +16,11 @@ const prescriptionSchema = new mongoose.Schema(
     issuedOn: { type: Date, required: true, default: Date.now, index: true },
     validUntil: Date,
 
+    // The presenting complaint at this visit, snapshotted so the printed
+    // prescription reflects what was said that day even as the patient's
+    // current complaint on their profile moves on.
+    complaint: { type: String, trim: true, maxlength: 1000 },
+
     diagnosis: [{ type: String, trim: true, maxlength: 300 }],
     items: [
       {

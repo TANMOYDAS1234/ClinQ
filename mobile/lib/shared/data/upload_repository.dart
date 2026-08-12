@@ -53,6 +53,7 @@ class UploadKind {
   static const String prescriptionPdf = 'prescription_pdf';
   static const String mealPhoto = 'meal_photo';
   static const String avatar = 'avatar';
+  static const String signature = 'signature';
   static const String voiceNote = 'voice_note';
   static const String other = 'other';
 }

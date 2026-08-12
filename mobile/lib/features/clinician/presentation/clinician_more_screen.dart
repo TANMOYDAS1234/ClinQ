@@ -31,6 +31,7 @@ class ClinicianMoreScreen extends ConsumerStatefulWidget {
 
 class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
   bool _uploadingAvatar = false;
+  bool _uploadingSignature = false;
 
   Future<void> _changeAvatar() async {
     final l10n = AppLocalizations.of(context);
@@ -55,6 +56,88 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
       messenger.showSnackBar(SnackBar(content: Text(l10n.chatAttachFailed)));
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
+
+  /// Upload (or replace) the doctor's signature image. Embedded into every
+  /// prescription PDF the server generates.
+  Future<void> _changeSignature() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final source = await _pickImageSource();
+    if (source == null) return;
+
+    final XFile? file = await ImagePicker().pickImage(source: source, maxWidth: 1200, maxHeight: 600, imageQuality: 90);
+    if (file == null) return;
+
+    setState(() => _uploadingSignature = true);
+    try {
+      final asset = await ref.read(uploadRepositoryProvider).uploadImage(
+        path: file.path,
+        filename: file.name,
+        kind: UploadKind.signature,
+      );
+      final user = await ref.read(authRepositoryProvider).updateMe(signatureAssetId: asset.id);
+      ref.read(authControllerProvider.notifier).replaceUser(user);
+      messenger.showSnackBar(const SnackBar(content: Text('Signature saved')));
+    } on ApiException {
+      messenger.showSnackBar(const SnackBar(content: Text('Could not upload the signature')));
+    } finally {
+      if (mounted) setState(() => _uploadingSignature = false);
+    }
+  }
+
+  /// Edit the letterhead credentials printed at the top of every prescription.
+  Future<void> _editProfessionalDetails() async {
+    final user = ref.read(authControllerProvider).user;
+    final quals = TextEditingController(text: user?.qualifications ?? '');
+    final specialty = TextEditingController(text: user?.specialty ?? '');
+    final reg = TextEditingController(text: user?.registrationNo ?? '');
+    final messenger = ScaffoldMessenger.of(context);
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Professional details'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: quals,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(labelText: 'Qualifications', hintText: 'MBBS, MD'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: specialty,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(labelText: 'Specialty', hintText: 'Consultant Physician & Diabetologist'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: reg,
+                decoration: const InputDecoration(labelText: 'Registration no.', hintText: 'WBMC-XXXXX'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      final updated = await ref.read(authRepositoryProvider).updateMe(
+        qualifications: quals.text.trim(),
+        specialty: specialty.text.trim(),
+        registrationNo: reg.text.trim(),
+      );
+      ref.read(authControllerProvider.notifier).replaceUser(updated);
+      messenger.showSnackBar(const SnackBar(content: Text('Details saved')));
+    } on ApiException {
+      messenger.showSnackBar(const SnackBar(content: Text('Could not save the details')));
     }
   }
 
@@ -281,6 +364,30 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
               ProfileRow(icon: Icons.rate_review_outlined, title: 'Patient feedback', subtitle: 'What patients say about the clinic and the app', showDivider: false, onTap: () => context.push('/clinician/feedback')),
             ],
           ),
+
+          // ---- Prescription letterhead (doctor only) -------------------
+          if (user?.role == 'doctor')
+            ProfileSection(
+              label: 'Prescription letterhead',
+              children: [
+                ProfileRow(
+                  icon: Icons.badge_outlined,
+                  title: 'Professional details',
+                  subtitle: (user?.qualifications?.isNotEmpty ?? false)
+                      ? user!.qualifications!
+                      : 'Qualifications, specialty & registration no.',
+                  onTap: _editProfessionalDetails,
+                ),
+                ProfileRow(
+                  icon: Icons.draw_outlined,
+                  title: 'Digital signature',
+                  subtitle: 'Printed on every prescription',
+                  value: _uploadingSignature ? 'Uploading…' : (user?.signatureUrl != null ? 'Set' : 'Not set'),
+                  showDivider: false,
+                  onTap: _uploadingSignature ? null : _changeSignature,
+                ),
+              ],
+            ),
 
           // ---- Security ------------------------------------------------
           _label(l10n.profileSecurity, scheme),

@@ -19,6 +19,8 @@ const mediaAssetSchema = new mongoose.Schema(
         'prescription_pdf',
         'meal_photo',
         'avatar',
+        // A doctor's handwritten signature image, embedded into prescription PDFs.
+        'signature',
         // A recording the patient spoke instead of typing. Kept as uploaded so
         // the clinic hears exactly what was said, tone included.
         'voice_note',

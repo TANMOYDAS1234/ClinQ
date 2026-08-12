@@ -410,6 +410,60 @@ router.post(
   }),
 );
 
+/**
+ * Record a consult-time vitals snapshot. Updates the profile's height / current
+ * weight / presenting complaint and writes a VitalRecord (+ GlucoseReading) so
+ * the measurements taken during the consult land in the patient's history and
+ * trends. Every field is optional; nothing is written for a value left blank.
+ */
+router.post(
+  '/patients/:id/vitals',
+  validate({
+    body: z.object({
+      heightCm: z.coerce.number().min(50).max(250).optional(),
+      weightKg: z.coerce.number().min(10).max(400).optional(),
+      systolic: z.coerce.number().min(50).max(300).optional(),
+      diastolic: z.coerce.number().min(30).max(200).optional(),
+      pulse: z.coerce.number().min(25).max(250).optional(),
+      spo2: z.coerce.number().min(50).max(100).optional(),
+      glucoseMgDl: z.coerce.number().min(10).max(900).optional(),
+      complaint: z.string().trim().max(1000).optional(),
+    }),
+  }),
+  audit('create', 'VitalRecord'),
+  asyncHandler(async (req, res) => {
+    const patient = await User.findOne({ _id: req.params.id, role: ROLES.PATIENT }).select('_id').lean();
+    if (!patient) throw notFound('Patient not found');
+    const b = req.body;
+
+    const profileSet = {};
+    if (b.heightCm != null) profileSet.heightCm = b.heightCm;
+    if (b.weightKg != null) profileSet.baselineWeightKg = b.weightKg;
+    if (b.complaint != null) profileSet.chiefComplaint = b.complaint;
+    if (Object.keys(profileSet).length) {
+      await PatientProfile.updateOne({ user: patient._id }, { $set: profileSet }, { upsert: true });
+    }
+
+    const vitals = {};
+    if (b.systolic != null) vitals.systolic = b.systolic;
+    if (b.diastolic != null) vitals.diastolic = b.diastolic;
+    if (b.pulse != null) vitals.pulse = b.pulse;
+    if (b.spo2 != null) vitals.spo2 = b.spo2;
+    if (b.weightKg != null) vitals.weightKg = b.weightKg;
+    if (Object.keys(vitals).length) await VitalRecord.create({ patient: patient._id, ...vitals });
+    if (b.glucoseMgDl != null) {
+      await GlucoseReading.create({
+        patient: patient._id,
+        valueMgDl: b.glucoseMgDl,
+        context: 'random',
+        source: 'clinic',
+      });
+    }
+
+    res.status(201).json({ ok: true });
+  }),
+);
+
 // ---------------------------------------------------------------------------
 // Patient list + segmentation
 // ---------------------------------------------------------------------------

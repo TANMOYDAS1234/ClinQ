@@ -128,6 +128,7 @@ router.post(
         'prescription_pdf',
         'meal_photo',
         'avatar',
+        'signature',
         'voice_note',
         'other',
       ]),
