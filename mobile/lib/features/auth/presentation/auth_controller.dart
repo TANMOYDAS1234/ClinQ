@@ -80,6 +80,7 @@ class AuthController extends StateNotifier<AuthState> {
     required String language,
     String? dateOfBirth,
     String? gender,
+    String? address,
     String? diabetesType,
     String? inviteCode,
   }) async {
@@ -93,6 +94,7 @@ class AuthController extends StateNotifier<AuthState> {
         language: language,
         dateOfBirth: dateOfBirth,
         gender: gender,
+        address: address,
         diabetesType: diabetesType,
         inviteCode: inviteCode,
       );

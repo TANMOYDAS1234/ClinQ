@@ -42,6 +42,7 @@ const registerSchema = z.object({
   language: z.enum(LANGUAGES).default('en'),
   dateOfBirth: z.coerce.date().optional(),
   gender: z.enum(['male', 'female', 'other', 'undisclosed']).default('undisclosed'),
+  address: z.string().trim().max(300).optional(),
   diabetesType: z.enum(['type1', 'type2', 'gestational', 'prediabetes', 'none']).default('type2'),
   // A dietician onboarding code turns this sign-up into a dietician account
   // instead of a patient. Anything else (or empty) registers a patient.
@@ -53,7 +54,7 @@ router.post(
   authLimiter,
   validate({ body: registerSchema }),
   asyncHandler(async (req, res) => {
-    const { name, phone, password, email, language, dateOfBirth, gender, diabetesType, inviteCode } = req.body;
+    const { name, phone, password, email, language, dateOfBirth, gender, address, diabetesType, inviteCode } = req.body;
 
     if (await User.exists({ phone })) {
       throw conflict('An account with this phone number already exists');
@@ -88,6 +89,7 @@ router.post(
         user: user._id,
         diabetesType,
         assignedDoctor: doctor?._id,
+        ...(address ? { address } : {}),
       });
     }
 

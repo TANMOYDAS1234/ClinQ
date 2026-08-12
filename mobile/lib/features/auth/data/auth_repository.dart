@@ -27,6 +27,7 @@ class AuthRepository {
     required String language,
     String? dateOfBirth,
     String? gender,
+    String? address,
     String? diabetesType,
     String? inviteCode,
   }) async {
@@ -40,6 +41,7 @@ class AuthRepository {
         'language': language,
         if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
         if (gender != null) 'gender': gender,
+        if (address != null && address.isNotEmpty) 'address': address,
         if (diabetesType != null) 'diabetesType': diabetesType,
         if (inviteCode != null && inviteCode.isNotEmpty) 'inviteCode': inviteCode,
       },

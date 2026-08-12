@@ -25,6 +25,28 @@ const INK = '#0f172a';
 const LINE = '#e2e8f0';
 const WASH = '#f1f5f9';
 
+// The prescription is a PATIENT-facing document, so the doctor's shorthand is
+// spelled out. Mirrors mobile/.../medications/domain/med_shorthand.dart.
+const FREQ_PLAIN = {
+  OD: 'Once a day',
+  BD: 'Twice a day',
+  TDS: 'Three times a day',
+  QID: 'Four times a day',
+  EOD: 'Every other day',
+  HS: 'At bedtime',
+  PRN: 'As needed',
+  STAT: 'Immediately (single dose)',
+};
+const MEAL_PLAIN = { before_meal: 'before food', after_meal: 'after food', with_meal: 'with food' };
+
+/** "BD" + "after_meal" → "Twice a day, after food". Unknown codes pass through. */
+function frequencyText(freq, relation) {
+  const key = String(freq ?? '').trim().toUpperCase();
+  const base = FREQ_PLAIN[key] ?? (freq ? String(freq) : '—');
+  const meal = MEAL_PLAIN[relation];
+  return meal ? `${base}, ${meal}` : base;
+}
+
 /**
  * Render a prescription to a PDF buffer (pdfkit — no headless browser). Laid out
  * as a single-doctor clinic letterhead: header, patient block, complaint,
@@ -42,7 +64,6 @@ export function buildPrescriptionPdf({ prescription: p, patient, doctor, profile
     const M = 48;
     const right = doc.page.width - M;
     const contentW = doc.page.width - M * 2;
-    const bottom = doc.page.height - M;
 
     // --- Header -----------------------------------------------------------
     doc.fillColor(TEAL).font('Helvetica-Bold').fontSize(20).text(env.CLINIC_NAME, M, M, { width: contentW });
@@ -97,23 +118,26 @@ export function buildPrescriptionPdf({ prescription: p, patient, doctor, profile
       y = labelledBlock(doc, 'Diagnosis', p.diagnosis.map((d) => `•  ${d}`).join('\n'), M, y, contentW);
     }
 
-    // --- Rx symbol + medicines table -------------------------------------
-    doc.font('Helvetica-Bold').fontSize(24).fillColor(TEAL).text('℞', M, y);
-    y = doc.y + 4;
+    // --- Rx + medicines table --------------------------------------------
+    // "Rx", not the ℞ glyph: U+211E is absent from the standard Helvetica
+    // (WinAnsi) encoding pdfkit uses, so it would print blank.
+    doc.font('Helvetica-Bold').fontSize(19).fillColor(TEAL).text('Rx', M, y);
+    y = doc.y + 6;
 
+    // No "Dose" column: the consult captures strength (shown under the name),
+    // not a separate per-intake dose, so that column was always empty.
     const cols = [
-      { title: 'Medicine', w: contentW * 0.44 },
-      { title: 'Dose', w: contentW * 0.16 },
-      { title: 'Frequency', w: contentW * 0.24 },
-      { title: 'Duration', w: contentW * 0.16 },
+      { title: 'Medicine', w: contentW * 0.5 },
+      { title: 'Frequency', w: contentW * 0.3 },
+      { title: 'Duration', w: contentW * 0.2 },
     ];
     y = tableHeader(doc, cols, M, y);
     for (const item of p.items ?? []) {
-      y = ensureSpace(doc, y, 40, M, () => tableHeader(doc, cols, M, doc.y));
+      y = ensureSpace(doc, y, 42, M, () => tableHeader(doc, cols, M, doc.page.margins.top));
       y = medicineRow(doc, cols, item, M, y);
     }
 
-    y += 8;
+    y += 10;
 
     // --- Investigations ---------------------------------------------------
     if (p.labTestsAdvised?.length) {
@@ -133,36 +157,40 @@ export function buildPrescriptionPdf({ prescription: p, patient, doctor, profile
       y = labelledBlock(doc, 'Follow-up', fmt(p.followUpOn, 'DD MMM YYYY'), M, y, contentW);
     }
 
-    // --- Signature block --------------------------------------------------
-    y = ensureSpace(doc, y, 130, M);
-    const sigW = 200;
+    // --- Signature + footer band -----------------------------------------
+    // Flows right after the content (not pinned to the page bottom) so a short
+    // prescription stays on ONE page. Only breaks to a new page if the ~92pt
+    // band genuinely won't fit under the last section.
+    y = ensureSpace(doc, y, 92, M);
+    y += 22;
+
+    const sigW = 190;
     const sigX = right - sigW;
-    let sigY = Math.max(y + 24, bottom - 96);
     if (signatureImage) {
       try {
-        doc.image(signatureImage, sigX + (sigW - 150) / 2, sigY - 4, { fit: [150, 52], align: 'center' });
+        doc.image(signatureImage, sigX + (sigW - 140) / 2, y, { fit: [140, 42] });
       } catch {
         // A bad image should never sink the whole prescription.
       }
     }
-    sigY += 54;
-    doc.moveTo(sigX, sigY).lineTo(sigX + sigW, sigY).lineWidth(1).strokeColor(INK).stroke();
-    doc.font('Helvetica-Bold').fontSize(11).fillColor(INK).text(doctorName, sigX, sigY + 5, { width: sigW, align: 'center' });
+    const lineY = y + 46;
+    doc.moveTo(sigX, lineY).lineTo(sigX + sigW, lineY).lineWidth(1).strokeColor(INK).stroke();
+    doc.font('Helvetica-Bold').fontSize(10.5).fillColor(INK).text(doctorName, sigX, lineY + 4, { width: sigW, align: 'center' });
     if (credentials) {
-      doc.font('Helvetica').fontSize(8.5).fillColor(SLATE).text(credentials, sigX, doc.y, { width: sigW, align: 'center' });
+      doc.font('Helvetica').fontSize(8).fillColor(SLATE).text(credentials, sigX, doc.y, { width: sigW, align: 'center' });
     }
 
-    // --- Footer note ------------------------------------------------------
+    // Footer note on the left, level with the signature line.
     doc
       .font('Helvetica')
-      .fontSize(8.5)
+      .fontSize(8)
       .fillColor(SLATE)
       .text(
-        `This prescription is valid${p.validUntil ? ` until ${fmt(p.validUntil, 'DD MMM YYYY')}` : ''}. ` +
+        `Valid${p.validUntil ? ` until ${fmt(p.validUntil, 'DD MMM YYYY')}` : ''}. ` +
           'Do not change any dose without consulting your doctor.',
         M,
-        bottom - 18,
-        { width: contentW * 0.6 },
+        lineY + 4,
+        { width: contentW * 0.48 },
       );
 
     doc.end();
@@ -175,12 +203,21 @@ function cap(s) {
 
 /** A titled block: small teal uppercase label over a light-washed body box. */
 function labelledBlock(doc, title, body, x, y, w) {
+  // Measure first so the whole block (label + washed box + text) moves to a new
+  // page as one unit — otherwise the box could print on one page and its text
+  // spill onto the next.
+  doc.font('Helvetica').fontSize(10.5);
+  const h = doc.heightOfString(body, { width: w - 20 });
+  const pageBottom = doc.page.height - 48;
+  if (y + 12 + 3 + (h + 16) + 10 > pageBottom) {
+    doc.addPage();
+    y = doc.page.margins.top;
+  }
+
   doc.font('Helvetica-Bold').fontSize(9).fillColor(TEAL).text(title.toUpperCase(), x, y, { characterSpacing: 0.5 });
   const ty = doc.y + 3;
-  doc.font('Helvetica').fontSize(10.5).fillColor(INK);
-  const h = doc.heightOfString(body, { width: w - 20 });
   doc.rect(x, ty, w, h + 16).fillColor(WASH).fill();
-  doc.fillColor(INK).text(body, x + 10, ty + 8, { width: w - 20 });
+  doc.font('Helvetica').fontSize(10.5).fillColor(INK).text(body, x + 10, ty + 8, { width: w - 20 });
   return ty + h + 16 + 10;
 }
 
@@ -196,37 +233,34 @@ function tableHeader(doc, cols, x, y) {
 }
 
 function medicineRow(doc, cols, item, x, y) {
-  const relation = (item.relationToMeal ?? 'any').replace(/_/g, ' ');
   const nameW = cols[0].w - 12;
-  doc.font('Helvetica-Bold').fontSize(10.5).fillColor(INK);
+  const freqW = cols[1].w - 12;
+  const durW = cols[2].w - 12;
+
+  // Medicine cell: bold name over a muted sub-line (strength · dose · notes).
+  const sub = [item.strength, item.dose, item.instructions].filter(Boolean).join(' · ');
+  doc.font('Helvetica-Bold').fontSize(10.5);
   const nameH = doc.heightOfString(item.name ?? '—', { width: nameW });
   let subH = 0;
-  const sub = [item.strength, item.instructions].filter(Boolean).join(' · ');
   if (sub) {
     doc.font('Helvetica').fontSize(9);
     subH = doc.heightOfString(sub, { width: nameW }) + 2;
   }
-  const freq = `${item.frequency ?? '—'}${relation !== 'any' ? `\n${relation}` : ''}`;
-  doc.font('Helvetica').fontSize(10);
-  const freqH = doc.heightOfString(freq, { width: cols[2].w - 12 });
+
+  // Frequency in plain English — this is a patient-facing document.
+  const freq = frequencyText(item.frequency, item.relationToMeal);
+  doc.font('Helvetica').fontSize(9.5);
+  const freqH = doc.heightOfString(freq, { width: freqW });
+
   const rowH = Math.max(nameH + subH, freqH, 14) + 12;
 
   let cx = x;
-  // Medicine
   doc.font('Helvetica-Bold').fontSize(10.5).fillColor(INK).text(item.name ?? '—', cx + 6, y + 6, { width: nameW });
   if (sub) doc.font('Helvetica').fontSize(9).fillColor(SLATE).text(sub, cx + 6, y + 6 + nameH + 1, { width: nameW });
   cx += cols[0].w;
-  // Dose
-  doc.font('Helvetica').fontSize(10).fillColor(INK).text(item.dose ?? '—', cx + 6, y + 6, { width: cols[1].w - 12 });
+  doc.font('Helvetica').fontSize(9.5).fillColor(INK).text(freq, cx + 6, y + 6, { width: freqW });
   cx += cols[1].w;
-  // Frequency (+ relation to meal)
-  doc.fillColor(INK).text(item.frequency ?? '—', cx + 6, y + 6, { width: cols[2].w - 12 });
-  if (relation !== 'any') doc.fontSize(8.5).fillColor(SLATE).text(relation, cx + 6, doc.y, { width: cols[2].w - 12 });
-  cx += cols[2].w;
-  // Duration
-  doc.fontSize(10).fillColor(INK).text(item.durationDays ? `${item.durationDays} days` : '—', cx + 6, y + 6, {
-    width: cols[3].w - 12,
-  });
+  doc.fontSize(10).fillColor(INK).text(item.durationDays ? `${item.durationDays} days` : '—', cx + 6, y + 6, { width: durW });
 
   const totalW = cols.reduce((a, c) => a + c.w, 0);
   doc.moveTo(x, y + rowH).lineTo(x + totalW, y + rowH).lineWidth(0.5).strokeColor(LINE).stroke();

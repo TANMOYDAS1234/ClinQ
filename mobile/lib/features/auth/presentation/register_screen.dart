@@ -28,6 +28,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _addressController = TextEditingController();
   final _inviteController = TextEditingController();
 
   /// Errors stay hidden until the first submit attempt. `onUserInteraction`
@@ -51,6 +52,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _addressController.dispose();
     _inviteController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -93,6 +95,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     '${_dateOfBirth!.month.toString().padLeft(2, '0')}-'
                     '${_dateOfBirth!.day.toString().padLeft(2, '0')}',
           gender: _gender,
+          address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
           inviteCode: _inviteController.text.trim().isEmpty ? null : _inviteController.text.trim(),
           // Deliberately not sent from this screen — diabetes type is no
           // longer collected at signup. The server therefore applies its
@@ -331,6 +334,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ],
                   validator: (v) => v == null ? l10n.authGenderRequired : null,
                   onChanged: (v) => setState(() => _gender = v),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                TextFormField(
+                  controller: _addressController,
+                  textCapitalization: TextCapitalization.sentences,
+                  minLines: 2,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Address',
+                    alignLabelWithHint: true,
+                    prefixIcon: Icon(Icons.home_outlined),
+                  ),
+                  // Required for a patient sign-up; a clinic-staff / dietician
+                  // onboarding (invite code present) does not need one.
+                  validator: (v) {
+                    if (_inviteController.text.trim().isNotEmpty) return null;
+                    if (v == null || v.trim().isEmpty) return 'Enter your address';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: AppSpacing.md),
                 TextFormField(
