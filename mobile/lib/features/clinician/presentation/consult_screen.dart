@@ -288,6 +288,37 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
     );
   }
 
+  /// The diagnosis from the patient's last prescription, as tap-to-reuse chips —
+  /// so continuing the same diagnosis is one tap, not a re-hunt through the list.
+  Widget _previousDiagnosisSection() {
+    final list = ref.watch(patientPrescriptionsProvider(widget.patientId)).valueOrNull ?? const [];
+    final prev = list.where((rx) => rx.diagnosis.isNotEmpty).toList();
+    if (prev.isEmpty) return const SizedBox.shrink();
+    final diagnoses = prev.first.diagnosis;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _StepTitle('Previous diagnosis', 'Tap to reuse'),
+        const SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final d in diagnoses)
+              _SelectChip(
+                label: d,
+                selected: _diagnoses.contains(d),
+                onTap: () => setState(() {
+                  _diagnoses.contains(d) ? _diagnoses.remove(d) : _diagnoses.add(d);
+                }),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+      ],
+    );
+  }
+
   // ---- Step 2: Diagnosis ----------------------------------------------
   Widget _diagnosisStep() {
     final groups = diagnosisByCategory();
@@ -302,6 +333,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
         const SizedBox(height: AppSpacing.sm),
         _num(_waist, 'Waist circumference', 'cm', VitalsValidators.waist),
         const SizedBox(height: AppSpacing.lg),
+        _previousDiagnosisSection(),
         const _StepTitle('Diagnosis', 'Tap to select — printed on the prescription'),
         const SizedBox(height: AppSpacing.sm),
         for (final entry in groups.entries) ...[
