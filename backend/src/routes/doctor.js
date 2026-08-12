@@ -518,7 +518,7 @@ router.get(
     ]);
 
     const ids = users.map((u) => u._id);
-    const [lastReadings, alertCounts, lastMessages, unreadCounts, signals] = await Promise.all([
+    const [lastReadings, alertCounts, lastMessages, unreadCounts, signals, hba1cRows] = await Promise.all([
       GlucoseReading.aggregate([
         { $match: { patient: { $in: ids } } },
         { $sort: { measuredAt: -1 } },
@@ -553,9 +553,24 @@ router.get(
       ]),
       // Sparkline + trend + recency for each row's monitoring strip.
       monitoringSignals(ids),
+      // Latest HbA1c + a short recent series per patient — the doctor anchors on
+      // HbA1c, so the row can show that rather than day-to-day glucose.
+      Hba1cRecord.aggregate([
+        { $match: { patient: { $in: ids } } },
+        { $sort: { testedOn: -1 } },
+        {
+          $group: {
+            _id: '$patient',
+            latest: { $first: '$percentage' },
+            latestAt: { $first: '$testedOn' },
+            values: { $push: '$percentage' },
+          },
+        },
+      ]),
     ]);
 
     const readingMap = new Map(lastReadings.map((r) => [r._id.toString(), r]));
+    const hba1cMap = new Map(hba1cRows.map((h) => [h._id.toString(), h]));
     const alertMap = new Map(alertCounts.map((a) => [a._id.toString(), a.count]));
     const messageMap = new Map(lastMessages.map((m) => [m._id.toString(), m]));
     const unreadMap = new Map(unreadCounts.map((u) => [u._id.toString(), u.count]));
@@ -640,6 +655,10 @@ router.get(
         trendDelta: signals.get(id)?.trendDelta ?? null,
         checkInIntervalDays: profile?.checkInIntervalDays ?? null,
         checkInOverdue: isCheckInOverdue(reading?.measuredAt ?? null, profile?.checkInIntervalDays),
+        // Latest HbA1c + a short recent series (oldest→newest) for the row.
+        hba1c: hba1cMap.get(id)?.latest ?? null,
+        hba1cAt: hba1cMap.get(id)?.latestAt ?? null,
+        hba1cSpark: (hba1cMap.get(id)?.values ?? []).slice(0, 6).reverse(),
       };
     });
 

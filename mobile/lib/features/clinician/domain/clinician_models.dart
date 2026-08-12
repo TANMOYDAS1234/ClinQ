@@ -468,6 +468,9 @@ class PatientListItem {
     this.trendDelta,
     this.checkInIntervalDays,
     this.checkInOverdue = false,
+    this.hba1c,
+    this.hba1cAt,
+    this.hba1cSpark = const [],
   });
 
   final String id;
@@ -504,6 +507,12 @@ class PatientListItem {
   /// True when the last reading is older than the check-in cadence.
   final bool checkInOverdue;
 
+  /// Latest HbA1c (%), when it was tested, and a short recent series
+  /// (oldest→newest) for the row's HbA1c mini-sparkline.
+  final num? hba1c;
+  final DateTime? hba1cAt;
+  final List<double> hba1cSpark;
+
   factory PatientListItem.fromJson(Map<String, dynamic> j) => PatientListItem(
     id: j['id']?.toString() ?? '',
     name: j['name']?.toString() ?? '',
@@ -526,6 +535,9 @@ class PatientListItem {
     trendDelta: (j['trendDelta'] as num?)?.toInt(),
     checkInIntervalDays: (j['checkInIntervalDays'] as num?)?.toInt(),
     checkInOverdue: j['checkInOverdue'] == true,
+    hba1c: j['hba1c'] as num?,
+    hba1cAt: DateTime.tryParse(j['hba1cAt']?.toString() ?? '')?.toLocal(),
+    hba1cSpark: (j['hba1cSpark'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? const [],
   );
 }
 

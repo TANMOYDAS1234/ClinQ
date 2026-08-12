@@ -542,66 +542,86 @@ class _MonitorStrip extends StatelessWidget {
     return '${(days / 7).round()}w ago';
   }
 
+  static Color _hba1cColor(num v, BuildContext c) =>
+      v >= 9 ? AppColors.dangerOn(c) : (v >= 7 ? AppColors.warningOn(c) : AppColors.successOn(c));
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final hasSpark = patient.spark.length >= 2;
-    final last = patient.lastReadingAt;
-    // Nothing to monitor yet — keep the row clean.
-    if (!hasSpark && last == null) return const SizedBox.shrink();
-
+    final hba1c = patient.hba1c;
     final overdue = patient.checkInOverdue;
-    final trendColor = switch (patient.trend) {
-      'up' => AppColors.warningOn(context),
-      'down' => AppColors.successOn(context),
-      _ => scheme.onSurfaceVariant,
-    };
-    final trendIcon = switch (patient.trend) {
-      'up' => Icons.trending_up_rounded,
-      'down' => Icons.trending_down_rounded,
-      _ => Icons.trending_flat_rounded,
-    };
+    final hasGlucoseSpark = patient.spark.length >= 2;
+    final lastGlucose = patient.lastReadingAt;
 
-    // A Wrap, not a Row: on a narrow phone the sparkline + reading + "due" chip
-    // can exceed the row width, and a Row would clip the chip off the edge. Wrap
-    // flows the chip onto a second line instead, so nothing is ever cut.
+    // Nothing to show yet — keep the row clean.
+    if (hba1c == null && !hasGlucoseSpark && lastGlucose == null && !overdue) {
+      return const SizedBox.shrink();
+    }
+
+    final children = <Widget>[];
+    if (hba1c != null) {
+      // The doctor's anchor: HbA1c, coloured by control, with a mini-trend.
+      final color = _hba1cColor(hba1c, context);
+      if (patient.hba1cSpark.length >= 2) {
+        children.add(Sparkline(values: patient.hba1cSpark, color: color, width: 56, height: 22));
+      }
+      children.add(Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.science_rounded, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text('HbA1c ', style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+          Text('${hba1c.toStringAsFixed(1)}%', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
+          if (patient.hba1cAt != null)
+            Text('  ·  ${_ago(patient.hba1cAt!)}', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+        ],
+      ));
+    } else {
+      // No HbA1c yet — fall back to the recent glucose signal so nothing is lost.
+      final trendColor = switch (patient.trend) {
+        'up' => AppColors.warningOn(context),
+        'down' => AppColors.successOn(context),
+        _ => scheme.onSurfaceVariant,
+      };
+      final trendIcon = switch (patient.trend) {
+        'up' => Icons.trending_up_rounded,
+        'down' => Icons.trending_down_rounded,
+        _ => Icons.trending_flat_rounded,
+      };
+      if (hasGlucoseSpark) {
+        children.add(Sparkline(values: patient.spark, color: AppColors.accentOn(context), width: 60, height: 22));
+      }
+      if (patient.lastReadingValue != null) {
+        children.add(Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(trendIcon, size: 15, color: trendColor),
+            const SizedBox(width: 3),
+            Text('${patient.lastReadingValue!.round()}',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: scheme.onSurface)),
+            Text(' mg/dL', style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+            if (lastGlucose != null)
+              Text('  ·  ${_ago(lastGlucose)}', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+          ],
+        ));
+      } else if (lastGlucose != null) {
+        children.add(Text(_ago(lastGlucose), style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)));
+      }
+    }
+    if (overdue) {
+      children.add(_Chip(
+        label: 'Check-in due',
+        fg: AppColors.warningOn(context),
+        bg: AppColors.warningBgOn(context),
+        icon: Icons.schedule_rounded,
+      ));
+    }
+
+    // A Wrap so the sparkline + value + "due" chip flow onto a second line on a
+    // narrow phone rather than clipping.
     return Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          if (hasSpark)
-            Sparkline(values: patient.spark, color: AppColors.accentOn(context), width: 60, height: 22),
-          if (patient.lastReadingValue != null)
-            // The reading + trend + recency stay glued together as one unit so
-            // they wrap as a block, never splitting "153" from "mg/dL".
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(trendIcon, size: 15, color: trendColor),
-                const SizedBox(width: 3),
-                Text(
-                  '${patient.lastReadingValue!.round()}',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: scheme.onSurface),
-                ),
-                Text(' mg/dL', style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
-                if (last != null)
-                  Text('  ·  ${_ago(last)}', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
-              ],
-            )
-          else if (last != null)
-            Text(_ago(last), style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
-          if (overdue)
-            _Chip(
-              label: 'Check-in due',
-              fg: AppColors.warningOn(context),
-              bg: AppColors.warningBgOn(context),
-              icon: Icons.schedule_rounded,
-            ),
-        ],
-      ),
+      child: Wrap(spacing: 10, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: children),
     );
   }
 }

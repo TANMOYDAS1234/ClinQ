@@ -333,7 +333,20 @@ class _AttentionRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            if (patient.spark.length >= 2)
+            // HbA1c is the doctor's anchor — show it (value + mini-trend) when
+            // available, falling back to the recent glucose sparkline otherwise.
+            if (patient.hba1c != null)
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (patient.hba1cSpark.length >= 2)
+                    Sparkline(values: patient.hba1cSpark, color: _hba1cTone(patient.hba1c!, context), width: 56, height: 20),
+                  Text('${patient.hba1c!.toStringAsFixed(1)}%',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: _hba1cTone(patient.hba1c!, context))),
+                ],
+              )
+            else if (patient.spark.length >= 2)
               Sparkline(values: patient.spark, color: AppColors.accentOn(context), width: 56, height: 22),
           ],
         ),
@@ -341,4 +354,7 @@ class _AttentionRow extends StatelessWidget {
     );
   }
 }
+
+Color _hba1cTone(num v, BuildContext c) =>
+    v >= 9 ? AppColors.dangerOn(c) : (v >= 7 ? AppColors.warningOn(c) : AppColors.successOn(c));
 
