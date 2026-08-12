@@ -380,6 +380,26 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
+        // A recap of what was diagnosed in step 2, so the doctor writes the
+        // prescription with the diagnosis in view. Editable back in that step.
+        _StepTitle('Diagnosis', _diagnoses.isEmpty ? 'None selected — add it in the Diagnosis step' : 'From the Diagnosis step'),
+        const SizedBox(height: AppSpacing.sm),
+        if (_diagnoses.isEmpty)
+          Text('—', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final d in _diagnoses)
+                Chip(
+                  label: Text(d, style: const TextStyle(fontSize: 12.5)),
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+            ],
+          ),
+        const SizedBox(height: AppSpacing.lg),
         const _StepTitle('Medicines', 'The prescription — at least one needed'),
         const SizedBox(height: AppSpacing.sm),
         for (var i = 0; i < _meds.length; i++)
@@ -446,7 +466,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
         ),
 
         const SizedBox(height: AppSpacing.lg),
-        const _StepTitle('Lifestyle advice', 'Diet, activity, precautions'),
+        const _StepTitle('General advice', 'Diet, lifestyle, precautions'),
         const SizedBox(height: AppSpacing.sm),
         TextField(
           controller: _advice,
@@ -625,49 +645,43 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
   Widget _navBar() {
     final last = _step == _steps.length - 1;
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        border: Border(top: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
-      ),
+    return Material(
+      color: scheme.surface,
+      elevation: 12,
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.md, 10, AppSpacing.md, 10),
-          child: Row(
-            children: [
-              if (_step > 0)
-                OutlinedButton(
-                  onPressed: _submitting ? null : () => setState(() => _step -= 1),
-                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14)),
-                  child: const Text('Back', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
-                ),
-              const Spacer(),
-              if (!last)
-                FilledButton.icon(
-                  onPressed: _next,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                  ),
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                  label: const Text('Next', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
-                )
-              else
-                FilledButton.icon(
-                  onPressed: _submitting ? null : _generate,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  ),
-                  icon: _submitting
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.check_rounded),
-                  label: Text(_submitting ? 'Generating…' : 'Generate prescription',
-                      style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
-                ),
+        minimum: const EdgeInsets.fromLTRB(AppSpacing.md, 10, AppSpacing.md, 12),
+        child: Row(
+          children: [
+            if (_step > 0) ...[
+              OutlinedButton(
+                onPressed: _submitting ? null : () => setState(() => _step -= 1),
+                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 52), padding: const EdgeInsets.symmetric(horizontal: 24)),
+                child: const Text('Back', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(width: 12),
             ],
-          ),
+            // Full-width primary action — impossible to miss or scroll past.
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: last ? (_submitting ? null : _generate) : _next,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(52),
+                ),
+                icon: last
+                    ? (_submitting
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.check_rounded))
+                    : const Icon(Icons.arrow_forward_rounded, size: 18),
+                label: Text(
+                  last ? (_submitting ? 'Generating…' : 'Generate prescription') : 'Next',
+                  style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

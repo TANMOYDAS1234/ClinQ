@@ -100,6 +100,14 @@ router.post(
       await Prescription.updateOne({ _id: body.supersedes }, { isActive: false });
     }
 
+    // Keep the patient's diabetes type in step with the doctor's diagnosis, so
+    // the profile badge reflects what was actually diagnosed rather than the
+    // sign-up default.
+    const dxType = deriveDiabetesType(prescription.diagnosis);
+    if (dxType) {
+      await PatientProfile.updateOne({ user: req.patientId }, { $set: { diabetesType: dxType } });
+    }
+
     if (syncToMedications) {
       await syncMedications(prescription, req.patientId, req.user._id);
     }
@@ -110,6 +118,16 @@ router.post(
     res.status(201).json({ prescription: serialise(await prescription.populate('doctor', 'name')) });
   }),
 );
+
+/** Map a free-text diagnosis list to a diabetes type for the patient profile. */
+function deriveDiabetesType(diagnoses = []) {
+  const text = diagnoses.join(' ').toLowerCase();
+  if (/type\s*1|t1dm/.test(text)) return 'type1';
+  if (/gestational|gdm/.test(text)) return 'gestational';
+  if (/prediabet|pre-?\s*dm/.test(text)) return 'prediabetes';
+  if (/type\s*2|t2dm/.test(text)) return 'type2';
+  return null;
+}
 
 async function syncMedications(prescription, patientId, doctorId) {
   const profile = await PatientProfile.findOne({ user: patientId }).select('mealTimes').lean();

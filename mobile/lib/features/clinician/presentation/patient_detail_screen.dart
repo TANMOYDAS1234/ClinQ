@@ -211,12 +211,9 @@ class _MetricsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = summary;
-    // Adherence: the percentage as the headline (familiar, dynamic) with the
-    // raw doses taken/due underneath, so the doctor sees the rate at a glance
-    // and the actual counts that reveal when the number is thin (1/6 vs 55/60).
-    final hasDoses = (p.adherenceExpected ?? 0) > 0;
+    // Adherence: the percentage as the headline. The doses breakdown lives in
+    // the tap-through sheet, so the tile stays clean.
     final adherenceValue = p.adherencePercent != null ? '${p.adherencePercent}%' : '—';
-    final adherenceSub = hasDoses ? '${p.adherenceTaken ?? 0}/${p.adherenceExpected} doses taken' : null;
 
     final tiles = <Widget>[
       _Metric(
@@ -228,7 +225,6 @@ class _MetricsGrid extends StatelessWidget {
       _Metric(
         label: 'Adherence',
         value: adherenceValue,
-        sub: adherenceSub,
         color: AppColors.accentOn(context),
         icon: Icons.medication_rounded,
         onTap: () => _showAdherenceSheet(context, p),
@@ -269,9 +265,7 @@ class _MetricsGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: AppSpacing.sm,
       crossAxisSpacing: AppSpacing.sm,
-      // A touch taller than square-ish so the adherence sub-line ("1/6 doses
-      // taken") fits without crowding the other tiles.
-      childAspectRatio: 1.9,
+      childAspectRatio: 2.1,
       children: tiles,
     );
   }
@@ -417,17 +411,12 @@ class _Metric extends StatelessWidget {
     required this.color,
     required this.icon,
     this.unit,
-    this.sub,
     this.onTap,
   });
 
   final String label;
   final String value;
   final String? unit;
-
-  /// A small secondary line under the value — e.g. the raw "1/6 doses" behind
-  /// an adherence percentage.
-  final String? sub;
   final Color color;
   final IconData icon;
 
@@ -469,15 +458,6 @@ class _Metric extends StatelessWidget {
               ],
             ],
           ),
-          if (sub != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              sub!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
-            ),
-          ],
         ],
       ),
     );
