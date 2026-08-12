@@ -14,6 +14,7 @@ import { triageMessage } from '../services/triage/engine.js';
 import { buildPatientContext } from '../services/patientContext.js';
 import { raiseAlert } from '../services/alerts.js';
 import { nutritionReply } from '../services/ai/nutritionAssistant.js';
+import { resolveVoiceText } from '../services/voiceText.js';
 import { FoodLog } from '../models/FoodLog.js';
 import { MediaAsset } from '../models/MediaAsset.js';
 import { paged, pageParams } from '../utils/pagination.js';
@@ -474,7 +475,9 @@ router.post(
   audit('create', 'ChatMessage'),
   asyncHandler(async (req, res) => {
     const patientId = req.user._id;
-    const text = req.body.content;
+    // Voice-only message → use the transcript as the text, so the nutrition
+    // assistant answers what was said instead of an empty prompt.
+    const text = await resolveVoiceText(req.body.content, req.body.attachments);
     let askedForMeal = false;
 
     let session = await ChatSession.findOne({
@@ -567,7 +570,9 @@ router.post(
         });
       }
 
-      askedForMeal = stated == null;
+      // Only a real food PHOTO with no meal named triggers the "which meal?"
+      // question — a voice note (no photo) must fall through to the assistant.
+      askedForMeal = photos.length > 0 && stated == null;
     }
 
     if (message.attachments?.length) {

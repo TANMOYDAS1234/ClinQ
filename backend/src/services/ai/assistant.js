@@ -7,6 +7,7 @@ import { generate, generateStream, AiUnavailableError } from './gemini.js';
 import { buildSystemPrompt, fallbackReply } from './prompts.js';
 import { raiseAlert } from '../alerts.js';
 import { loadAssetsForAi } from '../../routes/uploads.js';
+import { resolveVoiceText } from '../voiceText.js';
 import { logger } from '../../config/logger.js';
 import { maxUrgency } from '../triage/thresholds.js';
 import { env } from '../../config/env.js';
@@ -99,6 +100,9 @@ function categoriesFor(triage) {
  *   5. fall back to a written emergency script if generation fails
  */
 export async function handlePatientMessage({ patientId, sessionId, text, language = 'en', attachments = [], replyTo }) {
+  // A voice-only message carries no typed text; use the words transcribed at
+  // upload so triage and the assistant answer what was actually said.
+  text = await resolveVoiceText(text, attachments);
   const session = await resolveSession({ patientId, sessionId, language, text });
 
   const context = await buildPatientContext(patientId);

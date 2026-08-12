@@ -58,7 +58,18 @@ async function transcodeForGemini(buffer) {
 
   try {
     await new Promise((resolve, reject) => {
-      const ff = spawn(ffmpegPath, ['-y', '-i', inPath, '-ac', '1', '-ar', '16000', outPath]);
+      const ff = spawn(ffmpegPath, [
+        '-y',
+        '-i', inPath,
+        '-ac', '1',
+        '-ar', '16000',
+        // Clean the audio before transcription: band-limit to the speech range
+        // (drop rumble + hiss), FFT-denoise, then normalise loudness. This
+        // meaningfully lifts accuracy on noisy phone recordings without
+        // distorting the words.
+        '-af', 'highpass=f=80,lowpass=f=7500,afftdn=nf=-25,dynaudnorm=f=200',
+        outPath,
+      ]);
       let stderr = '';
       ff.stderr.on('data', (d) => {
         stderr += d.toString();
@@ -132,11 +143,17 @@ export async function transcribeVoiceNote(buffer, mimeType) {
     let audioBuffer = buffer;
     let audioMime = mimeType;
 
-    // The reason voice notes never transcribed: the m4a container Gemini can't
-    // read. Convert to FLAC first when the format isn't one it accepts.
-    if (!GEMINI_AUDIO_MIME.has(mimeType)) {
+    // Always run the recording through the denoise/normalise transcode so Gemini
+    // hears the cleanest possible speech — this is the main accuracy lever. If
+    // ffmpeg is unavailable, fall back to the raw audio when Gemini can read the
+    // format directly (an m4a container it cannot read still needs the convert).
+    try {
       audioBuffer = await transcodeForGemini(buffer);
       audioMime = 'audio/flac';
+    } catch (err) {
+      if (!GEMINI_AUDIO_MIME.has(mimeType)) throw err;
+      audioBuffer = buffer;
+      audioMime = mimeType;
     }
 
     const result = await generate({
