@@ -225,6 +225,7 @@ class PrescriptionSummary {
     this.generalAdvice,
     this.followUpOn,
     this.itemCount = 0,
+    this.medicines = const [],
     this.pdfUrl,
   });
 
@@ -240,6 +241,10 @@ class PrescriptionSummary {
   final String? generalAdvice;
   final DateTime? followUpOn;
   final int itemCount;
+
+  /// The prescribed medicines as "name (strength)" strings, so the history tile
+  /// shows what was actually given, not just how many.
+  final List<String> medicines;
 
   /// Relative path to the downloadable PDF (`/api/v1/.../prescriptions/:id/pdf`).
   final String? pdfUrl;
@@ -257,6 +262,16 @@ class PrescriptionSummary {
         : j['generalAdvice'].toString(),
     followUpOn: DateTime.tryParse(j['followUpOn']?.toString() ?? '')?.toLocal(),
     itemCount: (j['items'] as List?)?.length ?? 0,
+    medicines: (j['items'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .map((it) {
+              final name = it['name']?.toString() ?? '';
+              final strength = it['strength']?.toString();
+              return (strength != null && strength.isNotEmpty) ? '$name ($strength)' : name;
+            })
+            .where((s) => s.isNotEmpty)
+            .toList() ??
+        const [],
     pdfUrl: j['pdfUrl']?.toString(),
   );
 }

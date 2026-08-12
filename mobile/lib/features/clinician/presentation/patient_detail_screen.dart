@@ -84,8 +84,6 @@ class PatientRecordSections extends ConsumerWidget {
         _ConsultationHistory(patientId: patientId),
         if (p.aiContext != null && p.aiContext!.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.lg),
-          const _SectionTitle('Assistant context'),
-          const SizedBox(height: AppSpacing.sm),
           _AiContextCard(text: p.aiContext!),
         ],
       ],
@@ -175,7 +173,10 @@ class _ConsultationTile extends StatelessWidget {
               style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
           children: [
             if (rx.diagnosis.isNotEmpty) _kv(context, 'Diagnosis', rx.diagnosis.join('\n')),
-            if (rx.itemCount > 0) _kv(context, 'Medicines', '${rx.itemCount} prescribed'),
+            if (rx.medicines.isNotEmpty)
+              _kv(context, 'Medicines', rx.medicines.join('\n'))
+            else if (rx.itemCount > 0)
+              _kv(context, 'Medicines', '${rx.itemCount} prescribed'),
             if (rx.labTestsAdvised.isNotEmpty) _kv(context, 'Tests advised', rx.labTestsAdvised.join(', ')),
             if (rx.generalAdvice != null) _kv(context, 'Advice', rx.generalAdvice!),
             if (rx.followUpOn != null) _kv(context, 'Follow-up', DateFormat('d MMM yyyy').format(rx.followUpOn!)),
@@ -210,6 +211,14 @@ class _MetricsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = summary;
+    // Adherence shown as raw doses (taken / expected due) when we have them —
+    // an honest "how much of what was prescribed is actually being taken" — and
+    // falls back to the percentage only if the counts are missing.
+    final hasDoses = (p.adherenceExpected ?? 0) > 0;
+    final adherenceValue = hasDoses
+        ? '${p.adherenceTaken ?? 0}/${p.adherenceExpected}'
+        : (p.adherencePercent != null ? '${p.adherencePercent}%' : '—');
+
     final tiles = <Widget>[
       _Metric(
         label: 'Health score',
@@ -219,29 +228,38 @@ class _MetricsGrid extends StatelessWidget {
       ),
       _Metric(
         label: 'Adherence',
-        value: p.adherencePercent != null ? '${p.adherencePercent}%' : '—',
+        value: adherenceValue,
+        unit: hasDoses ? 'doses' : null,
         color: AppColors.accentOn(context),
         icon: Icons.medication_rounded,
       ),
       _Metric(
-        label: 'Avg glucose',
-        value: p.glucoseAverage != null ? '${p.glucoseAverage}' : '—',
-        unit: p.glucoseAverage != null ? 'mg/dL' : null,
+        label: 'Medicines',
+        value: p.medicationCount?.toString() ?? '—',
+        unit: (p.medicationCount ?? 0) > 0 ? 'active' : null,
+        color: AppColors.primary,
+        icon: Icons.local_pharmacy_rounded,
+      ),
+      _Metric(
+        label: 'Fasting sugar',
+        value: p.lastFasting != null ? '${p.lastFasting}' : '—',
+        unit: p.lastFasting != null ? 'mg/dL' : null,
         color: AppColors.warningOn(context),
         icon: Icons.bloodtype_rounded,
       ),
       _Metric(
-        label: 'Time in range',
-        value: p.timeInRangePercent != null ? '${p.timeInRangePercent}%' : '—',
-        color: AppColors.successOn(context),
-        icon: Icons.check_circle_rounded,
+        label: 'Last HbA1c',
+        value: p.lastHba1c != null ? p.lastHba1c!.toStringAsFixed(1) : '—',
+        unit: p.lastHba1c != null ? '%' : null,
+        color: const Color(0xFF7C3AED),
+        icon: Icons.science_rounded,
       ),
       _Metric(
         label: 'Est. HbA1c',
         value: p.estimatedHba1c != null ? p.estimatedHba1c!.toStringAsFixed(1) : '—',
         unit: p.estimatedHba1c != null ? '%' : null,
-        color: const Color(0xFF7C3AED),
-        icon: Icons.science_rounded,
+        color: const Color(0xFF0EA5E9),
+        icon: Icons.auto_graph_rounded,
       ),
     ];
 
@@ -351,6 +369,11 @@ class _DieticianSection extends ConsumerWidget {
     // An explicit assignment is a *restriction*, not a grant: by default the
     // clinic dietician covers every patient (see the dietician panel's scope).
     final restricted = name != null && name.isNotEmpty;
+    // Restricting only makes sense with 2+ dieticians — with one, it would cut
+    // the sole dietician off from every other patient. So the action is offered
+    // only when there's a choice to make (or to undo an existing restriction).
+    final dieticianCount = ref.watch(clinicDieticiansProvider).valueOrNull?.length ?? 0;
+    final canRestrict = restricted || dieticianCount >= 2;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -383,7 +406,8 @@ class _DieticianSection extends ConsumerWidget {
               ],
             ),
           ),
-          TextButton(onPressed: () => _openAssign(context, ref), child: Text(restricted ? 'Change' : 'Restrict')),
+          if (canRestrict)
+            TextButton(onPressed: () => _openAssign(context, ref), child: Text(restricted ? 'Change' : 'Restrict')),
         ],
       ),
     );
@@ -907,6 +931,9 @@ class _AlertMini extends StatelessWidget {
   }
 }
 
+/// The AI assistant's view of this patient — collapsible, like the previous
+/// consultations, so it stays out of the way until the doctor wants to see why
+/// the assistant answered the way it did.
 class _AiContextCard extends StatelessWidget {
   const _AiContextCard({required this.text});
   final String text;
@@ -915,13 +942,26 @@ class _AiContextCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
       ),
-      child: Text(text, style: TextStyle(fontSize: 13.5, height: 1.5, color: scheme.onSurface)),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          leading: Icon(Icons.smart_toy_outlined, size: 20, color: scheme.onSurfaceVariant),
+          title: const Text('Assistant context', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+          subtitle: Text('What the AI assistant sees', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+          children: [
+            Text(text, style: TextStyle(fontSize: 13.5, height: 1.5, color: scheme.onSurface)),
+          ],
+        ),
+      ),
     );
   }
 }

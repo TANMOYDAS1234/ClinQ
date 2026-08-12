@@ -12,6 +12,7 @@ import { ClinicalAlert, ALERT_SEVERITY } from '../models/ClinicalAlert.js';
 import { Appointment } from '../models/Appointment.js';
 import { GlucoseReading } from '../models/GlucoseReading.js';
 import { VitalRecord } from '../models/VitalRecord.js';
+import { Medication } from '../models/Medication.js';
 import { ChatSession } from '../models/ChatSession.js';
 import { ChatMessage } from '../models/ChatMessage.js';
 import { notifyPatientOfClinicianReply } from '../services/notifications.js';
@@ -657,28 +658,45 @@ router.get(
     if (!patient) throw notFound('Patient not found');
     req.patientId = patient._id;
 
-    const [profile, healthScore, trends, adherence, alerts, latestHba1c, footAssessments, context, labResults, rxForTests] =
-      await Promise.all([
-        PatientProfile.findOne({ user: patient._id }).populate('assignedDietician', 'name phone').lean(),
-        computeHealthScore(patient._id, { days: 30 }),
-        glucoseTrends(patient._id, { days: 90 }),
-        computeAdherence(patient._id, { days: 30 }),
-        ClinicalAlert.find({ patient: patient._id }).sort({ createdAt: -1 }).limit(20).lean(),
-        Hba1cRecord.find({ patient: patient._id }).sort({ testedOn: -1 }).limit(6).lean(),
-        FootAssessment.find({ patient: patient._id }).sort({ assessedAt: -1 }).limit(5).lean(),
-        buildPatientContext(patient._id),
-        LabResult.find({ patient: patient._id })
-          .sort({ createdAt: -1 })
-          .limit(20)
-          .populate('photo', 'mimeType originalName sizeBytes')
-          .lean(),
-        // What the doctor has already asked this patient to get done. Without
-        // it the prescribing screen offered a fresh list of tests with no way
-        // to see that HbA1c was ordered a fortnight ago and is still pending.
-        Prescription.find({ patient: patient._id, isActive: true })
-          .select('labTestsAdvised')
-          .lean(),
-      ]);
+    const [
+      profile,
+      healthScore,
+      trends,
+      adherence,
+      alerts,
+      latestHba1c,
+      footAssessments,
+      context,
+      labResults,
+      rxForTests,
+      medicationCount,
+      lastFasting,
+    ] = await Promise.all([
+      PatientProfile.findOne({ user: patient._id }).populate('assignedDietician', 'name phone').lean(),
+      computeHealthScore(patient._id, { days: 30 }),
+      glucoseTrends(patient._id, { days: 90 }),
+      computeAdherence(patient._id, { days: 30 }),
+      ClinicalAlert.find({ patient: patient._id }).sort({ createdAt: -1 }).limit(20).lean(),
+      Hba1cRecord.find({ patient: patient._id }).sort({ testedOn: -1 }).limit(6).lean(),
+      FootAssessment.find({ patient: patient._id }).sort({ assessedAt: -1 }).limit(5).lean(),
+      buildPatientContext(patient._id),
+      LabResult.find({ patient: patient._id })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .populate('photo', 'mimeType originalName sizeBytes')
+        .lean(),
+      // What the doctor has already asked this patient to get done. Without
+      // it the prescribing screen offered a fresh list of tests with no way
+      // to see that HbA1c was ordered a fortnight ago and is still pending.
+      Prescription.find({ patient: patient._id, isActive: true }).select('labTestsAdvised').lean(),
+      // Medicines the patient is currently on, and their most recent fasting
+      // reading — both surfaced as metric tiles on the doctor's profile.
+      Medication.countDocuments({ patient: patient._id, isActive: true }),
+      GlucoseReading.findOne({ patient: patient._id, context: 'fasting' })
+        .sort({ measuredAt: -1 })
+        .select('valueMgDl measuredAt')
+        .lean(),
+    ]);
 
     res.json({
       patient: {
@@ -698,7 +716,10 @@ router.get(
       profile,
       healthScore,
       trends,
+      // Carries expected/taken/percentage — the profile shows the raw doses.
       adherence,
+      medicationCount,
+      lastFasting: lastFasting ? { value: lastFasting.valueMgDl, at: lastFasting.measuredAt } : null,
       hba1cHistory: latestHba1c.map((h) => ({ percentage: h.percentage, testedOn: h.testedOn })),
       footAssessments: footAssessments.map((f) => ({
         id: f._id,

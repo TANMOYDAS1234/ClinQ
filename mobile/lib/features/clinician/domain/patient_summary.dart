@@ -153,6 +153,11 @@ class PatientSummary {
     this.assignedDieticianId,
     this.assignedDieticianName,
     this.reviewIntervalDays,
+    this.adherenceTaken,
+    this.adherenceExpected,
+    this.medicationCount,
+    this.lastFasting,
+    this.lastFastingAt,
   });
 
   final String id;
@@ -201,6 +206,21 @@ class PatientSummary {
   final String? assignedDieticianId;
   final String? assignedDieticianName;
   final int? reviewIntervalDays;
+
+  /// Adherence as raw doses (taken / expected due) over the last 30 days — the
+  /// honest form behind the percentage.
+  final int? adherenceTaken;
+  final int? adherenceExpected;
+
+  /// How many medicines the patient is currently on.
+  final int? medicationCount;
+
+  /// The patient's most recent fasting glucose reading (mg/dL) and when.
+  final int? lastFasting;
+  final DateTime? lastFastingAt;
+
+  /// The latest lab HbA1c on record (the measured value, not the estimate).
+  num? get lastHba1c => hba1cHistory.isNotEmpty ? hba1cHistory.first.percentage : null;
 
   factory PatientSummary.fromJson(Map<String, dynamic> j) {
     final patient = j['patient'] as Map<String, dynamic>? ?? const {};
@@ -255,6 +275,13 @@ class PatientSummary {
               .toList() ??
           const [],
       aiContext: j['aiContext']?.toString(),
+      adherenceTaken: (adherence['taken'] as num?)?.toInt(),
+      adherenceExpected: (adherence['expected'] as num?)?.toInt(),
+      medicationCount: (j['medicationCount'] as num?)?.toInt(),
+      lastFasting: j['lastFasting'] is Map ? ((j['lastFasting'] as Map)['value'] as num?)?.toInt() : null,
+      lastFastingAt: j['lastFasting'] is Map
+          ? DateTime.tryParse((j['lastFasting'] as Map)['at']?.toString() ?? '')?.toLocal()
+          : null,
     );
   }
 }
