@@ -131,6 +131,8 @@ class PatientSummary {
     this.email,
     this.gender,
     this.age,
+    this.address,
+    this.chiefComplaint,
     this.language,
     this.avatarUrl,
     this.diabetesType,
@@ -159,6 +161,13 @@ class PatientSummary {
   final String? email;
   final String? gender;
   final int? age;
+
+  /// Postal address, captured at desk registration.
+  final String? address;
+
+  /// The patient's current presenting complaint, shown on the profile and
+  /// carried into a consult.
+  final String? chiefComplaint;
   final String? language;
 
   /// Relative `/api/v1/uploads/:id/raw` path of the photo the patient set.
@@ -208,6 +217,8 @@ class PatientSummary {
       email: patient['email']?.toString(),
       gender: patient['gender']?.toString(),
       age: (patient['age'] as num?)?.toInt(),
+      address: patient['address']?.toString(),
+      chiefComplaint: patient['chiefComplaint']?.toString(),
       language: patient['language']?.toString(),
       avatarUrl: patient['avatarUrl']?.toString(),
       diabetesType: profile['diabetesType']?.toString(),

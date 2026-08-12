@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { randomBytes } from 'node:crypto';
 import dayjs from 'dayjs';
 import { z } from 'zod';
 import { requireAuth, requireClinician } from '../middleware/auth.js';
@@ -10,6 +11,7 @@ import { PatientProfile } from '../models/PatientProfile.js';
 import { ClinicalAlert, ALERT_SEVERITY } from '../models/ClinicalAlert.js';
 import { Appointment } from '../models/Appointment.js';
 import { GlucoseReading } from '../models/GlucoseReading.js';
+import { VitalRecord } from '../models/VitalRecord.js';
 import { ChatSession } from '../models/ChatSession.js';
 import { ChatMessage } from '../models/ChatMessage.js';
 import { notifyPatientOfClinicianReply } from '../services/notifications.js';
@@ -306,11 +308,14 @@ router.get(
 );
 
 /**
- * Register a walk-in patient from the clinic side.
+ * Register a walk-in patient from the clinic side (the receptionist intake).
  *
  * Mirrors the dietician-creation route: some patients are enrolled at the desk
  * on a clinic phone rather than downloading the app first, and without this the
- * doctor has no way to start a record for them.
+ * doctor has no way to start a record for them. Beyond name/phone the desk can
+ * capture demographics (age/gender/address) and an optional vitals snapshot
+ * (height/weight/BP/HR/SpO2/sugar) plus the presenting complaint, all in one
+ * call, so the doctor opens a record that is already populated.
  */
 router.post(
   '/patients',
@@ -324,27 +329,82 @@ router.post(
         .trim()
         .transform(toE164)
         .pipe(z.string().regex(/^\+?[1-9]\d{7,14}$/, 'Enter a valid phone number')),
-      password: z.string().min(8, 'At least 8 characters').max(128),
+      // Optional at the desk: reception often enrols a patient without setting a
+      // login password. One is generated when omitted so the account is valid.
+      password: z.string().min(8, 'At least 8 characters').max(128).optional(),
+      // Age is what the desk usually knows; converted to an approximate DOB so
+      // the rest of the app (which derives age from DOB) stays consistent. An
+      // explicit dateOfBirth wins when provided.
+      age: z.coerce.number().int().min(0).max(120).optional(),
+      dateOfBirth: z.coerce.date().optional(),
+      gender: z.enum(['male', 'female', 'other', 'undisclosed']).optional(),
+      address: z.string().trim().max(300).optional(),
+      complaints: z.string().trim().max(1000).optional(),
+      // Optional intake vitals — all optional; a VitalRecord/GlucoseReading is
+      // only written when at least one relevant value is present.
+      heightCm: z.coerce.number().min(50).max(250).optional(),
+      weightKg: z.coerce.number().min(10).max(400).optional(),
+      systolic: z.coerce.number().min(50).max(300).optional(),
+      diastolic: z.coerce.number().min(30).max(200).optional(),
+      pulse: z.coerce.number().min(25).max(250).optional(),
+      spo2: z.coerce.number().min(50).max(100).optional(),
+      glucoseMgDl: z.coerce.number().min(10).max(900).optional(),
     }),
   }),
   audit('create', 'User'),
   asyncHandler(async (req, res) => {
-    const { name, phone, password } = req.body;
-    if (await User.exists({ phone })) throw conflict('An account with this phone number already exists');
+    const b = req.body;
+    if (await User.exists({ phone: b.phone })) throw conflict('An account with this phone number already exists');
+
+    const dob = b.dateOfBirth ?? (b.age != null ? dayjs().subtract(b.age, 'year').toDate() : undefined);
 
     const user = new User({
-      name,
-      phone,
+      name: b.name,
+      phone: b.phone,
       role: ROLES.PATIENT,
+      ...(dob ? { dateOfBirth: dob } : {}),
+      ...(b.gender ? { gender: b.gender } : {}),
       consent: {
         termsAcceptedAt: new Date(),
         dataProcessingAcceptedAt: new Date(),
         aiDisclaimerAcceptedAt: new Date(),
       },
     });
-    await user.setPassword(password);
+    await user.setPassword(b.password ?? randomBytes(12).toString('hex'));
     await user.save();
-    await PatientProfile.create({ user: user._id });
+
+    // Single-doctor clinic: assign the patient to the doctor so dietician/care
+    // scoping and the worklist behave as they do for a self-signed-up patient.
+    const doctor = await User.findOne({ role: ROLES.DOCTOR }).select('_id').lean();
+
+    await PatientProfile.create({
+      user: user._id,
+      ...(doctor ? { assignedDoctor: doctor._id } : {}),
+      ...(b.address ? { address: b.address } : {}),
+      ...(b.complaints ? { chiefComplaint: b.complaints } : {}),
+      ...(b.heightCm != null ? { heightCm: b.heightCm } : {}),
+      ...(b.weightKg != null ? { baselineWeightKg: b.weightKg } : {}),
+    });
+
+    // Intake vitals snapshot (source: clinic), written only when the desk
+    // actually captured a measurement — an empty VitalRecord would be noise.
+    const vitals = {};
+    if (b.systolic != null) vitals.systolic = b.systolic;
+    if (b.diastolic != null) vitals.diastolic = b.diastolic;
+    if (b.pulse != null) vitals.pulse = b.pulse;
+    if (b.spo2 != null) vitals.spo2 = b.spo2;
+    if (b.weightKg != null) vitals.weightKg = b.weightKg;
+    if (Object.keys(vitals).length) {
+      await VitalRecord.create({ patient: user._id, ...vitals });
+    }
+    if (b.glucoseMgDl != null) {
+      await GlucoseReading.create({
+        patient: user._id,
+        valueMgDl: b.glucoseMgDl,
+        context: 'random',
+        source: 'clinic',
+      });
+    }
 
     res.status(201).json({ id: String(user._id), name: user.name, phone: user.phone });
   }),
@@ -577,6 +637,9 @@ router.get(
         dateOfBirth: patient.dateOfBirth ?? null,
         gender: patient.gender,
         age: patient.dateOfBirth ? dayjs().diff(dayjs(patient.dateOfBirth), 'year') : null,
+        // Desk-registration details, surfaced on the profile header.
+        address: profile?.address ?? null,
+        chiefComplaint: profile?.chiefComplaint ?? null,
       },
       profile,
       healthScore,

@@ -16,6 +16,10 @@ const patientProfileSchema = new mongoose.Schema(
     },
     diagnosedOn: Date,
 
+    // Postal address, captured at desk registration. Kept on the clinical
+    // profile (not the auth User) so it exports with the rest of the record.
+    address: { type: String, trim: true, maxlength: 300 },
+
     heightCm: { type: Number, min: 50, max: 250 },
 
     // The patient's usual meal times, used to anchor medicine reminders so
@@ -88,6 +92,10 @@ const patientProfileSchema = new mongoose.Schema(
     // default cadence. Drives the "overdue check-in" surfacing and the
     // patient's own (adaptive, non-nagging) reminder.
     checkInIntervalDays: { type: Number, min: 1, max: 30, default: null },
+
+    // The patient's current presenting complaint — captured at registration and
+    // updated at each consult; snapshotted onto each prescription at issue time.
+    chiefComplaint: { type: String, trim: true, maxlength: 1000 },
 
     notes: { type: String, maxlength: 4000 },
   },

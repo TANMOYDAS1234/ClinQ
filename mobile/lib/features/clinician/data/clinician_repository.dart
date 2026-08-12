@@ -33,16 +33,46 @@ class ClinicianRepository {
   }
 
   /// Registers a walk-in patient from the clinic side — some patients are
-  /// enrolled at the desk rather than downloading the app first.
-  Future<void> createPatient({
+  /// enrolled at the desk rather than downloading the app first. Beyond
+  /// name/phone the desk can capture demographics and an optional vitals
+  /// snapshot; all extra fields are omitted from the payload when null.
+  /// Returns the new patient's id so the caller can open their record.
+  Future<String> createPatient({
     required String name,
     required String phone,
-    required String password,
+    String? password,
+    int? age,
+    String? gender,
+    String? address,
+    String? complaints,
+    double? heightCm,
+    double? weightKg,
+    int? systolic,
+    int? diastolic,
+    int? pulse,
+    int? spo2,
+    int? glucoseMgDl,
   }) async {
-    await _client.postJson(
+    final json = await _client.postJson(
       '/doctor/patients',
-      body: {'name': name, 'phone': phone, 'password': password},
+      body: {
+        'name': name,
+        'phone': phone,
+        if (password != null && password.isNotEmpty) 'password': password,
+        if (age != null) 'age': age,
+        if (gender != null) 'gender': gender,
+        if (address != null && address.isNotEmpty) 'address': address,
+        if (complaints != null && complaints.isNotEmpty) 'complaints': complaints,
+        if (heightCm != null) 'heightCm': heightCm,
+        if (weightKg != null) 'weightKg': weightKg,
+        if (systolic != null) 'systolic': systolic,
+        if (diastolic != null) 'diastolic': diastolic,
+        if (pulse != null) 'pulse': pulse,
+        if (spo2 != null) 'spo2': spo2,
+        if (glucoseMgDl != null) 'glucoseMgDl': glucoseMgDl,
+      },
     );
+    return json['id']?.toString() ?? '';
   }
 
   /// Today's clinic diary, earliest first. The API sorts newest-first and has no

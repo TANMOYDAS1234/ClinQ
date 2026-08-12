@@ -108,6 +108,14 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
 
     return Scaffold(
       backgroundColor: scheme.surface,
+      // Desk intake: register a walk-in patient without leaving the directory.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/clinician/patients/new'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.person_add_alt_1_rounded),
+        label: const Text('Add patient'),
+      ),
       body: SafeArea(
         bottom: false,
         child: Column(

@@ -29,6 +29,7 @@ import '../../features/clinician/presentation/feedback_inbox_screen.dart';
 import '../../features/clinician/presentation/knowledge_screen.dart';
 import '../../features/clinician/presentation/patient_thread_screen.dart';
 import '../../features/clinician/presentation/nutrition_inbox_screen.dart';
+import '../../features/clinician/presentation/add_patient_screen.dart';
 import '../../features/clinician/presentation/patients_screen.dart';
 import '../../features/clinician/presentation/patient_profile_screen.dart';
 import '../../features/dietician/presentation/diet_plan_screen.dart';
@@ -167,6 +168,12 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           patientId: state.pathParameters['id']!,
           patientName: state.extra as String?,
         ),
+      ),
+      // Receptionist intake. Declared BEFORE the `:id` route so the static
+      // `new` segment is matched as the form, not as a patient id.
+      GoRoute(
+        path: '/clinician/patients/new',
+        builder: (context, state) => const AddPatientScreen(),
       ),
       // The patient profile: who they are, the prescribing form, and the
       // clinical record beneath it — one screen per patient. Top-level so it
