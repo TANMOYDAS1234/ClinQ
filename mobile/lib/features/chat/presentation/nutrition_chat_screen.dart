@@ -6,7 +6,9 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/locale_provider.dart';
 import '../../../shared/widgets/chat_background.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../domain/chat_message.dart';
 import 'widgets/care_composer.dart';
 import 'widgets/jump_to_latest.dart';
@@ -75,6 +77,15 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
     });
   }
 
+  /// The app's displayed locale wins over the account language — so the dietician
+  /// assistant answers in the language the patient is actually using, exactly as
+  /// the doctor assistant does. The nutrition thread used to omit this, leaving
+  /// the server to fall back to the account default (usually English).
+  String get _replyLanguage => resolveReplyLanguage(
+    appLocale: ref.read(localeControllerProvider)?.languageCode,
+    accountLanguage: ref.read(authControllerProvider).user?.language,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -113,6 +124,7 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
             body: {
               'content': _controller.text.trim(),
               'attachments': [assetId],
+              'language': _replyLanguage,
             },
           );
       _controller.clear();
@@ -174,6 +186,7 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
             '/chat/nutrition',
             body: {
               'content': text,
+              'language': _replyLanguage,
               if (_replyingTo != null) 'replyTo': _replyingTo!.id,
             },
           );

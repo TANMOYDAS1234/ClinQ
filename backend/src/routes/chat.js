@@ -474,6 +474,11 @@ router.post(
         // thread does. It accepted none of it, so the patient's dietician chat
         // offered only Copy on a long press.
         replyTo: z.string().optional(),
+        // The patient's live app language, so the assistant replies in it — the
+        // care thread sends this too. Without it the nutrition assistant fell
+        // back to the session language (the account default fixed at creation),
+        // so a Bengali message on an English account got an English answer.
+        language: z.enum(['en', 'bn', 'hi']).optional(),
       })
       .refine((b) => b.content.trim().length > 0 || b.attachments.length > 0, {
         message: 'Add a message or attach a photo',
@@ -502,6 +507,12 @@ router.post(
         title: 'Nutrition',
       });
     }
+
+    // Resolve the reply language exactly as the care thread does: the app's live
+    // language first, then the account, then the session's stored one. Using
+    // only session.language (fixed at session creation) is why the dietician
+    // assistant did not follow the patient's language like the doctor assistant.
+    const replyLanguage = req.body.language ?? req.user.language ?? session.language ?? 'en';
 
     const context = await buildPatientContext(patientId);
     const triage = triageMessage({
@@ -636,7 +647,7 @@ router.post(
         patientId,
         sessionId: session._id,
         text,
-        language: session.language,
+        language: replyLanguage,
       }).catch(() => null);
 
       if (reply) {
@@ -646,7 +657,7 @@ router.post(
           seq: message.seq + 1,
           role: 'assistant',
           content: reply,
-          language: session.language,
+          language: replyLanguage,
         });
         await ChatSession.findByIdAndUpdate(session._id, {
           lastMessageAt: assistantMessage.createdAt,
