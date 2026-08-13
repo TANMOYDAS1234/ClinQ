@@ -562,8 +562,13 @@ class _MonitorStrip extends StatelessWidget {
     if (hba1c != null) {
       // The doctor's anchor: HbA1c, coloured by control, with a mini-trend.
       final color = _hba1cColor(hba1c, context);
-      if (patient.hba1cSpark.length >= 2) {
-        children.add(Sparkline(values: patient.hba1cSpark, color: color, width: 56, height: 22));
+      // The trend line is GLUCOSE, not HbA1c. HbA1c is measured every few months,
+      // so it can't form a line; and its 5-9% values fed into a glucose-scaled
+      // chart drew the 70-180 target band as a grey block above a crushed line.
+      // Glucose is exactly what that band is for, so it reads correctly here —
+      // while HbA1c stays the headline number beside it.
+      if (patient.spark.length >= 2) {
+        children.add(Sparkline(values: patient.spark, color: color, width: 56, height: 22));
       }
       children.add(Row(
         mainAxisSize: MainAxisSize.min,

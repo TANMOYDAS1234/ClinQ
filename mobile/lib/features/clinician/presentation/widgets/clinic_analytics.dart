@@ -340,8 +340,11 @@ class _AttentionRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  if (patient.hba1cSpark.length >= 2)
-                    Sparkline(values: patient.hba1cSpark, color: _hba1cTone(patient.hba1c!, context), width: 56, height: 20),
+                  // Glucose trend (its 70-180 band is meaningful), with HbA1c as
+                  // the headline — HbA1c is too infrequent to be the line itself.
+                  // See the Patients-tab row for the full reasoning.
+                  if (patient.spark.length >= 2)
+                    Sparkline(values: patient.spark, color: _hba1cTone(patient.hba1c!, context), width: 56, height: 20),
                   Text('${patient.hba1c!.toStringAsFixed(1)}%',
                       style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: _hba1cTone(patient.hba1c!, context))),
                 ],
