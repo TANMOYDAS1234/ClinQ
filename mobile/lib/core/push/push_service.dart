@@ -124,9 +124,18 @@ class PushService {
     final router = _ref.read(appRouterProvider);
 
     if (user.role == 'patient') {
-      // A prescription update opens Medicines; everything else opens the chat.
-      final kind = data['kind']?.toString();
-      router.go(kind == 'prescription' ? '/medications' : '/chat');
+      // Route the tap to the screen the nudge is about; anything unrecognised
+      // opens the chat, which is always a safe place to land.
+      switch (data['kind']?.toString()) {
+        case 'prescription':
+          router.go('/medications');
+        case 'glucose_checkin':
+          router.go('/home');
+        case 'lab_upload':
+          router.go('/profile/tests');
+        default:
+          router.go('/chat');
+      }
       return;
     }
     final patientId = data['patientId']?.toString();

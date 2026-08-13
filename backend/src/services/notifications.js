@@ -128,6 +128,82 @@ export async function sendMedicationReminderPush({ patientId, med, time, relatio
   });
 }
 
+/**
+ * Localized copy for the two patient-engagement nudges. The frame is
+ * translated; a test name inside it stays as the doctor typed it (medical
+ * terms like "HbA1c" are not translated on a lab form anywhere).
+ */
+const GLUCOSE_CHECKIN_COPY = {
+  en: {
+    title: 'Time for a blood-sugar check',
+    recent: "Log today's reading so your doctor sees the latest.",
+    lapsed: (n) => `It's been ${n} days since your last reading — a quick check keeps your trend accurate.`,
+  },
+  bn: {
+    title: 'রক্তে শর্করা মাপার সময়',
+    recent: 'আজকের রিডিং রেকর্ড করুন যাতে আপনার ডাক্তার সর্বশেষ তথ্য দেখতে পান।',
+    lapsed: (n) => `আপনার শেষ রিডিং-এর ${n} দিন হয়ে গেছে — একটি রিডিং আপনার ট্রেন্ড সঠিক রাখে।`,
+  },
+  hi: {
+    title: 'ब्लड शुगर जांचने का समय',
+    recent: 'आज की रीडिंग दर्ज करें ताकि आपके डॉक्टर को ताज़ा जानकारी दिखे।',
+    lapsed: (n) => `आपकी पिछली रीडिंग को ${n} दिन हो गए — एक रीडिंग आपका ट्रेंड सही रखती है।`,
+  },
+};
+
+const LAB_NUDGE_COPY = {
+  en: {
+    title: 'Lab report pending',
+    fallbackTest: 'the test your doctor advised',
+    body: (test) => `Your doctor advised ${test}. Upload the report when it's ready — tap to add it.`,
+  },
+  bn: {
+    title: 'ল্যাব রিপোর্ট বাকি আছে',
+    fallbackTest: 'ডাক্তারের পরামর্শ দেওয়া পরীক্ষা',
+    body: (test) => `আপনার ডাক্তার ${test} করাতে বলেছেন। রিপোর্ট তৈরি হলে আপলোড করুন — যোগ করতে ট্যাপ করুন।`,
+  },
+  hi: {
+    title: 'लैब रिपोर्ट बाकी है',
+    fallbackTest: 'डॉक्टर की सलाह दी गई जांच',
+    body: (test) => `आपके डॉक्टर ने ${test} की सलाह दी है। रिपोर्ट तैयार होने पर अपलोड करें — जोड़ने के लिए टैप करें।`,
+  },
+};
+
+/**
+ * A morning "log a blood sugar" nudge. Sent only by patientReminderCron, which
+ * decides who is due and backs off so this never becomes a daily drumbeat. The
+ * `kind` routes the tap to the Home check-in.
+ */
+export async function sendGlucoseCheckinPush({ patient, gapDays }) {
+  const tokens = patient.deviceTokens ?? [];
+  if (!tokens.length) return { delivered: 0 };
+  const copy = GLUCOSE_CHECKIN_COPY[patient.language] ?? GLUCOSE_CHECKIN_COPY.en;
+  return deliver({
+    tokens,
+    title: copy.title,
+    body: gapDays <= 1 ? copy.recent : copy.lapsed(gapDays),
+    data: { kind: 'glucose_checkin' },
+  });
+}
+
+/**
+ * A "your lab report is still pending" nudge, naming one advised test. Sent at
+ * most three times per report by patientReminderCron. The `kind` routes the tap
+ * to the lab-tests upload screen.
+ */
+export async function sendLabUploadNudgePush({ patient, tests }) {
+  const tokens = patient.deviceTokens ?? [];
+  if (!tokens.length) return { delivered: 0 };
+  const copy = LAB_NUDGE_COPY[patient.language] ?? LAB_NUDGE_COPY.en;
+  const first = (tests ?? []).filter(Boolean)[0] ?? copy.fallbackTest;
+  return deliver({
+    tokens,
+    title: copy.title,
+    body: copy.body(first),
+    data: { kind: 'lab_upload' },
+  });
+}
+
 export async function notifyClinicStaff(alert) {
   const staff = await User.find({ role: { $in: [ROLES.DOCTOR, ROLES.STAFF] }, isActive: true })
     .select('deviceTokens name')

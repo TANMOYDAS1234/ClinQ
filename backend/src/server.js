@@ -3,6 +3,7 @@ import { connectDb, disconnectDb } from './config/db.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { startMedicationReminderCron } from './services/medicationReminderCron.js';
+import { startPatientReminderCron } from './services/patientReminderCron.js';
 
 async function main() {
   await connectDb();
@@ -20,6 +21,11 @@ async function main() {
   // time as a safety net for on-device alarms an OEM may have killed. Deduped
   // against the local alarm by a shared deterministic notification id.
   startMedicationReminderCron();
+
+  // Two gentle patient nudges — a morning blood-sugar check-in and a reminder
+  // to upload a lab report the doctor advised. Both cap themselves and fire
+  // only in daytime hours (see patientReminderCron).
+  startPatientReminderCron();
 
   // Finish in-flight clinical writes before dying.
   const shutdown = async (signal) => {
