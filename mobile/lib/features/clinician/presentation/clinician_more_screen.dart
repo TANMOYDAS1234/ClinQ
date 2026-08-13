@@ -358,7 +358,7 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
               // here pointed at the retired DirectMessage inbox, so the same
               // word opened different data depending on where you tapped it.
               ProfileRow(icon: Icons.notification_important_outlined, title: 'Clinical alerts', onTap: () => context.push('/clinician/alerts')),
-              ProfileRow(icon: Icons.restaurant_menu_outlined, title: 'Dieticians', subtitle: 'Add one and they guide every patient', onTap: () => context.push('/clinician/dieticians')),
+              ProfileRow(icon: Icons.restaurant_menu_outlined, title: 'Clinic care', subtitle: 'Dieticians, invites and food-log review', onTap: () => context.push('/clinician/dieticians')),
               ProfileRow(icon: Icons.reviews_outlined, title: 'Chat review', onTap: () => context.push('/clinician/chat-review')),
               ProfileRow(icon: Icons.menu_book_outlined, title: 'Knowledge base', onTap: () => context.push('/clinician/knowledge')),
               ProfileRow(icon: Icons.rate_review_outlined, title: 'Patient feedback', subtitle: 'What patients say about the clinic and the app', showDivider: false, onTap: () => context.push('/clinician/feedback')),

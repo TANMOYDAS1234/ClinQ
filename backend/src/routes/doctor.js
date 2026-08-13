@@ -39,6 +39,7 @@ import { buildPatientContext } from '../services/patientContext.js';
 import { embed } from '../services/ai/gemini.js';
 import { paged, pageParams } from '../utils/pagination.js';
 import { logger } from '../config/logger.js';
+import { env } from '../config/env.js';
 
 const router = Router();
 router.use(requireAuth, requireClinician);
@@ -1371,6 +1372,19 @@ router.get(
         avatarUrl: d.avatarAssetId ? `/api/v1/uploads/${d.avatarAssetId}/raw` : null,
       })),
     });
+  }),
+);
+
+/**
+ * The clinic's dietician invite code, so the doctor can invite a dietician to
+ * self-register (with their own password) rather than the doctor creating the
+ * account and setting a password on their behalf. Null when no code is
+ * configured for this deployment, so the app hides the invite option.
+ */
+router.get(
+  '/dietician-invite',
+  asyncHandler(async (req, res) => {
+    res.json({ code: env.DIETICIAN_INVITE_CODE || null });
   }),
 );
 

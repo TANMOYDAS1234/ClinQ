@@ -22,6 +22,14 @@ final _dieticiansProvider = FutureProvider.autoDispose<List<_Dietician>>((
       .toList();
 });
 
+/// The clinic's dietician invite code — shared so a dietician can self-register
+/// with their own password. Null when this deployment has no code configured,
+/// in which case the invite card is hidden and only direct "Add" remains.
+final _inviteCodeProvider = FutureProvider.autoDispose<String?>((ref) async {
+  final data = await ref.read(apiClientProvider).getJson('/doctor/dietician-invite');
+  return data['code']?.toString();
+});
+
 /// How often a patient's food log should be reviewed, clinic-wide.
 final _reviewIntervalProvider = FutureProvider.autoDispose<int>((ref) async {
   final data = await ref.read(apiClientProvider).getJson('/doctor/settings');
@@ -79,7 +87,7 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
     final async = ref.watch(_dieticiansProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Dieticians')),
+      appBar: AppBar(title: const Text('Clinic care')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _add,
         backgroundColor: AppColors.primary,
@@ -236,6 +244,81 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                     },
                   ),
                   const SizedBox(height: AppSpacing.lg),
+                  // Invite a dietician to self-register with the clinic code — an
+                  // alternative to creating their account and password by hand.
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final code = ref.watch(_inviteCodeProvider).valueOrNull;
+                      if (code == null || code.isEmpty) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                        child: Container(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          decoration: BoxDecoration(
+                            color: scheme.surfaceContainerLowest,
+                            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.mail_outline_rounded, size: 20, color: AppColors.accentOn(context)),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  const Text('Invite a dietician',
+                                      style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Share this code. They install the app, register, and enter it to '
+                                'join as a dietician — with their own password.',
+                                style: TextStyle(fontSize: 13, height: 1.4, color: scheme.onSurfaceVariant),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.accentSoftOn(context),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        code,
+                                        style: const TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 1.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  FilledButton.icon(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: () {
+                                      Clipboard.setData(ClipboardData(text: code));
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Invite code copied')),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.copy_rounded, size: 18),
+                                    label: const Text('Copy'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                   if (items.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 60),
