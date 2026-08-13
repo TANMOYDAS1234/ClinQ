@@ -9,6 +9,7 @@ class AppUser {
     this.email,
     this.dateOfBirth,
     this.gender,
+    this.address,
     this.avatarUrl,
     this.qualifications,
     this.specialty,
@@ -34,6 +35,9 @@ class AppUser {
   /// `male` | `female` | `other`.
   final String? gender;
 
+  /// The patient's home address — editable in Edit Profile.
+  final String? address;
+
   /// Relative `/api/v1/uploads/:id/raw` path of the profile photo, or null.
   final String? avatarUrl;
 
@@ -57,6 +61,7 @@ class AppUser {
       language: json['language']?.toString() ?? 'en',
       dateOfBirth: _parseDate(json['dateOfBirth']),
       gender: json['gender'] as String?,
+      address: json['address'] as String?,
       avatarUrl: json['avatarUrl'] as String?,
       qualifications: json['qualifications'] as String?,
       specialty: json['specialty'] as String?,
@@ -81,6 +86,7 @@ class AppUser {
       email: email,
       dateOfBirth: dateOfBirth,
       gender: gender,
+      address: address,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       qualifications: qualifications,
       specialty: specialty,

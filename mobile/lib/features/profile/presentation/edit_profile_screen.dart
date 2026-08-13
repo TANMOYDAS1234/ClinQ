@@ -25,6 +25,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
+  late final TextEditingController _addressController;
 
   DateTime? _dateOfBirth;
   String? _gender;
@@ -37,6 +38,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final user = ref.read(authControllerProvider).user;
     _nameController = TextEditingController(text: user?.name ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
+    _addressController = TextEditingController(text: user?.address ?? '');
     _dateOfBirth = user?.dateOfBirth;
     _gender = user?.gender;
   }
@@ -45,6 +47,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -83,6 +86,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       '${_dateOfBirth!.month.toString().padLeft(2, '0')}-'
                       '${_dateOfBirth!.day.toString().padLeft(2, '0')}',
             gender: _gender,
+            address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
           );
       ref.read(authControllerProvider.notifier).replaceUser(user);
       messenger.showSnackBar(SnackBar(content: Text(l10n.profileSaved)));
@@ -253,6 +257,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           DropdownMenuItem(value: 'other', child: Text(l10n.authGenderOther)),
                         ],
                         onChanged: (v) => setState(() => _gender = v),
+                      ),
+                    ),
+                  ),
+                  _Divider(scheme: scheme),
+                  _Field(
+                    label: 'Address',
+                    child: TextFormField(
+                      controller: _addressController,
+                      textCapitalization: TextCapitalization.sentences,
+                      minLines: 1,
+                      maxLines: 3,
+                      style: const TextStyle(fontSize: 16),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        focusedErrorBorder: InputBorder.none,
+                        filled: false,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                        hintText: 'House, street, area, city, PIN',
                       ),
                     ),
                   ),

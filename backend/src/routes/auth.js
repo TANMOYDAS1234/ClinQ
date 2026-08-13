@@ -233,6 +233,9 @@ router.patch(
       language: z.enum(LANGUAGES).optional(),
       dateOfBirth: z.coerce.date().optional(),
       gender: z.enum(['male', 'female', 'other', 'undisclosed']).optional(),
+      // The patient's home address — captured at registration but, until now,
+      // editable nowhere afterward.
+      address: z.string().trim().max(300).optional(),
       avatarAssetId: z.string().optional(),
       // Doctor letterhead + signature.
       qualifications: z.string().trim().max(120).optional(),

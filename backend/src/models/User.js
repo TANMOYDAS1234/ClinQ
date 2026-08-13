@@ -81,6 +81,7 @@ userSchema.methods.toPublic = function toPublic() {
     language: this.language,
     dateOfBirth: this.dateOfBirth ?? null,
     gender: this.gender,
+    address: this.address ?? null,
     avatarUrl: this.avatarAssetId ? `/api/v1/uploads/${this.avatarAssetId}/raw` : null,
     // Doctor letterhead fields; null for patients/staff who never set them.
     qualifications: this.qualifications ?? null,
