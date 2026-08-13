@@ -10,7 +10,10 @@ import { Medication } from '../models/Medication.js';
 import { Prescription } from '../models/Prescription.js';
 import { LabResult } from '../models/LabResult.js';
 import { Hba1cRecord } from '../models/Hba1cRecord.js';
+import { VitalRecord } from '../models/VitalRecord.js';
+import { GlucoseReading } from '../models/GlucoseReading.js';
 import { FoodLog } from '../models/FoodLog.js';
+import { buildAnalytes } from '../services/analyteCatalog.js';
 import { ChatSession } from '../models/ChatSession.js';
 import { ChatMessage } from '../models/ChatMessage.js';
 import { DietPlan } from '../models/DietPlan.js';
@@ -190,21 +193,43 @@ router.get(
       .lean();
     if (!user) throw notFound('Patient not found');
 
-    // Medicines and lab work, live from the doctor's own record. A dietician
-    // planning around metformin needs to know it was stopped last week, and a
-    // pending HbA1c is the difference between "your control is fine" and a
-    // number nobody has yet.
-    const [meds, prescriptions, labResults, latestHba1c] = await Promise.all([
+    // The full clinical picture, live from the doctor's own record — medicines,
+    // advice, vitals, the uploaded reports. A dietician planning around metformin
+    // needs to know it was stopped last week; a pending HbA1c is the difference
+    // between "your control is fine" and a number nobody has yet.
+    const [meds, prescriptions, labResults, latestHba1c, vitals, latestGlucose] = await Promise.all([
       Medication.find({ patient: req.params.id, isActive: true })
         .select('name strength dose schedule instructions')
         .lean(),
-      Prescription.find({ patient: req.params.id, isActive: true }).select('labTestsAdvised').lean(),
-      LabResult.find({ patient: req.params.id }).sort({ createdAt: -1 }).limit(10).lean(),
+      Prescription.find({ patient: req.params.id, isActive: true })
+        .sort({ issuedOn: -1 })
+        .select('labTestsAdvised generalAdvice diagnosis issuedOn followUpOn doctor')
+        .populate('doctor', 'name')
+        .lean(),
+      LabResult.find({ patient: req.params.id })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate('photo', 'mimeType originalName sizeBytes')
+        .lean(),
       Hba1cRecord.findOne({ patient: req.params.id }).sort({ testedOn: -1 }).lean(),
+      VitalRecord.find({ patient: req.params.id }).sort({ recordedAt: -1 }).limit(40).lean(),
+      GlucoseReading.findOne({ patient: req.params.id }).sort({ measuredAt: -1 }).lean(),
     ]);
 
     const advised = [...new Set(prescriptions.flatMap((p) => p.labTestsAdvised ?? []).filter(Boolean))];
     const reported = new Set(labResults.map((r) => r.testName.toLowerCase()));
+
+    // Each measurement shown as its OWN most-recent real reading, with the date
+    // it was actually taken — never blended, never invented. A field the patient
+    // has never recorded is simply absent: honest emptiness over a fake zero.
+    const latest = (field) => {
+      const rec = vitals.find((v) => v[field] != null);
+      return rec ? { value: rec[field], at: rec.recordedAt } : null;
+    };
+    const bpRec = vitals.find((v) => v.systolic != null || v.diastolic != null);
+    const weight = latest('weightKg');
+    const heightCm = profile.heightCm ?? null;
+    const bmi = weight && heightCm ? Number((weight.value / (heightCm / 100) ** 2).toFixed(1)) : null;
 
     res.json({
       patient: {
@@ -213,14 +238,32 @@ router.get(
         phone: user.phone,
         avatarUrl: user.avatarAssetId ? `/api/v1/uploads/${user.avatarAssetId}/raw` : null,
         gender: user.gender ?? null,
+        dateOfBirth: user.dateOfBirth ?? null,
         language: user.language ?? 'en',
       },
       medical: {
         diabetesType: profile.diabetesType ?? null,
         riskBand: profile.riskBand ?? 'low',
-        heightCm: profile.heightCm ?? null,
+        heightCm,
+        diagnosedOn: profile.diagnosedOn ?? null,
+        chiefComplaint: profile.chiefComplaint ?? null,
         allergies: profile.allergies ?? [],
         targets: profile.targets ?? {},
+      },
+      // Latest real vitals/measurements, each dated. Absent = never recorded.
+      vitals: {
+        bloodPressure: bpRec
+          ? { systolic: bpRec.systolic ?? null, diastolic: bpRec.diastolic ?? null, flag: bpRec.flag ?? null, at: bpRec.recordedAt }
+          : null,
+        pulse: latest('pulse'),
+        spo2: latest('spo2'),
+        weightKg: weight,
+        waistCm: latest('waistCm'),
+        temperatureC: latest('temperatureC'),
+        bmi,
+        glucose: latestGlucose
+          ? { valueMgDl: latestGlucose.valueMgDl, context: latestGlucose.context ?? null, flag: latestGlucose.flag ?? null, at: latestGlucose.measuredAt }
+          : null,
       },
       medications: meds.map((m) => ({
         id: String(m._id),
@@ -230,16 +273,45 @@ router.get(
         instructions: m.instructions ?? '',
         times: (m.schedule ?? []).map((s) => s.time).filter(Boolean),
       })),
+      // The doctor's advice + diagnosis over time, newest first — so the dietician
+      // plans with the clinical reasoning in view, not just the medicine list.
+      advice: prescriptions
+        .filter((p) => (p.generalAdvice && p.generalAdvice.trim()) || (p.diagnosis && p.diagnosis.length))
+        .map((p) => ({
+          id: String(p._id),
+          issuedOn: p.issuedOn,
+          diagnosis: p.diagnosis ?? [],
+          generalAdvice: p.generalAdvice ?? '',
+          followUpOn: p.followUpOn ?? null,
+          doctorName: p.doctor?.name ?? null,
+        })),
       labTests: {
         // Whether a result is back matters more than the list itself: an
         // advised-but-missing test is why a plan may be built on stale numbers.
         advised: advised.map((name) => ({ name, reported: reported.has(name.toLowerCase()) })),
-        recent: labResults.map((r) => ({
-          id: String(r._id),
-          testName: r.testName,
-          note: r.note ?? '',
-          createdAt: r.createdAt,
-        })),
+        // The uploaded reports themselves — summary, out-of-range analytes, the
+        // file to open — the SAME flat shape the doctor's panel sends, so the
+        // dietician reuses the doctor's LabReport model and "out of range" reads
+        // identically in both panels.
+        recent: labResults.map((r) => {
+          const asset = r.photo && typeof r.photo === 'object' ? r.photo : null;
+          const photoId = asset ? asset._id : r.photo;
+          return {
+            id: String(r._id),
+            testName: r.testName,
+            note: r.note ?? '',
+            photoUrl: photoId ? `/api/v1/uploads/${photoId}/raw` : null,
+            mimeType: asset?.mimeType ?? null,
+            originalName: asset?.originalName ?? null,
+            analysisStatus: r.analysis?.status ?? null,
+            analysisSummary: r.analysis?.summary ?? null,
+            hba1cPercent: r.analysis?.hba1cPercent ?? null,
+            abnormal: r.analysis?.abnormal ?? [],
+            analytes: buildAnalytes(r.analysis),
+            testedOn: r.analysis?.testedOn ?? null,
+            createdAt: r.createdAt,
+          };
+        }),
         latestHba1c: latestHba1c
           ? { percentage: latestHba1c.percentage, testedOn: latestHba1c.testedOn }
           : null,

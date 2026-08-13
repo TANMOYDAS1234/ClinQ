@@ -1,4 +1,5 @@
 import '../../chat/domain/chat_message.dart';
+import '../../clinician/domain/patient_summary.dart' show LabReport;
 
 /// A patient assigned to the dietician (`GET /dietician/patients`).
 class DietPatient {
@@ -62,13 +63,19 @@ class DietPatientOverview {
     required this.phone,
     this.avatarUrl,
     this.gender,
+    this.dateOfBirth,
     this.diabetesType,
     required this.riskBand,
     this.heightCm,
+    this.diagnosedOn,
+    this.chiefComplaint,
     required this.allergies,
     required this.medications,
     this.reviewIntervalDays,
+    this.vitals,
+    this.advice = const [],
     this.advisedTests = const [],
+    this.labReports = const [],
     this.latestHba1c,
     this.hba1cTestedOn,
   });
@@ -78,52 +85,202 @@ class DietPatientOverview {
   final String phone;
   final String? avatarUrl;
   final String? gender;
+  final DateTime? dateOfBirth;
   final String? diabetesType;
   final String riskBand;
   final int? heightCm;
+  final DateTime? diagnosedOn;
+
+  /// The patient's own stated main concern (from registration / health details).
+  final String? chiefComplaint;
   final List<String> allergies;
   final List<DietMed> medications;
   final int? reviewIntervalDays;
+
+  /// The latest real vitals & measurements, each with the date it was taken.
+  final DietVitals? vitals;
+
+  /// The doctor's advice + diagnosis over time, newest first — the clinical
+  /// reasoning behind the medicine list, which a plan should respect.
+  final List<DietAdvice> advice;
 
   /// Lab work the doctor ordered, and whether a result has come back. An
   /// advised-but-missing test is why a diet plan may be resting on stale
   /// numbers, so it is worth seeing before writing one.
   final List<AdvisedTest> advisedTests;
+
+  /// The uploaded reports themselves — summary, out-of-range analytes, the file
+  /// to open — the same shape the doctor sees.
+  final List<LabReport> labReports;
+
   final num? latestHba1c;
   final DateTime? hba1cTestedOn;
+
+  /// Whole years since birth, for the header.
+  int? get age {
+    if (dateOfBirth == null) return null;
+    final now = DateTime.now();
+    var a = now.year - dateOfBirth!.year;
+    if (now.month < dateOfBirth!.month ||
+        (now.month == dateOfBirth!.month && now.day < dateOfBirth!.day)) {
+      a--;
+    }
+    return a >= 0 && a < 130 ? a : null;
+  }
 
   factory DietPatientOverview.fromJson(Map<String, dynamic> j) {
     final p = j['patient'] as Map<String, dynamic>? ?? const {};
     final m = j['medical'] as Map<String, dynamic>? ?? const {};
+    final labs = j['labTests'] as Map<String, dynamic>? ?? const {};
+    final complaint = m['chiefComplaint']?.toString().trim() ?? '';
     return DietPatientOverview(
       id: p['id']?.toString() ?? '',
       name: p['name']?.toString() ?? '',
       phone: p['phone']?.toString() ?? '',
       avatarUrl: p['avatarUrl']?.toString(),
       gender: p['gender']?.toString(),
+      dateOfBirth: DateTime.tryParse(p['dateOfBirth']?.toString() ?? '')?.toLocal(),
       diabetesType: m['diabetesType']?.toString(),
       riskBand: m['riskBand']?.toString() ?? 'low',
       heightCm: (m['heightCm'] as num?)?.toInt(),
+      diagnosedOn: DateTime.tryParse(m['diagnosedOn']?.toString() ?? '')?.toLocal(),
+      chiefComplaint: complaint.isEmpty ? null : complaint,
       allergies: (m['allergies'] as List?)?.map((e) => e.toString()).toList() ?? const [],
       medications: (j['medications'] as List?)?.whereType<Map<String, dynamic>>().map(DietMed.fromJson).toList() ?? const [],
       reviewIntervalDays: (j['reviewIntervalDays'] as num?)?.toInt(),
-      advisedTests:
-          ((j['labTests'] as Map<String, dynamic>?)?['advised'] as List?)
-              ?.whereType<Map<String, dynamic>>()
-              .map(AdvisedTest.fromJson)
-              .toList() ??
-          const [],
-      latestHba1c:
-          ((j['labTests'] as Map<String, dynamic>?)?['latestHba1c'] as Map<String, dynamic>?)?['percentage']
-              as num?,
+      vitals: j['vitals'] is Map<String, dynamic> ? DietVitals.fromJson(j['vitals'] as Map<String, dynamic>) : null,
+      advice: (j['advice'] as List?)?.whereType<Map<String, dynamic>>().map(DietAdvice.fromJson).toList() ?? const [],
+      advisedTests: (labs['advised'] as List?)?.whereType<Map<String, dynamic>>().map(AdvisedTest.fromJson).toList() ?? const [],
+      labReports: (labs['recent'] as List?)?.whereType<Map<String, dynamic>>().map(LabReport.fromJson).toList() ?? const [],
+      latestHba1c: (labs['latestHba1c'] as Map<String, dynamic>?)?['percentage'] as num?,
       hba1cTestedOn: DateTime.tryParse(
-        ((j['labTests'] as Map<String, dynamic>?)?['latestHba1c']
-                as Map<String, dynamic>?)?['testedOn']
-                ?.toString() ??
-            '',
+        (labs['latestHba1c'] as Map<String, dynamic>?)?['testedOn']?.toString() ?? '',
       )?.toLocal(),
     );
   }
+}
+
+/// One dated measurement — a value and when it was actually taken.
+class VitalReading {
+  const VitalReading({required this.value, this.at});
+  final num value;
+  final DateTime? at;
+
+  static VitalReading? fromJson(Object? j) => j is Map<String, dynamic>
+      ? VitalReading(value: (j['value'] as num?) ?? 0, at: DateTime.tryParse(j['at']?.toString() ?? '')?.toLocal())
+      : null;
+}
+
+/// The latest blood-pressure reading, with the doctor's flag if one was set.
+class DietBloodPressure {
+  const DietBloodPressure({this.systolic, this.diastolic, this.flag, this.at});
+  final num? systolic;
+  final num? diastolic;
+  final String? flag; // normal | elevated | stage1 | stage2 | hypertensive_crisis | hypotension
+  final DateTime? at;
+
+  String get label => '${systolic ?? '—'}/${diastolic ?? '—'}';
+  bool get isHigh => flag == 'stage1' || flag == 'stage2' || flag == 'hypertensive_crisis';
+
+  static DietBloodPressure? fromJson(Object? j) => j is Map<String, dynamic>
+      ? DietBloodPressure(
+          systolic: j['systolic'] as num?,
+          diastolic: j['diastolic'] as num?,
+          flag: j['flag']?.toString(),
+          at: DateTime.tryParse(j['at']?.toString() ?? '')?.toLocal(),
+        )
+      : null;
+}
+
+/// The latest self-logged blood sugar.
+class DietGlucose {
+  const DietGlucose({required this.valueMgDl, this.context, this.flag, this.at});
+  final num valueMgDl;
+  final String? context; // fasting | pre_meal | post_meal | bedtime | random | hypo_check
+  final String? flag; // severe_low | low | in_range | high | very_high | critical_high
+  final DateTime? at;
+
+  bool get isAbnormal => flag != null && flag != 'in_range';
+
+  static DietGlucose? fromJson(Object? j) => j is Map<String, dynamic>
+      ? DietGlucose(
+          valueMgDl: (j['valueMgDl'] as num?) ?? 0,
+          context: j['context']?.toString(),
+          flag: j['flag']?.toString(),
+          at: DateTime.tryParse(j['at']?.toString() ?? '')?.toLocal(),
+        )
+      : null;
+}
+
+/// The patient's latest real vitals & measurements — each its own most-recent
+/// reading. An absent field means it was never recorded (honest emptiness, not
+/// a fabricated zero).
+class DietVitals {
+  const DietVitals({
+    this.bloodPressure,
+    this.pulse,
+    this.spo2,
+    this.weightKg,
+    this.waistCm,
+    this.temperatureC,
+    this.bmi,
+    this.glucose,
+  });
+
+  final DietBloodPressure? bloodPressure;
+  final VitalReading? pulse;
+  final VitalReading? spo2;
+  final VitalReading? weightKg;
+  final VitalReading? waistCm;
+  final VitalReading? temperatureC;
+  final num? bmi;
+  final DietGlucose? glucose;
+
+  bool get hasAny =>
+      bloodPressure != null ||
+      pulse != null ||
+      spo2 != null ||
+      weightKg != null ||
+      waistCm != null ||
+      temperatureC != null ||
+      glucose != null;
+
+  factory DietVitals.fromJson(Map<String, dynamic> j) => DietVitals(
+        bloodPressure: DietBloodPressure.fromJson(j['bloodPressure']),
+        pulse: VitalReading.fromJson(j['pulse']),
+        spo2: VitalReading.fromJson(j['spo2']),
+        weightKg: VitalReading.fromJson(j['weightKg']),
+        waistCm: VitalReading.fromJson(j['waistCm']),
+        temperatureC: VitalReading.fromJson(j['temperatureC']),
+        bmi: j['bmi'] as num?,
+        glucose: DietGlucose.fromJson(j['glucose']),
+      );
+}
+
+/// One entry from the doctor's advice history — the diagnosis and general
+/// advice given on a date, so the dietician plans with the reasoning in view.
+class DietAdvice {
+  const DietAdvice({
+    this.issuedOn,
+    this.diagnosis = const [],
+    this.generalAdvice = '',
+    this.followUpOn,
+    this.doctorName,
+  });
+
+  final DateTime? issuedOn;
+  final List<String> diagnosis;
+  final String generalAdvice;
+  final DateTime? followUpOn;
+  final String? doctorName;
+
+  factory DietAdvice.fromJson(Map<String, dynamic> j) => DietAdvice(
+        issuedOn: DateTime.tryParse(j['issuedOn']?.toString() ?? '')?.toLocal(),
+        diagnosis: (j['diagnosis'] as List?)?.map((e) => e.toString()).where((s) => s.isNotEmpty).toList() ?? const [],
+        generalAdvice: j['generalAdvice']?.toString() ?? '',
+        followUpOn: DateTime.tryParse(j['followUpOn']?.toString() ?? '')?.toLocal(),
+        doctorName: j['doctorName']?.toString(),
+      );
 }
 
 /// One meal in a diet plan. `name` and `time` are free text on purpose — an
