@@ -204,6 +204,32 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen>
                             color: scheme.onSurfaceVariant,
                           ),
                         ),
+                        const SizedBox(height: AppSpacing.md),
+                        InkWell(
+                          onTap: () => context.push('/medications/history'),
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            decoration: BoxDecoration(
+                              color: scheme.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.history_rounded, color: AppColors.primary),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Text('Dose history',
+                                      style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                                ),
+                                Text('taken & missed', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                                const SizedBox(width: 4),
+                                Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+                              ],
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: AppSpacing.lg),
 
                         const _MicroLabel('Reminder windows'),

@@ -245,6 +245,68 @@ router.get(
   }),
 );
 
+/**
+ * The patient's dose history over the last N days: every elapsed scheduled dose
+ * (across current and stopped medicines) marked taken / skipped / missed, so the
+ * patient can see exactly what they took and when. Missed = a slot that has come
+ * and gone with no log — computed here rather than relying on materialised rows.
+ */
+router.get(
+  '/schedule/history',
+  validate({ query: z.object({ days: z.coerce.number().int().min(1).max(90).default(14) }) }),
+  asyncHandler(async (req, res) => {
+    const days = q(req).days;
+    const nowClinic = inClinicTz(new Date());
+    const nowRaw = dayjs();
+    const start = nowClinic.subtract(days - 1, 'day').startOf('day');
+
+    // History includes stopped medicines too, so a course that has since ended
+    // still shows the doses the patient did (or didn't) take while on it.
+    const meds = await Medication.find({
+      patient: req.patientId,
+      startDate: { $lte: nowClinic.toDate() },
+    }).lean();
+
+    const logs = await MedicationLog.find({
+      patient: req.patientId,
+      scheduledFor: { $gte: start.toDate() },
+    }).lean();
+    const logKey = (medId, when) => `${medId}|${inClinicTz(when).format('YYYY-MM-DDTHH:mm')}`;
+    const logMap = new Map(logs.map((l) => [logKey(l.medication, l.scheduledFor), l]));
+
+    const doses = [];
+    for (const med of meds) {
+      if (!med.schedule?.length) continue;
+      const medStart = dayjs(med.startDate);
+      const medEnd = med.endDate ? dayjs(med.endDate) : null;
+      for (let d = start; !d.isAfter(nowClinic); d = d.add(1, 'day')) {
+        if (med.daysOfWeek?.length && !med.daysOfWeek.includes(d.day())) continue;
+        const dayStr = d.format('YYYY-MM-DD');
+        for (const slot of med.schedule) {
+          const scheduledFor = clinicDateTime(dayStr, slot.time);
+          if (scheduledFor.isAfter(nowRaw)) continue; // not yet due
+          if (scheduledFor.isBefore(medStart)) continue;
+          if (medEnd && scheduledFor.isAfter(medEnd)) continue;
+          const log = logMap.get(logKey(med._id, scheduledFor.toDate()));
+          doses.push({
+            medicationId: med._id,
+            name: med.name,
+            form: med.form,
+            strength: med.strength ?? null,
+            time: slot.time,
+            relationToMeal: slot.relationToMeal,
+            scheduledFor: scheduledFor.toDate(),
+            status: log ? log.status : 'missed',
+            takenAt: log?.takenAt ?? null,
+          });
+        }
+      }
+    }
+    doses.sort((a, b) => new Date(b.scheduledFor) - new Date(a.scheduledFor));
+    res.json({ days, doses });
+  }),
+);
+
 router.post(
   '/:id/log',
   validate({

@@ -25,6 +25,14 @@ class MedicationsRepository {
     return TodaySchedule.fromJson(json);
   }
 
+  /// The patient's past doses (taken/skipped/missed) over [days] days, newest
+  /// first — powers the medicine-taking history screen.
+  Future<List<DoseHistoryEntry>> getDoseHistory({int days = 14}) async {
+    final json = await _client.getJson('$_base/schedule/history', query: {'days': days});
+    final items = json['doses'] as List<dynamic>? ?? const [];
+    return items.map((e) => DoseHistoryEntry.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
   /// Adds a medicine to the patient's tracker. [schedule] is a list of
   /// `{time: "HH:mm", relationToMeal}` maps — the daily dose times the reminders
   /// are built from.

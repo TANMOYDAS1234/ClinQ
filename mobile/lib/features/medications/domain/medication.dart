@@ -193,6 +193,45 @@ class TodaySchedule {
   }
 }
 
+/// One past dose in the patient's history (`GET /medications/schedule/history`).
+class DoseHistoryEntry {
+  const DoseHistoryEntry({
+    required this.medicationId,
+    required this.name,
+    required this.time,
+    required this.status,
+    this.strength,
+    this.form,
+    this.relationToMeal,
+    this.scheduledFor,
+    this.takenAt,
+  });
+
+  final String medicationId;
+  final String name;
+  final String? strength;
+  final String? form;
+  final String time; // HH:mm (clinic wall-clock)
+  final String? relationToMeal;
+  final DateTime? scheduledFor;
+  final DateTime? takenAt;
+
+  /// taken | skipped | missed.
+  final String status;
+
+  factory DoseHistoryEntry.fromJson(Map<String, dynamic> j) => DoseHistoryEntry(
+    medicationId: j['medicationId']?.toString() ?? '',
+    name: j['name']?.toString() ?? '',
+    strength: j['strength']?.toString(),
+    form: j['form']?.toString(),
+    time: j['time']?.toString() ?? '',
+    relationToMeal: j['relationToMeal']?.toString(),
+    scheduledFor: DateTime.tryParse(j['scheduledFor']?.toString() ?? '')?.toLocal(),
+    takenAt: DateTime.tryParse(j['takenAt']?.toString() ?? '')?.toLocal(),
+    status: j['status']?.toString() ?? 'missed',
+  );
+}
+
 /// `GET /medications/adherence?days=30`.
 class MedicationAdherence {
   const MedicationAdherence({

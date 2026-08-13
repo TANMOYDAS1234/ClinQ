@@ -36,6 +36,12 @@ final FutureProvider<List<Medication>> medicationsListProvider = FutureProvider<
   (ref) => ref.watch(medicationsRepositoryProvider).getMedications(),
 );
 
+/// The patient's dose history over [days] days (newest first) — the medicine-
+/// taking history screen. Family so the range toggle re-fetches.
+final doseHistoryProvider = FutureProvider.autoDispose.family<List<DoseHistoryEntry>, int>(
+  (ref, days) => ref.watch(medicationsRepositoryProvider).getDoseHistory(days: days),
+);
+
 /// Expands active medications into their DAILY-REPEATING dose reminders — one
 /// alarm per (medicine, slot time), which the OS then fires every day at that
 /// time (see NotificationService: matchDateTimeComponents + exactAllowWhileIdle).
