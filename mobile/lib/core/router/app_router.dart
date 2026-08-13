@@ -11,6 +11,7 @@ import '../../features/chat/presentation/chat_screen.dart';
 import '../../features/chat/presentation/nutrition_chat_screen.dart';
 import '../../features/medications/presentation/medications_screen.dart';
 import '../../features/medications/presentation/dose_history_screen.dart';
+import '../../features/prescriptions/presentation/prescriptions_screen.dart';
 import '../../features/medications/presentation/reminder_times_screen.dart';
 import '../../features/foodlog/presentation/food_log_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
@@ -281,6 +282,7 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(path: 'reminders', builder: (context, state) => const ReminderTimesScreen()),
                   GoRoute(path: 'history', builder: (context, state) => const DoseHistoryScreen()),
+                  GoRoute(path: 'prescriptions', builder: (context, state) => const PrescriptionsScreen()),
                 ],
               ),
             ],
