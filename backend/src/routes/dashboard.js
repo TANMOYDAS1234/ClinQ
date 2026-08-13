@@ -128,7 +128,7 @@ async function careSummary(patientId, profile, latestHba1c) {
     Medication.find({ patient: patientId, isActive: true })
       .select('name strength dose schedule instructions')
       .lean(),
-    FoodLog.find({ patient: patientId }).sort({ createdAt: -1 }).limit(6).lean(),
+    FoodLog.find({ patient: patientId }).sort({ createdAt: -1 }).limit(12).populate('photo', 'mimeType').lean(),
     getClinicSettings(),
   ]);
 
@@ -198,13 +198,19 @@ async function careSummary(patientId, profile, latestHba1c) {
       instructions: m.instructions ?? '',
       times: (m.schedule ?? []).map((s) => s.time).filter(Boolean),
     })),
-    recentFoodLogs: foodLogs.map((f) => ({
-      id: String(f._id),
-      mealType: f.mealType,
-      note: f.note ?? '',
-      photoUrl: f.photo ? `/api/v1/uploads/${f.photo}/raw` : null,
-      createdAt: f.createdAt,
-    })),
+    // A food log whose "photo" is not an image is bogus — a voice note or
+    // document mis-filed as a meal (the old nutrition-voice bug). Drop those so
+    // a broken image never renders, then take the newest 6.
+    recentFoodLogs: foodLogs
+      .filter((f) => !f.photo || (f.photo.mimeType ?? '').startsWith('image/'))
+      .slice(0, 6)
+      .map((f) => ({
+        id: String(f._id),
+        mealType: f.mealType,
+        note: f.note ?? '',
+        photoUrl: f.photo ? `/api/v1/uploads/${f.photo._id}/raw` : null,
+        createdAt: f.createdAt,
+      })),
   };
 }
 

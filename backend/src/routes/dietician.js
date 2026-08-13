@@ -94,6 +94,7 @@ router.get(
         .sort({ createdAt: -1 })
         .limit(12)
         .populate('patient', 'name')
+        .populate('photo', 'mimeType')
         .lean(),
     ]);
     const planBy = new Map(plans.map((p) => [String(p.patient), p]));
@@ -133,14 +134,15 @@ router.get(
       reviewsDue: due.map(brief),
       plansMissing: noPlan.map(brief),
       recentLogs: recentLogs
-        .filter((f) => f.patient)
+        // Skip bogus logs whose "photo" is not an image (a mis-filed voice note).
+        .filter((f) => f.patient && (!f.photo || (f.photo.mimeType ?? '').startsWith('image/')))
         .map((f) => ({
           id: String(f._id),
           patientId: String(f.patient._id),
           patientName: f.patient.name,
           mealType: f.mealType,
           note: f.note ?? '',
-          photoUrl: f.photo ? `/api/v1/uploads/${f.photo}/raw` : null,
+          photoUrl: f.photo ? `/api/v1/uploads/${f.photo._id}/raw` : null,
           createdAt: f.createdAt,
         })),
     });
@@ -253,15 +255,21 @@ router.get(
   '/patients/:id/food-log',
   asyncHandler(async (req, res) => {
     await requireAssigned(req);
-    const items = await FoodLog.find({ patient: req.params.id }).sort({ createdAt: -1 }).limit(100).lean();
+    const items = await FoodLog.find({ patient: req.params.id })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .populate('photo', 'mimeType')
+      .lean();
     res.json({
-      items: items.map((f) => ({
-        id: String(f._id),
-        mealType: f.mealType,
-        note: f.note ?? '',
-        photoUrl: f.photo ? `/api/v1/uploads/${f.photo}/raw` : null,
-        createdAt: f.createdAt,
-      })),
+      items: items
+          .filter((f) => !f.photo || (f.photo.mimeType ?? '').startsWith('image/'))
+          .map((f) => ({
+            id: String(f._id),
+            mealType: f.mealType,
+            note: f.note ?? '',
+            photoUrl: f.photo ? `/api/v1/uploads/${f.photo._id}/raw` : null,
+            createdAt: f.createdAt,
+          })),
     });
   }),
 );

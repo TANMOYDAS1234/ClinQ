@@ -15,21 +15,34 @@ const router = Router({ mergeParams: true });
 router.use(requireAuth, resolvePatientScope);
 
 export function serialiseFoodLog(f) {
+  // f.photo may arrive populated ({_id, mimeType}) or as a raw id (on create).
+  const photoId = f.photo?._id ?? f.photo;
   return {
     id: String(f._id),
     mealType: f.mealType,
     note: f.note ?? '',
-    photoUrl: f.photo ? `/api/v1/uploads/${f.photo}/raw` : null,
+    photoUrl: photoId ? `/api/v1/uploads/${photoId}/raw` : null,
     createdAt: f.createdAt,
   };
+}
+
+/** Drops food logs whose "photo" is not an image — a voice note or document
+ * mis-filed as a meal by the old nutrition-voice bug, which would render as a
+ * broken image. A log with no photo (a text note) is kept. */
+export function keepRealMealPhotos(logs) {
+  return logs.filter((f) => !f.photo || (f.photo?.mimeType ?? '').startsWith('image/'));
 }
 
 router.get(
   '/',
   audit('read', 'FoodLog'),
   asyncHandler(async (req, res) => {
-    const items = await FoodLog.find({ patient: req.patientId }).sort({ createdAt: -1 }).limit(100).lean();
-    res.json({ items: items.map(serialiseFoodLog) });
+    const items = await FoodLog.find({ patient: req.patientId })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .populate('photo', 'mimeType')
+      .lean();
+    res.json({ items: keepRealMealPhotos(items).map(serialiseFoodLog) });
   }),
 );
 

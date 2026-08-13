@@ -259,6 +259,7 @@ router.get(
         .sort({ createdAt: -1 })
         .limit(8)
         .populate('patient', 'name')
+        .populate('photo', 'mimeType')
         .lean(),
     ]);
 
@@ -296,15 +297,17 @@ router.get(
       // still reports the true totals, so a trimmed list never reads as "done".
       queue: queue.slice(0, 12),
       recentMeals: recentMeals
-        .filter((f) => f.patient)
+        // Skip bogus logs whose "photo" is not an image (a mis-filed voice note).
+        .filter((f) => f.patient && (!f.photo || (f.photo.mimeType ?? '').startsWith('image/')))
         .map((f) => ({
           id: String(f._id),
           patientId: String(f.patient._id),
           patientName: f.patient.name,
           mealType: f.mealType,
-          photoUrl: f.photo ? `/api/v1/uploads/${f.photo}/raw` : null,
+          photoUrl: f.photo ? `/api/v1/uploads/${f.photo._id}/raw` : null,
           createdAt: f.createdAt,
         })),
+
     });
   }),
 );
