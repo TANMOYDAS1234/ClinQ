@@ -81,10 +81,25 @@ class ChatReviewMessage {
     this.latencyMs,
     this.createdAt,
     this.senderName,
+    this.pinned = false,
+    this.deletedForEveryone = false,
+    this.replyToId,
+    this.replyPreviewContent,
     this.imagePaths = const [],
     this.voiceNotes = const [],
     this.documents = const [],
   });
+
+  /// Kept at the top of the thread (mirrors the patient/doctor bubbles).
+  final bool pinned;
+
+  /// Deleted for everyone by its author — rendered as a tombstone.
+  final bool deletedForEveryone;
+
+  /// The message this one answers, plus a server-sent preview of it, so a reply
+  /// shows its quote even when the original is off-screen.
+  final String? replyToId;
+  final String? replyPreviewContent;
 
   /// Who wrote a `clinician` or `dietician` turn. Null on patient and
   /// assistant turns.
@@ -142,6 +157,12 @@ class ChatReviewMessage {
         createdAt:
             DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal(),
         senderName: j['senderName']?.toString(),
+        pinned: j['pinned'] == true,
+        deletedForEveryone: j['deletedForEveryone'] == true,
+        replyToId: j['replyToId']?.toString(),
+        replyPreviewContent: j['replyPreview'] is Map
+            ? (j['replyPreview'] as Map)['content']?.toString()
+            : null,
         imagePaths:
             _attachments(j)
                 .where(isImageAttachment)

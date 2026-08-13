@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../shared/widgets/markdown_text.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../data/clinician_repository.dart';
 import '../domain/chat_review.dart';
 import 'clinician_providers.dart';
@@ -114,9 +115,13 @@ class _ChatReviewScreenState extends ConsumerState<ChatReviewScreen> {
               );
             }
             return ListView.separated(
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: EdgeInsets.zero,
               itemCount: paged.items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+              separatorBuilder: (_, _) => Divider(
+                height: 1,
+                indent: 76,
+                color: scheme.outlineVariant.withValues(alpha: 0.5),
+              ),
               itemBuilder:
                   (context, i) => _SessionRow(
                     session: paged.items[i],
@@ -160,142 +165,192 @@ class _SessionRow extends ConsumerWidget {
     }
   }
 
+  /// `10:42 AM` today, `Yesterday`, a weekday within the week, else `12 Oct` —
+  /// the same stamp the Patients tab uses.
+  String _stamp(DateTime at) {
+    final now = DateTime.now();
+    final day = DateTime(at.year, at.month, at.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final diff = today.difference(day).inDays;
+    if (diff == 0) {
+      final h = at.hour % 12 == 0 ? 12 : at.hour % 12;
+      return '$h:${at.minute.toString().padLeft(2, '0')} ${at.hour < 12 ? 'AM' : 'PM'}';
+    }
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][at.weekday - 1];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${at.day} ${months[at.month - 1]}';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final s = session;
-    final color = AppColors.forUrgencyOn(context, s.highestUrgency);
+    final msg = s.lastMessage;
+    final unread = s.unreadCount > 0;
+    final urgent = s.highestUrgency == 'emergency' || s.highestUrgency == 'urgent';
+    final urgencyColor = AppColors.forUrgencyOn(context, s.highestUrgency);
 
+    // The same row the Patients tab uses: a face, the last thing said (and by
+    // whom), when, and the review tags — so review reads like the inbox it is.
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-          border: Border(left: BorderSide(color: color, width: 4)),
-        ),
-        child: Column(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    s.patientName ?? 'Patient',
-                    style: const TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                if (s.highestUrgency != 'routine')
-                  MiniPill(label: s.highestUrgency.toUpperCase(), color: color),
-                if (s.flaggedForReview) ...[
-                  const SizedBox(width: 6),
-                  Icon(
-                    Icons.flag_rounded,
-                    size: 16,
-                    color: AppColors.warningOn(context),
-                  ),
-                ],
-                // How many messages here nobody at the clinic has opened.
-                // Without it the doctor had to open every row to find which
-                // ones were actually new.
-                if (s.unreadCount > 0) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentOn(context),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${s.unreadCount} new',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+            UserAvatar(
+              name: s.patientName ?? 'Patient',
+              avatarUrl: s.avatarUrl,
+              accent: urgent ? AppColors.danger : AppColors.primary,
+              size: 48,
             ),
-            const SizedBox(height: 3),
-            Text(
-              s.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  Icons.chat_bubble_outline_rounded,
-                  size: 13,
-                  color: scheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 3),
-                Text(
-                  '${s.messageCount}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                if (s.lastMessageAt != null)
-                  Text(
-                    DateFormat('d MMM, h:mm a').format(s.lastMessageAt!),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                const Spacer(),
-                if (s.flaggedForReview)
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      foregroundColor: scheme.onSurfaceVariant,
-                    ),
-                    onPressed: () => _clearFlag(context, ref),
-                    icon: const Icon(Icons.flag_outlined, size: 15),
-                    label: const Text(
-                      'Clear flag',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                    ),
-                  )
-                else if (s.reviewedAt != null)
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.check_circle_rounded,
-                        size: 13,
-                        color: AppColors.successOn(context),
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        'Reviewed',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: scheme.onSurfaceVariant,
+                      Expanded(
+                        child: Text(
+                          s.patientName ?? 'Patient',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 16.5,
+                            fontWeight: unread ? FontWeight.w800 : FontWeight.w600,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      if (msg != null)
+                        Text(
+                          _stamp(msg.at),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: unread ? AppColors.primary : scheme.onSurfaceVariant,
+                            fontWeight: unread ? FontWeight.w700 : FontWeight.w400,
+                          ),
+                        ),
                     ],
                   ),
-              ],
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              if (msg == null)
+                                const TextSpan(text: 'No messages yet')
+                              else ...[
+                                if (!msg.fromPatient) const TextSpan(text: 'You: '),
+                                if (msg.mediaType != null)
+                                  WidgetSpan(
+                                    alignment: PlaceholderAlignment.middle,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 4),
+                                      child: Icon(
+                                        _mediaIcon(msg.mediaType!),
+                                        size: 15,
+                                        color: unread ? scheme.onSurface : scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                TextSpan(text: MarkdownText.toPreview(msg.preview)),
+                              ],
+                            ],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            height: 1.35,
+                            color: msg == null
+                                ? scheme.outline
+                                : unread
+                                ? scheme.onSurface
+                                : scheme.onSurfaceVariant,
+                            fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                      if (unread) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          constraints: const BoxConstraints(minWidth: 22),
+                          height: 22,
+                          padding: const EdgeInsets.symmetric(horizontal: 7),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: AppColors.accentOn(context),
+                            borderRadius: const BorderRadius.all(Radius.circular(11)),
+                          ),
+                          child: Text(
+                            s.unreadCount > 99 ? '99+' : '${s.unreadCount}',
+                            style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // The review tags: urgency, the flag, and the clear/reviewed
+                  // action that used to be the row's only real content.
+                  Row(
+                    children: [
+                      if (s.highestUrgency != 'routine')
+                        MiniPill(label: s.highestUrgency.toUpperCase(), color: urgencyColor),
+                      if (s.flaggedForReview) ...[
+                        const SizedBox(width: 6),
+                        Icon(Icons.flag_rounded, size: 16, color: AppColors.warningOn(context)),
+                      ],
+                      const Spacer(),
+                      if (s.flaggedForReview)
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            foregroundColor: scheme.onSurfaceVariant,
+                          ),
+                          onPressed: () => _clearFlag(context, ref),
+                          icon: const Icon(Icons.flag_outlined, size: 15),
+                          label: const Text('Clear flag', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                        )
+                      else if (s.reviewedAt != null)
+                        Row(
+                          children: [
+                            Icon(Icons.check_circle_rounded, size: 13, color: AppColors.successOn(context)),
+                            const SizedBox(width: 3),
+                            Text('Reviewed', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+                          ],
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+/// A subtle monochrome icon for a media last-message, matching the Patients tab.
+IconData _mediaIcon(String type) {
+  switch (type) {
+    case 'voice':
+      return Icons.mic_none_rounded;
+    case 'photo':
+      return Icons.photo_camera_rounded;
+    case 'pdf':
+      return Icons.picture_as_pdf_rounded;
+    case 'document':
+      return Icons.description_rounded;
+    default:
+      return Icons.attach_file_rounded;
   }
 }

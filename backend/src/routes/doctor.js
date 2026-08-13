@@ -1043,6 +1043,7 @@ router.get(
       .sort({ seq: 1 })
       .populate('sender', 'name role')
       .populate('attachments', 'kind mimeType transcript originalName sizeBytes')
+      .populate('replyTo', 'content role')
       .lean();
 
     res.json({
@@ -1054,39 +1055,68 @@ router.get(
         highestUrgency: session.highestUrgency,
         language: session.language,
       },
-      messages: messages.map((m) => ({
-        id: m._id,
-        seq: m.seq,
-        role: m.role,
-        content: m.content,
-        urgency: m.triage?.urgency ?? 'routine',
-        matchedRules: m.triage?.matchedRules ?? [],
-        ruleDriven: m.triage?.ruleDriven ?? false,
-        // Which approved chunks grounded the answer — the audit trail for
-        // "why did the assistant say that?".
-        citations: (m.citations ?? []).map((c) => ({ id: c.chunk, title: c.title, score: c.score })),
-        isFallback: m.isFallback ?? false,
-        flaggedByPatient: m.flaggedByPatient ?? false,
-        modelVersion: m.modelVersion ?? null,
-        latencyMs: m.latencyMs ?? null,
-        senderName: m.sender && typeof m.sender === 'object' ? (m.sender.name ?? null) : null,
-        senderRole: m.sender && typeof m.sender === 'object' ? (m.sender.role ?? null) : null,
-        attachments: (m.attachments ?? []).map((a) => {
-          const id = (a?._id ?? a).toString?.() ?? a;
+      messages: messages.map((m) => {
+        // Deleted for everyone: a tombstone, same as the patient/doctor threads.
+        if (m.deletedForEveryoneAt) {
           return {
-            id,
-            url: `/api/v1/uploads/${id}/raw`,
-            kind: a?.kind ?? null,
-            mimeType: a?.mimeType ?? null,
-            originalName: a?.originalName ?? null,
-            sizeBytes: a?.sizeBytes ?? null,
-            // A voice note's transcript is what triage actually read, so the
-            // doctor should see the same text the rules did.
-            transcript: a?.transcript ?? null,
+            id: m._id,
+            seq: m.seq,
+            role: m.role,
+            content: '',
+            deletedForEveryone: true,
+            pinned: false,
+            replyToId: null,
+            replyPreview: null,
+            urgency: 'routine',
+            citations: [],
+            attachments: [],
+            senderName: m.sender && typeof m.sender === 'object' ? (m.sender.name ?? null) : null,
+            createdAt: m.createdAt,
           };
-        }),
-        createdAt: m.createdAt,
-      })),
+        }
+        return {
+          id: m._id,
+          seq: m.seq,
+          role: m.role,
+          content: m.content,
+          deletedForEveryone: false,
+          // Pin / reply state, so the review screen acts on the conversation the
+          // same way the patient and doctor threads do.
+          pinned: Boolean(m.pinnedAt),
+          replyToId: m.replyTo ? String(m.replyTo._id ?? m.replyTo) : null,
+          replyPreview:
+            m.replyTo && typeof m.replyTo === 'object' && m.replyTo.content != null
+              ? { content: String(m.replyTo.content).slice(0, 160), role: m.replyTo.role ?? null }
+              : null,
+          urgency: m.triage?.urgency ?? 'routine',
+          matchedRules: m.triage?.matchedRules ?? [],
+          ruleDriven: m.triage?.ruleDriven ?? false,
+          // Which approved chunks grounded the answer — the audit trail for
+          // "why did the assistant say that?".
+          citations: (m.citations ?? []).map((c) => ({ id: c.chunk, title: c.title, score: c.score })),
+          isFallback: m.isFallback ?? false,
+          flaggedByPatient: m.flaggedByPatient ?? false,
+          modelVersion: m.modelVersion ?? null,
+          latencyMs: m.latencyMs ?? null,
+          senderName: m.sender && typeof m.sender === 'object' ? (m.sender.name ?? null) : null,
+          senderRole: m.sender && typeof m.sender === 'object' ? (m.sender.role ?? null) : null,
+          attachments: (m.attachments ?? []).map((a) => {
+            const id = (a?._id ?? a).toString?.() ?? a;
+            return {
+              id,
+              url: `/api/v1/uploads/${id}/raw`,
+              kind: a?.kind ?? null,
+              mimeType: a?.mimeType ?? null,
+              originalName: a?.originalName ?? null,
+              sizeBytes: a?.sizeBytes ?? null,
+              // A voice note's transcript is what triage actually read, so the
+              // doctor should see the same text the rules did.
+              transcript: a?.transcript ?? null,
+            };
+          }),
+          createdAt: m.createdAt,
+        };
+      }),
     });
   }),
 );
