@@ -32,7 +32,8 @@ class PatientProfileScreen extends ConsumerStatefulWidget {
   final String patientId;
 
   @override
-  ConsumerState<PatientProfileScreen> createState() => _PatientProfileScreenState();
+  ConsumerState<PatientProfileScreen> createState() =>
+      _PatientProfileScreenState();
 }
 
 class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
@@ -65,7 +66,8 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
       // If it's a known panel, order it by its canonical catalog name.
       final panel = labPanelFor(text);
       final name = panel?.name ?? text;
-      if (panel == null && !_customTests.any((t) => t.toLowerCase() == text.toLowerCase())) {
+      if (panel == null &&
+          !_customTests.any((t) => t.toLowerCase() == text.toLowerCase())) {
         _customTests.add(text);
       }
       _selectedTests.add(name);
@@ -85,48 +87,59 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
   }
 
   Future<void> _send() async {
-    final items = _meds
-        .where((m) => m.name.text.trim().isNotEmpty)
-        .map(
-          (m) => <String, dynamic>{
-            'name': m.name.text.trim(),
-            if (m.dosage.text.trim().isNotEmpty) 'strength': m.dosage.text.trim(),
-            'frequency': m.frequency.apiFrequency,
-            'relationToMeal': m.frequency.takesMealRelation ? m.relation.api : 'any',
-            'route': m.route.api,
-            if (int.tryParse(m.duration.text.trim()) != null)
-              'durationDays': int.parse(m.duration.text.trim()),
-          },
-        )
-        .toList();
+    final items =
+        _meds
+            .where((m) => m.name.text.trim().isNotEmpty)
+            .map(
+              (m) => <String, dynamic>{
+                'name': m.name.text.trim(),
+                if (m.dosage.text.trim().isNotEmpty)
+                  'strength': m.dosage.text.trim(),
+                'frequency': m.frequency.apiFrequency,
+                'relationToMeal':
+                    m.frequency.takesMealRelation ? m.relation.api : 'any',
+                'route': m.route.api,
+                if (int.tryParse(m.duration.text.trim()) != null)
+                  'durationDays': int.parse(m.duration.text.trim()),
+              },
+            )
+            .toList();
 
     final messenger = ScaffoldMessenger.of(context);
     if (items.isEmpty) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Add at least one medicine (a name is required).')),
+        const SnackBar(
+          content: Text('Add at least one medicine (a name is required).'),
+        ),
       );
       return;
     }
 
     setState(() => _saving = true);
     try {
-      await ref.read(clinicianRepositoryProvider).createPrescription(
-        patientId: widget.patientId,
-        items: items,
-        // Each non-empty line is a diagnosis item — matches how the AI context
-        // and the prescription PDF list them.
-        diagnosis: _diagnosis.text
-            .split('\n')
-            .map((s) => s.trim())
-            .where((s) => s.isNotEmpty)
-            .toList(),
-        labTestsAdvised: _selectedTests.toList(),
-        generalAdvice: _advice.text.trim().isEmpty ? null : _advice.text.trim(),
-        followUpOn: _followUp,
-      );
+      await ref
+          .read(clinicianRepositoryProvider)
+          .createPrescription(
+            patientId: widget.patientId,
+            items: items,
+            // Each non-empty line is a diagnosis item — matches how the AI context
+            // and the prescription PDF list them.
+            diagnosis:
+                _diagnosis.text
+                    .split('\n')
+                    .map((s) => s.trim())
+                    .where((s) => s.isNotEmpty)
+                    .toList(),
+            labTestsAdvised: _selectedTests.toList(),
+            generalAdvice:
+                _advice.text.trim().isEmpty ? null : _advice.text.trim(),
+            followUpOn: _followUp,
+          );
       if (!mounted) return;
       messenger.showSnackBar(
-        const SnackBar(content: Text('Prescription sent — added to the patient’s tracker')),
+        const SnackBar(
+          content: Text('Prescription sent — added to the patient’s tracker'),
+        ),
       );
       // Clear rather than pop: the doctor stays with the patient they are
       // seeing, and the record behind this form has just changed.
@@ -167,257 +180,343 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
       appBar: AppBar(title: const Text('Patient Profile')),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Could not load patient'),
-              const SizedBox(height: AppSpacing.sm),
-              OutlinedButton(
-                onPressed: () => ref.invalidate(patientSummaryProvider(widget.patientId)),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-        data: (p) => ListView(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.xl),
-          children: [
-            _ProfileHeader(patient: p),
-            const SizedBox(height: AppSpacing.lg),
-
-            // The read side of the record — health metrics, the trend graph,
-            // HbA1c history, uploaded reports, alerts and the dietician
-            // assignment — above the actions so the doctor sees the patient's
-            // status before prescribing. (This whole block was orphaned by an
-            // earlier refactor; the data was fetched but never shown.)
-            PatientRecordSections(summary: p, patientId: widget.patientId),
-            const SizedBox(height: AppSpacing.lg),
-
-            const Text('Clinical Actions', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
-            const SizedBox(height: AppSpacing.sm),
-            const Divider(height: 1),
-            const SizedBox(height: AppSpacing.md),
-
-            _ActionCard(
-              icon: Icons.assignment_outlined,
-              title: 'Medication',
+        error:
+            (_, _) => Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // What the patient is already on, before the box for what to
-                  // add. Prescribing without it is prescribing blind — a repeat
-                  // or an interaction is invisible until the patient reports it.
-                  _CurrentMedicines(patientId: widget.patientId),
-                  for (var i = 0; i < _meds.length; i++)
-                    _MedFields(
-                      draft: _meds[i],
-                      onChanged: () => setState(() {}),
-                      onRemove: _meds.length > 1
-                          ? () => setState(() => _meds.removeAt(i).dispose())
-                          : null,
-                    ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        foregroundColor: AppColors.primary,
-                      ),
-                      onPressed: () => setState(() => _meds.add(_MedDraft())),
-                      icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
-                      label: const Text(
-                        'Add another medication',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                      ),
-                    ),
+                  const Text('Could not load patient'),
+                  const SizedBox(height: AppSpacing.sm),
+                  OutlinedButton(
+                    onPressed:
+                        () => ref.invalidate(
+                          patientSummaryProvider(widget.patientId),
+                        ),
+                    child: const Text('Retry'),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
+        data:
+            (p) => ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.xl,
+              ),
+              children: [
+                _ProfileHeader(patient: p),
+                const SizedBox(height: AppSpacing.lg),
 
-            _ActionCard(
-              icon: Icons.biotech_outlined,
-              title: 'Lab Tests',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Already ordered, and already come back. Without these the
-                  // doctor re-ordered tests that were outstanding and could not
-                  // see the report the patient had already uploaded.
-                  _TestHistory(summary: p),
-                  // An add control, not a search: what is typed here becomes a
-                  // new chip. The leading + says so; a magnifier would promise
-                  // a lookup that does not exist.
-                  Row(
+                // The read side of the record — health metrics, the trend graph,
+                // HbA1c history, uploaded reports, alerts and the dietician
+                // assignment — above the actions so the doctor sees the patient's
+                // status before prescribing. (This whole block was orphaned by an
+                // earlier refactor; the data was fetched but never shown.)
+                PatientRecordSections(summary: p, patientId: widget.patientId),
+                const SizedBox(height: AppSpacing.lg),
+
+                const Text(
+                  'Clinical Actions',
+                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                const Divider(height: 1),
+                const SizedBox(height: AppSpacing.md),
+
+                _ActionCard(
+                  icon: Icons.assignment_outlined,
+                  title: 'Medication',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: _PlainField(
-                          controller: _labSearch,
-                          hint: 'Add another test',
-                          icon: Icons.add_rounded,
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (_) => _addCustomTest(),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      IconButton.filledTonal(
-                        onPressed: _addCustomTest,
-                        icon: const Icon(Icons.add_rounded),
+                      // What the patient is already on, before the box for what to
+                      // add. Prescribing without it is prescribing blind — a repeat
+                      // or an interaction is invisible until the patient reports it.
+                      _CurrentMedicines(patientId: widget.patientId),
+                      _Collapsible(
+                        title: 'Add medication',
+                        subtitle: 'Prescribe a new medicine',
+                        icon: Icons.add_circle_outline_rounded,
+                        children: [
+                          for (var i = 0; i < _meds.length; i++)
+                            _MedFields(
+                              draft: _meds[i],
+                              onChanged: () => setState(() {}),
+                              onRemove:
+                                  _meds.length > 1
+                                      ? () => setState(
+                                        () => _meds.removeAt(i).dispose(),
+                                      )
+                                      : null,
+                            ),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                foregroundColor: AppColors.primary,
+                              ),
+                              onPressed:
+                                  () => setState(() => _meds.add(_MedDraft())),
+                              icon: const Icon(
+                                Icons.add_circle_outline_rounded,
+                                size: 20,
+                              ),
+                              label: const Text(
+                                'Add another medication',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  // The diabetes lab catalog, grouped by category. The doctor
-                  // orders at the PANEL level; each panel's sub-tests are shown
-                  // beneath the selection so "what the report includes" is clear.
-                  for (final entry in labCatalogByCategory().entries) ...[
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2, bottom: 6),
-                      child: Text(
-                        entry.key.toUpperCase(),
-                        style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant),
-                      ),
-                    ),
-                    Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.sm,
-                      children: [
-                        for (final panel in entry.value)
-                          _TestChip(
-                            label: panel.name,
-                            selected: _selectedTests.contains(panel.name),
-                            onTap: () => setState(() {
-                              if (!_selectedTests.remove(panel.name)) _selectedTests.add(panel.name);
-                            }),
+                ),
+                const SizedBox(height: AppSpacing.md),
+
+                _ActionCard(
+                  icon: Icons.biotech_outlined,
+                  title: 'Lab Tests',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Already ordered, and already come back. Without these the
+                      // doctor re-ordered tests that were outstanding and could not
+                      // see the report the patient had already uploaded.
+                      _TestHistory(summary: p),
+                      _Collapsible(
+                        title: 'Add tests',
+                        subtitle: 'Order from the catalog or type your own',
+                        icon: Icons.add_circle_outline_rounded,
+                        children: [
+                          // An add control, not a search: what is typed here becomes a
+                          // new chip. The leading + says so; a magnifier would promise
+                          // a lookup that does not exist.
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _PlainField(
+                                  controller: _labSearch,
+                                  hint: 'Add another test',
+                                  icon: Icons.add_rounded,
+                                  textInputAction: TextInputAction.done,
+                                  onSubmitted: (_) => _addCustomTest(),
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              IconButton.filledTonal(
+                                onPressed: _addCustomTest,
+                                icon: const Icon(Icons.add_rounded),
+                              ),
+                            ],
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                  ],
-                  if (_customTests.isNotEmpty)
-                    Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.sm,
-                      children: [
-                        for (final test in _customTests)
-                          _TestChip(
-                            label: test,
-                            selected: _selectedTests.contains(test),
-                            onTap: () => setState(() {
-                              if (!_selectedTests.remove(test)) _selectedTests.add(test);
-                            }),
-                          ),
-                      ],
-                    ),
-                  // Sub-tests under each selected panel.
-                  for (final t in _selectedTests)
-                    if ((labPanelFor(t)?.analytes ?? const []).isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(Icons.subdirectory_arrow_right_rounded,
-                                size: 15, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                            const SizedBox(width: 4),
-                            Expanded(
+                          const SizedBox(height: AppSpacing.md),
+                          // The diabetes lab catalog, grouped by category. The doctor
+                          // orders at the PANEL level; each panel's sub-tests are shown
+                          // beneath the selection so "what the report includes" is clear.
+                          for (final entry
+                              in labCatalogByCategory().entries) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2, bottom: 6),
                               child: Text(
-                                '$t: ${labPanelFor(t)!.analytes.join(' · ')}',
+                                entry.key.toUpperCase(),
                                 style: TextStyle(
-                                    fontSize: 11.5,
-                                    height: 1.3,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                  color:
+                                      Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                ),
                               ),
                             ),
+                            Wrap(
+                              spacing: AppSpacing.sm,
+                              runSpacing: AppSpacing.sm,
+                              children: [
+                                for (final panel in entry.value)
+                                  _TestChip(
+                                    label: panel.name,
+                                    selected: _selectedTests.contains(
+                                      panel.name,
+                                    ),
+                                    onTap:
+                                        () => setState(() {
+                                          if (!_selectedTests.remove(
+                                            panel.name,
+                                          ))
+                                            _selectedTests.add(panel.name);
+                                        }),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
                           ],
+                          if (_customTests.isNotEmpty)
+                            Wrap(
+                              spacing: AppSpacing.sm,
+                              runSpacing: AppSpacing.sm,
+                              children: [
+                                for (final test in _customTests)
+                                  _TestChip(
+                                    label: test,
+                                    selected: _selectedTests.contains(test),
+                                    onTap:
+                                        () => setState(() {
+                                          if (!_selectedTests.remove(test))
+                                            _selectedTests.add(test);
+                                        }),
+                                  ),
+                              ],
+                            ),
+                          // Sub-tests under each selected panel.
+                          for (final t in _selectedTests)
+                            if ((labPanelFor(t)?.analytes ?? const [])
+                                .isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(
+                                      Icons.subdirectory_arrow_right_rounded,
+                                      size: 15,
+                                      color:
+                                          Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        '$t: ${labPanelFor(t)!.analytes.join(' · ')}',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          height: 1.3,
+                                          color:
+                                              Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+
+                _ActionCard(
+                  icon: Icons.edit_note_rounded,
+                  title: 'Clinical Advice',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Previous diagnoses + advice for this patient, tap to reuse —
+                      // the reference the Clinical Advice card was missing (Medication
+                      // has "currently on", Lab Tests has its history; this is the
+                      // equivalent for advice).
+                      _PreviousAdvice(
+                        patientId: widget.patientId,
+                        onReuseDiagnosis:
+                            (t) => setState(() => _diagnosis.text = t),
+                        onReuseAdvice: (t) => setState(() => _advice.text = t),
+                      ),
+                      const _FieldLabel('Diagnosis'),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: _diagnosis,
+                        minLines: 1,
+                        maxLines: 4,
+                        maxLength: 600,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          hintText:
+                              'e.g. Type 2 DM, Hypertension (one per line)',
+                          counterText: '',
                         ),
                       ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.sm),
+                      const _FieldLabel('General advice'),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: _advice,
+                        minLines: 3,
+                        maxLines: 8,
+                        maxLength: 2000,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          hintText:
+                              'Diet, lifestyle and general instructions...',
+                          counterText: '',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
 
-            _ActionCard(
-              icon: Icons.edit_note_rounded,
-              title: 'Clinical Advice',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _FieldLabel('Diagnosis'),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _diagnosis,
-                    minLines: 1,
-                    maxLines: 4,
-                    maxLength: 600,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(
-                      hintText: 'e.g. Type 2 DM, Hypertension (one per line)',
-                      counterText: '',
+                _ActionCard(
+                  icon: Icons.calendar_month_outlined,
+                  title: 'Follow-up',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _FieldLabel('Next Visit'),
+                      const SizedBox(height: 6),
+                      _DateField(
+                        date: _followUp,
+                        onTap: _pickFollowUp,
+                        onClear: () => setState(() => _followUp = null),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+
+                SizedBox(
+                  height: AppSpacing.minTapTarget + 12,
+                  child: FilledButton.icon(
+                    onPressed: _saving ? null : _send,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon:
+                        _saving
+                            ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: Colors.white,
+                              ),
+                            )
+                            : const Icon(Icons.send_rounded, size: 21),
+                    label: const Text(
+                      'Send Prescription',
+                      style: TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.sm),
-                  const _FieldLabel('General advice'),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _advice,
-                    minLines: 3,
-                    maxLines: 8,
-                    maxLength: 2000,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(
-                      hintText: 'Diet, lifestyle and general instructions...',
-                      counterText: '',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            _ActionCard(
-              icon: Icons.calendar_month_outlined,
-              title: 'Follow-up',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _FieldLabel('Next Visit'),
-                  const SizedBox(height: 6),
-                  _DateField(date: _followUp, onTap: _pickFollowUp, onClear: () => setState(() => _followUp = null)),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            SizedBox(
-              height: AppSpacing.minTapTarget + 12,
-              child: FilledButton.icon(
-                onPressed: _saving ? null : _send,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                icon: _saving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
-                      )
-                    : const Icon(Icons.send_rounded, size: 21),
-                label: const Text(
-                  'Send Prescription',
-                  style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),
-                ),
-              ),
+              ],
             ),
-          ],
-        ),
       ),
     );
   }
@@ -430,7 +529,8 @@ class _ProfileHeader extends StatelessWidget {
 
   final PatientSummary patient;
 
-  static String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+  static String _cap(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
   static String? _diabetesLabel(String? t) => switch (t) {
     'type1' => 'Type 1 DM',
@@ -471,7 +571,12 @@ class _ProfileHeader extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              UserAvatar(name: p.name, avatarUrl: p.avatarUrl, accent: AppColors.accentOn(context), size: 62),
+              UserAvatar(
+                name: p.name,
+                avatarUrl: p.avatarUrl,
+                accent: AppColors.accentOn(context),
+                size: 62,
+              ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
@@ -479,14 +584,20 @@ class _ProfileHeader extends StatelessWidget {
                   children: [
                     Text(
                       p.name,
-                      style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, height: 1.2),
+                      style: const TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       meta,
                       style: TextStyle(
                         fontSize: 13.5,
-                        color: AppColors.accentOn(context).withValues(alpha: 0.75),
+                        color: AppColors.accentOn(
+                          context,
+                        ).withValues(alpha: 0.75),
                       ),
                     ),
                     if ((p.address ?? '').trim().isNotEmpty) ...[
@@ -497,7 +608,9 @@ class _ProfileHeader extends StatelessWidget {
                           Icon(
                             Icons.home_outlined,
                             size: 14,
-                            color: AppColors.accentOn(context).withValues(alpha: 0.7),
+                            color: AppColors.accentOn(
+                              context,
+                            ).withValues(alpha: 0.7),
                           ),
                           const SizedBox(width: 4),
                           Expanded(
@@ -508,7 +621,9 @@ class _ProfileHeader extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 12.5,
                                 height: 1.3,
-                                color: AppColors.accentOn(context).withValues(alpha: 0.7),
+                                color: AppColors.accentOn(
+                                  context,
+                                ).withValues(alpha: 0.7),
                               ),
                             ),
                           ),
@@ -526,10 +641,17 @@ class _ProfileHeader extends StatelessWidget {
                           icon: atRisk ? Icons.warning_amber_rounded : null,
                           label: '${_cap(band)} Risk',
                           fg: atRisk ? AppColors.danger : AppColors.primary,
-                          bg: atRisk ? AppColors.dangerBgOn(context) : Colors.white,
+                          bg:
+                              atRisk
+                                  ? AppColors.dangerBgOn(context)
+                                  : Colors.white,
                         ),
                         if (diabetes != null)
-                          _HeaderPill(label: diabetes, fg: AppColors.primary, bg: Colors.white),
+                          _HeaderPill(
+                            label: diabetes,
+                            fg: AppColors.primary,
+                            bg: Colors.white,
+                          ),
                       ],
                     ),
                   ],
@@ -546,26 +668,43 @@ class _ProfileHeader extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   icon: const Icon(Icons.call_rounded, size: 19),
-                  label: const Text('Call', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                  label: const Text(
+                    'Call',
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () => context.push('/clinician/patients/${p.id}/thread', extra: p.name),
+                  onPressed:
+                      () => context.push(
+                        '/clinician/patients/${p.id}/thread',
+                        extra: p.name,
+                      ),
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   icon: const Icon(Icons.chat_bubble_outline_rounded, size: 19),
                   label: const Text(
                     'Message',
-                    style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -576,28 +715,52 @@ class _ProfileHeader extends StatelessWidget {
             children: [
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () => context.push('/clinician/patients/${p.id}/consult', extra: p.name),
+                  onPressed:
+                      () => context.push(
+                        '/clinician/patients/${p.id}/consult',
+                        extra: p.name,
+                      ),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   icon: const Icon(Icons.medical_services_outlined, size: 19),
-                  label: const Text('Consult', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                  label: const Text(
+                    'Consult',
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () => context.push('/clinician/patients/${p.id}/prescriptions', extra: p.name),
+                  onPressed:
+                      () => context.push(
+                        '/clinician/patients/${p.id}/prescriptions',
+                        extra: p.name,
+                      ),
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   icon: const Icon(Icons.receipt_long_outlined, size: 19),
-                  label: const Text('Prescription', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                  label: const Text(
+                    'Prescription',
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -609,27 +772,47 @@ class _ProfileHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               child: InkWell(
                 borderRadius: BorderRadius.circular(10),
-                onTap: () => _showComplaintSheet(context, p.chiefComplaint!.trim()),
+                onTap:
+                    () =>
+                        _showComplaintSheet(context, p.chiefComplaint!.trim()),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   child: Row(
                     children: [
-                      Icon(Icons.assignment_outlined, size: 16, color: AppColors.primary),
+                      Icon(
+                        Icons.assignment_outlined,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text.rich(
                           TextSpan(
                             children: [
-                              const TextSpan(text: 'Complaint   ', style: TextStyle(fontWeight: FontWeight.w800)),
+                              const TextSpan(
+                                text: 'Complaint   ',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
                               TextSpan(text: p.chiefComplaint!.trim()),
                             ],
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 13.5, height: 1.35, color: Colors.black87),
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            height: 1.35,
+                            color: Colors.black87,
+                          ),
                         ),
                       ),
-                      Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.primary),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
                     ],
                   ),
                 ),
@@ -648,31 +831,48 @@ void _showComplaintSheet(BuildContext context, String text) {
   showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
-    builder: (ctx) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    builder:
+        (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.xl,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.assignment_outlined, color: AppColors.primary),
-                const SizedBox(width: 8),
-                const Text('Presenting complaint', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                Row(
+                  children: [
+                    Icon(Icons.assignment_outlined, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Presenting complaint',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(text, style: const TextStyle(fontSize: 15, height: 1.5)),
               ],
             ),
-            const SizedBox(height: AppSpacing.md),
-            Text(text, style: const TextStyle(fontSize: 15, height: 1.5)),
-          ],
+          ),
         ),
-      ),
-    ),
   );
 }
 
 class _HeaderPill extends StatelessWidget {
-  const _HeaderPill({required this.label, required this.fg, required this.bg, this.icon});
+  const _HeaderPill({
+    required this.label,
+    required this.fg,
+    required this.bg,
+    this.icon,
+  });
 
   final String label;
   final Color fg;
@@ -683,7 +883,10 @@ class _HeaderPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -691,7 +894,14 @@ class _HeaderPill extends StatelessWidget {
             Icon(icon, size: 14, color: fg),
             const SizedBox(width: 4),
           ],
-          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: fg,
+            ),
+          ),
         ],
       ),
     );
@@ -700,8 +910,212 @@ class _HeaderPill extends StatelessWidget {
 
 // ---- Action cards ---------------------------------------------------------
 
+/// A collapsible sub-section inside an action card — the same ExpansionTile
+/// treatment as the "Assistant context" card on the record screen, so the
+/// prescribing form's inputs and the reference history tuck away until wanted.
+class _Collapsible extends StatelessWidget {
+  const _Collapsible({
+    required this.title,
+    this.subtitle,
+    required this.children,
+    this.icon,
+  });
+
+  final String title;
+  final String? subtitle;
+  final List<Widget> children;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 2,
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            0,
+            AppSpacing.md,
+            AppSpacing.md,
+          ),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          leading:
+              icon == null
+                  ? null
+                  : Icon(icon, size: 20, color: scheme.onSurfaceVariant),
+          title: Text(
+            title,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+          ),
+          subtitle:
+              subtitle == null
+                  ? null
+                  : Text(
+                    subtitle!,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+          children: children,
+        ),
+      ),
+    );
+  }
+}
+
+/// Past diagnoses and general advice for this patient, newest first — a
+/// collapsible reference (like the Assistant-context card) shown inside the
+/// Clinical Advice section. Tapping an entry drops it into the field, so the
+/// doctor reuses what they wrote before instead of retyping it.
+class _PreviousAdvice extends ConsumerWidget {
+  const _PreviousAdvice({
+    required this.patientId,
+    required this.onReuseDiagnosis,
+    required this.onReuseAdvice,
+  });
+
+  final String patientId;
+  final ValueChanged<String> onReuseDiagnosis;
+  final ValueChanged<String> onReuseAdvice;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final list =
+        ref.watch(patientPrescriptionsProvider(patientId)).valueOrNull ??
+        const [];
+    final withAdvice =
+        list
+            .where(
+              (rx) =>
+                  rx.diagnosis.isNotEmpty ||
+                  (rx.generalAdvice?.trim().isNotEmpty ?? false),
+            )
+            .toList();
+    if (withAdvice.isEmpty) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: _Collapsible(
+        title: 'Previous advice',
+        subtitle: 'Tap an entry to reuse it',
+        icon: Icons.history_rounded,
+        children: [
+          for (final rx in withAdvice.take(8))
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    rx.issuedOn != null
+                        ? DateFormat('d MMM yyyy').format(rx.issuedOn!)
+                        : '—',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  if (rx.diagnosis.isNotEmpty)
+                    _ReuseLine(
+                      label: 'Dx',
+                      text: rx.diagnosis.join(', '),
+                      onTap: () => onReuseDiagnosis(rx.diagnosis.join('\n')),
+                    ),
+                  if (rx.generalAdvice?.trim().isNotEmpty ?? false)
+                    _ReuseLine(
+                      label: 'Advice',
+                      text: rx.generalAdvice!.trim(),
+                      onTap: () => onReuseAdvice(rx.generalAdvice!.trim()),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One tappable previous-advice line: a small label chip, the text, and a "＋"
+/// that says tapping fills the field with it.
+class _ReuseLine extends StatelessWidget {
+  const _ReuseLine({
+    required this.label,
+    required this.text,
+    required this.onTap,
+  });
+
+  final String label;
+  final String text;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 1, right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: AppColors.accentSoftOn(context),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.accentOn(context),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(fontSize: 13.5, height: 1.35),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Icon(
+              Icons.add_circle_outline_rounded,
+              size: 16,
+              color: AppColors.accentOn(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ActionCard extends StatelessWidget {
-  const _ActionCard({required this.icon, required this.title, required this.child});
+  const _ActionCard({
+    required this.icon,
+    required this.title,
+    required this.child,
+  });
 
   final IconData icon;
   final String title;
@@ -724,11 +1138,20 @@ class _ActionCard extends StatelessWidget {
             children: [
               Icon(icon, size: 21, color: scheme.onSurface),
               const SizedBox(width: AppSpacing.sm),
-              Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.7)),
+          Divider(
+            height: 1,
+            color: scheme.outlineVariant.withValues(alpha: 0.7),
+          ),
           const SizedBox(height: AppSpacing.md),
           child,
         ],
@@ -747,30 +1170,42 @@ class _CurrentMedicines extends ConsumerWidget {
 
   final String patientId;
 
-  Future<void> _stop(BuildContext context, WidgetRef ref, Medication med) async {
+  Future<void> _stop(
+    BuildContext context,
+    WidgetRef ref,
+    Medication med,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Stop ${med.name}?'),
-        content: const Text(
-          'The patient stops being reminded about it from now on. Doses already '
-          'recorded are kept.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Stop it'),
+      builder:
+          (ctx) => AlertDialog(
+            title: Text('Stop ${med.name}?'),
+            content: const Text(
+              'The patient stops being reminded about it from now on. Doses already '
+              'recorded are kept.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Stop it'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
     if (confirmed != true || !context.mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(clinicianRepositoryProvider).stopMedication(patientId, med.id);
+      await ref
+          .read(clinicianRepositoryProvider)
+          .stopMedication(patientId, med.id);
       ref.invalidate(patientMedicationsProvider(patientId));
       messenger.showSnackBar(SnackBar(content: Text('${med.name} stopped')));
     } on ApiException catch (e) {
@@ -784,31 +1219,42 @@ class _CurrentMedicines extends ConsumerWidget {
     final async = ref.watch(patientMedicationsProvider(patientId));
 
     return async.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.only(bottom: AppSpacing.md),
-        child: LinearProgressIndicator(minHeight: 2),
-      ),
+      loading:
+          () => const Padding(
+            padding: EdgeInsets.only(bottom: AppSpacing.md),
+            child: LinearProgressIndicator(minHeight: 2),
+          ),
       // A failure here must not read as "no medicines" — that is the one
       // wrong answer a prescribing screen can give.
-      error: (_, _) => Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-        child: Row(
-          children: [
-            Icon(Icons.error_outline_rounded, size: 17, color: AppColors.dangerOn(context)),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                'Could not load current medicines.',
-                style: TextStyle(fontSize: 13, color: AppColors.dangerOn(context)),
-              ),
+      error:
+          (_, _) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.error_outline_rounded,
+                  size: 17,
+                  color: AppColors.dangerOn(context),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Could not load current medicines.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.dangerOn(context),
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed:
+                      () =>
+                          ref.invalidate(patientMedicationsProvider(patientId)),
+                  child: const Text('Retry'),
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () => ref.invalidate(patientMedicationsProvider(patientId)),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
+          ),
       data: (meds) {
         final active = meds.where((m) => m.isActive).toList();
         return Padding(
@@ -842,7 +1288,10 @@ class _CurrentMedicines extends ConsumerWidget {
               if (active.isEmpty)
                 Text(
                   'Nothing prescribed yet.',
-                  style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 )
               else
                 for (final med in active)
@@ -852,7 +1301,9 @@ class _CurrentMedicines extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: scheme.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+                      border: Border.all(
+                        color: scheme.outlineVariant.withValues(alpha: 0.6),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -861,8 +1312,14 @@ class _CurrentMedicines extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                [med.name, med.strength].where((s) => s.isNotEmpty).join(' '),
-                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                                [
+                                  med.name,
+                                  med.strength,
+                                ].where((s) => s.isNotEmpty).join(' '),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                               const SizedBox(height: 2),
                               Text(
@@ -872,7 +1329,10 @@ class _CurrentMedicines extends ConsumerWidget {
                                   if (med.schedule.isNotEmpty)
                                     med.schedule.map((s) => s.time).join(', '),
                                 ].join(' · '),
-                                style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: scheme.onSurfaceVariant,
+                                ),
                               ),
                             ],
                           ),
@@ -891,19 +1351,6 @@ class _CurrentMedicines extends ConsumerWidget {
                       ],
                     ),
                   ),
-              const SizedBox(height: AppSpacing.sm),
-              Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'ADD NEW',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
             ],
           ),
         );
@@ -946,19 +1393,29 @@ class _TestHistory extends StatelessWidget {
                 for (final t in advised)
                   Chip(
                     avatar: Icon(
-                      hasReport(t) ? Icons.check_circle_rounded : Icons.hourglass_empty_rounded,
+                      hasReport(t)
+                          ? Icons.check_circle_rounded
+                          : Icons.hourglass_empty_rounded,
                       size: 16,
-                      color: hasReport(t)
-                          ? AppColors.successOn(context)
-                          : AppColors.warningOn(context),
+                      color:
+                          hasReport(t)
+                              ? AppColors.successOn(context)
+                              : AppColors.warningOn(context),
                     ),
                     label: Text(
                       t,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     backgroundColor: scheme.surfaceContainerLow,
-                    side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.7)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    side: BorderSide(
+                      color: scheme.outlineVariant.withValues(alpha: 0.7),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
               ],
             ),
@@ -977,7 +1434,12 @@ class _TestHistory extends StatelessWidget {
                     if (r.hasFile && r.isImage)
                       Padding(
                         padding: const EdgeInsets.only(right: AppSpacing.sm),
-                        child: AuthedImage(path: r.photoUrl!, width: 44, height: 44, radius: 8),
+                        child: AuthedImage(
+                          path: r.photoUrl!,
+                          width: 44,
+                          height: 44,
+                          radius: 8,
+                        ),
                       )
                     else
                       Container(
@@ -1000,13 +1462,19 @@ class _TestHistory extends StatelessWidget {
                         children: [
                           Text(
                             r.testName,
-                            style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           Text(
                             r.createdAt == null
                                 ? (r.originalName ?? '')
                                 : DateFormat('d MMM yyyy').format(r.createdAt!),
-                            style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
                         ],
                       ),
@@ -1016,7 +1484,10 @@ class _TestHistory extends StatelessWidget {
               ),
             const SizedBox(height: AppSpacing.sm),
           ],
-          Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+          Divider(
+            height: 1,
+            color: scheme.outlineVariant.withValues(alpha: 0.5),
+          ),
         ],
       ),
     );
@@ -1069,7 +1540,11 @@ class _FieldLabel extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Text(
       text,
-      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: scheme.onSurfaceVariant,
+      ),
     );
   }
 }
@@ -1104,7 +1579,10 @@ class _PlainField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: hint,
         isDense: true,
-        prefixIcon: icon == null ? null : Icon(icon, size: 20, color: scheme.onSurfaceVariant),
+        prefixIcon:
+            icon == null
+                ? null
+                : Icon(icon, size: 20, color: scheme.onSurfaceVariant),
         prefixIconConstraints: const BoxConstraints(minWidth: 42),
         contentPadding: const EdgeInsets.symmetric(vertical: 14),
       ),
@@ -1126,8 +1604,10 @@ class _MedDraft {
   MealRelation relation = MealRelation.after;
   MedRoute route = MedRoute.oral;
 
-  String get shorthand => composeShorthand(frequency: frequency, relation: relation, route: route);
-  String get plain => expandToPlain(frequency: frequency, relation: relation, route: route);
+  String get shorthand =>
+      composeShorthand(frequency: frequency, relation: relation, route: route);
+  String get plain =>
+      expandToPlain(frequency: frequency, relation: relation, route: route);
 
   void dispose() {
     name.dispose();
@@ -1137,7 +1617,11 @@ class _MedDraft {
 }
 
 class _MedFields extends StatelessWidget {
-  const _MedFields({required this.draft, required this.onChanged, required this.onRemove});
+  const _MedFields({
+    required this.draft,
+    required this.onChanged,
+    required this.onRemove,
+  });
 
   final _MedDraft draft;
   final VoidCallback onChanged;
@@ -1180,7 +1664,10 @@ class _MedFields extends StatelessWidget {
                     const SizedBox(height: 6),
                     TextField(
                       controller: draft.dosage,
-                      decoration: const InputDecoration(hintText: 'e.g. 500mg', isDense: true),
+                      decoration: const InputDecoration(
+                        hintText: 'e.g. 500mg',
+                        isDense: true,
+                      ),
                     ),
                   ],
                 ),
@@ -1196,7 +1683,10 @@ class _MedFields extends StatelessWidget {
                       controller: draft.duration,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(hintText: 'e.g. 14', isDense: true),
+                      decoration: const InputDecoration(
+                        hintText: 'e.g. 14',
+                        isDense: true,
+                      ),
                     ),
                   ],
                 ),
@@ -1211,9 +1701,18 @@ class _MedFields extends StatelessWidget {
               // Live composed medical shorthand, e.g. "BDPC" / "TDS AC" / "HS".
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                decoration: BoxDecoration(color: AppColors.accentSoftOn(context), borderRadius: BorderRadius.circular(7)),
-                child: Text(draft.shorthand,
-                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.accentOn(context))),
+                decoration: BoxDecoration(
+                  color: AppColors.accentSoftOn(context),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Text(
+                  draft.shorthand,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.accentOn(context),
+                  ),
+                ),
               ),
             ],
           ),
@@ -1272,9 +1771,14 @@ class _MedFields extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text('Patient sees: ${draft.plain}',
-              style: TextStyle(
-                  fontSize: 12, fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Text(
+            'Patient sees: ${draft.plain}',
+            style: TextStyle(
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
         ],
       ),
     );
@@ -1290,7 +1794,11 @@ String _relLabel(MealRelation r) => switch (r) {
 
 /// A small selectable shorthand chip (frequency / timing / route).
 class _ShChip extends StatelessWidget {
-  const _ShChip({required this.label, required this.selected, required this.onTap});
+  const _ShChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -1300,7 +1808,10 @@ class _ShChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: selected ? AppColors.accentSoftOn(context) : scheme.surfaceContainerLowest,
+      color:
+          selected
+              ? AppColors.accentSoftOn(context)
+              : scheme.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
@@ -1310,7 +1821,10 @@ class _ShChip extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: selected ? AppColors.primary.withValues(alpha: 0.45) : scheme.outlineVariant,
+              color:
+                  selected
+                      ? AppColors.primary.withValues(alpha: 0.45)
+                      : scheme.outlineVariant,
             ),
           ),
           child: Text(
@@ -1330,7 +1844,11 @@ class _ShChip extends StatelessWidget {
 // ---- Lab tests ------------------------------------------------------------
 
 class _TestChip extends StatelessWidget {
-  const _TestChip({required this.label, required this.selected, required this.onTap});
+  const _TestChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -1340,7 +1858,10 @@ class _TestChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: selected ? AppColors.accentSoftOn(context) : scheme.surfaceContainerLowest,
+      color:
+          selected
+              ? AppColors.accentSoftOn(context)
+              : scheme.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -1350,7 +1871,10 @@ class _TestChip extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: selected ? AppColors.primary.withValues(alpha: 0.45) : scheme.outlineVariant,
+              color:
+                  selected
+                      ? AppColors.primary.withValues(alpha: 0.45)
+                      : scheme.outlineVariant,
             ),
           ),
           child: Row(
@@ -1366,7 +1890,11 @@ class _TestChip extends StatelessWidget {
               ),
               if (selected) ...[
                 const SizedBox(width: 6),
-                Icon(Icons.close_rounded, size: 15, color: AppColors.accentOn(context)),
+                Icon(
+                  Icons.close_rounded,
+                  size: 15,
+                  color: AppColors.accentOn(context),
+                ),
               ],
             ],
           ),
@@ -1379,7 +1907,11 @@ class _TestChip extends StatelessWidget {
 // ---- Follow-up ------------------------------------------------------------
 
 class _DateField extends StatelessWidget {
-  const _DateField({required this.date, required this.onTap, required this.onClear});
+  const _DateField({
+    required this.date,
+    required this.onTap,
+    required this.onClear,
+  });
 
   final DateTime? date;
   final VoidCallback onTap;
@@ -1401,10 +1933,13 @@ class _DateField extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                date == null ? 'dd/mm/yyyy' : DateFormat('EEE, d MMM yyyy').format(date!),
+                date == null
+                    ? 'dd/mm/yyyy'
+                    : DateFormat('EEE, d MMM yyyy').format(date!),
                 style: TextStyle(
                   fontSize: 15.5,
-                  color: date == null ? scheme.onSurfaceVariant : scheme.onSurface,
+                  color:
+                      date == null ? scheme.onSurfaceVariant : scheme.onSurface,
                 ),
               ),
             ),
@@ -1413,10 +1948,18 @@ class _DateField extends StatelessWidget {
                 onTap: onClear,
                 child: Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: Icon(Icons.close_rounded, size: 19, color: scheme.onSurfaceVariant),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 19,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ),
-            Icon(Icons.calendar_today_outlined, size: 20, color: scheme.onSurfaceVariant),
+            Icon(
+              Icons.calendar_today_outlined,
+              size: 20,
+              color: scheme.onSurfaceVariant,
+            ),
           ],
         ),
       ),
