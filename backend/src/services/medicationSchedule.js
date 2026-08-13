@@ -9,11 +9,18 @@
  * shorthands (OD/BD/TDS/QID and their word forms). Times are local clock
  * "HH:mm"; the device schedules the actual alarms.
  */
+import { env } from '../config/env.js';
 
 export const DEFAULT_MEAL_TIMES = Object.freeze({ breakfast: '08:00', lunch: '13:30', dinner: '20:30' });
 
-// Minutes to shift a dose relative to its meal.
-const MEAL_OFFSET_MIN = { before_meal: -30, after_meal: 30, with_meal: 0, any: 0 };
+// Minutes to shift a dose relative to its meal. "before"/"after" are a clinic-
+// wide convention set in config (default ∓30); with-meal and any never shift.
+const MEAL_OFFSET_MIN = {
+  before_meal: -env.MEAL_OFFSET_BEFORE_MIN,
+  after_meal: env.MEAL_OFFSET_AFTER_MIN,
+  with_meal: 0,
+  any: 0,
+};
 
 function addMinutes(hhmm, delta) {
   const [h, m] = String(hhmm).split(':').map(Number);

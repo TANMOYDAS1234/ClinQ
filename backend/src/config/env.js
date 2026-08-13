@@ -53,6 +53,14 @@ const schema = z.object({
   // zone, so the schedule is correct no matter what timezone the server runs in
   // (a VPS is often UTC). India is a single zone.
   CLINIC_TZ: z.string().default('Asia/Kolkata'),
+
+  // How many minutes a "before food" / "after food" dose is reminded before or
+  // after the meal. A clinic-wide clinical convention rather than a magic
+  // number — change it here and every schedule (re)computed afterwards uses it.
+  // Existing reminders pick the new value up on the next meal-time edit or
+  // re-prescription (when their times are re-derived).
+  MEAL_OFFSET_BEFORE_MIN: z.coerce.number().min(0).max(180).default(30),
+  MEAL_OFFSET_AFTER_MIN: z.coerce.number().min(0).max(180).default(30),
 });
 
 const parsed = schema.safeParse(process.env);
