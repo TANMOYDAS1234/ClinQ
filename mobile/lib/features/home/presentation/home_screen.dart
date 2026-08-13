@@ -354,6 +354,10 @@ class _FactGrid extends StatelessWidget {
 
     final tiles = <Widget>[
       if (p.conditionLabel != null) _FactCard(label: 'Condition', value: p.conditionLabel!),
+      // The doctor's next-visit instruction — arguably the most useful single
+      // thing on this screen: "when do I come back?".
+      if (care.followUpOn != null)
+        _FactCard(label: 'Next Visit', value: DateFormat('d MMM yyyy').format(care.followUpOn!)),
       if (p.bmi != null || p.weightKg != null || p.heightCm != null)
         _FactCard(
           label: 'BMI / Wt / Ht',
@@ -363,7 +367,15 @@ class _FactGrid extends StatelessWidget {
             if (p.heightCm != null) '${p.heightCm}cm',
           ].join(' / '),
         ),
-      if (p.reviewLabel != null) _FactCard(label: 'Review Interval', value: p.reviewLabel!),
+      if (p.bloodPressure != null)
+        _FactCard(
+          label: 'Blood Pressure',
+          value: '${p.bloodPressure!.label} mmHg',
+          // Red only when above this patient's own target — plain otherwise, so a
+          // number they cannot act on tonight is not an alarm.
+          valueColor: p.bloodPressure!.isHigh ? AppColors.danger : null,
+        ),
+      if (p.reviewLabel != null) _FactCard(label: 'Food-log review', value: p.reviewLabel!),
       if (hba1c != null)
         _FactCard(
           label: 'Last HbA1c',

@@ -7,6 +7,7 @@ class CareSummary {
   const CareSummary({
     required this.profile,
     this.latestHba1c,
+    this.followUpOn,
     this.dietPlan,
     this.medications = const [],
     this.recentFoodLogs = const [],
@@ -14,6 +15,11 @@ class CareSummary {
 
   final CareProfile profile;
   final Hba1cResult? latestHba1c;
+
+  /// The doctor's next-visit instruction — the soonest upcoming prescription
+  /// follow-up date. Null when none is set or it has passed.
+  final DateTime? followUpOn;
+
   final PatientDietPlan? dietPlan;
   final List<CareMedication> medications;
   final List<CareFoodLog> recentFoodLogs;
@@ -23,6 +29,7 @@ class CareSummary {
     latestHba1c: j['latestHba1c'] is Map
         ? Hba1cResult.fromJson(Map<String, dynamic>.from(j['latestHba1c'] as Map))
         : null,
+    followUpOn: DateTime.tryParse(j['followUpOn']?.toString() ?? '')?.toLocal(),
     dietPlan: j['dietPlan'] is Map
         ? PatientDietPlan.fromJson(Map<String, dynamic>.from(j['dietPlan'] as Map))
         : null,
@@ -48,6 +55,7 @@ class CareProfile {
     this.heightCm,
     this.weightKg,
     this.bmi,
+    this.bloodPressure,
     this.allergies = const [],
     this.reviewIntervalDays,
   });
@@ -61,6 +69,10 @@ class CareProfile {
   final int? heightCm;
   final num? weightKg;
   final num? bmi;
+
+  /// The patient's latest recorded blood pressure, or null if none on file.
+  final BloodPressure? bloodPressure;
+
   final List<String> allergies;
   final int? reviewIntervalDays;
 
@@ -101,8 +113,29 @@ class CareProfile {
     heightCm: (j['heightCm'] as num?)?.toInt(),
     weightKg: j['weightKg'] as num?,
     bmi: j['bmi'] as num?,
+    bloodPressure: j['bloodPressure'] is Map
+        ? BloodPressure.fromJson(Map<String, dynamic>.from(j['bloodPressure'] as Map))
+        : null,
     allergies: (j['allergies'] as List?)?.map((e) => e.toString()).toList() ?? const [],
     reviewIntervalDays: (j['reviewIntervalDays'] as num?)?.toInt(),
+  );
+}
+
+/// The patient's latest blood pressure, flagged high against their own targets.
+class BloodPressure {
+  const BloodPressure({required this.systolic, this.diastolic, this.isHigh = false});
+
+  final int systolic;
+  final int? diastolic;
+  final bool isHigh;
+
+  /// "120/80" when both are known, else just the systolic.
+  String get label => diastolic != null ? '$systolic/$diastolic' : '$systolic';
+
+  factory BloodPressure.fromJson(Map<String, dynamic> j) => BloodPressure(
+    systolic: (j['systolic'] as num?)?.toInt() ?? 0,
+    diastolic: (j['diastolic'] as num?)?.toInt(),
+    isHigh: j['isHigh'] == true,
   );
 }
 

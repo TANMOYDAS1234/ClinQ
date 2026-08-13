@@ -12,6 +12,7 @@ import { Hba1cRecord } from '../models/Hba1cRecord.js';
 import { MedicationLog } from '../models/MedicationLog.js';
 import { Medication } from '../models/Medication.js';
 import { VitalRecord } from '../models/VitalRecord.js';
+import { Prescription } from '../models/Prescription.js';
 import { DietPlan } from '../models/DietPlan.js';
 import { FoodLog } from '../models/FoodLog.js';
 import { getClinicSettings } from '../models/ClinicSettings.js';
@@ -99,10 +100,25 @@ router.get(
  * watch half of it arrive.
  */
 async function careSummary(patientId, profile, latestHba1c) {
-  const [latestWeight, plan, medications, foodLogs, settings] = await Promise.all([
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const [latestWeight, latestBp, upcomingFollowUp, plan, medications, foodLogs, settings] = await Promise.all([
     VitalRecord.findOne({ patient: patientId, weightKg: { $ne: null } })
       .sort({ recordedAt: -1 })
       .select('weightKg')
+      .lean(),
+    // Latest recorded blood pressure — a meaningful vital for a patient who may
+    // also be hypertensive, captured at registration and clinic visits.
+    VitalRecord.findOne({ patient: patientId, systolic: { $ne: null } })
+      .sort({ recordedAt: -1 })
+      .select('systolic diastolic')
+      .lean(),
+    // The soonest upcoming follow-up the doctor wrote on a prescription — "when
+    // is my next visit", which a patient most wants to see on their home screen.
+    Prescription.findOne({ patient: patientId, followUpOn: { $gte: startOfToday } })
+      .sort({ followUpOn: 1 })
+      .select('followUpOn')
       .lean(),
     // Only a plan the dietician actually sent. A draft they are still editing
     // is not something the patient should be following.
@@ -133,9 +149,23 @@ async function careSummary(patientId, profile, latestHba1c) {
       heightCm,
       weightKg,
       bmi,
+      bloodPressure:
+        latestBp?.systolic != null
+          ? {
+              systolic: latestBp.systolic,
+              diastolic: latestBp.diastolic ?? null,
+              // Against this patient's own targets, not a textbook threshold.
+              isHigh:
+                latestBp.systolic > (profile?.targets?.systolicMax ?? 140) ||
+                (latestBp.diastolic ?? 0) > (profile?.targets?.diastolicMax ?? 90),
+            }
+          : null,
       allergies: profile?.allergies ?? [],
       reviewIntervalDays: profile?.dietReviewIntervalDays ?? settings.dietReviewIntervalDays,
     },
+    // The doctor's next-visit instruction (soonest upcoming prescription
+    // follow-up), so "when do I come back?" is answered on the home screen.
+    followUpOn: upcomingFollowUp?.followUpOn ?? null,
     latestHba1c: latestHba1c
       ? {
           percentage: latestHba1c.percentage,
