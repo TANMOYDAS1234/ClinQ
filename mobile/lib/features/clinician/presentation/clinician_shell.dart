@@ -34,7 +34,10 @@ class ClinicianShell extends StatelessWidget {
           NavigationDestination(
             icon: Icon(Icons.groups_outlined),
             selectedIcon: Icon(Icons.groups_rounded),
-            label: 'Patients',
+            // 'Care' rather than 'Patients': it pairs with the Nutrition tab as
+            // the clinic's two conversation streams (care vs nutrition), which is
+            // also how the threads are modelled server-side.
+            label: 'Care',
           ),
           NavigationDestination(
             icon: Icon(Icons.restaurant_menu_outlined),

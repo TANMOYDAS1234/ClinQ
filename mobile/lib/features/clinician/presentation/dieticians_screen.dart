@@ -277,41 +277,46 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                                 style: TextStyle(fontSize: 13, height: 1.4, color: scheme.onSurfaceVariant),
                               ),
                               const SizedBox(height: AppSpacing.md),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.accentSoftOn(context),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        code,
-                                        style: const TextStyle(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 1.5,
-                                        ),
-                                      ),
-                                    ),
+                              // Full width and a single line — it used to share a
+                              // row with the Copy button, where the Expanded around
+                              // it collapsed and the code stacked one letter per row.
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentSoftOn(context),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  code,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 2,
                                   ),
-                                  const SizedBox(width: AppSpacing.sm),
-                                  FilledButton.icon(
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: AppColors.primary,
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    onPressed: () {
-                                      Clipboard.setData(ClipboardData(text: code));
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Invite code copied')),
-                                      );
-                                    },
-                                    icon: const Icon(Icons.copy_rounded, size: 18),
-                                    label: const Text('Copy'),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton.icon(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
                                   ),
-                                ],
+                                  onPressed: () {
+                                    Clipboard.setData(ClipboardData(text: code));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Invite code copied')),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.copy_rounded, size: 18),
+                                  label: const Text('Copy invite code'),
+                                ),
                               ),
                             ],
                           ),
