@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../shared/data/upload_repository.dart';
 import '../data/chat_repository.dart';
 import '../domain/chat_message.dart';
 
@@ -41,9 +42,10 @@ class ChatState {
 /// while awaiting the reply, switching between sessions, and starting a fresh
 /// one.
 class ChatController extends StateNotifier<ChatState> {
-  ChatController(this._repository) : super(const ChatState());
+  ChatController(this._repository, this._uploadRepository) : super(const ChatState());
 
   final ChatRepository _repository;
+  final UploadRepository _uploadRepository;
 
   Future<void> send({
     required String text,
@@ -95,6 +97,64 @@ class ChatController extends StateNotifier<ChatState> {
     } on ApiException catch (e) {
       state = state.copyWith(
         messages: state.messages.where((m) => m.id != tempUserId).toList(),
+        isSending: false,
+        error: e,
+      );
+    }
+  }
+
+  /// Sends a voice note with instant feedback.
+  ///
+  /// The just-recorded clip appears as a playable bubble immediately, built from
+  /// the LOCAL file — before the upload starts — so tapping send feels alive.
+  /// THEN it uploads (which transcribes) and sends, and the server's saved copy
+  /// replaces the optimistic one. Two bugs this fixes: the clip used to appear
+  /// only after the upload finished, and briefly as the transcript TEXT (because
+  /// the old path fed the transcript through the text-only optimistic bubble).
+  Future<void> sendVoiceNote({required String localPath, required String language}) async {
+    if (state.isSending) return;
+
+    const tempId = '__temp_voice__';
+    final optimistic = ChatMessage(
+      id: tempId,
+      seq: -1,
+      role: 'user',
+      content: '', // empty, so the bubble renders as a player, not text
+      language: language,
+      urgency: 'routine',
+      createdAt: DateTime.now(),
+      voiceNotes: [VoiceNote(url: '', localPath: localPath)],
+    );
+    state = state.copyWith(
+      isSending: true,
+      clearError: true,
+      messages: [...state.messages, optimistic],
+    );
+
+    try {
+      final asset = await _uploadRepository.uploadImage(
+        path: localPath,
+        filename: localPath.split(RegExp(r'[/\\]')).last,
+        kind: UploadKind.voiceNote,
+      );
+      final result = await _repository.sendMessage(
+        sessionId: state.sessionId,
+        // The transcript becomes the text so deterministic triage reads a spoken
+        // "chest pain" the same as a typed one; empty is fine (the audio is still
+        // stored and sent).
+        text: asset.transcript?.trim() ?? '',
+        language: language,
+        attachments: [asset.id],
+      );
+      final withoutTemp = state.messages.where((m) => m.id != tempId).toList();
+      state = state.copyWith(
+        sessionId: result.sessionId,
+        messages: [...withoutTemp, result.userMessage, result.reply],
+        isSending: false,
+      );
+    } on ApiException catch (e) {
+      state = state.copyWith(
+        messages: state.messages.where((m) => m.id != tempId).toList(),
         isSending: false,
         error: e,
       );
@@ -269,5 +329,8 @@ class ChatController extends StateNotifier<ChatState> {
 
 final StateNotifierProvider<ChatController, ChatState> chatControllerProvider =
     StateNotifierProvider<ChatController, ChatState>((ref) {
-      return ChatController(ref.watch(chatRepositoryProvider));
+      return ChatController(
+        ref.watch(chatRepositoryProvider),
+        ref.watch(uploadRepositoryProvider),
+      );
     });

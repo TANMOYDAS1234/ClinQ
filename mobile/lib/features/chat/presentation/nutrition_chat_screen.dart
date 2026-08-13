@@ -51,6 +51,30 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
   /// two?" impossible to aim.
   ChatMessage? _replyingTo;
 
+  /// Just-recorded voice notes shown instantly (played from the local file)
+  /// while they upload + post + reload — so the patient sees their message land
+  /// at once instead of after three round-trips. Cleared once the reload brings
+  /// the real message back (tracked via [_lastShownCount]).
+  final List<ChatMessage> _pendingVoice = [];
+  int _lastShownCount = 0;
+
+  void _addPendingVoice(String path) {
+    setState(() {
+      _pendingVoice.add(
+        ChatMessage(
+          id: '__pending_${_pendingVoice.length}_${path.hashCode}__',
+          seq: 1 << 30, // sorts to the very end (newest)
+          role: 'user',
+          content: '',
+          language: 'en',
+          urgency: 'routine',
+          createdAt: DateTime.now(),
+          voiceNotes: [VoiceNote(url: '', localPath: path)],
+        ),
+      );
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -229,6 +253,11 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
               child: Stack(
                 children: [
                   async.when(
+                    // Keep the thread (and any optimistic voice bubble) on screen
+                    // during a reload instead of flashing a spinner over the whole
+                    // conversation on every send.
+                    skipLoadingOnReload: true,
+                    skipLoadingOnRefresh: true,
                     loading:
                         () => const Center(child: CircularProgressIndicator()),
                     error:
@@ -248,8 +277,23 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
                           ),
                         ),
                     data: (messages) {
-                      final shown =
+                      var shown =
                           messages.where((m) => m.role != 'system').toList();
+                      // The reload has caught up (a new message arrived), so the
+                      // optimistic voice bubble(s) now have real counterparts —
+                      // drop them. Deferred because we're inside build.
+                      if (_pendingVoice.isNotEmpty &&
+                          shown.length > _lastShownCount) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted && _pendingVoice.isNotEmpty) {
+                            setState(() => _pendingVoice.clear());
+                          }
+                        });
+                      }
+                      _lastShownCount = shown.length;
+                      if (_pendingVoice.isNotEmpty) {
+                        shown = [...shown, ..._pendingVoice];
+                      }
                       if (shown.isEmpty) {
                         return Center(
                           child: Padding(
@@ -359,6 +403,8 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
               sending: _sending,
               onSend: _send,
               onSendAttachment: _sendAttachment,
+              // Show the just-recorded clip immediately, before it uploads.
+              onVoiceRecorded: _addPendingVoice,
             ),
           ],
         ),

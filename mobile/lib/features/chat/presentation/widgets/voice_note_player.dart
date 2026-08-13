@@ -94,21 +94,30 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
 
     setState(() => _loading = true);
     try {
-      final dir = await getTemporaryDirectory();
-      // Cache under the real extension so the decoder is picked correctly. Notes
-      // arrive as audio/mpeg (MP3); older/fallback formats keep their own.
-      final ext = _extForMime(widget.note.mimeType);
-      final cached = File('${dir.path}/vn_${widget.note.url.hashCode}.$ext');
-      _cachedPath = cached.path;
-      // Re-fetch when the cache is missing OR empty — a prior failed attempt
-      // could have left a 0-byte file that would never decode.
-      if (!await cached.exists() || await cached.length() == 0) {
-        final bytes = await ref
-            .read(apiClientProvider)
-            .getBytes('${AppConfig.apiOrigin}${widget.note.url}');
-        if (bytes.isEmpty) throw Exception('empty audio download');
-        await cached.writeAsBytes(bytes, flush: true);
+      final local = widget.note.localPath;
+      final String sourcePath;
+      if (local != null && local.isNotEmpty && await File(local).exists()) {
+        // An optimistic, just-recorded note: the file is already on disk, so play
+        // it straight from there — no download, instant playback before upload.
+        sourcePath = local;
+      } else {
+        final dir = await getTemporaryDirectory();
+        // Cache under the real extension so the decoder is picked correctly.
+        // Notes arrive as audio/mpeg (MP3); older/fallback formats keep their own.
+        final ext = _extForMime(widget.note.mimeType);
+        final cached = File('${dir.path}/vn_${widget.note.url.hashCode}.$ext');
+        // Re-fetch when the cache is missing OR empty — a prior failed attempt
+        // could have left a 0-byte file that would never decode.
+        if (!await cached.exists() || await cached.length() == 0) {
+          final bytes = await ref
+              .read(apiClientProvider)
+              .getBytes('${AppConfig.apiOrigin}${widget.note.url}');
+          if (bytes.isEmpty) throw Exception('empty audio download');
+          await cached.writeAsBytes(bytes, flush: true);
+        }
+        sourcePath = cached.path;
       }
+      _cachedPath = sourcePath;
 
       final player = AudioPlayer();
       // Keep the source ready after a clip finishes rather than releasing it, so
@@ -131,7 +140,7 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
         if (mounted) setState(() => _position = Duration.zero);
       });
 
-      await player.play(DeviceFileSource(cached.path));
+      await player.play(DeviceFileSource(sourcePath));
       // Applied after play(): setting a rate on an unprepared player is a no-op
       // on Android, so a note started at 2× would come out at 1×.
       if (_speed != 1.0) await player.setPlaybackRate(_speed);

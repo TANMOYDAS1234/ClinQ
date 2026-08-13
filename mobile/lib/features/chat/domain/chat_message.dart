@@ -21,12 +21,18 @@ import 'triage.dart';
 /// skimmable, and so a deaf patient or a doctor in a noisy clinic is not shut
 /// out of the conversation.
 class VoiceNote {
-  const VoiceNote({required this.url, this.transcript, this.mimeType});
+  const VoiceNote({required this.url, this.transcript, this.mimeType, this.localPath});
 
   /// Relative `/api/v1/uploads/:id/raw` path. Auth header is attached at play
   /// time, the same as protected images.
   final String url;
   final String? transcript;
+
+  /// Set ONLY on an optimistic, just-recorded note: the local recording file on
+  /// disk. When present the player plays it directly (no download), so the
+  /// bubble is instant and playable the moment the patient hits send — before
+  /// the upload finishes. Server notes leave this null and stream from [url].
+  final String? localPath;
 
   /// The stored recording's content type (e.g. `audio/mpeg`). The player uses
   /// it to cache the download under the right extension — ExoPlayer picks its

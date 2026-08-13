@@ -26,6 +26,7 @@ class CareComposer extends ConsumerStatefulWidget {
     required this.sending,
     required this.onSend,
     required this.onSendAttachment,
+    this.onVoiceRecorded,
   });
 
   final TextEditingController controller;
@@ -35,6 +36,12 @@ class CareComposer extends ConsumerStatefulWidget {
 
   /// Called with the uploaded asset id once an attachment is ready to post.
   final Future<void> Function(String assetId) onSendAttachment;
+
+  /// Fired the instant a voice recording finishes — with the LOCAL file path,
+  /// before the upload begins — so a screen can show an optimistic, playable
+  /// voice bubble immediately instead of waiting for upload + post + refetch.
+  /// Null on surfaces that don't need optimistic voice.
+  final void Function(String path)? onVoiceRecorded;
 
   @override
   ConsumerState<CareComposer> createState() => _CareComposerState();
@@ -130,6 +137,9 @@ class _CareComposerState extends ConsumerState<CareComposer> {
           onCancel: () => setState(() => _recording = false),
           onSend: (path, _) {
             setState(() => _recording = false);
+            // Show it immediately as a playable bubble (from the local file),
+            // before the upload — so the patient sees their message land at once.
+            widget.onVoiceRecorded?.call(path);
             // The server transcribes on upload, and the transcript is what the
             // triage rules read — so a spoken worry escalates exactly as a
             // typed one does.

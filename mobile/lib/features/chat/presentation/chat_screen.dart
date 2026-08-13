@@ -6,11 +6,9 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_config.dart';
-import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../l10n/gen/app_localizations.dart';
-import '../../../shared/data/upload_repository.dart';
 import '../../../shared/providers/locale_provider.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../../shared/widgets/markdown_text.dart';
@@ -180,36 +178,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     }
   }
 
-  /// Uploads a finished recording, then sends it as a message.
-  ///
-  /// The upload returns the transcript, which becomes the message text. That
-  /// ordering matters: the deterministic triage engine reads text, so a patient
-  /// who *says* "chest pain" has to reach the same escalation as one who typed
-  /// it. Sending the audio with no text would route a spoken emergency past the
-  /// rules entirely.
+  /// Hands the recording to the controller, which shows it as a playable bubble
+  /// immediately (from the local file) and only then uploads + sends it. The
+  /// upload still returns the transcript, which becomes the message text
+  /// server-side, so the deterministic triage engine reads a spoken "chest pain"
+  /// the same as a typed one rather than routing a spoken emergency past the
+  /// rules.
   Future<void> _sendVoiceNote(String path) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l10n = AppLocalizations.of(context);
-
-    try {
-      final asset = await ref
-          .read(uploadRepositoryProvider)
-          .uploadImage(
-            path: path,
-            filename: path.split(RegExp(r'[/\\]')).last,
-            kind: UploadKind.voiceNote,
-          );
-
-      // Send the recording even when transcription came back empty. Blocking on
-      // an empty transcript is exactly what stopped voice notes from sending at
-      // all. The audio is stored and the clinic can always play it; when there
-      // ARE words they become the message text so triage and the assistant can
-      // read them.
-      final transcript = asset.transcript?.trim() ?? '';
-      await _send(transcript, [asset.id]);
-    } on ApiException {
-      messenger.showSnackBar(SnackBar(content: Text(l10n.chatVoiceFailed)));
-    }
+    await ref.read(chatControllerProvider.notifier).sendVoiceNote(
+          localPath: path,
+          language: _replyLanguage,
+        );
+    _scrollToBottom();
   }
 
   Future<void> _send(String text, [List<String> attachments = const []]) async {
