@@ -367,6 +367,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Stays in your medical record; only removed from your view';
 
   @override
+  String get chatDeleteForEveryone => 'Delete for everyone';
+
+  @override
+  String get chatDeletedForEveryone => 'This message was deleted';
+
+  @override
+  String get chatDeleteForEveryoneConfirm =>
+      'This message will be removed for everyone in the chat. This can\'t be undone.';
+
+  @override
   String get chatPinned => 'Pinned';
 
   @override

@@ -12,6 +12,7 @@ import '../../../shared/data/upload_repository.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../chat/domain/chat_message.dart';
+import '../../chat/data/chat_repository.dart';
 
 import '../../chat/presentation/widgets/chat_message_bubble.dart';
 import '../../../shared/widgets/chat_background.dart';
@@ -60,6 +61,10 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
   String? _patientAvatarUrl;
   bool _loading = true;
   bool _sending = false;
+
+  /// The message the doctor is quoting in their next reply. Shown as a preview
+  /// bar above the composer until they send or dismiss it.
+  ChatMessage? _replyingTo;
 
   /// True while the doctor is recording a reply, which swaps the composer for
   /// [VoiceRecorderBar] — same treatment as the patient's side.
@@ -202,7 +207,9 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
             // all read "Voice message" rather than the spoken words.
             content: 'Voice message',
             attachments: [asset.id],
+            replyTo: _replyingTo?.id,
           );
+      if (mounted) setState(() => _replyingTo = null);
       await _load();
     } on ApiException {
       messenger.showSnackBar(
@@ -264,8 +271,10 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
             patientId: widget.patientId,
             content: _controller.text.trim(),
             attachments: ids,
+            replyTo: _replyingTo?.id,
           );
       _controller.clear();
+      if (mounted) setState(() => _replyingTo = null);
       await _load();
     } on ApiException {
       messenger.showSnackBar(
@@ -362,8 +371,10 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
             patientId: widget.patientId,
             content: _controller.text.trim(),
             attachments: ids,
+            replyTo: _replyingTo?.id,
           );
       _controller.clear();
+      if (mounted) setState(() => _replyingTo = null);
       await _load();
     } on ApiException {
       messenger.showSnackBar(
@@ -382,11 +393,17 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
 
     setState(() => _sending = true);
     final messenger = ScaffoldMessenger.of(context);
+    final replyTo = _replyingTo?.id;
     try {
       await ref
           .read(clinicianRepositoryProvider)
-          .messagePatient(patientId: widget.patientId, content: text);
+          .messagePatient(
+            patientId: widget.patientId,
+            content: text,
+            replyTo: replyTo,
+          );
       _controller.clear();
+      if (mounted) setState(() => _replyingTo = null);
       // Re-read rather than appending locally, so the doctor sees the message
       // exactly as it was stored — and as the patient will receive it.
       await _load();
@@ -397,6 +414,78 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  /// Pins or unpins, reflecting it at once so the "Pinned" marker appears
+  /// immediately, then confirming with the server (rolling back on failure).
+  Future<void> _togglePin(ChatMessage m) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final next = !m.pinned;
+    setState(() {
+      _messages = [
+        for (final x in _messages)
+          if (x.id == m.id) x.withPinned(next) else x,
+      ];
+    });
+    try {
+      await ref.read(chatRepositoryProvider).setPinned(m.id, next);
+    } on ApiException {
+      if (!mounted) return;
+      setState(() {
+        _messages = [
+          for (final x in _messages)
+            if (x.id == m.id) x.withPinned(!next) else x,
+        ];
+      });
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not update the pin.')),
+      );
+    }
+  }
+
+  /// Hides the message from the doctor's own view (reversible; the record is
+  /// kept). Surfaces the server's reason on refusal (an emergency turn).
+  Future<void> _hide(ChatMessage m) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(chatRepositoryProvider).hideMessage(m.id);
+      if (mounted) {
+        setState(() => _messages = _messages.where((x) => x.id != m.id).toList());
+      }
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  /// Deletes one of the doctor's own turns for everyone — the patient then sees
+  /// a "message deleted" tombstone. The server enforces author-only too.
+  Future<void> _deleteForEveryone(ChatMessage m) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(chatRepositoryProvider).deleteForEveryone(m.id);
+      if (!mounted) return;
+      setState(() {
+        _messages = [
+          for (final x in _messages)
+            if (x.id == m.id) x.withDeletedForEveryone() else x,
+        ];
+      });
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  /// Brings the quoted turn into view when its reply preview is tapped.
+  void _scrollToMessage(String id) {
+    final index = _messages.indexWhere((m) => m.id == id);
+    if (index < 0 || !_scrollController.hasClients || _messages.isEmpty) return;
+    final target =
+        _scrollController.position.maxScrollExtent * (index / _messages.length);
+    _scrollController.animateTo(
+      target.clamp(0.0, _scrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
@@ -489,6 +578,12 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
                   ],
                 ),
               ),
+              // The turn being quoted, shown above the composer until sent.
+              if (_replyingTo != null)
+                _ReplyPreviewBar(
+                  message: _replyingTo!,
+                  onCancel: () => setState(() => _replyingTo = null),
+                ),
               // Recording replaces the composer, as on the patient's side.
               if (_recording)
                 VoiceRecorderBar(
@@ -566,13 +661,30 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
         AppSpacing.md + 48,
       ),
       itemCount: _messages.length,
-      itemBuilder:
-          (context, i) => RepaintBoundary(
-            child: ChatMessageBubble(
-              message: _messages[i],
-              isClinicianView: true,
-            ),
+      itemBuilder: (context, i) {
+        final m = _messages[i];
+        return RepaintBoundary(
+          child: ChatMessageBubble(
+            message: m,
+            isClinicianView: true,
+            repliedTo:
+                m.replyToId == null
+                    ? null
+                    : _messages.where((x) => x.id == m.replyToId).firstOrNull,
+            onQuoteTap:
+                m.replyToId == null
+                    ? null
+                    : () => _scrollToMessage(m.replyToId!),
+            onReply: () => setState(() => _replyingTo = m),
+            onTogglePin: () => _togglePin(m),
+            onHide: () => _hide(m),
+            // Only the doctor's own clinician turns are theirs to delete for
+            // everyone; the server enforces the same author-only rule.
+            onDeleteForEveryone:
+                m.isClinician ? () => _deleteForEveryone(m) : null,
           ),
+        );
+      },
     );
   }
 }
@@ -590,6 +702,65 @@ class _KeyboardInset extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: child,
+    );
+  }
+}
+
+/// The quoted-turn strip shown above the composer while the doctor is replying
+/// to a specific message. Cancelling clears the quote.
+class _ReplyPreviewBar extends StatelessWidget {
+  const _ReplyPreviewBar({required this.message, required this.onCancel});
+
+  final ChatMessage message;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final who = message.isUser ? (message.senderName ?? 'Patient') : 'You';
+    final preview =
+        message.content.trim().isNotEmpty
+            ? message.content.trim()
+            : (message.voiceNotes.isNotEmpty ? 'Voice message' : 'Attachment');
+    return Container(
+      color: scheme.surfaceContainerHigh.withValues(alpha: 0.6),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, 8, AppSpacing.sm, 8),
+      child: Row(
+        children: [
+          Container(width: 3, height: 34, color: AppColors.accentOn(context)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Replying to $who',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accentOn(context),
+                  ),
+                ),
+                Text(
+                  preview,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Cancel reply',
+            icon: const Icon(Icons.close_rounded, size: 20),
+            onPressed: onCancel,
+          ),
+        ],
+      ),
     );
   }
 }

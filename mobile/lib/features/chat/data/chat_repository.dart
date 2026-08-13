@@ -91,6 +91,14 @@ class ChatRepository {
   Future<void> hideMessage(String messageId) async {
     await _client.postJson('/chat/messages/$messageId/hide');
   }
+
+  /// Deletes the message for everyone — the other participants see a "message
+  /// deleted" tombstone in its place. The server allows this only on the
+  /// caller's own, non-emergency messages and returns an error otherwise, so
+  /// callers must surface it.
+  Future<void> deleteForEveryone(String messageId) async {
+    await _client.postJson('/chat/messages/$messageId/delete', body: {'scope': 'everyone'});
+  }
 }
 
 final Provider<ChatRepository> chatRepositoryProvider = Provider<ChatRepository>((ref) {

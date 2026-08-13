@@ -149,12 +149,14 @@ class ClinicianRepository {
     required String patientId,
     required String content,
     List<String> attachments = const [],
+    String? replyTo,
   }) async {
     await _client.postJson(
       '/chat/patients/$patientId/clinician-message',
       body: {
         'content': content,
         if (attachments.isNotEmpty) 'attachments': attachments,
+        if (replyTo != null) 'replyTo': replyTo,
       },
     );
   }
@@ -391,8 +393,20 @@ class ClinicianRepository {
 
   /// Reply into a conversation by session id — works for care AND nutrition, so
   /// the doctor can step into a dietician↔patient nutrition thread to guide it.
-  Future<void> replyInSession(String sessionId, String content) async {
-    await _client.postJson('/doctor/chat-review/$sessionId/message', body: {'content': content});
+  Future<void> replyInSession(
+    String sessionId,
+    String content, {
+    List<String> attachments = const [],
+    String? replyTo,
+  }) async {
+    await _client.postJson(
+      '/doctor/chat-review/$sessionId/message',
+      body: {
+        'content': content,
+        if (attachments.isNotEmpty) 'attachments': attachments,
+        if (replyTo != null) 'replyTo': replyTo,
+      },
+    );
   }
 
   // ---- Knowledge base ---------------------------------------------------

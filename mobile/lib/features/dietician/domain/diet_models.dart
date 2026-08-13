@@ -385,6 +385,10 @@ class DietMessage {
     required this.content,
     this.senderName,
     this.createdAt,
+    this.pinned = false,
+    this.deletedForEveryone = false,
+    this.replyToId,
+    this.replyPreviewContent,
     this.imagePaths = const [],
     this.voiceNotes = const [],
     this.documents = const [],
@@ -395,6 +399,17 @@ class DietMessage {
   final String content;
   final String? senderName;
   final DateTime? createdAt;
+
+  /// Kept at the top of the thread (mirrors the patient/doctor bubbles).
+  final bool pinned;
+
+  /// Deleted for everyone by its author — rendered as a tombstone.
+  final bool deletedForEveryone;
+
+  /// The message this one answers, plus a text preview of it (server-sent), so
+  /// a reply shows its quote even when the original is off-screen.
+  final String? replyToId;
+  final String? replyPreviewContent;
 
   /// Photos on this turn, as relative `/uploads/:id/raw` paths.
   final List<String> imagePaths;
@@ -413,6 +428,12 @@ class DietMessage {
         content: j['content']?.toString() ?? '',
         senderName: j['senderName']?.toString(),
         createdAt: DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal(),
+        pinned: j['pinned'] == true,
+        deletedForEveryone: j['deletedForEveryone'] == true,
+        replyToId: j['replyToId']?.toString(),
+        replyPreviewContent: j['replyPreview'] is Map
+            ? (j['replyPreview'] as Map)['content']?.toString()
+            : null,
         imagePaths: _parts(j)
             .where(isImageAttachment)
             .map((a) => a['url']?.toString() ?? '')

@@ -364,6 +364,16 @@ class AppLocalizationsBn extends AppLocalizations {
       'আপনার মেডিকেল রেকর্ডে থেকে যাবে; শুধু আপনার স্ক্রিন থেকে সরবে';
 
   @override
+  String get chatDeleteForEveryone => 'সবার জন্য মুছুন';
+
+  @override
+  String get chatDeletedForEveryone => 'এই বার্তাটি মুছে ফেলা হয়েছে';
+
+  @override
+  String get chatDeleteForEveryoneConfirm =>
+      'এই বার্তাটি চ্যাটে সবার জন্য সরিয়ে ফেলা হবে। এটি আর ফেরানো যাবে না।';
+
+  @override
   String get chatPinned => 'পিন করা';
 
   @override

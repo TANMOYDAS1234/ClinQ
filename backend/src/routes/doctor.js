@@ -1112,7 +1112,20 @@ router.post(
  */
 router.post(
   '/chat-review/:sessionId/message',
-  validate({ body: z.object({ content: z.string().trim().min(1).max(4000) }) }),
+  validate({
+    body: z
+      .object({
+        // Optional so the doctor can reply into the thread with a photo or voice
+        // note alone, the same as the Patients-tab composer.
+        content: z.string().trim().max(4000).optional().default(''),
+        attachments: z.array(z.string()).max(5).default([]),
+        replyTo: z.string().optional(),
+      })
+      .refine((b) => b.content.trim().length > 0 || b.attachments.length > 0, {
+        message: 'Add a message or attach a photo',
+        path: ['content'],
+      }),
+  }),
   audit('create', 'ChatMessage'),
   asyncHandler(async (req, res) => {
     const session = await ChatSession.findById(req.params.sessionId);
@@ -1127,6 +1140,8 @@ router.post(
       sender: req.user._id,
       content: req.body.content,
       language: session.language,
+      attachments: req.body.attachments,
+      replyTo: req.body.replyTo || undefined,
     });
     await ChatSession.findByIdAndUpdate(session._id, {
       lastMessageAt: message.createdAt,

@@ -111,6 +111,32 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
     }
   }
 
+  /// Hides a message from the patient's own view (delete-for-me). The record is
+  /// kept; the server refuses on an emergency turn.
+  Future<void> _hide(ChatMessage m) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(apiClientProvider).postJson('/chat/messages/${m.id}/hide');
+      ref.invalidate(nutritionThreadProvider);
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  /// Deletes the patient's own message for everyone — the dietician then sees a
+  /// tombstone. The server enforces author-only + the emergency guard.
+  Future<void> _deleteForEveryone(ChatMessage m) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(apiClientProvider)
+          .postJson('/chat/messages/${m.id}/delete', body: {'scope': 'everyone'});
+      ref.invalidate(nutritionThreadProvider);
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _sending) return;
@@ -274,6 +300,10 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
                             message: m,
                             onReply: () => setState(() => _replyingTo = m),
                             onTogglePin: () => _setPinned(m, !m.pinned),
+                            onHide: () => _hide(m),
+                            // Delete-for-everyone only on the patient's own turns.
+                            onDeleteForEveryone:
+                                m.isUser ? () => _deleteForEveryone(m) : null,
                             // Resolve the quoted turn locally when it is still
                             // loaded; the bubble falls back to the server-sent
                             // preview when it is not.

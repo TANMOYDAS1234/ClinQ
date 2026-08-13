@@ -28,6 +28,7 @@ class ChatMessageBubble extends StatelessWidget {
     this.onReply,
     this.onTogglePin,
     this.onHide,
+    this.onDeleteForEveryone,
     this.repliedTo,
     this.onQuoteTap,
     this.onCitationTap,
@@ -51,6 +52,11 @@ class ChatMessageBubble extends StatelessWidget {
 
   /// Hide from this reader's own view. Never a delete â€” see the server route.
   final VoidCallback? onHide;
+
+  /// Delete for everyone â€” tombstones the message for all participants. Passed
+  /// only for the reader's OWN, non-emergency messages; null everywhere else,
+  /// which is also what keeps it off the assistant's turns and other people's.
+  final VoidCallback? onDeleteForEveryone;
 
   /// The message being answered, when this one is a reply.
   final ChatMessage? repliedTo;
@@ -145,6 +151,37 @@ class ChatMessageBubble extends StatelessWidget {
                   onHide!();
                 },
               ),
+            // Delete for everyone — only ever offered on the reader's own,
+            // non-emergency message (the caller decides), and confirmed once,
+            // because unlike Hide the other person loses it too.
+            if (onDeleteForEveryone != null)
+              ListTile(
+                leading: Icon(Icons.delete_outline_rounded, color: AppColors.danger),
+                title: Text(l10n.chatDeleteForEveryone, style: TextStyle(color: AppColors.danger)),
+                onTap: () async {
+                  Navigator.pop(sheet);
+                  if (!context.mounted) return;
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (dialog) => AlertDialog(
+                      title: Text(l10n.chatDeleteForEveryone),
+                      content: Text(l10n.chatDeleteForEveryoneConfirm),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialog, false),
+                          child: Text(l10n.commonCancel),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialog, true),
+                          style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+                          child: Text(l10n.chatDeleteForEveryone),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) onDeleteForEveryone!();
+                },
+              ),
           ],
         ),
       ),
@@ -162,6 +199,37 @@ class ChatMessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+
+    // Deleted for everyone: a muted tombstone in place of the turn. The server
+    // has already withheld the words, files and quote; nothing here is
+    // long-pressable, because there is nothing left to act on.
+    if (message.deletedForEveryone) {
+      final scheme = Theme.of(context).colorScheme;
+      final mine = isClinicianView ? message.isClinician : message.isUser;
+      return Align(
+        alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: AppSpacing.md),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.block_rounded, size: 15, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 7),
+              Text(
+                l10n.chatDeletedForEveryone,
+                style: TextStyle(fontSize: 14.5, fontStyle: FontStyle.italic, color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     // Safety cards represent a triage verdict about the patient's own message.
     // A clinician's reply is a person talking, so it never renders as one even

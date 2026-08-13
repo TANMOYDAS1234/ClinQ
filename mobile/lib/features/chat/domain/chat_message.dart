@@ -83,6 +83,7 @@ class ChatMessage {
     this.senderName,
     this.senderAvatarUrl,
     this.pinned = false,
+    this.deletedForEveryone = false,
     this.replyToId,
     this.replyPreviewContent,
     this.seenByClinicAt,
@@ -101,6 +102,10 @@ class ChatMessage {
   /// Kept at the top of the thread. A dosing instruction otherwise scrolls out
   /// of reach within a day.
   final bool pinned;
+
+  /// Deleted for everyone by its author. The server withholds the words, files
+  /// and quote, so the bubble renders a "message deleted" tombstone in place.
+  final bool deletedForEveryone;
 
   /// The message this one answers, when the sender quoted an earlier turn.
   final String? replyToId;
@@ -172,6 +177,7 @@ class ChatMessage {
       senderName: json['senderName']?.toString(),
       senderAvatarUrl: json['senderAvatarUrl']?.toString(),
       pinned: json['pinned'] == true,
+      deletedForEveryone: json['deletedForEveryone'] == true,
       replyToId: json['replyToId']?.toString(),
       replyPreviewContent: json['replyPreview'] is Map
           ? (json['replyPreview'] as Map)['content']?.toString()
@@ -252,6 +258,7 @@ class ChatMessage {
     senderName: senderName,
     senderAvatarUrl: senderAvatarUrl,
     pinned: pinned,
+    deletedForEveryone: deletedForEveryone,
     replyToId: replyToId,
     replyPreviewContent: replyPreviewContent,
     seenByClinicAt: seenByClinicAt,
@@ -276,12 +283,37 @@ class ChatMessage {
     senderName: senderName,
     senderAvatarUrl: senderAvatarUrl,
     pinned: value,
+    deletedForEveryone: deletedForEveryone,
     replyToId: replyToId,
     replyPreviewContent: replyPreviewContent,
     seenByClinicAt: seenByClinicAt,
     attachmentPaths: attachmentPaths,
     voiceNotes: voiceNotes,
     documents: documents,
+  );
+
+  /// A copy marked deleted-for-everyone, with its words, files and quote
+  /// cleared — so the tombstone shows the instant the author deletes it, before
+  /// the thread reloads and the server's own tombstone arrives.
+  ChatMessage withDeletedForEveryone() => ChatMessage(
+    id: id,
+    seq: seq,
+    role: role,
+    content: '',
+    language: language,
+    urgency: urgency,
+    isFallback: isFallback,
+    createdAt: createdAt,
+    senderName: senderName,
+    senderAvatarUrl: senderAvatarUrl,
+    pinned: false,
+    deletedForEveryone: true,
+    replyToId: null,
+    replyPreviewContent: null,
+    seenByClinicAt: seenByClinicAt,
+    attachmentPaths: const [],
+    voiceNotes: const [],
+    documents: const [],
   );
 
   ChatMessage copyWith({List<Citation>? citations, Triage? triage}) {

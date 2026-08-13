@@ -56,10 +56,19 @@ class DieticianRepository {
     return items.whereType<Map<String, dynamic>>().map(FoodLogEntry.fromJson).toList();
   }
 
-  Future<void> sendMessage(String patientId, {String content = '', List<String> attachments = const []}) async {
+  Future<void> sendMessage(
+    String patientId, {
+    String content = '',
+    List<String> attachments = const [],
+    String? replyTo,
+  }) async {
     await _client.postJson(
       '/dietician/patients/$patientId/message',
-      body: {'content': content, 'attachments': attachments},
+      body: {
+        'content': content,
+        'attachments': attachments,
+        if (replyTo != null) 'replyTo': replyTo,
+      },
     );
   }
 }

@@ -373,35 +373,62 @@ router.get(
       .limit(300)
       .populate('sender', 'name avatarAssetId')
       .populate('attachments', 'kind mimeType transcript originalName sizeBytes')
+      .populate('replyTo', 'content role')
       .lean();
 
     res.json({
-      items: messages.map((m) => ({
-        id: String(m._id),
-        role: m.role,
-        content: m.content ?? '',
-        // The same shape the patient's own thread sends. Bare ids left the
-        // dietician's screen unable to tell a food photo from a voice note
-        // from a PDF, so it rendered all three as the words "1 attachment" —
-        // in the one conversation whose whole point is looking at food.
-        attachments: (m.attachments ?? []).map((a) => {
-          const id = (a?._id ?? a).toString?.() ?? a;
+      items: messages.map((m) => {
+        // Deleted for everyone: a tombstone, same as the patient/doctor threads.
+        if (m.deletedForEveryoneAt) {
           return {
-            id,
-            url: `/api/v1/uploads/${id}/raw`,
-            kind: a?.kind ?? null,
-            mimeType: a?.mimeType ?? null,
-            originalName: a?.originalName ?? null,
-            sizeBytes: a?.sizeBytes ?? null,
-            transcript: a?.transcript ?? null,
+            id: String(m._id),
+            role: m.role,
+            content: '',
+            attachments: [],
+            senderName: m.sender?.name ?? null,
+            deletedForEveryone: true,
+            pinned: false,
+            replyToId: null,
+            replyPreview: null,
+            createdAt: m.createdAt,
           };
-        }),
-        senderName: m.sender?.name ?? null,
-        senderAvatarUrl: m.sender?.avatarAssetId
-          ? `/api/v1/uploads/${m.sender.avatarAssetId}/raw`
-          : null,
-        createdAt: m.createdAt,
-      })),
+        }
+        return {
+          id: String(m._id),
+          role: m.role,
+          content: m.content ?? '',
+          deletedForEveryone: false,
+          // Pin / reply state, so the dietician's screen can show and act on
+          // them the same way the patient and doctor threads do.
+          pinned: Boolean(m.pinnedAt),
+          replyToId: m.replyTo ? String(m.replyTo._id ?? m.replyTo) : null,
+          replyPreview:
+            m.replyTo && typeof m.replyTo === 'object' && m.replyTo.content != null
+              ? { content: String(m.replyTo.content).slice(0, 160), role: m.replyTo.role ?? null }
+              : null,
+          // The same shape the patient's own thread sends. Bare ids left the
+          // dietician's screen unable to tell a food photo from a voice note
+          // from a PDF, so it rendered all three as the words "1 attachment" —
+          // in the one conversation whose whole point is looking at food.
+          attachments: (m.attachments ?? []).map((a) => {
+            const id = (a?._id ?? a).toString?.() ?? a;
+            return {
+              id,
+              url: `/api/v1/uploads/${id}/raw`,
+              kind: a?.kind ?? null,
+              mimeType: a?.mimeType ?? null,
+              originalName: a?.originalName ?? null,
+              sizeBytes: a?.sizeBytes ?? null,
+              transcript: a?.transcript ?? null,
+            };
+          }),
+          senderName: m.sender?.name ?? null,
+          senderAvatarUrl: m.sender?.avatarAssetId
+            ? `/api/v1/uploads/${m.sender.avatarAssetId}/raw`
+            : null,
+          createdAt: m.createdAt,
+        };
+      }),
     });
   }),
 );
@@ -414,6 +441,8 @@ router.post(
       .object({
         content: z.string().trim().max(4000).optional().default(''),
         attachments: z.array(z.string()).max(5).default([]),
+        // Threaded reply: the message this one answers.
+        replyTo: z.string().optional(),
       })
       .refine((b) => b.content.trim().length > 0 || b.attachments.length > 0, {
         message: 'Add a message or attach a photo',
@@ -424,7 +453,13 @@ router.post(
   asyncHandler(async (req, res) => {
     await requireAssigned(req);
 
-    const message = await postToCareThread(req.params.id, req.user, req.body.content, req.body.attachments);
+    const message = await postToCareThread(
+      req.params.id,
+      req.user,
+      req.body.content,
+      req.body.attachments,
+      req.body.replyTo,
+    );
 
     // Mark the food-log review as done for this cycle, and let the patient know.
     await PatientProfile.updateOne({ user: req.params.id }, { lastDietReviewAt: new Date() });
@@ -439,7 +474,7 @@ router.post(
  * if this is the first thing anyone has said. Shared by the reply box and by
  * "send plan" so both land in the same thread with the same role and sequence.
  */
-async function postToCareThread(patientId, sender, content, attachments = []) {
+async function postToCareThread(patientId, sender, content, attachments = [], replyTo) {
   let session = await ChatSession.findOne({
     patient: patientId,
     kind: 'nutrition',
@@ -465,6 +500,7 @@ async function postToCareThread(patientId, sender, content, attachments = []) {
     content,
     language: session.language,
     attachments,
+    replyTo: replyTo || undefined,
   });
 
   await ChatSession.findByIdAndUpdate(session._id, {

@@ -368,6 +368,16 @@ class AppLocalizationsHi extends AppLocalizations {
       'आपके मेडिकल रिकॉर्ड में रहेगा; केवल आपकी स्क्रीन से हटेगा';
 
   @override
+  String get chatDeleteForEveryone => 'सबके लिए हटाएँ';
+
+  @override
+  String get chatDeletedForEveryone => 'यह संदेश हटा दिया गया';
+
+  @override
+  String get chatDeleteForEveryoneConfirm =>
+      'यह संदेश चैट में सबके लिए हटा दिया जाएगा। इसे पूर्ववत नहीं किया जा सकता।';
+
+  @override
   String get chatPinned => 'पिन किया गया';
 
   @override

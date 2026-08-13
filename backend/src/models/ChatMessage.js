@@ -69,6 +69,15 @@ const chatMessageSchema = new mongoose.Schema(
     /// Hiding is per-person and reversible; the record is untouched.
     hiddenFor: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
+    /// "Delete for everyone" — set only by the message's own author. Like
+    /// hiddenFor, the row and its text are DELIBERATELY kept: the medical record,
+    /// audit log and citation trail must survive. What changes is presentation —
+    /// the serialiser returns a tombstone, so no client renders the original
+    /// words or files. Never allowed on an emergency/alerted message, which is
+    /// the evidence the clinic was paged.
+    deletedForEveryoneAt: { type: Date },
+    deletedForEveryoneBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
     /// When the clinic first opened the thread containing this message. Drives
     /// the patient's "Seen by the clinic" mark — chosen over a typing
     /// indicator, which would promise a reply within seconds that a clinician

@@ -227,6 +227,25 @@ class ChatController extends StateNotifier<ChatState> {
     }
   }
 
+  /// Deletes a message for everyone. Only the patient's own turns qualify (the
+  /// server enforces it too); returns the server's message on refusal. The turn
+  /// is replaced in place with a tombstone rather than removed, so both sides
+  /// keep a "message deleted" marker where it was.
+  Future<String?> deleteForEveryone(String messageId) async {
+    try {
+      await _repository.deleteForEveryone(messageId);
+      state = state.copyWith(
+        messages: [
+          for (final m in state.messages)
+            if (m.id == messageId) m.withDeletedForEveryone() else m,
+        ],
+      );
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
   Future<bool> flagMessage(String messageId) async {
     try {
       await _repository.flagMessage(messageId);

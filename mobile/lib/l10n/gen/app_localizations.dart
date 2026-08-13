@@ -772,6 +772,24 @@ abstract class AppLocalizations {
   /// **'Stays in your medical record; only removed from your view'**
   String get chatHideNote;
 
+  /// No description provided for @chatDeleteForEveryone.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete for everyone'**
+  String get chatDeleteForEveryone;
+
+  /// No description provided for @chatDeletedForEveryone.
+  ///
+  /// In en, this message translates to:
+  /// **'This message was deleted'**
+  String get chatDeletedForEveryone;
+
+  /// No description provided for @chatDeleteForEveryoneConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'This message will be removed for everyone in the chat. This can\'t be undone.'**
+  String get chatDeleteForEveryoneConfirm;
+
   /// No description provided for @chatPinned.
   ///
   /// In en, this message translates to:

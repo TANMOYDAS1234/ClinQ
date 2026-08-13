@@ -153,6 +153,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     if (error != null) messenger.showSnackBar(SnackBar(content: Text(error)));
   }
 
+  Future<void> _deleteForEveryone(ChatMessage message) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final error = await ref
+        .read(chatControllerProvider.notifier)
+        .deleteForEveryone(message.id);
+    if (error != null) messenger.showSnackBar(SnackBar(content: Text(error)));
+  }
+
   /// Dials the clinic through the phone's own dialer.
   ///
   /// Deliberately not an in-app call: a patient who has stopped typing to ring
@@ -409,6 +417,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                                         .read(chatControllerProvider.notifier)
                                         .setPinned(message.id, !message.pinned),
                                 onHide: () => _hide(message),
+                                // Delete for everyone only on the patient's own
+                                // turns — the server enforces the same rule.
+                                onDeleteForEveryone: message.isUser
+                                    ? () => _deleteForEveryone(message)
+                                    : null,
                                 onRetry:
                                     message.isUser
                                         ? null

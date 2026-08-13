@@ -354,6 +354,9 @@ router.post(
         // A clinician can reply with a voice note too — faster between patients,
         // and the patient hears reassurance that text cannot carry.
         attachments: z.array(z.string()).max(5).default([]),
+        // Threaded reply: the message this one answers, so a clinician can quote
+        // the exact symptom they are responding to days later.
+        replyTo: z.string().optional(),
       })
       .refine((b) => b.content.trim().length > 0 || b.attachments.length > 0, {
         message: 'Add a message or attach a photo',
@@ -387,6 +390,7 @@ router.post(
       content: req.body.content,
       language: session.language,
       attachments: req.body.attachments,
+      replyTo: req.body.replyTo || undefined,
     });
 
     await ChatSession.findByIdAndUpdate(session._id, {
@@ -403,6 +407,10 @@ router.post(
     // broken thumbnail instead of a player until the thread reloads.
     if (message.attachments?.length) {
       await message.populate('attachments', 'kind mimeType transcript originalName sizeBytes');
+    }
+    // Populate the quoted turn so the reply comes back with its preview.
+    if (message.replyTo) {
+      await message.populate('replyTo', 'content role');
     }
 
     res.status(201).json({
@@ -711,6 +719,64 @@ router.post(
 );
 
 /**
+ * Delete a message. Two scopes, matching every chat app the patient already
+ * uses:
+ *   - `me`       hides it from the caller's own view only (reversible; the same
+ *                as /hide). Works on any message in a thread they can see.
+ *   - `everyone` tombstones it for all participants. Only the message's OWN
+ *                author may do this — a patient their own turns, a clinician or
+ *                dietician the turns they personally sent; the assistant's turns
+ *                are nobody's to delete, which also protects the audit trail of
+ *                what the AI told the patient. Never allowed on an
+ *                emergency/alerted message. The row and its text stay in the DB
+ *                for the record; the serialiser just stops returning them.
+ */
+router.post(
+  '/messages/:id/delete',
+  requireAuth,
+  validate({ body: z.object({ scope: z.enum(['me', 'everyone']) }) }),
+  audit('update', 'ChatMessage'),
+  asyncHandler(async (req, res) => {
+    const message = await findVisibleMessage(req);
+
+    if (message.triage?.urgency === 'emergency' || message.alert) {
+      throw badRequest(
+        'This message is part of an emergency record and cannot be deleted. It shows the clinic was alerted.',
+      );
+    }
+
+    if (req.body.scope === 'me') {
+      await ChatMessage.updateOne({ _id: message._id }, { $addToSet: { hiddenFor: req.user._id } });
+      return res.status(204).end();
+    }
+
+    if (!isOwnMessage(message, req.user)) {
+      throw badRequest('You can only delete your own messages for everyone.');
+    }
+    // A deleted message can't stay pinned to the top as an empty tombstone.
+    message.deletedForEveryoneAt = new Date();
+    message.deletedForEveryoneBy = req.user._id;
+    message.pinnedAt = null;
+    message.pinnedBy = null;
+    await message.save();
+    res.json({ id: message._id, deletedForEveryone: true });
+  }),
+);
+
+/**
+ * Whether `user` is the author of `message`. A patient owns their own `user`
+ * turns; a clinician/dietician owns the turns they personally sent. Everything
+ * else — the assistant, the system — is nobody's to delete for everyone.
+ */
+function isOwnMessage(message, user) {
+  if (message.role === 'user') return String(message.patient) === String(user._id);
+  if (message.role === 'clinician' || message.role === 'dietician') {
+    return message.sender != null && String(message.sender) === String(user._id);
+  }
+  return false;
+}
+
+/**
  * Loads a message the caller is entitled to act on: their own thread if they
  * are the patient, any patient's if they are clinical staff.
  */
@@ -757,10 +823,32 @@ function mealTypeFromText(text) {
 }
 
 function serialiseMessage(m) {
+  // Deleted for everyone: return only enough to render a "message deleted"
+  // tombstone in place. The words, files and quote are withheld even though the
+  // row still exists for the medical record.
+  if (m.deletedForEveryoneAt) {
+    return {
+      id: m._id,
+      seq: m.seq,
+      role: m.role,
+      senderName: m.sender && typeof m.sender === 'object' ? (m.sender.name ?? null) : null,
+      deletedForEveryone: true,
+      content: '',
+      attachments: [],
+      citations: [],
+      redFlags: [],
+      urgency: 'routine',
+      pinned: false,
+      replyToId: null,
+      replyPreview: null,
+      createdAt: m.createdAt,
+    };
+  }
   return {
     id: m._id,
     seq: m.seq,
     role: m.role,
+    deletedForEveryone: false,
     // Present on clinician turns once populated; null everywhere else.
     senderName: m.sender && typeof m.sender === 'object' ? (m.sender.name ?? null) : null,
     // The clinician's or dietician's own photo, so the patient sees the person
