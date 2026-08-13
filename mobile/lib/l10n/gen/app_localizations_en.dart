@@ -886,6 +886,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get healthAllergiesHint => 'e.g. Penicillin, Sulfa';
 
   @override
+  String get healthMainConcern => 'Main concern';
+
+  @override
+  String get healthMainConcernHint => 'What\'s troubling you most right now';
+
+  @override
   String get healthEmergencyContact => 'Emergency contact';
 
   @override

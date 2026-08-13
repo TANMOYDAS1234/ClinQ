@@ -22,6 +22,7 @@ class HealthDetailsScreen extends ConsumerStatefulWidget {
 class _HealthDetailsScreenState extends ConsumerState<HealthDetailsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _height = TextEditingController();
+  final _complaint = TextEditingController();
   final _allergies = TextEditingController();
   final _contactName = TextEditingController();
   final _contactPhone = TextEditingController();
@@ -40,6 +41,7 @@ class _HealthDetailsScreenState extends ConsumerState<HealthDetailsScreen> {
   @override
   void dispose() {
     _height.dispose();
+    _complaint.dispose();
     _allergies.dispose();
     _contactName.dispose();
     _contactPhone.dispose();
@@ -52,6 +54,7 @@ class _HealthDetailsScreenState extends ConsumerState<HealthDetailsScreen> {
       final p = await ref.read(authRepositoryProvider).getProfile();
       if (!mounted) return;
       _height.text = (p['heightCm'] as num?)?.toString() ?? '';
+      _complaint.text = p['chiefComplaint']?.toString() ?? '';
       _allergies.text = (p['allergies'] as List?)?.join(', ') ?? '';
       final c = p['emergencyContact'];
       if (c is Map) {
@@ -98,6 +101,7 @@ class _HealthDetailsScreenState extends ConsumerState<HealthDetailsScreen> {
     try {
       await ref.read(authRepositoryProvider).updateProfile(
         heightCm: double.tryParse(_height.text.trim()),
+        chiefComplaint: _complaint.text.trim(),
         diagnosedOn: _diagnosedOn == null
             ? null
             : '${_diagnosedOn!.year.toString().padLeft(4, '0')}-'
@@ -175,6 +179,13 @@ class _HealthDetailsScreenState extends ConsumerState<HealthDetailsScreen> {
                     },
                   ),
                   const SizedBox(height: AppSpacing.md),
+                  _field(
+                    controller: _complaint,
+                    label: l10n.healthMainConcern,
+                    hint: l10n.healthMainConcernHint,
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   InkWell(
                     onTap: _pickDiagnosedOn,
                     borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
@@ -233,14 +244,22 @@ class _HealthDetailsScreenState extends ConsumerState<HealthDetailsScreen> {
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
+    int maxLines = 1,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       validator: validator,
+      maxLines: maxLines,
+      textCapitalization:
+          maxLines > 1 ? TextCapitalization.sentences : TextCapitalization.none,
       style: const TextStyle(fontSize: 16),
-      decoration: InputDecoration(labelText: label, hintText: hint),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        alignLabelWithHint: maxLines > 1,
+      ),
     );
   }
 }

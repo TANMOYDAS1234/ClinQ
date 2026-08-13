@@ -335,6 +335,8 @@
   "healthDiagnosedOn": "Diagnosed on",
   "healthAllergies": "Allergies",
   "healthAllergiesHint": "e.g. Penicillin, Sulfa",
+  "healthMainConcern": "Main concern",
+  "healthMainConcernHint": "What's troubling you most right now",
   "healthEmergencyContact": "Emergency contact",
   "healthContactName": "Contact name",
   "healthContactPhone": "Contact phone",

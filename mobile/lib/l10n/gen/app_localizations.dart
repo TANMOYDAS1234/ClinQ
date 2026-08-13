@@ -1774,6 +1774,18 @@ abstract class AppLocalizations {
   /// **'e.g. Penicillin, Sulfa'**
   String get healthAllergiesHint;
 
+  /// No description provided for @healthMainConcern.
+  ///
+  /// In en, this message translates to:
+  /// **'Main concern'**
+  String get healthMainConcern;
+
+  /// No description provided for @healthMainConcernHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s troubling you most right now'**
+  String get healthMainConcernHint;
+
   /// No description provided for @healthEmergencyContact.
   ///
   /// In en, this message translates to:

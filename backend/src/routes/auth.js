@@ -277,6 +277,9 @@ router.patch(
       heightCm: z.number().min(50).max(250).optional(),
       diabetesType: z.enum(['type1', 'type2', 'gestational', 'prediabetes', 'none']).optional(),
       diagnosedOn: z.coerce.date().optional(),
+      // The patient's main concern — captured at registration ("Complaints"),
+      // editable here so they can keep it current. Empty string clears it.
+      chiefComplaint: z.string().trim().max(1000).optional(),
       allergies: z.array(z.string().max(120)).max(30).optional(),
       emergencyContact: z
         .object({ name: z.string().max(120), phone: z.string().max(20), relation: z.string().max(60) })

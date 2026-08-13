@@ -111,6 +111,7 @@ class AuthRepository {
   Future<void> updateProfile({
     double? heightCm,
     String? diagnosedOn,
+    String? chiefComplaint,
     List<String>? allergies,
     Map<String, String>? emergencyContact,
     Map<String, String>? mealTimes,
@@ -120,6 +121,7 @@ class AuthRepository {
       body: {
         if (heightCm != null) 'heightCm': heightCm,
         if (diagnosedOn != null) 'diagnosedOn': diagnosedOn,
+        if (chiefComplaint != null) 'chiefComplaint': chiefComplaint,
         if (allergies != null) 'allergies': allergies,
         if (emergencyContact != null) 'emergencyContact': emergencyContact,
         if (mealTimes != null) 'mealTimes': mealTimes,

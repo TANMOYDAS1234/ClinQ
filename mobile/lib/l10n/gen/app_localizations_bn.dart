@@ -879,6 +879,13 @@ class AppLocalizationsBn extends AppLocalizations {
   String get healthAllergiesHint => 'যেমন পেনিসিলিন, সালফা';
 
   @override
+  String get healthMainConcern => 'মূল সমস্যা';
+
+  @override
+  String get healthMainConcernHint =>
+      'এই মুহূর্তে আপনাকে সবচেয়ে বেশি কী কষ্ট দিচ্ছে';
+
+  @override
   String get healthEmergencyContact => 'জরুরি যোগাযোগ';
 
   @override

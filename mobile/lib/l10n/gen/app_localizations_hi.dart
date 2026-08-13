@@ -887,6 +887,13 @@ class AppLocalizationsHi extends AppLocalizations {
   String get healthAllergiesHint => 'जैसे पेनिसिलिन, सल्फा';
 
   @override
+  String get healthMainConcern => 'मुख्य समस्या';
+
+  @override
+  String get healthMainConcernHint =>
+      'अभी आपको सबसे ज़्यादा क्या परेशान कर रहा है';
+
+  @override
   String get healthEmergencyContact => 'आपातकालीन संपर्क';
 
   @override

@@ -279,6 +279,8 @@
   "healthDiagnosedOn": "রোগ নির্ণয়ের তারিখ",
   "healthAllergies": "অ্যালার্জি",
   "healthAllergiesHint": "যেমন পেনিসিলিন, সালফা",
+  "healthMainConcern": "মূল সমস্যা",
+  "healthMainConcernHint": "এই মুহূর্তে আপনাকে সবচেয়ে বেশি কী কষ্ট দিচ্ছে",
   "healthEmergencyContact": "জরুরি যোগাযোগ",
   "healthContactName": "যোগাযোগের নাম",
   "healthContactPhone": "যোগাযোগের ফোন",

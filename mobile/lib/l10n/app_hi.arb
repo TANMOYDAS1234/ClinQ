@@ -279,6 +279,8 @@
   "healthDiagnosedOn": "निदान की तारीख",
   "healthAllergies": "एलर्जी",
   "healthAllergiesHint": "जैसे पेनिसिलिन, सल्फा",
+  "healthMainConcern": "मुख्य समस्या",
+  "healthMainConcernHint": "अभी आपको सबसे ज़्यादा क्या परेशान कर रहा है",
   "healthEmergencyContact": "आपातकालीन संपर्क",
   "healthContactName": "संपर्क का नाम",
   "healthContactPhone": "संपर्क फ़ोन",
