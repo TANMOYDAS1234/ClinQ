@@ -14,6 +14,7 @@ import '../../auth/presentation/auth_controller.dart';
 import '../../medications/domain/med_shorthand.dart';
 import '../data/clinician_repository.dart';
 import '../domain/advice_catalog.dart';
+import '../domain/clinician_models.dart';
 import '../domain/diagnosis_catalog.dart';
 import '../domain/lab_catalog.dart';
 import 'clinician_providers.dart';
@@ -459,9 +460,60 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
     );
   }
 
+  /// The patient's most recent prescription, or null.
+  PrescriptionSummary? _mostRecentRx() {
+    final list = ref.watch(patientPrescriptionsProvider(widget.patientId)).valueOrNull ?? const [];
+    return list.isEmpty ? null : list.first;
+  }
+
+  /// Pre-fill a medicine row from a previous prescription item — replacing the
+  /// first empty row if there is one, else appending.
+  void _addPreviousMed(PrescribedItem it) {
+    setState(() {
+      final draft = _MedDraft();
+      draft.name.text = it.name;
+      draft.strength.text = it.strength ?? '';
+      draft.duration.text = it.durationDays?.toString() ?? '';
+      draft.frequency = DoseFrequencyX.fromApi(it.frequency);
+      draft.relation = MealRelationX.fromApi(it.relationToMeal);
+      draft.route = MedRouteX.fromApi(it.route);
+      if (_meds.length == 1 && _meds.first.name.text.trim().isEmpty) {
+        _meds.first.dispose();
+        _meds[0] = draft;
+      } else {
+        _meds.add(draft);
+      }
+    });
+  }
+
+  /// Append a previous advice block, skipping lines already present.
+  void _reuseAdvice(String text) {
+    setState(() {
+      final lines = _adviceLines;
+      for (final line in text.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty)) {
+        if (!lines.any((e) => e.toLowerCase() == line.toLowerCase())) lines.add(line);
+      }
+      _advice.text = lines.join('\n');
+    });
+  }
+
+  /// A small "From last prescription" label above a reuse row.
+  Widget _reuseLabel() => Padding(
+        padding: const EdgeInsets.only(top: 4, bottom: 6),
+        child: Row(
+          children: [
+            Icon(Icons.history_rounded, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            const SizedBox(width: 4),
+            Text('From last prescription — tap to reuse',
+                style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ],
+        ),
+      );
+
   // ---- Step 3: Clinical advice ----------------------------------------
   Widget _adviceStep() {
     final labGroups = labCatalogByCategory();
+    final lastRx = _mostRecentRx();
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
@@ -489,6 +541,26 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
         const SizedBox(height: AppSpacing.lg),
         const _StepTitle('Medicines', 'The prescription — at least one needed'),
         const SizedBox(height: AppSpacing.sm),
+        if (lastRx != null && lastRx.items.isNotEmpty) ...[
+          _reuseLabel(),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final it in lastRx.items)
+                ActionChip(
+                  avatar: const Icon(Icons.add, size: 15),
+                  label: Text(
+                    (it.strength != null && it.strength!.isNotEmpty) ? '${it.name} · ${it.strength}' : it.name,
+                    style: const TextStyle(fontSize: 12.5),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => _addPreviousMed(it),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
         for (var i = 0; i < _meds.length; i++)
           _MedCard(
             key: ObjectKey(_meds[i]),
@@ -536,6 +608,23 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
             ],
           ),
         ],
+        if (lastRx != null && lastRx.labTestsAdvised.isNotEmpty) ...[
+          _reuseLabel(),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final t in lastRx.labTestsAdvised)
+                _SelectChip(
+                  label: t,
+                  selected: _labs.contains(t),
+                  onTap: () => setState(() {
+                    _labs.contains(t) ? _labs.remove(t) : _labs.add(t);
+                  }),
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: AppSpacing.sm),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -555,6 +644,17 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
         const SizedBox(height: AppSpacing.lg),
         const _StepTitle('General advice', 'Tap a common one, or type your own'),
         const SizedBox(height: AppSpacing.sm),
+        if (lastRx != null && (lastRx.generalAdvice ?? '').trim().isNotEmpty) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () => _reuseAdvice(lastRx.generalAdvice!),
+              icon: const Icon(Icons.history_rounded, size: 16),
+              label: const Text('Reuse last advice'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
         // Common advice the doctor writes repeatedly — tap to add to the text.
         for (final entry in adviceByCategory().entries) ...[
           Padding(

@@ -211,6 +211,34 @@ class EngagementPoint {
   );
 }
 
+/// One medicine on a past prescription — enough detail to pre-fill a consult
+/// medicine row when the doctor reuses it.
+class PrescribedItem {
+  const PrescribedItem({required this.name, this.strength, this.frequency, this.durationDays, this.relationToMeal, this.route});
+
+  final String name;
+  final String? strength;
+
+  /// The API frequency string, e.g. `BD`, `OD`, `TDS`.
+  final String? frequency;
+  final int? durationDays;
+
+  /// `any` | `before_meal` | `with_meal` | `after_meal`.
+  final String? relationToMeal;
+
+  /// `oral` | `iv` | `sc` | `im` | `topical` | `inhaled`.
+  final String? route;
+
+  factory PrescribedItem.fromJson(Map<String, dynamic> j) => PrescribedItem(
+    name: j['name']?.toString() ?? '',
+    strength: j['strength']?.toString(),
+    frequency: j['frequency']?.toString(),
+    durationDays: (j['durationDays'] as num?)?.toInt(),
+    relationToMeal: j['relationToMeal']?.toString(),
+    route: j['route']?.toString(),
+  );
+}
+
 /// A past prescription/consultation for the record's history
 /// (`GET /patients/:id/prescriptions`).
 class PrescriptionSummary {
@@ -226,6 +254,7 @@ class PrescriptionSummary {
     this.followUpOn,
     this.itemCount = 0,
     this.medicines = const [],
+    this.items = const [],
     this.pdfUrl,
   });
 
@@ -245,6 +274,9 @@ class PrescriptionSummary {
   /// The prescribed medicines as "name (strength)" strings, so the history tile
   /// shows what was actually given, not just how many.
   final List<String> medicines;
+
+  /// The full previous items, for tap-to-reuse in a new consult.
+  final List<PrescribedItem> items;
 
   /// Relative path to the downloadable PDF (`/api/v1/.../prescriptions/:id/pdf`).
   final String? pdfUrl;
@@ -272,6 +304,7 @@ class PrescriptionSummary {
             .where((s) => s.isNotEmpty)
             .toList() ??
         const [],
+    items: (j['items'] as List?)?.whereType<Map<String, dynamic>>().map(PrescribedItem.fromJson).toList() ?? const [],
     pdfUrl: j['pdfUrl']?.toString(),
   );
 }

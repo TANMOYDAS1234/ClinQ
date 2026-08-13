@@ -59,6 +59,19 @@ extension DoseFrequencyX on DoseFrequency {
   bool get isAsNeeded => this == DoseFrequency.prn;
   bool get isStat => this == DoseFrequency.stat;
   bool get isEveryOtherDay => this == DoseFrequency.eod;
+
+  /// Parse a stored `apiFrequency` string back to the enum (for reuse). Falls
+  /// back to once-daily for anything unrecognised (e.g. an old "1-0-1").
+  static DoseFrequency fromApi(String? v) => switch ((v ?? '').trim().toUpperCase()) {
+    'BD' => DoseFrequency.bd,
+    'TDS' => DoseFrequency.tds,
+    'QID' => DoseFrequency.qid,
+    'EOD' || 'QOD' => DoseFrequency.eod,
+    'HS' => DoseFrequency.hs,
+    'PRN' || 'SOS' => DoseFrequency.prn,
+    'STAT' => DoseFrequency.stat,
+    _ => DoseFrequency.od,
+  };
 }
 
 /// A dose's relation to food.
