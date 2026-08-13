@@ -19,6 +19,15 @@ import { FoodLog } from '../models/FoodLog.js';
 import { MediaAsset } from '../models/MediaAsset.js';
 import { paged, pageParams } from '../utils/pagination.js';
 
+// The dietician assistant's one canned line — asked when a food PHOTO arrives
+// with no meal named — in the patient's language, so it is not the single
+// English sentence in an otherwise Bengali or Hindi conversation.
+const WHICH_MEAL_PROMPT = {
+  en: 'Thanks — which meal was this, and roughly when did you eat it? Breakfast, lunch, dinner or a snack. I will file it against the right one.',
+  bn: 'ধন্যবাদ — এটি কোন খাবার ছিল, এবং আপনি আনুমানিক কখন খেয়েছিলেন? সকালের নাস্তা, দুপুরের খাবার, রাতের খাবার নাকি হালকা খাবার? আমি সঠিক জায়গায় নথিভুক্ত করব।',
+  hi: 'धन्यवाद — यह कौन सा भोजन था, और आपने इसे लगभग कब खाया? नाश्ता, दोपहर का खाना, रात का खाना या स्नैक? मैं इसे सही जगह दर्ज कर दूँगा।',
+};
+
 const router = Router();
 
 /**
@@ -565,9 +574,13 @@ router.post(
     // question the two-screen version created — "do I log this or send it?" —
     // and means the dietician sees one item, not the same meal twice.
     if (req.body.attachments.length) {
+      // Only IMAGE attachments are food photos. A voice note or a document must
+      // never be filed as a meal or trigger the "which meal?" question — which
+      // is exactly what happened when a nutrition voice note, stored with kind
+      // 'other', slipped past a kind-only filter and was treated as a photo.
       const photos = await MediaAsset.find({
         _id: { $in: req.body.attachments },
-        kind: { $ne: 'voice_note' },
+        mimeType: { $regex: '^image/' },
       })
         .select('_id')
         .lean();
@@ -633,10 +646,8 @@ router.post(
         patient: patientId,
         seq: message.seq + 1,
         role: 'assistant',
-        content:
-          'Thanks — which meal was this, and roughly when did you eat it? ' +
-          'Breakfast, lunch, dinner or a snack. I will file it against the right one.',
-        language: session.language,
+        content: WHICH_MEAL_PROMPT[replyLanguage] ?? WHICH_MEAL_PROMPT.en,
+        language: replyLanguage,
       });
       await ChatSession.findByIdAndUpdate(session._id, {
         lastMessageAt: assistantMessage.createdAt,

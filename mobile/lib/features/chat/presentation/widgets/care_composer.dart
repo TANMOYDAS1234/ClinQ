@@ -109,13 +109,14 @@ class _CareComposerState extends ConsumerState<CareComposer> {
     await _upload(path, filename);
   }
 
-  Future<void> _upload(String path, String filename) async {
+  Future<void> _upload(String path, String filename, {String kind = UploadKind.other}) async {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _uploading = true);
     try {
       final asset = await ref.read(uploadRepositoryProvider).uploadImage(
         path: path,
         filename: filename,
+        kind: kind,
       );
       await widget.onSendAttachment(asset.id);
     } on ApiException catch (e) {
@@ -142,8 +143,9 @@ class _CareComposerState extends ConsumerState<CareComposer> {
             widget.onVoiceRecorded?.call(path);
             // The server transcribes on upload, and the transcript is what the
             // triage rules read — so a spoken worry escalates exactly as a
-            // typed one does.
-            _upload(path, 'voice-note.m4a');
+            // typed one does. Tagged voice_note so it is stored as audio and
+            // never mistaken for a food photo (which asked "which meal?").
+            _upload(path, 'voice-note.m4a', kind: UploadKind.voiceNote);
           },
         ),
       );
