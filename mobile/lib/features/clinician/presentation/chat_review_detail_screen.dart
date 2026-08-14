@@ -11,6 +11,7 @@ import '../../chat/data/chat_repository.dart';
 import '../../chat/presentation/widgets/care_composer.dart';
 import '../../chat/presentation/widgets/chat_attachment_thumbs.dart';
 import '../../chat/presentation/widgets/chat_document_card.dart';
+import '../../chat/presentation/widgets/jump_to_latest.dart';
 import '../../chat/presentation/widgets/voice_note_player.dart';
 import '../data/clinician_repository.dart';
 import '../domain/chat_review.dart';
@@ -28,10 +29,12 @@ class ChatReviewDetailScreen extends ConsumerStatefulWidget {
   final String sessionId;
 
   @override
-  ConsumerState<ChatReviewDetailScreen> createState() => _ChatReviewDetailScreenState();
+  ConsumerState<ChatReviewDetailScreen> createState() =>
+      _ChatReviewDetailScreenState();
 }
 
-class _ChatReviewDetailScreenState extends ConsumerState<ChatReviewDetailScreen> {
+class _ChatReviewDetailScreenState
+    extends ConsumerState<ChatReviewDetailScreen> {
   final _controller = TextEditingController();
   final _scroll = ScrollController();
 
@@ -43,9 +46,37 @@ class _ChatReviewDetailScreenState extends ConsumerState<ChatReviewDetailScreen>
   /// not on every three-second refetch under the doctor's scrolling.
   bool _didAutoScroll = false;
 
+  /// Whether the newest message has scrolled out of view — drives the
+  /// jump-to-latest button, the same affordance the care thread has.
+  bool _showJump = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
+  /// This list is bottom-anchored (newest last), so "away from latest" means
+  /// there is still a screenful or more below the current offset.
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final away = _scroll.position.maxScrollExtent - _scroll.offset > 300;
+    if (away != _showJump) setState(() => _showJump = away);
+  }
+
+  void _toLatest() {
+    if (!_scroll.hasClients) return;
+    _scroll.animateTo(
+      _scroll.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
   @override
   void dispose() {
     _controller.dispose();
+    _scroll.removeListener(_onScroll);
     _scroll.dispose();
     super.dispose();
   }
@@ -55,12 +86,20 @@ class _ChatReviewDetailScreenState extends ConsumerState<ChatReviewDetailScreen>
   Future<void> _markReviewed() async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(clinicianRepositoryProvider).markReviewed(widget.sessionId);
+      await ref
+          .read(clinicianRepositoryProvider)
+          .markReviewed(widget.sessionId);
       _refresh();
-      ref.invalidate(chatReviewProvider((flagged: true, urgency: null, kind: 'care')));
-      messenger.showSnackBar(const SnackBar(content: Text('Marked as reviewed')));
+      ref.invalidate(
+        chatReviewProvider((flagged: true, urgency: null, kind: 'care')),
+      );
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Marked as reviewed')),
+      );
     } on ApiException {
-      messenger.showSnackBar(const SnackBar(content: Text('Could not update. Please try again.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not update. Please try again.')),
+      );
     }
   }
 
@@ -76,7 +115,9 @@ class _ChatReviewDetailScreenState extends ConsumerState<ChatReviewDetailScreen>
       _controller.clear();
       if (mounted) setState(() => _replyingTo = null);
       _refresh();
-      messenger.showSnackBar(const SnackBar(content: Text('Sent to the patient')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Sent to the patient')),
+      );
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } finally {
@@ -89,12 +130,14 @@ class _ChatReviewDetailScreenState extends ConsumerState<ChatReviewDetailScreen>
   Future<void> _sendAttachment(String assetId) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(clinicianRepositoryProvider).replyInSession(
-        widget.sessionId,
-        _controller.text.trim(),
-        attachments: [assetId],
-        replyTo: _replyingTo?.id,
-      );
+      await ref
+          .read(clinicianRepositoryProvider)
+          .replyInSession(
+            widget.sessionId,
+            _controller.text.trim(),
+            attachments: [assetId],
+            replyTo: _replyingTo?.id,
+          );
       _controller.clear();
       if (mounted) setState(() => _replyingTo = null);
       _refresh();
@@ -144,7 +187,8 @@ class _ChatReviewDetailScreenState extends ConsumerState<ChatReviewDetailScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scroll.hasClients) return;
       final max = _scroll.position.maxScrollExtent;
-      final target = flaggedIndex < 0 ? max : max * (flaggedIndex / messages.length);
+      final target =
+          flaggedIndex < 0 ? max : max * (flaggedIndex / messages.length);
       _scroll.jumpTo(target.clamp(0.0, max));
     });
   }
@@ -158,16 +202,18 @@ class _ChatReviewDetailScreenState extends ConsumerState<ChatReviewDetailScreen>
         title: const Text('Conversation'),
         actions: [
           async.maybeWhen(
-            data: (d) => d.session.flaggedForReview
-                ? Padding(
-                    padding: const EdgeInsets.only(right: AppSpacing.sm),
-                    child: TextButton.icon(
-                      onPressed: _markReviewed,
-                      icon: const Icon(Icons.check_rounded, size: 18),
-                      label: const Text('Reviewed'),
-                    ),
-                  )
-                : const SizedBox.shrink(),
+            data:
+                (d) =>
+                    d.session.flaggedForReview
+                        ? Padding(
+                          padding: const EdgeInsets.only(right: AppSpacing.sm),
+                          child: TextButton.icon(
+                            onPressed: _markReviewed,
+                            icon: const Icon(Icons.check_rounded, size: 18),
+                            label: const Text('Reviewed'),
+                          ),
+                        )
+                        : const SizedBox.shrink(),
             orElse: () => const SizedBox.shrink(),
           ),
         ],
@@ -175,19 +221,26 @@ class _ChatReviewDetailScreenState extends ConsumerState<ChatReviewDetailScreen>
       resizeToAvoidBottomInset: true,
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Could not load conversation'),
-              const SizedBox(height: AppSpacing.sm),
-              OutlinedButton(onPressed: _refresh, child: const Text('Retry')),
-            ],
-          ),
-        ),
+        error:
+            (_, _) => Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Could not load conversation'),
+                  const SizedBox(height: AppSpacing.sm),
+                  OutlinedButton(
+                    onPressed: _refresh,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
         data: (detail) {
           _autoScroll(detail.messages);
-          final pinned = detail.messages.where((m) => m.pinned && !m.deletedForEveryone).toList();
+          final pinned =
+              detail.messages
+                  .where((m) => m.pinned && !m.deletedForEveryone)
+                  .toList();
           return Column(
             children: [
               _SessionHeader(session: detail.session),
@@ -195,30 +248,51 @@ class _ChatReviewDetailScreenState extends ConsumerState<ChatReviewDetailScreen>
               Expanded(
                 // Same WhatsApp-style wallpaper as the Patients-tab thread.
                 child: ChatBackground(
-                  child: ListView.builder(
-                    controller: _scroll,
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    itemCount: detail.messages.length,
-                    itemBuilder: (context, i) {
-                      final m = detail.messages[i];
-                      return _MessageBubble(
-                        message: m,
-                        repliedTo: m.replyToId == null
-                            ? null
-                            : detail.messages.where((x) => x.id == m.replyToId).firstOrNull,
-                        onReply: () => setState(() => _replyingTo = m),
-                        onTogglePin: () => _togglePin(m),
-                        onHide: () => _hide(m),
-                        // Only the doctor's own clinician turns are theirs to
-                        // delete for everyone; the server enforces the same rule.
-                        onDeleteForEveryone: m.isClinician ? () => _deleteForEveryone(m) : null,
-                      );
-                    },
+                  child: Stack(
+                    children: [
+                      ListView.builder(
+                        controller: _scroll,
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        itemCount: detail.messages.length,
+                        itemBuilder: (context, i) {
+                          final m = detail.messages[i];
+                          return _MessageBubble(
+                            message: m,
+                            repliedTo:
+                                m.replyToId == null
+                                    ? null
+                                    : detail.messages
+                                        .where((x) => x.id == m.replyToId)
+                                        .firstOrNull,
+                            onReply: () => setState(() => _replyingTo = m),
+                            onTogglePin: () => _togglePin(m),
+                            onHide: () => _hide(m),
+                            // Only the doctor's own clinician turns are theirs to
+                            // delete for everyone; the server enforces the same rule.
+                            onDeleteForEveryone:
+                                m.isClinician
+                                    ? () => _deleteForEveryone(m)
+                                    : null,
+                          );
+                        },
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: JumpToLatest(
+                          visible: _showJump,
+                          onTap: _toLatest,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
               if (_replyingTo != null)
-                _ReplyBar(message: _replyingTo!, onCancel: () => setState(() => _replyingTo = null)),
+                _ReplyBar(
+                  message: _replyingTo!,
+                  onCancel: () => setState(() => _replyingTo = null),
+                ),
               // The real chat box — text, photos, documents and voice — posting
               // as role:'clinician' into the patient's own thread (by session id,
               // so this works for a nutrition thread the doctor is guiding too).
@@ -247,14 +321,16 @@ class _ReplyBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final who = message.isUser
-        ? 'Patient'
-        : message.isClinician
-        ? 'You'
-        : (message.senderName ?? 'Assistant');
-    final preview = message.content.trim().isNotEmpty
-        ? message.content.trim()
-        : (message.voiceNotes.isNotEmpty ? 'Voice message' : 'Attachment');
+    final who =
+        message.isUser
+            ? 'Patient'
+            : message.isClinician
+            ? 'You'
+            : (message.senderName ?? 'Assistant');
+    final preview =
+        message.content.trim().isNotEmpty
+            ? message.content.trim()
+            : (message.voiceNotes.isNotEmpty ? 'Voice message' : 'Attachment');
     return Container(
       color: scheme.surfaceContainerHigh.withValues(alpha: 0.6),
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, 8, AppSpacing.sm, 8),
@@ -267,12 +343,23 @@ class _ReplyBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Replying to $who',
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.accentOn(context))),
-                Text(preview,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                Text(
+                  'Replying to $who',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accentOn(context),
+                  ),
+                ),
+                Text(
+                  preview,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
@@ -298,16 +385,24 @@ class _PinnedBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final m = messages.first;
-    final text = m.content.trim().isNotEmpty
-        ? m.content.trim()
-        : (m.voiceNotes.isNotEmpty ? 'Voice message' : 'Attachment');
+    final text =
+        m.content.trim().isNotEmpty
+            ? m.content.trim()
+            : (m.voiceNotes.isNotEmpty ? 'Voice message' : 'Attachment');
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: 8,
+      ),
       color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
       child: Row(
         children: [
-          Icon(Icons.push_pin_rounded, size: 15, color: AppColors.accentOn(context)),
+          Icon(
+            Icons.push_pin_rounded,
+            size: 15,
+            color: AppColors.accentOn(context),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -344,7 +439,10 @@ class _SessionHeader extends StatelessWidget {
               Expanded(
                 child: Text(
                   s.patientName ?? 'Patient',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               MiniPill(
@@ -355,7 +453,10 @@ class _SessionHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 2),
-          Text(s.title, style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+          Text(
+            s.title,
+            style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+          ),
         ],
       ),
     );
@@ -385,78 +486,100 @@ class _MessageBubble extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     await showModalBottomSheet<void>(
       context: context,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (message.content.trim().isNotEmpty)
-              ListTile(
-                leading: const Icon(Icons.copy_rounded),
-                title: const Text('Copy'),
-                onTap: () async {
-                  Navigator.pop(sheet);
-                  await Clipboard.setData(ClipboardData(text: message.content));
-                  messenger.showSnackBar(const SnackBar(content: Text('Copied')));
-                },
-              ),
-            if (onReply != null)
-              ListTile(
-                leading: const Icon(Icons.reply_rounded),
-                title: const Text('Reply'),
-                onTap: () {
-                  Navigator.pop(sheet);
-                  onReply!();
-                },
-              ),
-            if (onTogglePin != null)
-              ListTile(
-                leading: Icon(message.pinned ? Icons.push_pin : Icons.push_pin_outlined),
-                title: Text(message.pinned ? 'Unpin' : 'Pin to top'),
-                onTap: () {
-                  Navigator.pop(sheet);
-                  onTogglePin!();
-                },
-              ),
-            if (onHide != null)
-              ListTile(
-                leading: const Icon(Icons.visibility_off_outlined),
-                title: const Text('Delete for me'),
-                subtitle: const Text('Stays in the record; only removed from your view', style: TextStyle(fontSize: 12)),
-                onTap: () {
-                  Navigator.pop(sheet);
-                  onHide!();
-                },
-              ),
-            if (onDeleteForEveryone != null)
-              ListTile(
-                leading: Icon(Icons.delete_outline_rounded, color: AppColors.danger),
-                title: Text('Delete for everyone', style: TextStyle(color: AppColors.danger)),
-                onTap: () async {
-                  Navigator.pop(sheet);
-                  if (!context.mounted) return;
-                  final ok = await showDialog<bool>(
-                    context: context,
-                    builder: (dialog) => AlertDialog(
-                      title: const Text('Delete for everyone'),
-                      content: const Text(
-                        "This message will be removed for everyone in the chat. This can't be undone.",
-                      ),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(dialog, false), child: const Text('Cancel')),
-                        TextButton(
-                          onPressed: () => Navigator.pop(dialog, true),
-                          style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-                          child: const Text('Delete for everyone'),
-                        ),
-                      ],
+      builder:
+          (sheet) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (message.content.trim().isNotEmpty)
+                  ListTile(
+                    leading: const Icon(Icons.copy_rounded),
+                    title: const Text('Copy'),
+                    onTap: () async {
+                      Navigator.pop(sheet);
+                      await Clipboard.setData(
+                        ClipboardData(text: message.content),
+                      );
+                      messenger.showSnackBar(
+                        const SnackBar(content: Text('Copied')),
+                      );
+                    },
+                  ),
+                if (onReply != null)
+                  ListTile(
+                    leading: const Icon(Icons.reply_rounded),
+                    title: const Text('Reply'),
+                    onTap: () {
+                      Navigator.pop(sheet);
+                      onReply!();
+                    },
+                  ),
+                if (onTogglePin != null)
+                  ListTile(
+                    leading: Icon(
+                      message.pinned ? Icons.push_pin : Icons.push_pin_outlined,
                     ),
-                  );
-                  if (ok == true) onDeleteForEveryone!();
-                },
-              ),
-          ],
-        ),
-      ),
+                    title: Text(message.pinned ? 'Unpin' : 'Pin to top'),
+                    onTap: () {
+                      Navigator.pop(sheet);
+                      onTogglePin!();
+                    },
+                  ),
+                if (onHide != null)
+                  ListTile(
+                    leading: const Icon(Icons.visibility_off_outlined),
+                    title: const Text('Delete for me'),
+                    subtitle: const Text(
+                      'Stays in the record; only removed from your view',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    onTap: () {
+                      Navigator.pop(sheet);
+                      onHide!();
+                    },
+                  ),
+                if (onDeleteForEveryone != null)
+                  ListTile(
+                    leading: Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.danger,
+                    ),
+                    title: Text(
+                      'Delete for everyone',
+                      style: TextStyle(color: AppColors.danger),
+                    ),
+                    onTap: () async {
+                      Navigator.pop(sheet);
+                      if (!context.mounted) return;
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder:
+                            (dialog) => AlertDialog(
+                              title: const Text('Delete for everyone'),
+                              content: const Text(
+                                "This message will be removed for everyone in the chat. This can't be undone.",
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialog, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialog, true),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.danger,
+                                  ),
+                                  child: const Text('Delete for everyone'),
+                                ),
+                              ],
+                            ),
+                      );
+                      if (ok == true) onDeleteForEveryone!();
+                    },
+                  ),
+              ],
+            ),
+          ),
     );
   }
 
@@ -483,15 +606,27 @@ class _MessageBubble extends StatelessWidget {
             decoration: BoxDecoration(
               color: scheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.block_rounded, size: 15, color: scheme.onSurfaceVariant),
+                Icon(
+                  Icons.block_rounded,
+                  size: 15,
+                  color: scheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 7),
-                Text('This message was deleted',
-                    style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: scheme.onSurfaceVariant)),
+                Text(
+                  'This message was deleted',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
@@ -503,11 +638,12 @@ class _MessageBubble extends StatelessWidget {
     // the patient sees: one continuous conversation rather than messages
     // hopping sides. Who spoke is carried by the label, not the alignment.
     final align = isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-    final bubbleColor = isUser
-        ? AppColors.accentOn(context).withValues(alpha: 0.12)
-        : isClinician
-        ? AppColors.accentOn(context).withValues(alpha: 0.22)
-        : scheme.surfaceContainerHighest;
+    final bubbleColor =
+        isUser
+            ? AppColors.accentOn(context).withValues(alpha: 0.12)
+            : isClinician
+            ? AppColors.accentOn(context).withValues(alpha: 0.22)
+            : scheme.surfaceContainerHighest;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -515,7 +651,8 @@ class _MessageBubble extends StatelessWidget {
         crossAxisAlignment: align,
         children: [
           Row(
-            mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment:
+                isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
             children: [
               Icon(
                 isUser
@@ -526,31 +663,53 @@ class _MessageBubble extends StatelessWidget {
                     ? Icons.medical_information_rounded
                     : Icons.smart_toy_outlined,
                 size: 15,
-                color: isPerson ? AppColors.accentOn(context) : scheme.onSurfaceVariant,
+                color:
+                    isPerson
+                        ? AppColors.accentOn(context)
+                        : scheme.onSurfaceVariant,
               ),
               const SizedBox(width: 4),
               Text(
                 isUser
                     ? 'Patient'
                     : isDietician
-                    ? (m.senderName == null ? 'Dietician' : '${m.senderName} · Dietician')
+                    ? (m.senderName == null
+                        ? 'Dietician'
+                        : '${m.senderName} · Dietician')
                     : isClinician
                     ? 'You / clinic'
                     : 'Assistant',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: isPerson ? AppColors.accentOn(context) : scheme.onSurfaceVariant,
+                  color:
+                      isPerson
+                          ? AppColors.accentOn(context)
+                          : scheme.onSurfaceVariant,
                 ),
               ),
               if (m.pinned) ...[
                 const SizedBox(width: 6),
-                Icon(Icons.push_pin_rounded, size: 13, color: scheme.onSurfaceVariant),
+                Icon(
+                  Icons.push_pin_rounded,
+                  size: 13,
+                  color: scheme.onSurfaceVariant,
+                ),
               ],
               if (m.flaggedByPatient) ...[
                 const SizedBox(width: 6),
-                Icon(Icons.flag_rounded, size: 14, color: AppColors.warningOn(context)),
-                Text(' reported', style: TextStyle(fontSize: 11, color: AppColors.warningOn(context))),
+                Icon(
+                  Icons.flag_rounded,
+                  size: 14,
+                  color: AppColors.warningOn(context),
+                ),
+                Text(
+                  ' reported',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.warningOn(context),
+                  ),
+                ),
               ],
             ],
           ),
@@ -560,11 +719,18 @@ class _MessageBubble extends StatelessWidget {
             Container(
               margin: const EdgeInsets.only(bottom: 4),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.82,
+              ),
               decoration: BoxDecoration(
                 color: scheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(10),
-                border: Border(left: BorderSide(color: AppColors.accentOn(context), width: 3)),
+                border: Border(
+                  left: BorderSide(
+                    color: AppColors.accentOn(context),
+                    width: 3,
+                  ),
+                ),
               ),
               child: Text(
                 repliedTo?.content ?? m.replyPreviewContent!,
@@ -576,9 +742,14 @@ class _MessageBubble extends StatelessWidget {
           GestureDetector(
             onLongPress: () => _showActions(context),
             child: Container(
-              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.82,
+              ),
               padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(color: bubbleColor, borderRadius: BorderRadius.circular(14)),
+              decoration: BoxDecoration(
+                color: bubbleColor,
+                borderRadius: BorderRadius.circular(14),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -586,8 +757,10 @@ class _MessageBubble extends StatelessWidget {
                   // A photo is often the whole message. Rendering only the text
                   // left an empty bubble above the assistant's reply about a
                   // meal the doctor could not see.
-                  if (m.imagePaths.isNotEmpty) ChatAttachmentThumbs(paths: m.imagePaths),
-                  for (final note in m.voiceNotes) VoiceNotePlayer(note: note, onDark: false),
+                  if (m.imagePaths.isNotEmpty)
+                    ChatAttachmentThumbs(paths: m.imagePaths),
+                  for (final note in m.voiceNotes)
+                    VoiceNotePlayer(note: note, onDark: false),
                   for (final doc in m.documents)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 6),
@@ -595,12 +768,19 @@ class _MessageBubble extends StatelessWidget {
                     ),
                   if (m.content.trim().isNotEmpty)
                     isUser || isClinician
-                        ? Text(m.content, style: const TextStyle(fontSize: 14.5, height: 1.4))
+                        ? Text(
+                          m.content,
+                          style: const TextStyle(fontSize: 14.5, height: 1.4),
+                        )
                         : MarkdownText(
-                            data: m.content,
-                            selectable: true,
-                            style: TextStyle(fontSize: 14.5, height: 1.4, color: scheme.onSurface),
+                          data: m.content,
+                          selectable: true,
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            height: 1.4,
+                            color: scheme.onSurface,
                           ),
+                        ),
                 ],
               ),
             ),
@@ -613,12 +793,23 @@ class _MessageBubble extends StatelessWidget {
               spacing: 6,
               runSpacing: 4,
               children: [
-                if (m.urgency != 'routine') _chip(m.urgency.toUpperCase(), AppColors.forUrgencyOn(context, m.urgency)),
+                if (m.urgency != 'routine')
+                  _chip(
+                    m.urgency.toUpperCase(),
+                    AppColors.forUrgencyOn(context, m.urgency),
+                  ),
                 if (m.ruleDriven) _chip('rule-driven', AppColors.primary),
                 if (m.isFallback) _chip('fallback', AppColors.warning),
                 if (m.citations.isNotEmpty)
-                  _chip('${m.citations.length} source${m.citations.length == 1 ? '' : 's'}', const Color(0xFF6B7280)),
-                if (m.latencyMs != null) _chip('${(m.latencyMs! / 1000).toStringAsFixed(1)}s', const Color(0xFF6B7280)),
+                  _chip(
+                    '${m.citations.length} source${m.citations.length == 1 ? '' : 's'}',
+                    const Color(0xFF6B7280),
+                  ),
+                if (m.latencyMs != null)
+                  _chip(
+                    '${(m.latencyMs! / 1000).toStringAsFixed(1)}s',
+                    const Color(0xFF6B7280),
+                  ),
               ],
             ),
             if (m.citations.isNotEmpty)
@@ -626,7 +817,10 @@ class _MessageBubble extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 3),
                 child: Text(
                   'Sources: ${m.citations.join(', ')}',
-                  style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ),
           ],
@@ -637,7 +831,17 @@ class _MessageBubble extends StatelessWidget {
 
   Widget _chip(String label, Color color) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-    decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(6)),
-    child: Text(label, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: color)),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(
+        fontSize: 10.5,
+        fontWeight: FontWeight.w700,
+        color: color,
+      ),
+    ),
   );
 }
