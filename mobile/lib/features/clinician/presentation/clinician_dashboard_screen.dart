@@ -693,7 +693,7 @@ class _TriageCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          '"$quote"',
+                          quote,
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 14, height: 1.35, fontStyle: FontStyle.italic, color: scheme.onSurface),
@@ -729,8 +729,10 @@ class _TriageCard extends StatelessWidget {
 
 // ---- Nutrition reviews ----------------------------------------------------
 
-/// Nutrition reviews collapsed into a single "Tasks" launcher — the count of
-/// what's due, opening the Nutrition tab where the per-patient reviews live.
+/// The doctor's task list — the nutrition reviews that are due (or coming up),
+/// each an actionable row opening that patient. Due first; the rest are shown as
+/// "coming up" context, and anything past the first few defers to the Nutrition
+/// tab so Home never turns into a long list.
 class _NutritionReviews extends StatelessWidget {
   const _NutritionReviews({required this.overview});
 
@@ -739,14 +741,37 @@ class _NutritionReviews extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final reviews = overview.nutritionReviews;
+    // Due reviews first, then most-overdue within — the top row is the one to do.
+    final reviews = [...overview.nutritionReviews]
+      ..sort((a, b) {
+        final byDue = (b.isDue ? 1 : 0).compareTo(a.isDue ? 1 : 0);
+        if (byDue != 0) return byDue;
+        return b.day.compareTo(a.day);
+      });
+    final shown = reviews.take(5).toList();
     final due = reviews.where((r) => r.isDue).length;
-    final subtitle = due > 0 ? '$due Due Today' : '${reviews.length} to review';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Tasks', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+        Row(
+          children: [
+            const Text('Tasks', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            const Spacer(),
+            if (due > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.warningBgOn(context),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$due due',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.warningOn(context)),
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: AppSpacing.sm),
         Container(
           decoration: BoxDecoration(
@@ -755,49 +780,86 @@ class _NutritionReviews extends StatelessWidget {
             border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
           ),
           clipBehavior: Clip.antiAlias,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => context.go('/clinician/nutrition'),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.accentSoftOn(context),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(Icons.restaurant_rounded, color: AppColors.accentOn(context), size: 22),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Nutrition Reviews', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 2),
-                          Text(
-                            subtitle,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: due > 0 ? FontWeight.w700 : FontWeight.w500,
-                              color: due > 0 ? AppColors.warningOn(context) : scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+          child: Column(
+            children: [
+              for (var i = 0; i < shown.length; i++) ...[
+                if (i > 0) Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.4)),
+                _TaskRow(review: shown[i]),
+              ],
+              if (reviews.length > shown.length) ...[
+                Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.4)),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => context.go('/clinician/nutrition'),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      child: Center(
+                        child: Text(
+                          'View all ${reviews.length} in Nutrition',
+                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.accentOn(context)),
+                        ),
                       ),
                     ),
-                    Icon(Icons.arrow_forward_rounded, color: scheme.onSurfaceVariant, size: 22),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              ],
+            ],
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One due-review task: the patient and how far into their review cycle they
+/// are, opening straight to the patient's record (where the food log lives).
+class _TaskRow extends StatelessWidget {
+  const _TaskRow({required this.review});
+
+  final NutritionReview review;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final accent = review.isDue ? AppColors.warningOn(context) : AppColors.accentOn(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push('/clinician/patients/${review.patientId}'),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
+          child: Row(
+            children: [
+              UserAvatar(name: review.name, avatarUrl: null, accent: accent, size: 38),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  review.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Day ${review.day}/${review.intervalDays}',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: accent),
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant, size: 20),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
