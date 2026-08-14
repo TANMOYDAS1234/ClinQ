@@ -272,6 +272,13 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Text('Profile', style: TextStyle(color: accent, fontWeight: FontWeight.w700)),
+        actions: [
+          IconButton(
+            onPressed: () => context.push('/clinician/alerts'),
+            icon: Icon(Icons.notifications_none_rounded, color: scheme.onSurfaceVariant),
+            tooltip: 'Alerts',
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xl),
@@ -324,6 +331,14 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
           ),
           const SizedBox(height: AppSpacing.xl),
 
+          // ---- Account -------------------------------------------------
+          ProfileSection(
+            label: l10n.profileAccount,
+            children: [
+              ProfileRow(icon: Icons.person_outline_rounded, title: l10n.profileEditProfile, showDivider: false, onTap: () => context.push('/clinician/more/edit')),
+            ],
+          ),
+
           // ---- Appearance ----------------------------------------------
           _label(l10n.profileAppearance, scheme),
           const ThemeSelector(),
@@ -341,14 +356,6 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-
-          // ---- Account -------------------------------------------------
-          ProfileSection(
-            label: l10n.profileAccount,
-            children: [
-              ProfileRow(icon: Icons.person_outline_rounded, title: l10n.profileEditProfile, showDivider: false, onTap: () => context.push('/clinician/more/edit')),
-            ],
-          ),
 
           // ---- Clinic tools --------------------------------------------
           ProfileSection(
