@@ -150,10 +150,17 @@ class _DashboardHeader extends ConsumerWidget {
           ),
           const SizedBox(width: 10),
           Text(
-            'ClinQ',
+            'ClinQ Panel',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
+          IconButton(
+            onPressed: () => context.push('/clinician/alerts'),
+            icon: Icon(Icons.notifications_none_rounded, size: 24, color: scheme.onSurfaceVariant),
+            tooltip: 'Alerts',
+            visualDensity: VisualDensity.compact,
+          ),
+          const SizedBox(width: 4),
           GestureDetector(
             onTap: () => context.push('/clinician/more'),
             child: UserAvatar(
@@ -307,6 +314,7 @@ class _AlertStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       children: [
         _AlertRow(
@@ -322,7 +330,9 @@ class _AlertStrip extends StatelessWidget {
         _AlertRow(
           icon: Icons.priority_high_rounded,
           iconBg: AppColors.primary,
-          bg: AppColors.infoBgOn(context),
+          bg: scheme.surfaceContainerLowest,
+          border: scheme.outlineVariant.withValues(alpha: 0.7),
+          accentBar: AppColors.accentOn(context),
           label: 'HIGH PRIORITY',
           detail:
               '${overview.highPriorityAlerts} Action ${overview.highPriorityAlerts == 1 ? 'Item' : 'Items'}',
@@ -367,6 +377,8 @@ class _AlertRow extends StatelessWidget {
     required this.detail,
     required this.onTap,
     this.labelColor,
+    this.accentBar,
+    this.border,
   });
 
   final IconData icon;
@@ -377,48 +389,70 @@ class _AlertRow extends StatelessWidget {
   final Color? labelColor;
   final VoidCallback onTap;
 
+  /// A vertical accent stripe down the leading edge (e.g. the green rail on the
+  /// white "high priority" card) — clipped to the card's rounded corners.
+  final Color? accentBar;
+
+  /// A hairline border, for the white-backed rows that would otherwise float.
+  final Color? border;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-      child: InkWell(
+    return Container(
+      decoration: BoxDecoration(
+        color: bg,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
-                child: Icon(icon, size: 18, color: Colors.white),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                        color: labelColor ?? scheme.onSurface,
-                      ),
+        border: border != null ? Border.all(color: border!) : null,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                if (accentBar != null) Container(width: 4, color: accentBar),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+                          child: Icon(icon, size: 18, color: Colors.white),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                  color: labelColor ?? scheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                detail,
+                                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: scheme.onSurface),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      detail,
-                      style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: scheme.onSurface),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -518,17 +552,7 @@ class _TriageQueue extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            const Text('Live Triage Queue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-            const Spacer(),
-            Text(
-              'Sorted by Urgency',
-              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
-            ),
-          ],
-        ),
+        const Text('Live Triage Queue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
         const SizedBox(height: AppSpacing.sm),
         if (shown.isEmpty)
           Container(
@@ -553,61 +577,46 @@ class _TriageQueue extends StatelessWidget {
             ),
           )
         else
-          Container(
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerLowest,
+          for (final a in shown) _TriageCard(alert: a),
+        if (alerts.length > shown.length)
+          SizedBox(
+            width: double.infinity,
+            child: Material(
+              color: AppColors.infoBgOn(context),
               borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                for (var i = 0; i < shown.length; i++) ...[
-                  if (i > 0) Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
-                  _TriageRow(alert: shown[i]),
-                ],
-              ],
-            ),
-          ),
-        const SizedBox(height: AppSpacing.sm),
-        SizedBox(
-          width: double.infinity,
-          child: Material(
-            color: AppColors.infoBgOn(context),
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-              onTap: () => context.push('/clinician/alerts'),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                child: Center(
-                  child: Text(
-                    'View All Triage (${alerts.length})',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                onTap: () => context.push('/clinician/alerts'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  child: Center(
+                    child: Text(
+                      'View all triage (${alerts.length})',
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
       ],
     );
   }
 }
 
-class _TriageRow extends StatelessWidget {
-  const _TriageRow({required this.alert});
+class _TriageCard extends StatelessWidget {
+  const _TriageCard({required this.alert});
 
   final ClinicalAlert alert;
 
-  static Color _dotColor(String severity) => switch (severity) {
+  static Color _sevColor(String severity) => switch (severity) {
     'emergency' => AppColors.danger,
     'urgent' => const Color(0xFFEA580C),
     'warning' => AppColors.warning,
     _ => const Color(0xFF9CA3AF),
   };
 
-  static String _severityLabel(String severity) => switch (severity) {
+  static String _sevLabel(String severity) => switch (severity) {
     'emergency' => 'Critical',
     'urgent' => 'Urgent',
     'warning' => 'Elevated',
@@ -617,70 +626,98 @@ class _TriageRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final dot = _dotColor(alert.severity);
-    final isEmergency = alert.severity == 'emergency';
+    final sev = AppColors.toneOn(context, _sevColor(alert.severity));
+    final quote = (alert.detail?.trim().isNotEmpty ?? false) ? alert.detail!.trim() : null;
+    final canOpen = alert.patientId != null;
 
-    return InkWell(
-      onTap: alert.patientId == null
-          ? null
-          : () => context.push('/clinician/patients/${alert.patientId}/thread', extra: alert.patientName),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: isEmergency ? dot : Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: dot, width: 2),
-                  ),
+            Container(width: 4, color: sev),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        UserAvatar(name: alert.patientName ?? '?', avatarUrl: null, accent: sev, size: 40),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                alert.patientName ?? 'Unknown patient',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${_sevLabel(alert.severity)} · ${alert.title}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: sev),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (alert.createdAt != null) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            DateFormat('h:mm a').format(alert.createdAt!),
+                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (quote != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '"$quote"',
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 14, height: 1.35, fontStyle: FontStyle.italic, color: scheme.onSurface),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.md),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: canOpen
+                            ? () => context.push('/clinician/patients/${alert.patientId}/thread', extra: alert.patientName)
+                            : null,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(46),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                        ),
+                        child: const Text('Review Case', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    alert.patientName ?? 'Unknown patient',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),
-                  ),
-                ),
-                if (alert.createdAt != null)
-                  Text(
-                    DateFormat('h:mm a').format(alert.createdAt!),
-                    style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.only(left: 20),
-              child: Text(
-                alert.detail?.isNotEmpty == true ? alert.detail! : alert.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 14, height: 1.4, color: scheme.onSurfaceVariant),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Padding(
-              padding: const EdgeInsets.only(left: 20),
-              child: Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: 6,
-                children: [
-                  _Tag(
-                    _severityLabel(alert.severity),
-                    fg: isEmergency ? AppColors.danger : AppColors.primary,
-                    bg: isEmergency ? AppColors.dangerBgOn(context) : AppColors.infoBgOn(context),
-                  ),
-                  if (alert.type.isNotEmpty)
-                    _Tag(_humanise(alert.type), fg: AppColors.primary, bg: AppColors.infoBgOn(context)),
-                ],
               ),
             ),
           ],
@@ -688,33 +725,12 @@ class _TriageRow extends StatelessWidget {
       ),
     );
   }
-
-  static String _humanise(String type) {
-    final words = type.replaceAll('_', ' ').replaceAll('-', ' ').trim();
-    if (words.isEmpty) return words;
-    return words[0].toUpperCase() + words.substring(1);
-  }
-}
-
-class _Tag extends StatelessWidget {
-  const _Tag(this.text, {required this.fg, required this.bg});
-
-  final String text;
-  final Color fg;
-  final Color bg;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
-      child: Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
-    );
-  }
 }
 
 // ---- Nutrition reviews ----------------------------------------------------
 
+/// Nutrition reviews collapsed into a single "Tasks" launcher — the count of
+/// what's due, opening the Nutrition tab where the per-patient reviews live.
 class _NutritionReviews extends StatelessWidget {
   const _NutritionReviews({required this.overview});
 
@@ -722,137 +738,66 @@ class _NutritionReviews extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final reviews = overview.nutritionReviews;
     final due = reviews.where((r) => r.isDue).length;
+    final subtitle = due > 0 ? '$due Due Today' : '${reviews.length} to review';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Text('Nutrition Reviews', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-            const Spacer(),
-            if (due > 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.accentSoftOn(context),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '$due Due',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.accentOn(context),
-                  ),
-                ),
-              ),
-          ],
-        ),
+        const Text('Tasks', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
         const SizedBox(height: AppSpacing.sm),
-        for (final r in reviews) _NutritionCard(review: r),
-      ],
-    );
-  }
-}
-
-class _NutritionCard extends StatelessWidget {
-  const _NutritionCard({required this.review});
-
-  final NutritionReview review;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final quiet = review.lastLogAt == null || DateTime.now().difference(review.lastLogAt!).inDays >= 3;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  review.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                ),
-              ),
-              Text(
-                'Day ${review.day}/${review.intervalDays}',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: review.isDue ? FontWeight.w800 : FontWeight.w500,
-                  color: review.isDue ? AppColors.warning : scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+        Container(
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
           ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: quiet ? AppColors.warningBgOn(context) : AppColors.accentSoftOn(context),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  quiet ? Icons.water_drop_outlined : Icons.restaurant_rounded,
-                  size: 20,
-                  color: quiet ? AppColors.warning : AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          clipBehavior: Clip.antiAlias,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => context.go('/clinician/nutrition'),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
                   children: [
-                    Text(review.flag, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    Text(
-                      review.detail,
-                      style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.accentSoftOn(context),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.restaurant_rounded, color: AppColors.accentOn(context), size: 22),
                     ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Nutrition Reviews', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: due > 0 ? FontWeight.w700 : FontWeight.w500,
+                              color: due > 0 ? AppColors.warningOn(context) : scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_rounded, color: scheme.onSurfaceVariant, size: 22),
                   ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            width: double.infinity,
-            child: Material(
-              color: AppColors.accentSoftOn(context),
-              borderRadius: BorderRadius.circular(10),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(10),
-                onTap: () => context.push('/clinician/patients/${review.patientId}'),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 13),
-                  child: Center(
-                    child: Text(
-                      'Review Log',
-                      style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.accentOn(context)),
-                    ),
-                  ),
                 ),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
