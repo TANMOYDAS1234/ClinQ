@@ -134,7 +134,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
                   children: [
                     _SectionBar(
                       unreadOnly: _unreadOnly,
-                      onToggleFilter: () => setState(() => _unreadOnly = !_unreadOnly),
+                      onSelect: (v) => setState(() => _unreadOnly = v),
                     ),
                     _SearchField(
                       controller: _searchController,
@@ -180,49 +180,50 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
                           );
                         }
 
-                        // One grouped card with hairline dividers, rather than a
-                        // separate floating card per patient — a long inbox of
-                        // detached cards reads as clutter.
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: scheme.surfaceContainerLowest,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.22)),
-                            // Matches the settings groups, so the two panels
-                            // read as one product rather than two apps.
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.04),
-                                blurRadius: 14,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Column(
-                            children: [
-                              for (var i = 0; i < items.length; i++) ...[
-                                if (i > 0)
-                                  // Indented past the avatar, so the list reads
-                                  // as one column of people rather than a stack
-                                  // of separate strips.
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 76),
-                                    child: Divider(
-                                      height: 1,
-                                      color: scheme.outlineVariant.withValues(alpha: 0.22),
+                        // A separate card per conversation (per the redesign),
+                        // with a red rail on anything flagged urgent/emergency.
+                        return Column(
+                          children: [
+                            for (final it in items)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                                decoration: BoxDecoration(
+                                  color: scheme.surfaceContainerLowest,
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.22)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.04),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 3),
                                     ),
-                                  ),
-                                _ConversationRow(
-                                  patient: items[i],
-                                  onTap: () => context.push(
-                                    '/clinician/patients/${items[i].id}/thread',
-                                    extra: items[i].name,
+                                  ],
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      if (it.lastMessage?.urgency == 'emergency' ||
+                                          it.lastMessage?.urgency == 'urgent')
+                                        Container(width: 4, color: AppColors.danger),
+                                      Expanded(
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: _ConversationRow(
+                                            patient: it,
+                                            onTap: () => context.push(
+                                              '/clinician/patients/${it.id}/thread',
+                                              extra: it.name,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ],
-                          ),
+                              ),
+                          ],
                         );
                       },
                     ),
@@ -262,13 +263,17 @@ class _InboxHeader extends ConsumerWidget {
           ),
           const SizedBox(width: 10),
           Text(
-            'ClinQ',
+            'ClinQ Panel',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
-          // No search icon here: the search field is already on screen a few
-          // pixels below, so the button could only focus what the doctor can
-          // already see and tap.
+          IconButton(
+            onPressed: () => context.push('/clinician/alerts'),
+            icon: Icon(Icons.notifications_none_rounded, size: 24, color: scheme.onSurfaceVariant),
+            tooltip: 'Alerts',
+            visualDensity: VisualDensity.compact,
+          ),
+          const SizedBox(width: 4),
           GestureDetector(
             onTap: () => context.push('/clinician/more'),
             child: UserAvatar(
@@ -324,31 +329,77 @@ class _SearchField extends StatelessWidget {
 }
 
 class _SectionBar extends StatelessWidget {
-  const _SectionBar({required this.unreadOnly, required this.onToggleFilter});
+  const _SectionBar({required this.unreadOnly, required this.onSelect});
 
   final bool unreadOnly;
-  final VoidCallback onToggleFilter;
+  final ValueChanged<bool> onSelect;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'Patient Messages',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Care Inbox',
+          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _Seg(label: 'Unread', selected: unreadOnly, onTap: () => onSelect(true)),
+                _Seg(label: 'Show all', selected: !unreadOnly, onTap: () => onSelect(false)),
+              ],
             ),
           ),
-          TextButton(
-            onPressed: onToggleFilter,
-            child: Text(
-              unreadOnly ? 'Show all' : 'Unread',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+      ],
+    );
+  }
+}
+
+/// One segment of the pill toggle — the selected one lifts onto a white pill.
+class _Seg extends StatelessWidget {
+  const _Seg({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? scheme.surfaceContainerLowest : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: selected
+              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 1))]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
           ),
-        ],
+        ),
       ),
     );
   }
