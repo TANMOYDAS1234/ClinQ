@@ -356,6 +356,69 @@ clinic's dieticians (one added here covers every patient).
 
 ---
 
+# Appendix B — Field-level: Consult flow & prescribing form
+
+The two most detailed data-entry surfaces, spelled out field by field. Both share
+the medicine-shorthand model (`med_shorthand.dart`), the single source of truth so
+the doctor's shorthand and the patient's plain phrase can never drift.
+
+## Shared — the medicine shorthand
+- **Frequency** (`DoseFrequency`): **OD** = Once a day · **BD** = Twice a day · **TDS** = Three times a day · **QID** = Four times a day · **EOD** = Every other day · **HS** = At bedtime · **PRN** = As needed *(no reminders)* · **Stat** = Immediately, single dose *(no reminders)*.
+- **Meal relation** (`MealRelation`, only for OD/BD/TDS/QID/EOD): **Any** · **Before food** (AC) · **With food** · **After food** (PC).
+- **Route** (`MedRoute`): **PO** = by mouth *(default)* · **IV** · **SC** · **IM** · **Top** = topical · **Inh** = inhaled.
+- The form shows a live **shorthand** (e.g. "BDPC", "TDS AC", "HS") and the **plain phrase** the patient reads (e.g. "Twice a day, after food").
+
+## Consult flow (`consult_screen.dart`) — every field
+
+**Step 1 · Vitals** (all optional, "measured at this visit"):
+| Field | Type | Unit / note |
+|---|---|---|
+| Height | number | cm |
+| Weight | number | kg |
+| BP systolic | number | mmHg |
+| BP diastolic | number | mmHg — validated against systolic |
+| Heart rate | number | bpm |
+| SpO₂ | number | % |
+| Blood sugar | number | mg/dL |
+| Presenting complaint | multiline | — |
+| "Show this complaint on the prescription" | checkbox | prints the complaint on the PDF when on |
+
+**Step 2 · Diagnosis:**
+- **Waist** (number, cm) under an "Examination" note.
+- **Previous diagnosis** — tap-to-reuse chips from the last prescription.
+- **Diagnosis catalog** — selectable chips grouped by category (`diagnosisByCategory()`); printed on the Rx.
+- **"Add another diagnosis"** — free-text → a deletable custom chip.
+
+**Step 3 · Advice:**
+- **Last prescription** — collapsible reference card (diagnosis / medicines / tests / advice).
+- **Diagnosis recap** — chips carried from Step 2.
+- **Medicines** (≥1 required) — reuse-last chips, then a **medicine card** per drug: **Medicine name** · **Strength** (e.g. "500 mg") · **Days** (duration) · **Frequency** (dropdown) · **Route** (dropdown) · **Meal relation** (dropdown, shown only when the frequency takes one) · a live **shorthand + plain preview** · delete. **"Add medicine"** appends a card.
+- **Lab tests advised** — catalog chips grouped by category + reuse-last chips + "Add another test" free-text.
+- **General advice** — "Reuse last advice", common-advice chips (`adviceByCategory()`, toggled one-per-line), and a free-text box.
+- **Follow-up date** — date picker.
+- **Digital signature** — shows whether set; Upload/Change (camera/gallery → embedded in the Rx PDF).
+
+**Generate** validates Steps 1–2 (jumps back to the offending step), requires ≥1 medicine, saves the vitals first, then creates the prescription (complaint printed only if the checkbox was left on), and replaces into the prescriptions list.
+
+## Prescribing form on the Patient Profile (`patient_profile_screen.dart`)
+The inline alternative to the Consult flow — same result, one screen:
+- **Medication** → **"Add medication"** (collapsible): one or more medicine rows, each **Medicine Name** · **Dosage** · **Duration** (days) · **Frequency** shorthand **chips** · **Timing** chips (AC / With / PC / Any — only when the frequency takes a meal relation) · **Route** chips · a live **shorthand badge** (e.g. "BDPC") · a **"Patient sees: {plain phrase}"** preview. "Add another medication" appends a row.
+- **Lab Tests** → **"Add tests"**: a free-text add field, the diabetes lab catalog as chips grouped by category, and each selected panel's sub-tests listed.
+- **Clinical Advice**: **Previous advice** (tap to reuse) · **Diagnosis** (multiline, one per line) · **General advice** (multiline).
+- **Follow-up**: "Next Visit" date field.
+- **"Send Prescription"** builds items + diagnosis + labs + advice + follow-up, posts the prescription, then clears the form (staying on the patient).
+
+---
+
+# Appendix C — Legacy / unwired screens (do not redesign)
+
+Present in the tree but **not reachable** in the clinician panel today:
+- `clinician/presentation/dashboard_screen.dart` — an **orphan duplicate** `ClinicianDashboardScreen` (a `ConsumerWidget`). The live dashboard is `clinician_dashboard_screen.dart` (the `ConsumerStatefulWidget`) — the one the router actually imports. Safe to ignore or delete.
+
+The clinician panel otherwise has **no dead screens** — Appointments and Clinics *are* live and routed. (The app-wide legacy patient screens live in `PATIENT_PANEL_WORKFLOW.md`.)
+
+---
+
 # Redesign notes (for the next phase)
 
 - **4 tabs, 12 sub-screens** — the redesign surface is the 4 tab screens + these
