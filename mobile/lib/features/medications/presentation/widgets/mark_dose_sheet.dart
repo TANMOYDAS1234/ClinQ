@@ -26,6 +26,8 @@ class _MarkDoseSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -35,25 +37,83 @@ class _MarkDoseSheet extends StatelessWidget {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(medicationName, style: Theme.of(context).textTheme.titleLarge),
+          // The medicine, with the pill mark beside it. The sheet used to open
+          // with a bare line of text and two buttons; on a phone held at arm's
+          // length that is easy to answer for the wrong medicine.
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.accentSoftOn(context),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.medication_rounded,
+                  size: 22,
+                  color: AppColors.accentOn(context),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      medicationName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Did you take this dose?',
+                      style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.lg),
+
+          // Taken is the answer nearly every time, so it is the filled button
+          // and it comes first. Skipped is deliberately quieter — not hidden,
+          // because an honest "no" is what makes the adherence figure worth
+          // showing the doctor, but not weighted the same as the common case.
           SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+            height: 54,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.successOn(context),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
               onPressed: () =>
                   Navigator.of(context).pop(const MarkDoseResult(status: 'taken')),
-              icon: const Icon(Icons.check_rounded),
-              label: Text(l10n.medsMarkTaken),
+              icon: const Icon(Icons.check_circle_rounded, size: 22),
+              label: Text(
+                l10n.medsMarkTaken,
+                style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
-            width: double.infinity,
+            height: 54,
             child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.dangerOn(context),
+                side: BorderSide(color: AppColors.dangerOn(context).withValues(alpha: 0.4)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
               onPressed: () async {
                 final reason = await _pickSkipReason(context);
                 if (context.mounted) {
@@ -62,16 +122,36 @@ class _MarkDoseSheet extends StatelessWidget {
                   ).pop(MarkDoseResult(status: 'skipped', skipReason: reason));
                 }
               },
-              icon: const Icon(Icons.close_rounded),
-              label: Text(l10n.medsMarkSkipped),
+              icon: const Icon(Icons.cancel_outlined, size: 21),
+              label: Text(
+                l10n.medsMarkSkipped,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
             ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Icon(Icons.lock_outline_rounded, size: 14, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  // Said plainly, because a patient who thinks a skip gets them
+                  // told off simply taps "taken" — and then the adherence
+                  // figure the doctor prescribes against is fiction.
+                  'Your answer helps your doctor. Skipping a dose is not a problem to hide.',
+                  style: TextStyle(fontSize: 12, height: 1.35, color: scheme.onSurfaceVariant),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+}
 
-  Future<String?> _pickSkipReason(BuildContext context) async {
+Future<String?> _pickSkipReason(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
     final controller = TextEditingController();
     return showDialog<String>(
@@ -89,4 +169,3 @@ class _MarkDoseSheet extends StatelessWidget {
       ),
     );
   }
-}

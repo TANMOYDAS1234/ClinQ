@@ -156,6 +156,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         _Allergies(items: care.profile.allergies),
                       ],
 
+                      // Contact details the clinic holds. Shown so the patient
+                      // notices a stale address or a mistyped email here rather
+                      // than when a report fails to reach them.
+                      if ((care.profile.email ?? '').isNotEmpty ||
+                          (care.profile.address ?? '').isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        _ContactCard(profile: care.profile),
+                      ],
+
                       if (care.dietPlan != null) ...[
                         const SizedBox(height: AppSpacing.md),
                         _DietPlanCard(plan: care.dietPlan!),
@@ -723,6 +732,93 @@ class _FullPlanSheet extends StatelessWidget {
 }
 
 // ---- Medicines ------------------------------------------------------------
+
+/// Email and address as the clinic has them, with a way to correct them.
+class _ContactCard extends StatelessWidget {
+  const _ContactCard({required this.profile});
+
+  final CareProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final email = (profile.email ?? '').trim();
+    final address = (profile.address ?? '').trim();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'YOUR DETAILS',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  foregroundColor: AppColors.accentOn(context),
+                ),
+                onPressed: () => context.push('/profile/edit'),
+                child: const Text(
+                  'Edit',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (email.isNotEmpty)
+            _ContactLine(icon: Icons.mail_outline_rounded, value: email),
+          if (email.isNotEmpty && address.isNotEmpty) const SizedBox(height: 8),
+          if (address.isNotEmpty)
+            _ContactLine(icon: Icons.home_outlined, value: address),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContactLine extends StatelessWidget {
+  const _ContactLine({required this.icon, required this.value});
+
+  final IconData icon;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 17, color: scheme.onSurfaceVariant),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 14.5, height: 1.35, fontWeight: FontWeight.w500),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _Medicines extends StatelessWidget {
   const _Medicines({required this.items});

@@ -50,6 +50,8 @@ class CareSummary {
 
 class CareProfile {
   const CareProfile({
+    this.email,
+    this.address,
     this.diabetesType,
     this.riskBand,
     this.heightCm,
@@ -61,6 +63,10 @@ class CareProfile {
   });
 
   final String? diabetesType;
+
+  /// What the clinic will use to reach this patient.
+  final String? email;
+  final String? address;
 
   /// The clinic's own assessment, shown beside the patient's name. Set by the
   /// doctor, not computed here.
@@ -109,6 +115,8 @@ class CareProfile {
 
   factory CareProfile.fromJson(Map<String, dynamic> j) => CareProfile(
     diabetesType: j['diabetesType']?.toString(),
+    email: j['email']?.toString(),
+    address: j['address']?.toString(),
     riskBand: j['riskBand']?.toString(),
     heightCm: (j['heightCm'] as num?)?.toInt(),
     weightKg: j['weightKg'] as num?,

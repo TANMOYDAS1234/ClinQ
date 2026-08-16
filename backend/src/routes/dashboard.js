@@ -146,6 +146,11 @@ async function careSummary(patientId, profile, latestHba1c) {
       // screen at the clinic's request. Worth noting this is a number the
       // doctor set, not a judgement the app made.
       riskBand: profile?.riskBand ?? null,
+      // Contact details, so the patient can see what the clinic will use to
+      // reach them — and notice when it is wrong before a report is posted to
+      // an old address.
+      email: req.user.email ?? null,
+      address: profile?.address ?? null,
       heightCm,
       weightKg,
       bmi,

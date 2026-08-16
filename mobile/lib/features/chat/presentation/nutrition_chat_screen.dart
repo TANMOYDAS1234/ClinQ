@@ -8,6 +8,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/locale_provider.dart';
 import '../../../shared/widgets/chat_background.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/chat_message.dart';
 import 'widgets/care_composer.dart';
@@ -228,19 +229,52 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
     final scheme = Theme.of(context).colorScheme;
     final async = ref.watch(nutritionThreadProvider);
 
+    // Whoever last wrote as the dietician on this thread. Read from the
+    // messages rather than fetched separately: the thread is already loaded,
+    // and a clinic with two dieticians should show whichever one is actually
+    // answering this patient.
+    final dieticianTurn = async.valueOrNull
+        ?.where((m) => m.role == 'dietician' && (m.senderName ?? '').isNotEmpty)
+        .lastOrNull;
+    final dieticianName = dieticianTurn?.senderName;
+    final dieticianAvatar = dieticianTurn?.senderAvatarUrl;
+
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: AppSpacing.md,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        titleSpacing: 0,
+        // The dietician's own name and face, taken from the last thing they
+        // wrote here. A patient talking to "Your dietician" is talking to a
+        // department; talking to Romit Dey is talking to a person, and the
+        // person is the reason they answer honestly about what they ate.
+        title: Row(
           children: [
-            const Text(
-              'Your dietician',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            UserAvatar(
+              name: dieticianName ?? '',
+              avatarUrl: dieticianAvatar,
+              accent: AppColors.accentOn(context),
+              size: 38,
             ),
-            Text(
-              'Food and nutrition',
-              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    dieticianName ?? 'Your dietician',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    dieticianName == null
+                        ? 'Food and nutrition'
+                        : 'Your dietician · Food and nutrition',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
