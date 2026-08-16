@@ -422,7 +422,7 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
                         const SizedBox(height: 6),
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                           decoration: BoxDecoration(
                             // White, always — the signature is cut out on
                             // transparency and prints onto white paper, so
@@ -436,11 +436,17 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
                               color: scheme.outlineVariant.withValues(alpha: 0.7),
                             ),
                           ),
-                          child: Center(
+                          // Sized to the card, not to a thumbnail. A signature
+                          // is checked by reading it — whether it is the right
+                          // one, the right way up, legible — and none of that
+                          // is possible at 56px.
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 110,
                             child: AuthedImage(
                               path: user!.signatureUrl!,
-                              width: 220,
-                              height: 56,
+                              width: double.infinity,
+                              height: 110,
                               radius: 0,
                               fit: BoxFit.contain,
                             ),

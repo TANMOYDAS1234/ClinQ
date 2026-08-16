@@ -909,12 +909,22 @@ class _ReviewProgressCard extends StatelessWidget {
     final total = r.intervalDays <= 0 ? 1 : r.intervalDays;
     final progress = (r.day / total).clamp(0.0, 1.0);
 
-    // Red once the review is actually due, brand blue while there is still time.
-    // Only the overdue rows are coloured, so a screen of them reads at a glance.
-    final tone = r.isDue ? AppColors.dangerOn(context) : AppColors.accentOn(context);
+    // Brand blue throughout. On a daily cadence every bar is either empty or
+    // full, so red on the full ones turned the whole section red every morning
+    // — an alarm that fires daily stops being an alarm. Being due is said by
+    // the "Day 7/7" label and the count in the heading instead.
+    final tone = AppColors.accentOn(context);
 
     return PanelCard(
-      onTap: () => context.push('/clinician/patients/${r.patientId}'),
+      // Straight into the conversation, because reviewing a food log means
+      // reading what was logged and replying to it. The record is still a tap
+      // away from the thread header. Falls back to the record when the patient
+      // has no nutrition thread yet.
+      onTap: () => context.push(
+        r.nutritionSessionId != null
+            ? '/clinician/chat-review/${r.nutritionSessionId}'
+            : '/clinician/patients/${r.patientId}',
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

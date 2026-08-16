@@ -324,9 +324,13 @@ class NutritionReview {
     required this.intervalDays,
     required this.mealsThisWeek,
     this.lastLogAt,
+    this.nutritionSessionId,
   });
 
   final String patientId;
+
+  /// The nutrition thread this review happens in, when one exists.
+  final String? nutritionSessionId;
   final String name;
 
   /// Days into the current review cycle — the "Day 14/30" on the card.
@@ -357,6 +361,7 @@ class NutritionReview {
 
   factory NutritionReview.fromJson(Map<String, dynamic> j) => NutritionReview(
     patientId: j['patientId']?.toString() ?? '',
+    nutritionSessionId: j['nutritionSessionId']?.toString(),
     name: j['name']?.toString() ?? '',
     day: (j['day'] as num?)?.toInt() ?? 0,
     intervalDays: (j['intervalDays'] as num?)?.toInt() ?? 0,

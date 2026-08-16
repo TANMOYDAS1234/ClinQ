@@ -216,12 +216,21 @@ async function nutritionReviews(limit = 4) {
       .map(async (p) => {
         const since = p.lastDietReviewAt ?? p.createdAt;
         const day = Math.min(dayjs().diff(dayjs(since), 'day'), intervalDays);
-        const [mealsThisWeek, lastLog] = await Promise.all([
+        const [mealsThisWeek, lastLog, session] = await Promise.all([
           FoodLog.countDocuments({ patient: p.user._id, createdAt: { $gte: weekAgo } }),
           FoodLog.findOne({ patient: p.user._id }).sort({ createdAt: -1 }).select('createdAt').lean(),
+          // The thread the review is actually done in, so the card can open the
+          // conversation rather than the record. Reviewing a food log means
+          // reading what they logged and replying to it.
+          ChatSession.find({ patient: p.user._id, kind: 'nutrition', isArchived: false })
+            .sort({ lastMessageAt: -1 })
+            .select('_id')
+            .lean()
+            .then((rows) => rows[0] ?? null),
         ]);
         return {
           patientId: String(p.user._id),
+          nutritionSessionId: session ? String(session._id) : null,
           name: p.user.name,
           day,
           intervalDays,
