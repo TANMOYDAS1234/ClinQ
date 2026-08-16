@@ -18,6 +18,7 @@ import '../../appointments/domain/clinic.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../profile/presentation/widgets/profile_section.dart';
 import '../../profile/presentation/widgets/theme_selector.dart';
+import 'widgets/panel_ui.dart';
 
 /// Full profile for doctor and staff — the clinician counterpart of the patient
 /// [ProfileScreen]: avatar, edit details, appearance, language, app lock, a
@@ -273,11 +274,11 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
         automaticallyImplyLeading: false,
         title: Text('Profile', style: TextStyle(color: accent, fontWeight: FontWeight.w700)),
         actions: [
-          IconButton(
-            onPressed: () => context.push('/clinician/alerts'),
-            icon: Icon(Icons.notifications_none_rounded, color: scheme.onSurfaceVariant),
-            tooltip: 'Alerts',
-          ),
+          // The same counted bell as the other three tabs. A bell that shows a
+          // number on Home and no number here reads as "nothing waiting" on
+          // whichever screen the doctor happens to be looking at.
+          PanelNotificationBell(onTap: () => context.push('/clinician/alerts')),
+          const SizedBox(width: 4),
         ],
       ),
       body: ListView(
