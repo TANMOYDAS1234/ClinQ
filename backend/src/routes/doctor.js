@@ -863,12 +863,27 @@ router.get(
         .sort({ severity: -1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate('patient', 'name phone')
+        .populate('patient', 'name phone avatarAssetId gender dateOfBirth')
         .lean(),
       ClinicalAlert.countDocuments(filter),
     ]);
 
-    res.json(paged(items.map(serialiseAlert), { page, limit, total }));
+    // Address and risk band come from the profile, fetched once for the whole
+    // page rather than per alert — a screen of twenty alerts should not be
+    // twenty extra round trips, and several of them are usually the same
+    // patient anyway.
+    const patientIds = [...new Set(items.map((a) => String(a.patient?._id ?? a.patient)))];
+    const profiles = await PatientProfile.find({ user: { $in: patientIds } })
+      .select('user address riskBand')
+      .lean();
+    const byPatient = new Map(profiles.map((pr) => [String(pr.user), pr]));
+
+    res.json(
+      paged(
+        items.map((a) => serialiseAlert(a, byPatient.get(String(a.patient?._id ?? a.patient)))),
+        { page, limit, total },
+      ),
+    );
   }),
 );
 
@@ -1343,13 +1358,30 @@ async function embedChunk(id, content, title) {
 
 // ---------------------------------------------------------------------------
 
-function serialiseAlert(a) {
+/**
+ * One alert, with enough of the patient attached to act on it.
+ *
+ * [profile] is optional and supplied by the list route, which loads the whole
+ * page's profiles in one query. Without it the alert still serialises — the
+ * single-alert routes have no profile to hand — it simply carries no address.
+ */
+function serialiseAlert(a, profile) {
   const patient = a.patient && typeof a.patient === 'object' && a.patient.name ? a.patient : null;
   return {
     id: a._id,
     patientId: patient?._id ?? a.patient,
     patientName: patient?.name ?? null,
     patientPhone: patient?.phone ?? null,
+    // So the doctor recognises who this is about before reading the title.
+    patientAvatarUrl: patient?.avatarAssetId
+      ? `/api/v1/uploads/${patient.avatarAssetId}/raw`
+      : null,
+    patientGender: patient?.gender ?? null,
+    patientAge: patient?.dateOfBirth
+      ? dayjs().diff(dayjs(patient.dateOfBirth), 'year')
+      : null,
+    patientAddress: profile?.address ?? null,
+    patientRiskBand: profile?.riskBand ?? null,
     severity: a.severity,
     type: a.type,
     title: a.title,

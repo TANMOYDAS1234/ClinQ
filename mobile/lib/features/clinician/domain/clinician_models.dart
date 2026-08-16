@@ -589,6 +589,11 @@ class ClinicalAlert {
     required this.status,
     this.patientId,
     this.patientName,
+    this.patientAvatarUrl,
+    this.patientAddress,
+    this.patientRiskBand,
+    this.patientAge,
+    this.patientGender,
     this.patientPhone,
     this.detail,
     this.matchedRules = const [],
@@ -605,6 +610,14 @@ class ClinicalAlert {
   final String status; // open | acknowledged | resolved | dismissed
   final String? patientId;
   final String? patientName;
+
+  /// Enough of the patient to recognise and act on the alert without opening
+  /// their record first.
+  final String? patientAvatarUrl;
+  final String? patientAddress;
+  final String? patientRiskBand;
+  final int? patientAge;
+  final String? patientGender;
   final String? patientPhone;
   final String? detail;
   final List<String> matchedRules;
@@ -624,6 +637,11 @@ class ClinicalAlert {
     status: j['status']?.toString() ?? 'open',
     patientId: j['patientId']?.toString(),
     patientName: j['patientName']?.toString(),
+    patientAvatarUrl: j['patientAvatarUrl']?.toString(),
+    patientAddress: j['patientAddress']?.toString(),
+    patientRiskBand: j['patientRiskBand']?.toString(),
+    patientAge: (j['patientAge'] as num?)?.toInt(),
+    patientGender: j['patientGender']?.toString(),
     patientPhone: j['patientPhone']?.toString(),
     detail: j['detail']?.toString(),
     matchedRules: (j['matchedRules'] as List?)?.map((e) => e.toString()).toList() ?? const [],

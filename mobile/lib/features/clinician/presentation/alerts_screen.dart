@@ -7,6 +7,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/auto_refresh.dart';
 import '../data/clinician_repository.dart';
+import 'package:go_router/go_router.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
 import 'widgets/clinician_visuals.dart';
@@ -189,20 +191,82 @@ class _AlertCard extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(a.title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+            // Who this is about, with a face. An alert is read in a hurry and
+            // acted on immediately; a name in grey text is slower to place than
+            // a photo, and tapping through to the record should not require
+            // first working out whose record it is.
             if (a.patientName != null) ...[
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  Icon(Icons.person_outline_rounded, size: 15, color: scheme.onSurfaceVariant),
-                  const SizedBox(width: 3),
-                  Text(a.patientName!, style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
-                  if (a.patientPhone != null) ...[
-                    const SizedBox(width: 8),
-                    Icon(Icons.call_outlined, size: 14, color: scheme.onSurfaceVariant),
-                    const SizedBox(width: 3),
-                    Text(a.patientPhone!, style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
-                  ],
-                ],
+              const SizedBox(height: AppSpacing.sm),
+              InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: a.patientId == null
+                    ? null
+                    : () => context.push('/clinician/patients/${a.patientId}'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      UserAvatar(
+                        name: a.patientName!,
+                        avatarUrl: a.patientAvatarUrl,
+                        accent: AppColors.accentOn(context),
+                        size: 38,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    a.patientName!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                if (a.patientRiskBand != null &&
+                                    a.patientRiskBand != 'low') ...[
+                                  const SizedBox(width: 6),
+                                  MiniPill(
+                                    label: a.patientRiskBand!.toUpperCase(),
+                                    color: riskBandColor(a.patientRiskBand!),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            Text(
+                              [
+                                if (a.patientAge != null) '${a.patientAge} yrs',
+                                if (a.patientGender != null) a.patientGender!,
+                                if (a.patientPhone != null) a.patientPhone!,
+                              ].join('  •  '),
+                              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                            ),
+                            if ((a.patientAddress ?? '').trim().isNotEmpty)
+                              Text(
+                                a.patientAddress!.trim(),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  height: 1.3,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right_rounded, size: 20, color: scheme.outline),
+                    ],
+                  ),
+                ),
               ),
             ],
             if (a.detail != null && a.detail!.isNotEmpty) ...[
