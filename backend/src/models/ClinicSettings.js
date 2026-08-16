@@ -21,6 +21,14 @@ const clinicSettingsSchema = new mongoose.Schema(
     /// How often a patient's food log should be reviewed, in days, unless that
     /// patient's record says otherwise.
     dietReviewIntervalDays: { type: Number, min: 1, max: 90, default: 14 },
+
+    /// The code a dietician types to self-register against this clinic.
+    ///
+    /// Held here rather than in an env var so the doctor can rotate it from the
+    /// app. A code that can only change with a redeploy is one that never
+    /// changes — and this one is shared over WhatsApp, so it should be
+    /// replaceable the moment it reaches someone it should not have.
+    dieticianInviteCode: { type: String, trim: true, maxlength: 24 },
   },
   { timestamps: true },
 );

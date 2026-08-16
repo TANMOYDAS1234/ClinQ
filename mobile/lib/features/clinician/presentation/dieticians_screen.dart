@@ -50,6 +50,43 @@ class DieticiansScreen extends ConsumerStatefulWidget {
 }
 
 class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
+  /// Issues a new invite code, retiring the current one.
+  ///
+  /// Confirmed first, and the confirmation says what actually happens: the old
+  /// code stops working. Someone mid-registration with the old one will be
+  /// turned away, and the doctor should know that before rotating rather than
+  /// after a dietician calls to say the code was refused.
+  Future<void> _regenerateInvite(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Generate a new invite code?'),
+        content: const Text(
+          'The current code stops working immediately. Anyone you have already '
+          'sent it to will need the new one.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Generate'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(apiClientProvider).postJson('/doctor/dietician-invite/generate');
+      ref.invalidate(_inviteCodeProvider);
+      messenger.showSnackBar(const SnackBar(content: Text('New invite code generated')));
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   Future<void> _add() async {
     final created = await showModalBottomSheet<bool>(
       context: context,
@@ -301,22 +338,38 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                                 ),
                               ),
                               const SizedBox(height: AppSpacing.sm),
-                              SizedBox(
-                                width: double.infinity,
-                                child: FilledButton.icon(
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: Colors.white,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.accentOn(context),
+                                        minimumSize: const Size.fromHeight(48),
+                                      ),
+                                      onPressed: () => _regenerateInvite(context, ref),
+                                      icon: const Icon(Icons.autorenew_rounded, size: 18),
+                                      label: const Text('Generate new'),
+                                    ),
                                   ),
-                                  onPressed: () {
-                                    Clipboard.setData(ClipboardData(text: code));
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Invite code copied')),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.copy_rounded, size: 18),
-                                  label: const Text('Copy invite code'),
-                                ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Expanded(
+                                    child: FilledButton.icon(
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: AppColors.primary,
+                                        foregroundColor: Colors.white,
+                                        minimumSize: const Size.fromHeight(48),
+                                      ),
+                                      onPressed: () {
+                                        Clipboard.setData(ClipboardData(text: code));
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Invite code copied')),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.copy_rounded, size: 18),
+                                      label: const Text('Copy'),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),

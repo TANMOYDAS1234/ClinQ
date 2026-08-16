@@ -9,7 +9,7 @@ import 'clinician_providers.dart';
 import 'widgets/clinician_visuals.dart';
 
 Color knowledgeStatusColor(String status) => switch (status) {
-  'approved' => AppColors.success,
+  'approved' => AppColors.primary,
   'pending_review' => AppColors.warning,
   'retired' => AppColors.danger,
   _ => const Color(0xFF6B7280),

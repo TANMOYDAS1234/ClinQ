@@ -19,7 +19,6 @@ import '../../chat/presentation/widgets/voice_note_player.dart';
 import '../data/clinician_repository.dart';
 import '../domain/chat_review.dart';
 import 'clinician_providers.dart';
-import 'widgets/clinician_visuals.dart';
 
 /// One conversation, opened from the review queue — now the real chat, not a
 /// read-only audit view: the doctor can reply with photos and voice, pin, reply
@@ -250,7 +249,10 @@ class _ChatReviewDetailScreenState
                   .toList();
           return Column(
             children: [
-              _SessionHeader(session: detail.session),
+              // The old session banner is gone: it repeated the patient's name
+              // — now in the app bar with their photo — and stamped ROUTINE on
+              // a thread where almost every message is routine, which told the
+              // doctor nothing and cost a strip of the conversation.
               if (pinned.isNotEmpty) _PinnedBanner(messages: pinned),
               Expanded(
                 // Same WhatsApp-style wallpaper as the Patients-tab thread.
@@ -483,51 +485,6 @@ class _ChatHeader extends ConsumerWidget {
             icon: const Icon(Icons.call_rounded),
           ),
       ],
-    );
-  }
-}
-
-class _SessionHeader extends StatelessWidget {
-  const _SessionHeader({required this.session});
-  final ChatReviewSession session;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final s = session;
-    final color = AppColors.forUrgencyOn(context, s.highestUrgency);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      color: scheme.surfaceContainerLow,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  s.patientName ?? 'Patient',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              MiniPill(
-                label: s.highestUrgency.toUpperCase(),
-                color: color,
-                filled: s.highestUrgency == 'emergency',
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            s.title,
-            style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
-          ),
-        ],
-      ),
     );
   }
 }

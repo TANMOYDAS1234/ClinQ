@@ -1387,7 +1387,37 @@ router.get(
 router.get(
   '/dietician-invite',
   asyncHandler(async (req, res) => {
-    res.json({ code: env.DIETICIAN_INVITE_CODE || null });
+    const settings = await getClinicSettings();
+    // The stored code wins; the env var is the fallback for a clinic that has
+    // never rotated one, so existing deployments keep working untouched.
+    res.json({ code: settings.dieticianInviteCode || env.DIETICIAN_INVITE_CODE || null });
+  }),
+);
+
+/**
+ * Issues a fresh invite code, replacing whatever is current.
+ *
+ * Rotating is the whole point: the code travels over WhatsApp, and the only
+ * remedy once it has reached the wrong person is to make it stop working.
+ */
+router.post(
+  '/dietician-invite/generate',
+  audit('update', 'ClinicSettings'),
+  asyncHandler(async (req, res) => {
+    // Unambiguous alphabet: no O/0, no I/1/L. The code is read aloud and typed
+    // by hand, and a 0 mistaken for an O is a support call.
+    const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    const code = Array.from(
+      { length: 8 },
+      () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)],
+    ).join('');
+
+    await ClinicSettings.findOneAndUpdate(
+      { key: 'clinic' },
+      { $set: { dieticianInviteCode: code }, $setOnInsert: { key: 'clinic' } },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+    res.json({ code });
   }),
 );
 

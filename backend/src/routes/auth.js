@@ -12,6 +12,7 @@ import { asyncHandler, unauthorized, conflict } from '../middleware/errors.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { logger } from '../config/logger.js';
 import { env } from '../config/env.js';
+import { getClinicSettings } from '../models/ClinicSettings.js';
 import { Medication } from '../models/Medication.js';
 import { recomputeSchedule } from '../services/medicationSchedule.js';
 import { toE164 } from '../utils/phone.js';
@@ -75,7 +76,15 @@ router.post(
 
     // Public sign-up is a patient by default; the private dietician code is the
     // only way to self-register a non-patient account.
-    const isDietician = Boolean(inviteCode) && inviteCode === env.DIETICIAN_INVITE_CODE;
+    //
+    // Checked against the code the doctor last generated, falling back to the
+    // env var for a clinic that has never rotated one. Without the stored code
+    // here, pressing Generate would mint a code that self-registration then
+    // refused — a rotate button that quietly breaks the thing it rotates.
+    const settings = await getClinicSettings();
+    const activeInvite = settings.dieticianInviteCode || env.DIETICIAN_INVITE_CODE;
+    const isDietician =
+      Boolean(inviteCode) && Boolean(activeInvite) && inviteCode === activeInvite;
     const role = isDietician ? ROLES.DIETICIAN : ROLES.PATIENT;
 
     const user = new User({

@@ -160,10 +160,11 @@ class _CareComposerState extends ConsumerState<CareComposer> {
           AppSpacing.sm,
           MediaQuery.viewInsetsOf(context).bottom > 0 ? 8 : 8,
         ),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          border: Border(top: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
-        ),
+        // Transparent, like the care thread's composer: the pill itself is
+        // filled, so the input stays legible while the conversation keeps
+        // running underneath it. An opaque bar with a hard top rule cut the
+        // thread off at the ankles and made the screen feel shorter than it is.
+        decoration: const BoxDecoration(color: Colors.transparent),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
