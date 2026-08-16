@@ -103,7 +103,11 @@ class _NutritionInboxScreenState extends ConsumerState<NutritionInboxScreen>
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(chatReviewProvider(_query));
+    final asyncRaw = ref.watch(chatReviewProvider(_query));
+    // Same hold as the Care inbox: the poll was replacing the list with a
+    // spinner on every tick, which reads as a flicker when you tap the filter.
+    final loaded = asyncRaw.valueOrNull;
+    final async = loaded != null ? AsyncData(loaded) : asyncRaw;
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -340,27 +344,32 @@ class _SectionBar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Nutrition Inbox',
-          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        // Full width, matching the cards below — the same alignment fix as the
-        // Care inbox, so the two tabs do not differ in a way nobody can name
-        // but everybody notices.
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Row(
-            children: [
-              Expanded(child: _Seg(label: 'Unread', selected: unreadOnly, onTap: () => onSelect(true))),
-              Expanded(child: _Seg(label: 'Show all', selected: !unreadOnly, onTap: () => onSelect(false))),
-            ],
-          ),
+        // Title and filter share a line, matching the Care inbox exactly — the
+        // heading names the screen, the control sits at the far edge.
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Nutrition Inbox',
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _Seg(label: 'Unread', selected: unreadOnly, onTap: () => onSelect(true)),
+                  _Seg(label: 'All', selected: !unreadOnly, onTap: () => onSelect(false)),
+                ],
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.md),
       ],
@@ -368,7 +377,6 @@ class _SectionBar extends StatelessWidget {
   }
 }
 
-/// One segment of the pill toggle — the selected one lifts onto a white pill.
 class _Seg extends StatelessWidget {
   const _Seg({required this.label, required this.selected, required this.onTap});
 

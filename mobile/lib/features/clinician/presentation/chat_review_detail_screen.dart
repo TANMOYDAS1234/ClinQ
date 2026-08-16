@@ -264,6 +264,7 @@ class _ChatReviewDetailScreenState
                         itemBuilder: (context, i) {
                           final m = detail.messages[i];
                           return _MessageBubble(
+                            isNutrition: detail.session.kind == 'nutrition',
                             message: m,
                             repliedTo:
                                 m.replyToId == null
@@ -534,6 +535,7 @@ class _SessionHeader extends StatelessWidget {
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({
     required this.message,
+    this.isNutrition = false,
     this.repliedTo,
     this.onReply,
     this.onTogglePin,
@@ -542,6 +544,10 @@ class _MessageBubble extends StatelessWidget {
   });
 
   final ChatReviewMessage message;
+
+  /// Whether this turn is in the dietician's thread, which changes what the
+  /// assistant is called.
+  final bool isNutrition;
   final ChatReviewMessage? repliedTo;
   final VoidCallback? onReply;
   final VoidCallback? onTogglePin;
@@ -702,16 +708,19 @@ class _MessageBubble extends StatelessWidget {
       );
     }
 
-    // The clinic's replies sit on the same side as the assistant, matching what
-    // the patient sees: one continuous conversation rather than messages
-    // hopping sides. Who spoke is carried by the label, not the alignment.
-    final align = isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-    final bubbleColor =
-        isUser
-            ? AppColors.accentOn(context).withValues(alpha: 0.12)
-            : isClinician
-            ? AppColors.accentOn(context).withValues(alpha: 0.22)
-            : scheme.surfaceContainerHighest;
+    // Sides follow whose screen this is, as every messaging app does: the
+    // reader's own words on the right, everyone else's on the left. This is the
+    // doctor's screen, so the clinic's replies go right and the patient, the
+    // assistant and the dietician all sit left together.
+    //
+    // It used to be the other way round — the patient's messages on the right —
+    // which read as though the doctor were looking at the patient's phone.
+    final isMine = isClinician;
+    final align = isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    final bubbleColor = isMine
+        ? AppColors.bubbleMine(context)
+        : scheme.surfaceContainerHighest;
+    final onBubble = isMine ? Colors.white : scheme.onSurface;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -720,12 +729,14 @@ class _MessageBubble extends StatelessWidget {
         children: [
           Row(
             mainAxisAlignment:
-                isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+                isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
             children: [
+              // No icon on the patient's turns: the app bar already carries
+              // their photo and name, so a silhouette beside every line only
+              // repeats it.
+              if (!isUser)
               Icon(
-                isUser
-                    ? Icons.person_rounded
-                    : isDietician
+                isDietician
                     ? Icons.restaurant_rounded
                     : isClinician
                     ? Icons.medical_information_rounded
@@ -736,7 +747,7 @@ class _MessageBubble extends StatelessWidget {
                         ? AppColors.accentOn(context)
                         : scheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 4),
+              if (!isUser) const SizedBox(width: 4),
               Text(
                 isUser
                     ? 'Patient'
@@ -746,7 +757,11 @@ class _MessageBubble extends StatelessWidget {
                         : '${m.senderName} · Dietician')
                     : isClinician
                     ? 'You / clinic'
-                    : 'Assistant',
+                    // Named for the thread it is answering in. In a nutrition
+                    // conversation a bare "Assistant" gave no clue whose
+                    // protocols it was quoting — the dietician's plan, not the
+                    // clinic's clinical guidance.
+                    : (isNutrition ? 'Dietitian assistant' : 'Assistant'),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -838,7 +853,7 @@ class _MessageBubble extends StatelessWidget {
                     isUser || isClinician
                         ? Text(
                           m.content,
-                          style: const TextStyle(fontSize: 14.5, height: 1.4),
+                          style: TextStyle(fontSize: 14.5, height: 1.4, color: onBubble),
                         )
                         : MarkdownText(
                           data: m.content,
@@ -846,7 +861,7 @@ class _MessageBubble extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 14.5,
                             height: 1.4,
-                            color: scheme.onSurface,
+                            color: onBubble,
                           ),
                         ),
                 ],

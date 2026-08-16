@@ -104,7 +104,13 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(patientsProvider(_query));
+    final asyncRaw = ref.watch(patientsProvider(_query));
+    // Hold the last list while a refresh is in flight. The screen polls, and
+    // every tick dropped the whole list to a spinner and back — which is the
+    // flicker you see, most obviously at the moment you tap the toggle and are
+    // actually looking at it.
+    final loaded = asyncRaw.valueOrNull;
+    final async = loaded != null ? AsyncData(loaded) : asyncRaw;
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -358,28 +364,33 @@ class _SectionBar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Care Inbox',
-          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        // Full width, matching the search field and the cards below it. As a
-        // compact pill floating at the left it was the only element on the
-        // screen that did not line up with anything, which is exactly the sort
-        // of small misalignment that makes a screen feel unfinished.
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Row(
-            children: [
-              Expanded(child: _Seg(label: 'Unread', selected: unreadOnly, onTap: () => onSelect(true))),
-              Expanded(child: _Seg(label: 'Show all', selected: !unreadOnly, onTap: () => onSelect(false))),
-            ],
-          ),
+        // Title and filter share a line: the heading names the screen, the
+        // control sits at the far edge where a control belongs, and the pair
+        // reads as one bar instead of two stacked blocks.
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Care Inbox',
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _Seg(label: 'Unread', selected: unreadOnly, onTap: () => onSelect(true)),
+                  _Seg(label: 'All', selected: !unreadOnly, onTap: () => onSelect(false)),
+                ],
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.md),
       ],

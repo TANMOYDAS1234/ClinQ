@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +13,7 @@ import '../domain/lab_catalog.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/authed_image.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../medications/domain/medication.dart';
@@ -50,6 +53,15 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
   bool _saving = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Deferred past the first frame: it calls setState.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _restoreDraft();
+    });
+  }
+
+  @override
   void dispose() {
     for (final m in _meds) {
       m.dispose();
@@ -85,6 +97,91 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
       lastDate: DateTime(now.year + 2),
     );
     if (picked != null) setState(() => _followUp = picked);
+  }
+
+  /// Where an unsent prescription is parked, per patient.
+  String get _draftKey => 'rx_draft_${widget.patientId}';
+
+  /// Saves the form as it stands so an interrupted consultation can be picked
+  /// up later.
+  ///
+  /// Deliberately local to this device rather than a server draft: a
+  /// half-written prescription is not a clinical record, and putting one on the
+  /// server would make it visible to anything that reads prescriptions. It
+  /// survives closing the app, which is what "I was interrupted" actually
+  /// needs.
+  Future<void> _saveDraft() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final draft = <String, dynamic>{
+      'meds': _meds
+          .where((m) => m.name.text.trim().isNotEmpty)
+          .map((m) => {
+                'name': m.name.text.trim(),
+                'dosage': m.dosage.text.trim(),
+                // Stored by enum name, not by index: an index would
+                // silently remap every saved draft the day a new frequency is
+                // added to the middle of the enum.
+                'frequency': m.frequency.name,
+                'duration': m.duration.text.trim(),
+              })
+          .toList(),
+      'advice': _advice.text.trim(),
+      'tests': _selectedTests.toList(),
+      'customTests': _customTests,
+      'followUp': _followUp?.toIso8601String(),
+      'savedAt': DateTime.now().toIso8601String(),
+    };
+    await ref.read(sharedPreferencesProvider).setString(_draftKey, jsonEncode(draft));
+    if (!mounted) return;
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Draft saved on this device')),
+    );
+  }
+
+  /// Restores a saved draft when the screen opens.
+  void _restoreDraft() {
+    final raw = ref.read(sharedPreferencesProvider).getString(_draftKey);
+    if (raw == null) return;
+    try {
+      final d = jsonDecode(raw) as Map<String, dynamic>;
+      final meds = (d['meds'] as List?)?.whereType<Map<String, dynamic>>().toList() ?? const [];
+      if (meds.isEmpty && (d['advice'] as String?)?.isEmpty != false) return;
+
+      setState(() {
+        if (meds.isNotEmpty) {
+          for (final m in _meds) {
+            m.dispose();
+          }
+          _meds
+            ..clear()
+            ..addAll(meds.map((m) {
+              final draft = _MedDraft();
+              draft.name.text = m['name']?.toString() ?? '';
+              draft.dosage.text = m['dosage']?.toString() ?? '';
+              draft.duration.text = m['duration']?.toString() ?? '';
+              final freq = m['frequency']?.toString();
+              if (freq != null) {
+                draft.frequency = DoseFrequency.values.firstWhere(
+                  (f) => f.name == freq,
+                  orElse: () => draft.frequency,
+                );
+              }
+              return draft;
+            }));
+        }
+        _advice.text = d['advice']?.toString() ?? '';
+        _selectedTests
+          ..clear()
+          ..addAll((d['tests'] as List?)?.map((e) => e.toString()) ?? const []);
+        _customTests
+          ..clear()
+          ..addAll((d['customTests'] as List?)?.map((e) => e.toString()) ?? const []);
+        _followUp = DateTime.tryParse(d['followUp']?.toString() ?? '');
+      });
+    } catch (_) {
+      // A draft that will not parse is not worth surfacing — the form simply
+      // opens empty, which is where the doctor would have started anyway.
+    }
   }
 
   Future<void> _send() async {
@@ -157,6 +254,8 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
         _followUp = null;
         _saving = false;
       });
+      // Sent, so the parked copy is no longer a draft of anything.
+      await ref.read(sharedPreferencesProvider).remove(_draftKey);
       ref.invalidate(patientSummaryProvider(widget.patientId));
       // The list above this form has just gained what was written into it.
       ref.invalidate(patientMedicationsProvider(widget.patientId));
@@ -536,35 +635,63 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
-                SizedBox(
-                  height: AppSpacing.minTapTarget + 12,
-                  child: FilledButton.icon(
-                    onPressed: _saving ? null : _send,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                // Two actions, one line. Draft is the quieter of the pair — a
+                // tonal fill against the brand one — because sending is what a
+                // consultation is for and saving is the escape hatch when the
+                // doctor is interrupted mid-form.
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: AppSpacing.minTapTarget + 12,
+                        child: FilledButton.tonalIcon(
+                          onPressed: _saving ? null : _saveDraft,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.accentSoftOn(context),
+                            foregroundColor: AppColors.accentOn(context),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(Icons.bookmark_outline_rounded, size: 20),
+                          label: const Text(
+                            'Save draft',
+                            style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                          ),
+                        ),
                       ),
                     ),
-                    icon:
-                        _saving
-                            ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                                color: Colors.white,
-                              ),
-                            )
-                            : const Icon(Icons.send_rounded, size: 21),
-                    label: const Text(
-                      'Send Prescription',
-                      style: TextStyle(
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w700,
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: SizedBox(
+                        height: AppSpacing.minTapTarget + 12,
+                        child: FilledButton.icon(
+                          onPressed: _saving ? null : _send,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon:
+                              _saving
+                                  ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.4,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                  : const Icon(Icons.send_rounded, size: 20),
+                          label: const Text(
+                            'Send',
+                            style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
