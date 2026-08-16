@@ -157,6 +157,60 @@ class LabReport {
 /// The full clinical picture for one patient (`GET /doctor/patients/:id/summary`).
 /// Only the fields the clinician UI renders are pulled out; the raw analytics
 /// blobs are large and screen-specific.
+/// Everything the clinic recorded about a patient beyond their name and phone.
+///
+/// Split out rather than flattened onto [PatientSummary] because these are the
+/// facts a doctor reads once at the start of a consultation — allergies,
+/// comorbidities, who to ring — and keeping them together lets the screen show
+/// them as one block instead of scattering them through the header.
+class PatientDetails {
+  const PatientDetails({
+    this.diagnosedOn,
+    this.heightCm,
+    this.comorbidities = const [],
+    this.allergies = const [],
+    this.footRiskCategory,
+    this.emergencyName,
+    this.emergencyPhone,
+    this.emergencyRelation,
+    this.notes,
+  });
+
+  final DateTime? diagnosedOn;
+  final num? heightCm;
+  final List<String> comorbidities;
+  final List<String> allergies;
+  final String? footRiskCategory;
+  final String? emergencyName;
+  final String? emergencyPhone;
+  final String? emergencyRelation;
+  final String? notes;
+
+  bool get isEmpty =>
+      diagnosedOn == null &&
+      heightCm == null &&
+      comorbidities.isEmpty &&
+      allergies.isEmpty &&
+      (footRiskCategory == null || footRiskCategory == 'low') &&
+      emergencyPhone == null &&
+      (notes ?? '').isEmpty;
+
+  factory PatientDetails.fromJson(Map<String, dynamic> j) {
+    final ec = j['emergencyContact'] as Map<String, dynamic>?;
+    return PatientDetails(
+      diagnosedOn: DateTime.tryParse(j['diagnosedOn']?.toString() ?? '')?.toLocal(),
+      heightCm: j['heightCm'] as num?,
+      comorbidities: (j['comorbidities'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      allergies: (j['allergies'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      footRiskCategory: j['footRiskCategory']?.toString(),
+      emergencyName: ec?['name']?.toString(),
+      emergencyPhone: ec?['phone']?.toString(),
+      emergencyRelation: ec?['relation']?.toString(),
+      notes: j['notes']?.toString(),
+    );
+  }
+}
+
 class PatientSummary {
   const PatientSummary({
     required this.id,
@@ -181,6 +235,7 @@ class PatientSummary {
     this.hba1cHistory = const [],
     this.glucoseDaily = const [],
     this.labResults = const [],
+    this.details = const PatientDetails(),
     this.advisedTests = const [],
     this.alerts = const [],
     this.aiContext,
@@ -239,6 +294,9 @@ class PatientSummary {
   final List<GlucoseDailyPoint> glucoseDaily;
 
   final List<LabReport> labResults;
+
+  /// The rest of the record — allergies, comorbidities, emergency contact.
+  final PatientDetails details;
 
   /// Tests already ordered on an active prescription — so the doctor can see
   /// what is outstanding before ordering it again.
@@ -319,6 +377,7 @@ class PatientSummary {
           : null,
       reviewIntervalDays: (profile['dietReviewIntervalDays'] as num?)?.toInt(),
       labResults: (j['labResults'] as List?)?.whereType<Map<String, dynamic>>().map(LabReport.fromJson).toList() ?? const [],
+      details: PatientDetails.fromJson(j['details'] as Map<String, dynamic>? ?? const {}),
       advisedTests: (j['labTestsAdvised'] as List?)?.map((e) => e.toString()).toList() ?? const [],
       healthScore: (health['score'] as num?)?.toInt(),
       healthBand: health['band']?.toString(),

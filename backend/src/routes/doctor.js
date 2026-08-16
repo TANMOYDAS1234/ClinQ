@@ -744,6 +744,27 @@ router.get(
         address: profile?.address ?? null,
         chiefComplaint: profile?.chiefComplaint ?? null,
       },
+      // The rest of what the clinic knows about this person. All of it was
+      // already stored and none of it was sent, so the doctor had to open the
+      // patient's own app — or ask them again — for an allergy the clinic
+      // recorded at registration.
+      details: {
+        diagnosedOn: profile?.diagnosedOn ?? null,
+        heightCm: profile?.heightCm ?? null,
+        comorbidities: profile?.comorbidities ?? [],
+        allergies: profile?.allergies ?? [],
+        footRiskCategory: profile?.footRiskCategory ?? null,
+        emergencyContact: profile?.emergencyContact?.phone
+          ? {
+              name: profile.emergencyContact.name ?? null,
+              phone: profile.emergencyContact.phone,
+              relation: profile.emergencyContact.relation ?? null,
+            }
+          : null,
+        targets: profile?.targets ?? null,
+        mealTimes: profile?.mealTimes ?? null,
+        notes: profile?.notes ?? null,
+      },
       profile,
       healthScore,
       trends,
