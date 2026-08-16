@@ -9,7 +9,7 @@ class AppLocalizationsBn extends AppLocalizations {
   AppLocalizationsBn([String locale = 'bn']) : super(locale);
 
   @override
-  String get appName => 'ClinQ';
+  String get appName => 'MedPin';
 
   @override
   String get appTagline => 'ডাঃ অমিত কুমার দে-র সঙ্গে ডায়াবেটিস পরিচর্যা';
@@ -408,7 +408,7 @@ class AppLocalizationsBn extends AppLocalizations {
   String get chatDisclaimer => 'AI-এর সহায়তা, এটি কোনো রোগ নির্ণয় নয়';
 
   @override
-  String get chatThinking => 'ClinQ সহায়ক লিখছে…';
+  String get chatThinking => 'MedPin সহায়ক লিখছে…';
 
   @override
   String get chatEmergencyTitle => 'জরুরি অবস্থা — এখনই ব্যবস্থা নিন';
@@ -433,7 +433,7 @@ class AppLocalizationsBn extends AppLocalizations {
       'ধন্যবাদ, এই উত্তরটি পর্যালোচনার জন্য রিপোর্ট করা হয়েছে।';
 
   @override
-  String get chatWelcomeTitle => 'নমস্কার, আমি আপনার ClinQ সহায়ক';
+  String get chatWelcomeTitle => 'নমস্কার, আমি আপনার MedPin সহায়ক';
 
   @override
   String get chatWelcomeBody =>
@@ -449,7 +449,7 @@ class AppLocalizationsBn extends AppLocalizations {
   String get chatArchived => 'চ্যাট আর্কাইভ করা হয়েছে';
 
   @override
-  String get chatAnalyzing => 'ClinQ তথ্য বিশ্লেষণ করছে…';
+  String get chatAnalyzing => 'MedPin তথ্য বিশ্লেষণ করছে…';
 
   @override
   String get chatAttach => 'ছবি যুক্ত করুন';
@@ -742,7 +742,7 @@ class AppLocalizationsBn extends AppLocalizations {
   String get profileEditProfile => 'প্রোফাইল সম্পাদনা করুন';
 
   @override
-  String get profileAbout => 'ClinQ সম্পর্কে';
+  String get profileAbout => 'MedPin সম্পর্কে';
 
   @override
   String get profilePatient => 'রোগী';
@@ -908,10 +908,10 @@ class AppLocalizationsBn extends AppLocalizations {
       'এই ডিভাইসে আঙুলের ছাপ বা মুখ আনলক সেট করা নেই।';
 
   @override
-  String get appLockPrompt => 'ClinQ আনলক করুন';
+  String get appLockPrompt => 'MedPin আনলক করুন';
 
   @override
-  String get appLockLocked => 'ClinQ লক করা আছে';
+  String get appLockLocked => 'MedPin লক করা আছে';
 
   @override
   String get appLockUnlock => 'আনলক';

@@ -256,14 +256,14 @@ class _InboxHeader extends ConsumerWidget {
         children: [
           // The app's own emblem, not a generic medical cross.
           Image.asset(
-            'assets/brand/logo_emblem.png',
+            'assets/brand/medpin_emblem.png',
             height: 30,
             errorBuilder: (_, _, _) =>
                 Icon(Icons.forum_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 10),
           Text(
-            'ClinQ Panel',
+            'MedPin Panel',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),

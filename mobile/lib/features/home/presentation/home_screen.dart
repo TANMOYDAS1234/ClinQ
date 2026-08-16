@@ -213,14 +213,14 @@ class _BrandHeader extends ConsumerWidget {
       child: Row(
         children: [
           Image.asset(
-            'assets/brand/logo_emblem.png',
+            'assets/brand/medpin_emblem.png',
             height: 30,
             errorBuilder: (_, _, _) =>
                 Icon(Icons.favorite_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 10),
           Text(
-            'ClinQ',
+            'MedPin',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),

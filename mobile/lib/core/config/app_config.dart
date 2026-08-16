@@ -51,7 +51,7 @@ class AppConfig {
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 20);
 
-  static const String appName = 'ClinQ';
+  static const String appName = 'MedPin';
 
   /// Shown in Profile → About. Kept in step with `version:` in pubspec.yaml.
   static const String appVersion = '1.0.0';

@@ -103,7 +103,7 @@ abstract class AppLocalizations {
   /// App name shown on splash and title bars
   ///
   /// In en, this message translates to:
-  /// **'ClinQ'**
+  /// **'MedPin'**
   String get appName;
 
   /// No description provided for @appTagline.
@@ -859,7 +859,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatThinking.
   ///
   /// In en, this message translates to:
-  /// **'ClinQ Assistant is typing…'**
+  /// **'MedPin Assistant is typing…'**
   String get chatThinking;
 
   /// No description provided for @chatEmergencyTitle.
@@ -907,7 +907,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatWelcomeTitle.
   ///
   /// In en, this message translates to:
-  /// **'Hello, I\'m your ClinQ Assistant'**
+  /// **'Hello, I\'m your MedPin Assistant'**
   String get chatWelcomeTitle;
 
   /// No description provided for @chatWelcomeBody.
@@ -937,7 +937,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatAnalyzing.
   ///
   /// In en, this message translates to:
-  /// **'ClinQ is analyzing data…'**
+  /// **'MedPin is analyzing data…'**
   String get chatAnalyzing;
 
   /// No description provided for @chatAttach.
@@ -1513,7 +1513,7 @@ abstract class AppLocalizations {
   /// No description provided for @profileAbout.
   ///
   /// In en, this message translates to:
-  /// **'About ClinQ'**
+  /// **'About MedPin'**
   String get profileAbout;
 
   /// No description provided for @profilePatient.
@@ -1831,13 +1831,13 @@ abstract class AppLocalizations {
   /// No description provided for @appLockPrompt.
   ///
   /// In en, this message translates to:
-  /// **'Unlock ClinQ'**
+  /// **'Unlock MedPin'**
   String get appLockPrompt;
 
   /// No description provided for @appLockLocked.
   ///
   /// In en, this message translates to:
-  /// **'ClinQ is locked'**
+  /// **'MedPin is locked'**
   String get appLockLocked;
 
   /// No description provided for @appLockUnlock.

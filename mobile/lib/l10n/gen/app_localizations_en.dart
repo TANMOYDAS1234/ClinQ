@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appName => 'ClinQ';
+  String get appName => 'MedPin';
 
   @override
   String get appTagline => 'Diabetes care with Dr. Amit Kumar Dey';
@@ -411,7 +411,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatDisclaimer => 'AI-assisted guidance, not a diagnosis';
 
   @override
-  String get chatThinking => 'ClinQ Assistant is typing…';
+  String get chatThinking => 'MedPin Assistant is typing…';
 
   @override
   String get chatEmergencyTitle => 'Emergency — act now';
@@ -436,7 +436,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Thank you, this reply has been reported for review.';
 
   @override
-  String get chatWelcomeTitle => 'Hello, I\'m your ClinQ Assistant';
+  String get chatWelcomeTitle => 'Hello, I\'m your MedPin Assistant';
 
   @override
   String get chatWelcomeBody =>
@@ -452,7 +452,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatArchived => 'Chat archived';
 
   @override
-  String get chatAnalyzing => 'ClinQ is analyzing data…';
+  String get chatAnalyzing => 'MedPin is analyzing data…';
 
   @override
   String get chatAttach => 'Attach a photo';
@@ -749,7 +749,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileEditProfile => 'Edit profile';
 
   @override
-  String get profileAbout => 'About ClinQ';
+  String get profileAbout => 'About MedPin';
 
   @override
   String get profilePatient => 'Patient';
@@ -914,10 +914,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This device has no fingerprint or face unlock set up.';
 
   @override
-  String get appLockPrompt => 'Unlock ClinQ';
+  String get appLockPrompt => 'Unlock MedPin';
 
   @override
-  String get appLockLocked => 'ClinQ is locked';
+  String get appLockLocked => 'MedPin is locked';
 
   @override
   String get appLockUnlock => 'Unlock';

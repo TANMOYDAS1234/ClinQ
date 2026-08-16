@@ -452,7 +452,7 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          Center(child: Text('ClinQ v${AppConfig.appVersion}', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant))),
+          Center(child: Text('MedPin v${AppConfig.appVersion}', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant))),
         ],
       ),
     );

@@ -83,7 +83,7 @@ class PushService {
       final n = m.notification;
       if (n == null) return;
       NotificationService.instance.show(
-        title: n.title ?? 'ClinQ',
+        title: n.title ?? 'MedPin',
         body: n.body ?? '',
         payload: jsonEncode(m.data),
       );

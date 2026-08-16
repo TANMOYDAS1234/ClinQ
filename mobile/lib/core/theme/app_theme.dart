@@ -3,12 +3,17 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'app_spacing.dart';
 
-/// Material 3 theme for ClinQ.
+/// Material 3 theme for MedPin.
 ///
-/// Deliberately does NOT set a custom `fontFamily`: the platform default
-/// (Roboto/Noto on Android, San Francisco on iOS) already ships full
-/// Bengali and Devanagari glyph coverage, whereas most bundled display
-/// fonts do not. Overriding it risks tofu boxes for bn/hi users.
+/// Manrope for headings, Inter for text, per the brand sheet. Both are
+/// bundled in assets/fonts rather than fetched at runtime.
+///
+/// CAVEAT, and it is a real one: neither family ships Bengali or Devanagari
+/// glyphs. Android falls back to Noto per-glyph, so bn/hi text still renders —
+/// but it renders in a different face from the English around it, and that
+/// fallback is the platform's promise, not ours. The clinician screens are
+/// English-only so this is safe today; before the patient panel is restyled,
+/// check a Bengali and a Hindi build on a real device rather than assuming.
 class AppTheme {
   AppTheme._();
 
@@ -23,10 +28,11 @@ class AppTheme {
       error: AppColors.danger,
     );
 
-    // Material 3 derives every surface from the seed, so a deep green primary
-    // washes the whole light theme faintly green. Fine for a brand app, wrong
-    // for a clinical one — the surfaces are pulled back to near-neutral so the
-    // green reads as deliberate accent rather than as a tint over everything.
+    // Material 3 derives every surface from the seed, so a saturated blue
+    // primary washes the whole light theme faintly blue. Fine for a brand app,
+    // wrong for a clinical one — the surfaces are pulled back to near-neutral
+    // so the blue reads as deliberate accent rather than a tint over
+    // everything.
     if (!isDark) {
       colorScheme = colorScheme.copyWith(
         surface: const Color(0xFFFBFCFD),
@@ -38,18 +44,18 @@ class AppTheme {
         outlineVariant: const Color(0xFFDDE3EA),
       );
     } else {
-      // Dark mode used to be left entirely to fromSeed. From a seed as dark as
-      // #064E3B, M3 derives washed, faintly-green surfaces that do not match
-      // the scaffold colour set below — which is why the app bar went dark
-      // while the chat thread behind it stayed pale, and why cards on dark
-      // read as grey smudges rather than as cards.
+      // Dark mode used to be left entirely to fromSeed. From a seed this dark
+      // M3 derives washed surfaces that do not match the scaffold colour set
+      // below — which is why the app bar went dark while the chat thread
+      // behind it stayed pale, and why cards on dark read as grey smudges
+      // rather than as cards.
       //
       // The same neutral ladder as light mode, inverted: one step per level,
-      // cool rather than green, so the brand accent is the only colour on the
+      // neutral rather than tinted, so the brand accent is the only colour on the
       // screen that is actually coloured.
       colorScheme = colorScheme.copyWith(
         primary: AppColors.primaryDark,
-        onPrimary: const Color(0xFF00261A),
+        onPrimary: const Color(0xFF001B3D),
         secondary: AppColors.accent,
         surface: AppColors.surfaceDark,
         onSurface: const Color(0xFFE6EDF3),
@@ -71,33 +77,46 @@ class AppTheme {
       scaffoldBackgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
     );
 
+    // Two families, as the brand sheet specifies: Manrope carries the
+    // headlines — it is geometric and a little wide, so a number set in it
+    // reads as a figure rather than as body copy — and Inter carries
+    // everything a clinician actually reads a sentence in.
+    //
+    // Applied as a whole-theme base first, then the per-role sizes below, so a
+    // widget that never names a style still lands in the right family.
+    final manrope = base.textTheme.apply(fontFamily: 'Manrope');
+    final inter = base.textTheme.apply(fontFamily: 'Inter');
+
     // Minimum body text 16sp, headings 20-28sp, high contrast.
-    final textTheme = base.textTheme
+    final textTheme = inter
         .copyWith(
-          headlineLarge: base.textTheme.headlineLarge?.copyWith(
+          displayLarge: manrope.displayLarge,
+          displayMedium: manrope.displayMedium,
+          displaySmall: manrope.displaySmall,
+          headlineLarge: manrope.headlineLarge?.copyWith(
             fontSize: 28,
             fontWeight: FontWeight.w700,
             height: 1.25,
           ),
-          headlineMedium: base.textTheme.headlineMedium?.copyWith(
+          headlineMedium: manrope.headlineMedium?.copyWith(
             fontSize: 24,
             fontWeight: FontWeight.w700,
             height: 1.25,
           ),
-          headlineSmall: base.textTheme.headlineSmall?.copyWith(
+          headlineSmall: manrope.headlineSmall?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.w700,
             height: 1.3,
           ),
-          titleLarge: base.textTheme.titleLarge?.copyWith(
+          titleLarge: manrope.titleLarge?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
-          titleMedium: base.textTheme.titleMedium?.copyWith(
+          titleMedium: manrope.titleMedium?.copyWith(
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
-          titleSmall: base.textTheme.titleSmall?.copyWith(
+          titleSmall: manrope.titleSmall?.copyWith(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -120,9 +139,8 @@ class AppTheme {
         backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
-        // Material 3 tints the bar as content scrolls under it. With a green
-        // seed that shows as a creeping green wash on an otherwise white
-        // header, so the bar is held flat.
+        // Material 3 tints the bar as content scrolls under it, which shows as
+        // a creeping blue wash on an otherwise white header. Held flat.
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         centerTitle: false,
@@ -213,9 +231,12 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         height: 72,
         backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
-        // Flat mint pill rather than the tonal primaryContainer, which under a
-        // deep-green seed comes out muddy against white.
-        indicatorColor: isDark ? AppColors.primaryDark.withValues(alpha: 0.22) : AppColors.accentSoft,
+        // A solid brand pill, as the design sheet draws it — not the tonal
+        // primaryContainer, which under a deep-blue seed comes out muddy
+        // against white. The icon inside inverts to white.
+        indicatorColor: isDark
+            ? AppColors.primaryDark.withValues(alpha: 0.24)
+            : AppColors.primary,
         indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -232,8 +253,10 @@ class AppTheme {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
             size: 24,
+            // White on the filled pill in light mode; on dark the pill is only
+            // a wash, so the icon keeps the brand blue and stays legible.
             color: selected
-                ? (isDark ? AppColors.primaryDark : AppColors.primary)
+                ? (isDark ? AppColors.primaryDark : Colors.white)
                 : colorScheme.onSurfaceVariant,
           );
         }),

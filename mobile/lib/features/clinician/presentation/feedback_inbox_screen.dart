@@ -168,14 +168,14 @@ class _BrandHeader extends StatelessWidget {
             icon: Icon(Icons.arrow_back_rounded, color: scheme.onSurface),
           ),
           Image.asset(
-            'assets/brand/logo_emblem.png',
+            'assets/brand/medpin_emblem.png',
             height: 28,
             errorBuilder: (_, _, _) =>
                 Icon(Icons.rate_review_rounded, size: 24, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 8),
           Text(
-            'ClinQ',
+            'MedPin',
             style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),

@@ -5,44 +5,47 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // "Clinical Precision" palette. Deep forest green rather than the previous
-  // teal: it reads as clinical and settled rather than techy, and holds enough
-  // contrast to carry white text on primary buttons without a second tone.
-  static const Color primary = Color(0xFF064E3B);
+  // "Clinical Precision". Deep institutional blue rather than the previous
+  // forest green: blue is what a clinician reads as medical record software,
+  // and #003399 is dark enough to carry white text on a filled button without
+  // needing a second, darker tone underneath it.
+  static const Color primary = Color(0xFF003399);
 
-  /// Lighter counterpart used on dark surfaces, where the deep green would sink
-  /// into the background.
-  static const Color primaryDark = Color(0xFF10B981);
+  /// The brand blue's counterpart on dark surfaces, where #003399 sinks into
+  /// the background. Also the secondary accent in the palette.
+  static const Color primaryDark = Color(0xFF4DA3FF);
 
-  /// Mint fill behind selected tabs, badges and quiet emphasis.
-  static const Color accentSoft = Color(0xFFD1FAE5);
+  /// Secondary — the lighter blue. Selected nav, links, quiet emphasis.
+  static const Color accent = Color(0xFF4DA3FF);
 
-  /// The brighter green, for accents that must read at small sizes.
-  static const Color accent = Color(0xFF10B981);
+  /// Tertiary — the palest blue wash. Behind selected chips, badges and
+  /// informational panels. Light enough to sit under dark text.
+  static const Color accentSoft = Color(0xFFF0F7FF);
 
-  /// Near-white, with only a trace of cool to stop it glaring. Deliberately not
-  /// tinted toward the brand green — a clinical screen read all day should be
-  /// neutral paper, not a coloured wash.
-  static const Color surfaceLight = Color(0xFFFBFCFD);
-  static const Color surfaceDark = Color(0xFF0F1720);
+  /// Neutral paper. A clinical screen read all day is not a coloured wash, so
+  /// the light surface stays near-white with only a trace of the brand's cool.
+  static const Color surfaceLight = Color(0xFFF7F9FC);
+
+  /// Neutral #1A1C1E from the palette — the ink, reused as the dark ground.
+  static const Color surfaceDark = Color(0xFF141719);
 
   static const Color danger = Color(0xFFDC2626);
   static const Color warning = Color(0xFFD97706);
-  static const Color success = Color(0xFF059669);
+  static const Color success = Color(0xFF0B8A4E);
 
-  static const Color dangerBg = Color(0xFFFEE2E2);
+  static const Color dangerBg = Color(0xFFFDE8E8);
   static const Color warningBg = Color(0xFFFEF3C7);
-  static const Color successBg = Color(0xFFD1FAE5);
+  static const Color successBg = Color(0xFFE3F5EC);
 
-  /// The neutral tinted panel behind informational rows and tags on the
-  /// clinician screens — quieter than the alert tints so a red row still reads
-  /// as the exception on a screen full of cards.
-  static const Color infoBg = Color(0xFFE8EFFB);
+  /// The tinted panel behind informational rows and tags — the tertiary blue,
+  /// quieter than the alert tints so a red row still reads as the exception on
+  /// a screen full of cards.
+  static const Color infoBg = Color(0xFFF0F7FF);
 
   static const Color dangerBgDark = Color(0xFF3F1414);
   static const Color warningBgDark = Color(0xFF3A2A0A);
-  static const Color successBgDark = Color(0xFF0C2E22);
-  static const Color infoBgDark = Color(0xFF16233A);
+  static const Color successBgDark = Color(0xFF0C2A1E);
+  static const Color infoBgDark = Color(0xFF13203A);
 
   /// Status colours lightened for dark surfaces. The saturated light-mode reds
   /// and ambers sit at roughly 3:1 against a near-black card — legible as a

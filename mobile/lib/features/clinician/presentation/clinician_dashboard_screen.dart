@@ -94,6 +94,8 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
                         ),
                         children: [
                           if (overview != null) ...[
+                            const _OverviewHeading(),
+                            const SizedBox(height: AppSpacing.md),
                             _HeadlineRow(overview: overview),
                             const SizedBox(height: AppSpacing.md),
                             // "Active today" is gone. It counted appointments
@@ -127,6 +129,37 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
   }
 }
 
+/// Names what the screen is before the numbers start.
+///
+/// Four figures and three lists with no heading read as a pile of widgets; one
+/// line saying what they add up to is the difference between a dashboard and a
+/// dump of counters.
+class _OverviewHeading extends StatelessWidget {
+  const _OverviewHeading();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Operational Overview',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: scheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          "Your clinic's high-level status for today.",
+          style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
+        ),
+      ],
+    );
+  }
+}
+
 // ---- Header ---------------------------------------------------------------
 
 class _DashboardHeader extends ConsumerWidget {
@@ -144,13 +177,13 @@ class _DashboardHeader extends ConsumerWidget {
       child: Row(
         children: [
           Image.asset(
-            'assets/brand/logo_emblem.png',
+            'assets/brand/medpin_emblem.png',
             height: 30,
             errorBuilder: (_, _, _) => Icon(Icons.forum_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 10),
           Text(
-            'ClinQ Panel',
+            'MedPin Panel',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),

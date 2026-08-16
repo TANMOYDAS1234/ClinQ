@@ -84,7 +84,7 @@ class _ReminderSetupSheetState extends ConsumerState<_ReminderSetupSheet> {
           const Text('Never miss a dose', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
           Text(
-            'Some phones put apps to sleep and silence their alarms. One quick step keeps your medicine reminders firing on time, even when ClinQ is closed.',
+            'Some phones put apps to sleep and silence their alarms. One quick step keeps your medicine reminders firing on time, even when MedPin is closed.',
             style: TextStyle(fontSize: 14, height: 1.4, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: AppSpacing.md),

@@ -1,5 +1,5 @@
 name: akd_care
-description: "ClinQ — patient app for Dr. Amit Kumar Dey, Consultant Physician & Diabetologist."
+description: "MedPin — care connected. Clinical app for Dr. Amit Kumar Dey, Consultant Physician & Diabetologist."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -91,3 +91,18 @@ flutter:
   assets:
     - assets/brand/
     - assets/images/
+
+  # Bundled, not fetched. google_fonts downloads on first run, so a clinic on a
+  # weak connection would see the first screen in the wrong face — and with no
+  # signal at all it would stay wrong. ~1 MB buys type that is correct from the
+  # first frame, offline.
+  #
+  # Both are variable fonts: one file carries every weight, so the `weight`
+  # entries below are the axis positions Flutter should instance.
+  fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf

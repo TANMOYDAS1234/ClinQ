@@ -9,7 +9,7 @@ class AppLocalizationsHi extends AppLocalizations {
   AppLocalizationsHi([String locale = 'hi']) : super(locale);
 
   @override
-  String get appName => 'ClinQ';
+  String get appName => 'MedPin';
 
   @override
   String get appTagline => 'डॉ. अमित कुमार डे के साथ डायबिटीज़ की देखभाल';
@@ -412,7 +412,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get chatDisclaimer => 'AI-सहायता प्राप्त सुझाव, यह कोई निदान नहीं है';
 
   @override
-  String get chatThinking => 'ClinQ सहायक लिख रहा है…';
+  String get chatThinking => 'MedPin सहायक लिख रहा है…';
 
   @override
   String get chatEmergencyTitle => 'आपातकाल — अभी कार्रवाई करें';
@@ -437,7 +437,7 @@ class AppLocalizationsHi extends AppLocalizations {
       'धन्यवाद, इस उत्तर की समीक्षा के लिए रिपोर्ट कर दी गई है।';
 
   @override
-  String get chatWelcomeTitle => 'नमस्ते, मैं आपका ClinQ सहायक हूं';
+  String get chatWelcomeTitle => 'नमस्ते, मैं आपका MedPin सहायक हूं';
 
   @override
   String get chatWelcomeBody =>
@@ -453,7 +453,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get chatArchived => 'चैट आर्काइव कर दी गई';
 
   @override
-  String get chatAnalyzing => 'ClinQ डेटा का विश्लेषण कर रहा है…';
+  String get chatAnalyzing => 'MedPin डेटा का विश्लेषण कर रहा है…';
 
   @override
   String get chatAttach => 'फ़ोटो जोड़ें';
@@ -750,7 +750,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get profileEditProfile => 'प्रोफ़ाइल संपादित करें';
 
   @override
-  String get profileAbout => 'ClinQ के बारे में';
+  String get profileAbout => 'MedPin के बारे में';
 
   @override
   String get profilePatient => 'मरीज़';
@@ -916,10 +916,10 @@ class AppLocalizationsHi extends AppLocalizations {
       'इस डिवाइस पर फ़िंगरप्रिंट या फ़ेस अनलॉक सेट नहीं है।';
 
   @override
-  String get appLockPrompt => 'ClinQ अनलॉक करें';
+  String get appLockPrompt => 'MedPin अनलॉक करें';
 
   @override
-  String get appLockLocked => 'ClinQ लॉक है';
+  String get appLockLocked => 'MedPin लॉक है';
 
   @override
   String get appLockUnlock => 'अनलॉक करें';

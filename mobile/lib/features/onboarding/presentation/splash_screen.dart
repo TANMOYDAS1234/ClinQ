@@ -18,17 +18,44 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // The emblem is a teal mark on a light ground, so it is shown on
-            // its white plate rather than reversed out against the teal
-            // background.
-            const AppLogo(size: 132),
+            // On its own white plate. The mark is deep-blue line-work and the
+            // splash ground is the same deep blue, so reversing it out would
+            // leave a navy figure on a navy screen — invisible for the second
+            // the splash is up.
+            Container(
+              width: 148,
+              height: 148,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(34),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 28,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: const Center(child: AppLogo(size: 104)),
+            ),
             const SizedBox(height: 24),
             const Text(
-              'ClinQ',
+              'MedPin',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 28,
+                fontSize: 30,
                 fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Care connected',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.78),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 2.2,
               ),
             ),
             const SizedBox(height: 32),

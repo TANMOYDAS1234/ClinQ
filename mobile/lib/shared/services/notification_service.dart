@@ -117,7 +117,7 @@ class NotificationService {
 
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'clinq_updates',
-    'ClinQ updates',
+    'MedPin updates',
     description: 'Appointments and messages from the clinic',
     importance: Importance.high,
   );
@@ -225,7 +225,7 @@ class NotificationService {
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
         'clinq_updates',
-        'ClinQ updates',
+        'MedPin updates',
         channelDescription: 'Appointments and messages from the clinic',
         importance: Importance.high,
         priority: Priority.high,

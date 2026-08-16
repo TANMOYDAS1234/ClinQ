@@ -595,7 +595,7 @@ class _SenderRow extends StatelessWidget {
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(color: AppColors.accentSoftOn(context), shape: BoxShape.circle),
               child: Image.asset(
-                'assets/brand/logo_emblem.png',
+                'assets/brand/medpin_emblem.png',
                 errorBuilder: (_, _, _) => Icon(icon, size: 14, color: AppColors.accentOn(context)),
               ),
             ),
