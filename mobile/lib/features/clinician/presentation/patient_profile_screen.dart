@@ -307,8 +307,6 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
               ),
               children: [
                 _ProfileHeader(patient: p),
-                const SizedBox(height: AppSpacing.md),
-                _PatientDetailsCard(patient: p),
                 const SizedBox(height: AppSpacing.lg),
 
                 // The read side of the record — health metrics, the trend graph,
@@ -738,6 +736,7 @@ class _ProfileHeader extends StatelessWidget {
       if (p.gender != null) _cap(p.gender!),
       p.phone,
     ].where((s) => s.isNotEmpty).join('  •  ');
+    final email = (p.email ?? '').trim();
     final diabetes = _diabetesLabel(p.diabetesType);
 
     return Container(
@@ -779,6 +778,30 @@ class _ProfileHeader extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
+                    if (email.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.mail_outline_rounded,
+                            size: 14,
+                            color: AppColors.accentOn(context),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.accentOn(context),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     if ((p.address ?? '').trim().isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Row(
@@ -826,6 +849,12 @@ class _ProfileHeader extends StatelessWidget {
                             label: diabetes,
                             fg: AppColors.primary,
                             bg: Colors.white,
+                          ),
+                        if (p.details.allergies.isNotEmpty)
+                          _HeaderPill(
+                            label: 'Allergy: ${p.details.allergies.join(', ')}',
+                            fg: Colors.white,
+                            bg: AppColors.danger,
                           ),
                       ],
                     ),
@@ -948,9 +977,6 @@ class _ProfileHeader extends StatelessWidget {
     );
   }
 }
-
-/// The full presenting complaint in a bottom-up sheet — the header shows a
-/// one-line preview; tapping opens this for the whole thing.
 void _showComplaintSheet(BuildContext context, String text) {
   showModalBottomSheet<void>(
     context: context,
@@ -988,146 +1014,6 @@ void _showComplaintSheet(BuildContext context, String text) {
           ),
         ),
   );
-}
-
-/// A secondary action on the patient header: an icon over a small label.
-///
-/// Deliberately understated — these are ways to reach the patient, not the
-/// point of the visit, and they share the row with two siblings. Squeezing
-/// icon and text side by side made each one narrow enough to truncate on a
-/// small phone; stacked, all three fit at any width.
-/// The rest of the record, in one block a doctor reads once at the start of a
-/// consultation.
-///
-/// Allergies lead, and are the only red thing here: everything else on this
-/// card is context, and an allergy is the one line that changes what may be
-/// prescribed in the form below. Fields the clinic has not recorded are left
-/// out entirely rather than shown as "—", so the card is short when the record
-/// is thin and never pads itself with blanks.
-class _PatientDetailsCard extends StatelessWidget {
-  const _PatientDetailsCard({required this.patient});
-
-  final PatientSummary patient;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final p = patient;
-    final d = p.details;
-
-    final rows = <Widget>[];
-
-    void add(IconData icon, String label, String value, {Color? tone}) {
-      rows.add(_DetailRow(icon: icon, label: label, value: value, tone: tone));
-    }
-
-    add(Icons.call_outlined, 'Phone', p.phone);
-    if ((p.address ?? '').trim().isNotEmpty) {
-      add(Icons.home_outlined, 'Address', p.address!.trim());
-    }
-    if (d.allergies.isNotEmpty) {
-      add(Icons.warning_amber_rounded, 'Allergies', d.allergies.join(', '),
-          tone: AppColors.dangerOn(context));
-    }
-    if (d.comorbidities.isNotEmpty) {
-      add(Icons.medical_information_outlined, 'Other conditions', d.comorbidities.join(', '));
-    }
-    if (d.diagnosedOn != null) {
-      add(Icons.event_outlined, 'Diagnosed', DateFormat('MMM yyyy').format(d.diagnosedOn!));
-    }
-    if (d.footRiskCategory != null && d.footRiskCategory != 'low') {
-      add(Icons.directions_walk_rounded, 'Foot risk', d.footRiskCategory!,
-          tone: AppColors.warningOn(context));
-    }
-    if ((p.email ?? '').isNotEmpty) add(Icons.mail_outline_rounded, 'Email', p.email!);
-    // Language only when it is NOT English: knowing a patient speaks Bengali
-    // changes how the doctor writes to them; knowing they speak the default
-    // does not.
-    if (p.language == 'bn' || p.language == 'hi') {
-      add(Icons.translate_rounded, 'Speaks', p.language == 'bn' ? 'Bengali' : 'Hindi');
-    }
-    if (d.emergencyPhone != null) {
-      final who = [d.emergencyName, d.emergencyRelation]
-          .where((e) => (e ?? '').isNotEmpty)
-          .join(' · ');
-      add(Icons.emergency_outlined, 'Emergency contact',
-          who.isEmpty ? d.emergencyPhone! : '$who — ${d.emergencyPhone}');
-    }
-    if ((d.notes ?? '').trim().isNotEmpty) {
-      add(Icons.sticky_note_2_outlined, 'Clinic notes', d.notes!.trim());
-    }
-
-    if (rows.length <= 1) return const SizedBox.shrink();
-
-    return PanelCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'PATIENT DETAILS',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.6,
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          for (var i = 0; i < rows.length; i++) ...[
-            if (i > 0) const SizedBox(height: 10),
-            rows[i],
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.tone,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color? tone;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 17, color: tone ?? scheme.onSurfaceVariant),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w600,
-                  height: 1.35,
-                  color: tone ?? scheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _QuietAction extends StatelessWidget {
