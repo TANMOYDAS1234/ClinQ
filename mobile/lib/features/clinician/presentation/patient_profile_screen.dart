@@ -838,110 +838,59 @@ class _ProfileHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
+          // Three quiet ways to reach the patient, then the one thing the visit
+          // is actually for. Four identical filled buttons in a 2x2 block gave
+          // no hint which mattered — every option shouting equally is the same
+          // as none of them shouting.
           Row(
             children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () => launchUrl(Uri(scheme: 'tel', path: p.phone)),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  icon: const Icon(Icons.call_rounded, size: 19),
-                  label: const Text(
-                    'Call',
-                    style: TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+              _QuietAction(
+                icon: Icons.call_rounded,
+                label: 'Call',
+                onTap: () => launchUrl(Uri(scheme: 'tel', path: p.phone)),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _QuietAction(
+                icon: Icons.chat_bubble_outline_rounded,
+                label: 'Message',
+                onTap: () => context.push(
+                  '/clinician/patients/${p.id}/thread',
+                  extra: p.name,
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed:
-                      () => context.push(
-                        '/clinician/patients/${p.id}/thread',
-                        extra: p.name,
-                      ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 19),
-                  label: const Text(
-                    'Message',
-                    style: TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+              _QuietAction(
+                icon: Icons.receipt_long_outlined,
+                label: 'History',
+                onTap: () => context.push(
+                  '/clinician/patients/${p.id}/prescriptions',
+                  extra: p.name,
                 ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed:
-                      () => context.push(
-                        '/clinician/patients/${p.id}/consult',
-                        extra: p.name,
-                      ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  icon: const Icon(Icons.medical_services_outlined, size: 19),
-                  label: const Text(
-                    'Consult',
-                    style: TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => context.push(
+                '/clinician/patients/${p.id}/consult',
+                extra: p.name,
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed:
-                      () => context.push(
-                        '/clinician/patients/${p.id}/prescriptions',
-                        extra: p.name,
-                      ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  icon: const Icon(Icons.receipt_long_outlined, size: 19),
-                  label: const Text(
-                    'Prescription',
-                    style: TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
+              icon: const Icon(Icons.medical_services_outlined, size: 20),
+              label: const Text(
+                'Start consultation',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
               ),
-            ],
+            ),
           ),
           if ((p.chiefComplaint ?? '').trim().isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
@@ -1042,6 +991,54 @@ void _showComplaintSheet(BuildContext context, String text) {
           ),
         ),
   );
+}
+
+/// A secondary action on the patient header: an icon over a small label.
+///
+/// Deliberately understated — these are ways to reach the patient, not the
+/// point of the visit, and they share the row with two siblings. Squeezing
+/// icon and text side by side made each one narrow enough to truncate on a
+/// small phone; stacked, all three fit at any width.
+class _QuietAction extends StatelessWidget {
+  const _QuietAction({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 20, color: Colors.white),
+                const SizedBox(height: 5),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _HeaderPill extends StatelessWidget {

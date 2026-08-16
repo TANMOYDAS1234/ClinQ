@@ -11,6 +11,7 @@ import '../../auth/presentation/auth_controller.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
+import 'widgets/panel_ui.dart';
 import 'widgets/clinic_analytics.dart';
 
 /// The doctor's home: the clinic at a glance — headline counts, what is on
@@ -843,6 +844,12 @@ class _TriageCard extends StatelessWidget {
 /// each an actionable row opening that patient. Due first; the rest are shown as
 /// "coming up" context, and anything past the first few defers to the Nutrition
 /// tab so Home never turns into a long list.
+/// Nutrition reviews, drawn as progress through each patient's review cycle.
+///
+/// A row per patient with a bar showing how far into the cycle they are. The
+/// bar is the point: "Day 7/7" and "Day 2/7" are the same sentence until you
+/// see one bar full and the other barely started, and the doctor is scanning
+/// for the full ones.
 class _NutritionReviews extends StatelessWidget {
   const _NutritionReviews({required this.overview});
 
@@ -850,126 +857,116 @@ class _NutritionReviews extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    // Due reviews first, then most-overdue within — the top row is the one to do.
+    // Due first, then most-overdue within — the top row is the one to do.
     final reviews = [...overview.nutritionReviews]
       ..sort((a, b) {
         final byDue = (b.isDue ? 1 : 0).compareTo(a.isDue ? 1 : 0);
         if (byDue != 0) return byDue;
         return b.day.compareTo(a.day);
       });
-    final shown = reviews.take(5).toList();
+    final shown = reviews.take(4).toList();
     final due = reviews.where((r) => r.isDue).length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Text('Tasks', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-            const Spacer(),
-            if (due > 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.warningBgOn(context),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '$due due',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.warningOn(context)),
-                ),
+        PanelSectionHeader(
+          title: 'Nutrition Reviews Due',
+          trailing: due == 0
+              ? null
+              : PanelPill(label: '$due Due', color: AppColors.warningOn(context)),
+        ),
+        for (final r in shown)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: _ReviewProgressCard(review: r),
+          ),
+        if (reviews.length > shown.length)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                foregroundColor: AppColors.accentOn(context),
               ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Container(
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+              onPressed: () => context.go('/clinician/nutrition'),
+              child: Text(
+                'View all ${reviews.length}',
+                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+              ),
+            ),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              for (var i = 0; i < shown.length; i++) ...[
-                if (i > 0) Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.4)),
-                _TaskRow(review: shown[i]),
-              ],
-              if (reviews.length > shown.length) ...[
-                Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.4)),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => context.go('/clinician/nutrition'),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      child: Center(
-                        child: Text(
-                          'View all ${reviews.length} in Nutrition',
-                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.accentOn(context)),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
       ],
     );
   }
 }
 
-/// One due-review task: the patient and how far into their review cycle they
-/// are, opening straight to the patient's record (where the food log lives).
-class _TaskRow extends StatelessWidget {
-  const _TaskRow({required this.review});
+/// One patient's position in their review cycle.
+class _ReviewProgressCard extends StatelessWidget {
+  const _ReviewProgressCard({required this.review});
 
   final NutritionReview review;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final accent = review.isDue ? AppColors.warningOn(context) : AppColors.accentOn(context);
+    final r = review;
+    final total = r.intervalDays <= 0 ? 1 : r.intervalDays;
+    final progress = (r.day / total).clamp(0.0, 1.0);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => context.push('/clinician/patients/${review.patientId}'),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
-          child: Row(
+    // Red once the review is actually due, brand blue while there is still time.
+    // Only the overdue rows are coloured, so a screen of them reads at a glance.
+    final tone = r.isDue ? AppColors.dangerOn(context) : AppColors.accentOn(context);
+
+    return PanelCard(
+      onTap: () => context.push('/clinician/patients/${r.patientId}'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              UserAvatar(name: review.name, avatarUrl: null, accent: accent, size: 38),
-              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  review.name,
+                  r.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Day ${review.day}/${review.intervalDays}',
-                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: accent),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                'Day ${r.day}/$total',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: r.isDue ? tone : scheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(width: 2),
-              Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant, size: 20),
             ],
           ),
-        ),
+          const SizedBox(height: 3),
+          Text(
+            // What the doctor can actually act on: whether the patient has been
+            // logging. An empty week is why a review matters, and it is the one
+            // thing the cycle number alone never says.
+            r.mealsThisWeek == 0
+                ? 'No meals logged this week'
+                : '${r.mealsThisWeek} meals logged this week',
+            style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor: scheme.surfaceContainerHigh,
+              valueColor: AlwaysStoppedAnimation<Color>(tone),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
+
