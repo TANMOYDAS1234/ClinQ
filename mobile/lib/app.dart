@@ -81,13 +81,16 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
     // Watching both here is what makes appearance and language change across
     // every screen at once: MaterialApp rebuilds and the new theme and locale
     // propagate down the whole tree, including screens already on the stack.
-    final themeMode = ref.watch(themeControllerProvider);
+    // Held to light while the dark palette is finished. The stored preference
+    // is still read and written — turning [kDarkThemeEnabled] back on restores
+    // whatever each user had chosen, rather than resetting everyone to light.
+    final themeMode = kDarkThemeEnabled ? ref.watch(themeControllerProvider) : ThemeMode.light;
 
     return MaterialApp.router(
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      darkTheme: kDarkThemeEnabled ? AppTheme.dark() : AppTheme.light(),
       themeMode: themeMode,
       locale: locale,
       supportedLocales: AppLocalizations.supportedLocales,

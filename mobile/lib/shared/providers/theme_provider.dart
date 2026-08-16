@@ -4,6 +4,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core_providers.dart';
 
+/// Whether the app offers a dark appearance at all.
+///
+/// False while the dark palette is unfinished. A half-corrected dark mode —
+/// right on some screens, low-contrast on others — reads worse than no dark
+/// mode, because the user cannot tell which screens are wrong.
+///
+/// This gates BOTH the theme itself and the selector on all three Profile
+/// tabs, so the option cannot appear while the theme it controls is ignored.
+/// Set it true and everything comes back, including each user's saved choice.
+const bool kDarkThemeEnabled = false;
+
 /// Holds the patient's appearance preference, persisted across restarts.
 ///
 /// Three states rather than a switch. A binary toggle has to pick a starting

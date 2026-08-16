@@ -20,6 +20,7 @@ import '../../profile/presentation/widgets/profile_section.dart';
 import '../../profile/presentation/widgets/theme_selector.dart';
 import '../../../shared/widgets/authed_image.dart';
 import 'widgets/panel_ui.dart';
+import '../../../shared/providers/theme_provider.dart';
 
 /// Full profile for doctor and staff — the clinician counterpart of the patient
 /// [ProfileScreen]: avatar, edit details, appearance, language, app lock, a
@@ -342,8 +343,12 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
           ),
 
           // ---- Appearance ----------------------------------------------
-          _label(l10n.profileAppearance, scheme),
-          const ThemeSelector(),
+          // Hidden while kDarkThemeEnabled is false: a control that
+          // changes nothing is worse than no control.
+          if (kDarkThemeEnabled) ...[
+            _label(l10n.profileAppearance, scheme),
+            const ThemeSelector(),
+          ],
           const SizedBox(height: AppSpacing.lg),
 
           // ---- Language ------------------------------------------------

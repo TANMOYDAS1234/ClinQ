@@ -16,6 +16,7 @@ import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../profile/presentation/widgets/profile_section.dart';
 import '../../profile/presentation/widgets/theme_selector.dart';
+import '../../../shared/providers/theme_provider.dart';
 
 /// The dietician's profile — the counterpart of the doctor's, minus the clinic
 /// tools they have no business in (alerts, knowledge base, patient feedback).
@@ -228,8 +229,12 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
           ),
           const SizedBox(height: AppSpacing.xl),
 
-          _label(l10n.profileAppearance, scheme),
-          const ThemeSelector(),
+          // Hidden while kDarkThemeEnabled is false: a control that
+          // changes nothing is worse than no control.
+          if (kDarkThemeEnabled) ...[
+            _label(l10n.profileAppearance, scheme),
+            const ThemeSelector(),
+          ],
           const SizedBox(height: AppSpacing.lg),
 
           _label(l10n.profileLanguage, scheme),

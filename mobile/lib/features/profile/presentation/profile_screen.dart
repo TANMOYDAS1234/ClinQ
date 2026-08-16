@@ -20,6 +20,7 @@ import '../../auth/domain/user.dart';
 import '../../auth/presentation/auth_controller.dart';
 import 'widgets/profile_section.dart';
 import 'widgets/theme_selector.dart';
+import '../../../shared/providers/theme_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -222,8 +223,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const SizedBox(height: AppSpacing.xl),
 
           // ---- Appearance -----------------------------------------------
-          _SectionLabel(l10n.profileAppearance),
-          const ThemeSelector(),
+          // Hidden while kDarkThemeEnabled is false: a control that
+          // changes nothing is worse than no control.
+          if (kDarkThemeEnabled) ...[
+            _SectionLabel(l10n.profileAppearance),
+            const ThemeSelector(),
+          ],
           const SizedBox(height: AppSpacing.lg),
 
           // ---- Language --------------------------------------------------
