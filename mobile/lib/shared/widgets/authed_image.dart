@@ -23,6 +23,7 @@ class AuthedImage extends ConsumerWidget {
     this.radius = 12,
     this.fit = BoxFit.cover,
     this.onTap,
+    this.background,
   });
 
   final String path;
@@ -30,6 +31,12 @@ class AuthedImage extends ConsumerWidget {
   final double height;
   final double radius;
   final BoxFit fit;
+
+  /// The plate behind the image. Defaults to a grey that reads as "photo
+  /// loading"; pass a colour (or transparent) where the image is cut out and
+  /// meant to sit directly on the surface — a signature on grey stops looking
+  /// like ink on paper.
+  final Color? background;
   final VoidCallback? onTap;
 
   @override
@@ -43,7 +50,7 @@ class AuthedImage extends ConsumerWidget {
         child: Container(
           width: width,
           height: height,
-          color: scheme.surfaceContainerHighest,
+          color: background ?? scheme.surfaceContainerHighest,
           child: headers == null
               ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
               : Image.network(

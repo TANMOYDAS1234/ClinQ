@@ -449,6 +449,11 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
                               height: 110,
                               radius: 0,
                               fit: BoxFit.contain,
+                              // No plate behind it. The signature is cut out on
+                              // transparency, so anything but white here would
+                              // show through the ink and stop it reading as a
+                              // signature on paper.
+                              background: Colors.white,
                             ),
                           ),
                         ),
