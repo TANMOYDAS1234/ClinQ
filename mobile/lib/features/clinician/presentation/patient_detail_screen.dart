@@ -457,61 +457,220 @@ class _MeasurementsSection extends StatelessWidget {
   const _MeasurementsSection({required this.summary});
   final PatientSummary summary;
 
-  static String _n(double v) => v == v.roundToDouble() ? v.round().toString() : v.toStringAsFixed(1);
+  static String _n(double v) =>
+      v == v.roundToDouble() ? v.round().toString() : v.toStringAsFixed(1);
+
+  /// BMI bands (WHO). The colour carries the reading, so the doctor does not
+  /// have to remember where 27.4 falls while scanning a screen.
+  static (Color, String) _bmiBand(BuildContext c, double bmi) {
+    if (bmi < 18.5) return (AppColors.warningOn(c), 'Underweight');
+    if (bmi < 25) return (AppColors.successOn(c), 'Normal');
+    if (bmi < 30) return (AppColors.warningOn(c), 'Overweight');
+    return (AppColors.dangerOn(c), 'Obese');
+  }
+
+  /// Only clearly abnormal readings are coloured. Tinting every borderline
+  /// figure would leave a screen of amber that says nothing.
+  static (Color, String) _bpBand(BuildContext c, int sys, int dia) {
+    if (sys >= 180 || dia >= 120) return (AppColors.dangerOn(c), 'Crisis');
+    if (sys >= 140 || dia >= 90) return (AppColors.dangerOn(c), 'High');
+    if (sys >= 130 || dia >= 80) return (AppColors.warningOn(c), 'Elevated');
+    if (sys < 90 || dia < 60) return (AppColors.warningOn(c), 'Low');
+    return (AppColors.successOn(c), 'Normal');
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = summary;
-    final scheme = Theme.of(context).colorScheme;
-    final chips = <Widget>[];
-    if (p.heightCm != null) chips.add(_MeasureChip(label: 'Height', value: '${_n(p.heightCm!)} cm'));
-    if (p.weightKg != null) chips.add(_MeasureChip(label: 'Weight', value: '${_n(p.weightKg!)} kg'));
-    if (p.bmi != null) chips.add(_MeasureChip(label: 'BMI', value: p.bmi!.toStringAsFixed(1)));
-    if (p.waistCm != null) chips.add(_MeasureChip(label: 'Waist', value: '${_n(p.waistCm!)} cm'));
-    if (p.systolic != null && p.diastolic != null) {
-      chips.add(_MeasureChip(label: 'BP', value: '${p.systolic}/${p.diastolic}'));
-    }
-    if (p.pulse != null) chips.add(_MeasureChip(label: 'Pulse', value: '${p.pulse} bpm'));
-    if (p.spo2 != null) chips.add(_MeasureChip(label: 'SpO₂', value: '${p.spo2}%'));
+    final tiles = <Widget>[];
 
-    if (chips.isEmpty) return const SizedBox.shrink();
+    if (p.heightCm != null) {
+      tiles.add(_MeasureTile(
+        icon: Icons.straighten_rounded,
+        label: 'Height',
+        value: _n(p.heightCm!.toDouble()),
+        unit: 'cm',
+      ));
+    }
+    if (p.weightKg != null) {
+      tiles.add(_MeasureTile(
+        icon: Icons.monitor_weight_outlined,
+        label: 'Weight',
+        value: _n(p.weightKg!.toDouble()),
+        unit: 'kg',
+      ));
+    }
+    if (p.bmi != null) {
+      final band = _bmiBand(context, p.bmi!.toDouble());
+      tiles.add(_MeasureTile(
+        icon: Icons.accessibility_new_rounded,
+        label: 'BMI',
+        value: p.bmi!.toStringAsFixed(1),
+        note: band.$2,
+        tone: band.$1,
+      ));
+    }
+    if (p.waistCm != null) {
+      tiles.add(_MeasureTile(
+        icon: Icons.radio_button_unchecked_rounded,
+        label: 'Waist',
+        value: _n(p.waistCm!.toDouble()),
+        unit: 'cm',
+      ));
+    }
+    if (p.systolic != null && p.diastolic != null) {
+      final band = _bpBand(context, p.systolic!, p.diastolic!);
+      tiles.add(_MeasureTile(
+        icon: Icons.favorite_outline_rounded,
+        label: 'Blood pressure',
+        value: '${p.systolic}/${p.diastolic}',
+        unit: 'mmHg',
+        note: band.$2,
+        tone: band.$1,
+      ));
+    }
+    if (p.pulse != null) {
+      tiles.add(_MeasureTile(
+        icon: Icons.monitor_heart_outlined,
+        label: 'Pulse',
+        value: '${p.pulse}',
+        unit: 'bpm',
+      ));
+    }
+    if (p.spo2 != null) {
+      tiles.add(_MeasureTile(
+        icon: Icons.air_rounded,
+        label: 'SpO2',
+        value: '${p.spo2}',
+        unit: '%',
+        tone: p.spo2! < 94 ? AppColors.dangerOn(context) : null,
+        note: p.spo2! < 94 ? 'Low' : null,
+      ));
+    }
+
+    if (tiles.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: AppSpacing.lg),
         const _SectionTitle('Measurements'),
         const SizedBox(height: AppSpacing.sm),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-          ),
-          child: Wrap(spacing: AppSpacing.md, runSpacing: AppSpacing.md, children: chips),
+        // A real two-column grid, not a Wrap of label/value pairs. Wrapped,
+        // they landed wherever they fitted, so the same patient's card changed
+        // shape between visits and nothing lined up down the column.
+        LayoutBuilder(
+          builder: (context, c) {
+            const gap = AppSpacing.sm;
+            final w = (c.maxWidth - gap) / 2;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [for (final t in tiles) SizedBox(width: w, child: t)],
+            );
+          },
         ),
       ],
     );
   }
 }
 
-class _MeasureChip extends StatelessWidget {
-  const _MeasureChip({required this.label, required this.value});
+/// One measurement: what it is, what it reads, and — where it means something
+/// clinically — which side of normal it falls on.
+class _MeasureTile extends StatelessWidget {
+  const _MeasureTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.unit,
+    this.note,
+    this.tone,
+  });
+
+  final IconData icon;
   final String label;
   final String value;
+  final String? unit;
+  final String? note;
+  final Color? tone;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label, style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
-        const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-      ],
+    final accent = tone ?? scheme.onSurface;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 15, color: tone ?? scheme.onSurfaceVariant),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Flexible(
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                    color: accent,
+                  ),
+                ),
+              ),
+              if (unit != null) ...[
+                const SizedBox(width: 3),
+                Text(
+                  unit!,
+                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ],
+          ),
+          if (note != null) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: (tone ?? scheme.onSurfaceVariant).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                note!,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  color: tone ?? scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
