@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/authed_image.dart';
 import '../../../core/utils/vitals_validators.dart';
 import '../../../shared/data/upload_repository.dart';
 import '../../../shared/widgets/error_view.dart';
@@ -779,7 +780,8 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
   /// consult. When none is set the PDF still prints a signature line.
   Widget _signatureRow() {
     final scheme = Theme.of(context).colorScheme;
-    final hasSig = ref.watch(authControllerProvider).user?.signatureUrl != null;
+    final signatureUrl = ref.watch(authControllerProvider).user?.signatureUrl;
+    final hasSig = signatureUrl != null;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
@@ -787,7 +789,9 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
       ),
-      child: Row(
+      child: Column(
+        children: [
+      Row(
         children: [
           Icon(
             hasSig ? Icons.verified_rounded : Icons.draw_outlined,
@@ -809,6 +813,36 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
                   child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
                 )
               : TextButton(onPressed: _changeSignature, child: Text(hasSig ? 'Change' : 'Upload')),
+        ],
+      ),
+          // The signature itself, immediately before it is committed to a
+          // prescription. "Signature added" states that a file exists; it does
+          // not say whether the right one is about to be printed under the
+          // doctor's name, and this is the last screen before it is.
+          if (hasSig) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              decoration: BoxDecoration(
+                // White, because that is what the prescription is. The
+                // signature is cut out on transparency, so a themed surface
+                // behind it would show the doctor something the printed page
+                // never looks like.
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+              ),
+              child: AuthedImage(
+                path: signatureUrl,
+                width: double.infinity,
+                height: 74,
+                radius: 0,
+                fit: BoxFit.contain,
+                background: Colors.white,
+              ),
+            ),
+          ],
         ],
       ),
     );
