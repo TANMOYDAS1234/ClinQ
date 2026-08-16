@@ -155,34 +155,6 @@ class _OverviewHeading extends StatelessWidget {
           "Your clinic's high-level status for today.",
           style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
         ),
-        const SizedBox(height: AppSpacing.md),
-        // A quiet "nothing is broken" line. It is the one thing on the screen
-        // that is reassuring by default, which is why it is set flat and grey
-        // rather than green — a green badge every single morning trains the eye
-        // to skip the row, and the row below it is the triage queue.
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle_outline_rounded, size: 16, color: scheme.onSurfaceVariant),
-              const SizedBox(width: 7),
-              Text(
-                'All systems up to date',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -228,7 +200,9 @@ class _DashboardHeader extends ConsumerWidget {
           ),
           const SizedBox(width: 4),
           GestureDetector(
-            onTap: () => context.push('/clinician/more'),
+            // `go`, not `push`: Profile is one of this shell's own tabs, so
+            // pushing it stacked a copy while the bar kept the old tab lit.
+            onTap: () => context.go('/clinician/more'),
             child: UserAvatar(
               name: user?.name ?? '',
               avatarUrl: user?.avatarUrl,

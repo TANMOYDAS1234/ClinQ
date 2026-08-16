@@ -581,13 +581,13 @@ class _SenderRow extends StatelessWidget {
         children: [
           if (isPerson)
             UserAvatar(name: name ?? '', avatarUrl: avatarUrl, accent: AppColors.accentOn(context), size: 24)
+          // The patient's own turns carry no avatar. This row is only ever
+          // shown to a clinician, whose screen already has the patient's photo
+          // and name in the app bar — a generic grey silhouette repeated down
+          // the thread said nothing the header had not already said, and said
+          // it worse.
           else if (isUser)
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(color: AppColors.accentSoftOn(context), shape: BoxShape.circle),
-              child: Icon(icon, size: 14, color: AppColors.accentOn(context)),
-            )
+            const SizedBox.shrink()
           else
             Container(
               width: 24,
@@ -599,7 +599,7 @@ class _SenderRow extends StatelessWidget {
                 errorBuilder: (_, _, _) => Icon(icon, size: 14, color: AppColors.accentOn(context)),
               ),
             ),
-          const SizedBox(width: 7),
+          if (!isUser) const SizedBox(width: 7),
           Flexible(
             child: Text(
               label,

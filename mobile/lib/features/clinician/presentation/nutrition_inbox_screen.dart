@@ -276,7 +276,9 @@ class _InboxHeader extends ConsumerWidget {
           ),
           const SizedBox(width: 4),
           GestureDetector(
-            onTap: () => context.push('/clinician/more'),
+            // `go`, not `push`: Profile is one of this shell's own tabs, so
+            // pushing it stacked a copy while the bar kept the old tab lit.
+            onTap: () => context.go('/clinician/more'),
             child: UserAvatar(
               name: user?.name ?? '',
               avatarUrl: user?.avatarUrl,
@@ -343,21 +345,21 @@ class _SectionBar extends StatelessWidget {
           style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4),
         ),
         const SizedBox(height: AppSpacing.md),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _Seg(label: 'Unread', selected: unreadOnly, onTap: () => onSelect(true)),
-                _Seg(label: 'Show all', selected: !unreadOnly, onTap: () => onSelect(false)),
-              ],
-            ),
+        // Full width, matching the cards below — the same alignment fix as the
+        // Care inbox, so the two tabs do not differ in a way nobody can name
+        // but everybody notices.
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Row(
+            children: [
+              Expanded(child: _Seg(label: 'Unread', selected: unreadOnly, onTap: () => onSelect(true))),
+              Expanded(child: _Seg(label: 'Show all', selected: !unreadOnly, onTap: () => onSelect(false))),
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.md),

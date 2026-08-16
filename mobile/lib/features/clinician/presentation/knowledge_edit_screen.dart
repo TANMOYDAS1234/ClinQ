@@ -249,7 +249,7 @@ class _KnowledgeEditScreenState extends ConsumerState<KnowledgeEditScreen> {
                 child: SizedBox(
                   height: 50,
                   child: FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: AppColors.success),
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
                     onPressed: _saving ? null : _approve,
                     icon: const Icon(Icons.verified_rounded, size: 18),
                     label: const Text('Approve'),

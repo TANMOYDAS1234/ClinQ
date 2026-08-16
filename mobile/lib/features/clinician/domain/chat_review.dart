@@ -17,6 +17,7 @@ class ChatReviewSession {
     this.lastMessageAt,
     this.lastMessage,
     this.unreadCount = 0,
+    this.kind = 'care',
   });
 
   final String id;
@@ -41,6 +42,9 @@ class ChatReviewSession {
   /// Patient messages nobody at the clinic has opened in this conversation.
   final int unreadCount;
 
+  /// `care` (assistant + doctor) or `nutrition` (the dietician's thread).
+  final String kind;
+
   factory ChatReviewSession.fromJson(Map<String, dynamic> j) =>
       ChatReviewSession(
         id: j['id']?.toString() ?? '',
@@ -60,6 +64,7 @@ class ChatReviewSession {
             ? MessagePreview.fromJson(j['lastMessage'] as Map<String, dynamic>)
             : null,
         unreadCount: (j['unreadCount'] as num?)?.toInt() ?? 0,
+        kind: j['kind']?.toString() ?? 'care',
       );
 }
 

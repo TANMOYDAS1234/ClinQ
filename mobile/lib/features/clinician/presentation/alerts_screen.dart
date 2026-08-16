@@ -232,7 +232,7 @@ class _AlertCard extends StatelessWidget {
                       onPressed: onResolve,
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(44),
-                        backgroundColor: AppColors.success,
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                       ),
                       icon: const Icon(Icons.check_circle_outline_rounded, size: 18),

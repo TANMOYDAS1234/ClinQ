@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/chat_background.dart';
 import '../../../shared/widgets/markdown_text.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../../chat/data/chat_repository.dart';
 import '../../chat/presentation/widgets/care_composer.dart';
 import '../../chat/presentation/widgets/chat_attachment_thumbs.dart';
@@ -199,7 +202,11 @@ class _ChatReviewDetailScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Conversation'),
+        titleSpacing: 0,
+        title: async.maybeWhen(
+          data: (d) => _ChatHeader(session: d.session),
+          orElse: () => const Text('Conversation'),
+        ),
         actions: [
           async.maybeWhen(
             data:
@@ -414,6 +421,67 @@ class _PinnedBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The conversation's own header: who this is, straight through to their
+/// record, and a way to phone them.
+///
+/// The screen used to be titled "Conversation" over an audit panel, which read
+/// as a log viewer rather than a chat — the doctor could not see at a glance
+/// whose words they were reading, and had to go back out to reach the record.
+class _ChatHeader extends ConsumerWidget {
+  const _ChatHeader({required this.session});
+
+  final ChatReviewSession session;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final id = session.patientId;
+    final summary = id == null ? null : ref.watch(patientSummaryProvider(id)).valueOrNull;
+
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: id == null ? null : () => context.push('/clinician/patients/$id'),
+          child: UserAvatar(
+            name: session.patientName ?? '',
+            avatarUrl: summary?.avatarUrl,
+            accent: AppColors.accentOn(context),
+            size: 38,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: GestureDetector(
+            onTap: id == null ? null : () => context.push('/clinician/patients/$id'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  session.patientName ?? 'Patient',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  session.kind == 'nutrition' ? 'Nutrition chat' : 'Care chat',
+                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (summary?.phone.isNotEmpty == true)
+          IconButton(
+            tooltip: 'Call patient',
+            onPressed: () => launchUrl(Uri(scheme: 'tel', path: summary!.phone)),
+            icon: const Icon(Icons.call_rounded),
+          ),
+      ],
     );
   }
 }
