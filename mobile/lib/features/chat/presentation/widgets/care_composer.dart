@@ -168,11 +168,6 @@ class _CareComposerState extends ConsumerState<CareComposer> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            IconButton(
-              tooltip: 'Attach',
-              onPressed: busy ? null : _attach,
-              icon: Icon(Icons.attach_file_rounded, size: 24, color: scheme.onSurfaceVariant),
-            ),
             Expanded(
               child: TextField(
                 controller: widget.controller,
@@ -196,7 +191,16 @@ class _CareComposerState extends ConsumerState<CareComposer> {
                     borderRadius: BorderRadius.all(Radius.circular(26)),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                  // The clip lives inside the pill, as it does on the care
+                  // thread. Outside it, the attach button sat on the wallpaper
+                  // with nothing behind it and read as a stray icon rather than
+                  // part of the composer.
+                  prefixIcon: IconButton(
+                    tooltip: 'Attach',
+                    onPressed: busy ? null : _attach,
+                    icon: Icon(Icons.attach_file_rounded, size: 22, color: scheme.onSurfaceVariant),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 13),
                   suffixIcon: IconButton(
                     tooltip: 'Record a voice message',
                     onPressed: busy ? null : () => setState(() => _recording = true),

@@ -1076,6 +1076,9 @@ router.get(
         id: session._id,
         patientId: session.patient?._id,
         patientName: session.patient?.name ?? null,
+        // Without this the conversation header could not tell a nutrition
+        // thread from a care one and labelled every thread "Care chat".
+        kind: session.kind ?? 'care',
         title: session.title,
         highestUrgency: session.highestUrgency,
         language: session.language,
@@ -1125,6 +1128,12 @@ router.get(
           latencyMs: m.latencyMs ?? null,
           senderName: m.sender && typeof m.sender === 'object' ? (m.sender.name ?? null) : null,
           senderRole: m.sender && typeof m.sender === 'object' ? (m.sender.role ?? null) : null,
+        // The dietician's own photo, so their turns carry a face rather than a
+        // generic role icon.
+        senderAvatarUrl:
+          m.sender && typeof m.sender === 'object' && m.sender.avatarAssetId
+            ? `/api/v1/uploads/${m.sender.avatarAssetId}/raw`
+            : null,
           attachments: (m.attachments ?? []).map((a) => {
             const id = (a?._id ?? a).toString?.() ?? a;
             return {

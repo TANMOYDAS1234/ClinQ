@@ -86,6 +86,7 @@ class ChatReviewMessage {
     this.latencyMs,
     this.createdAt,
     this.senderName,
+    this.senderAvatarUrl,
     this.pinned = false,
     this.deletedForEveryone = false,
     this.replyToId,
@@ -109,6 +110,9 @@ class ChatReviewMessage {
   /// Who wrote a `clinician` or `dietician` turn. Null on patient and
   /// assistant turns.
   final String? senderName;
+
+  /// Their own photo, so a dietician's turn carries a face.
+  final String? senderAvatarUrl;
 
   /// Photos on this turn, as relative `/uploads/:id/raw` paths.
   ///
@@ -162,6 +166,7 @@ class ChatReviewMessage {
         createdAt:
             DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal(),
         senderName: j['senderName']?.toString(),
+        senderAvatarUrl: j['senderAvatarUrl']?.toString(),
         pinned: j['pinned'] == true,
         deletedForEveryone: j['deletedForEveryone'] == true,
         replyToId: j['replyToId']?.toString(),

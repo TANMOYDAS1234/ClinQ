@@ -265,8 +265,16 @@ class _ChatReviewDetailScreenState
                         itemCount: detail.messages.length,
                         itemBuilder: (context, i) {
                           final m = detail.messages[i];
+                          final dietician = detail.messages
+                              .lastWhere(
+                                (x) => x.role == 'dietician' && (x.senderName ?? '').isNotEmpty,
+                                orElse: () => m,
+                              )
+                              .senderName;
                           return _MessageBubble(
                             isNutrition: detail.session.kind == 'nutrition',
+                            dieticianName:
+                                detail.session.kind == 'nutrition' ? dietician : null,
                             message: m,
                             repliedTo:
                                 m.replyToId == null
@@ -478,6 +486,15 @@ class _ChatHeader extends ConsumerWidget {
             ),
           ),
         ),
+        // An explicit way into the record. Tapping the name works too, but a
+        // name is not obviously a link — the icon says the record is one tap
+        // away without the doctor having to discover it.
+        if (id != null)
+          IconButton(
+            tooltip: 'Open patient record',
+            onPressed: () => context.push('/clinician/patients/$id'),
+            icon: const Icon(Icons.account_circle_outlined),
+          ),
         if (summary?.phone.isNotEmpty == true)
           IconButton(
             tooltip: 'Call patient',
@@ -493,6 +510,7 @@ class _MessageBubble extends StatelessWidget {
   const _MessageBubble({
     required this.message,
     this.isNutrition = false,
+    this.dieticianName,
     this.repliedTo,
     this.onReply,
     this.onTogglePin,
@@ -505,6 +523,9 @@ class _MessageBubble extends StatelessWidget {
   /// Whether this turn is in the dietician's thread, which changes what the
   /// assistant is called.
   final bool isNutrition;
+
+  /// The dietician on this thread, so the assistant can be named after them.
+  final String? dieticianName;
   final ChatReviewMessage? repliedTo;
   final VoidCallback? onReply;
   final VoidCallback? onTogglePin;
@@ -688,54 +709,68 @@ class _MessageBubble extends StatelessWidget {
             mainAxisAlignment:
                 isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
             children: [
-              // No icon on the patient's turns: the app bar already carries
-              // their photo and name, so a silhouette beside every line only
-              // repeats it.
-              if (!isUser)
-              Icon(
-                isDietician
-                    ? Icons.restaurant_rounded
-                    : isClinician
-                    ? Icons.medical_information_rounded
-                    : Icons.smart_toy_outlined,
-                size: 15,
-                color:
-                    isPerson
+              // Who spoke, drawn the way the care thread draws it: a real
+              // face for a real person, the app's own mark for the assistant,
+              // and nothing at all for the patient — whose photo and name are
+              // already in the app bar above.
+              if (isDietician)
+                UserAvatar(
+                  name: m.senderName ?? '',
+                  avatarUrl: m.senderAvatarUrl,
+                  accent: AppColors.accentOn(context),
+                  size: 22,
+                )
+              else if (isClinician)
+                Icon(
+                  Icons.medical_information_rounded,
+                  size: 15,
+                  color: AppColors.accentOn(context),
+                )
+              else if (!isUser)
+                Container(
+                  width: 22,
+                  height: 22,
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentSoftOn(context),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Image.asset(
+                    'assets/brand/medpin_emblem.png',
+                    errorBuilder: (_, _, _) => Icon(
+                      Icons.smart_toy_outlined,
+                      size: 13,
+                      color: AppColors.accentOn(context),
+                    ),
+                  ),
+                ),
+              if (!isUser) const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  isUser
+                      ? 'Patient'
+                      : isDietician
+                      ? '${m.senderName ?? 'Dietician'} · Dietician'
+                      : isClinician
+                      ? 'You / clinic'
+                      // Named for whose protocols it is quoting. In a nutrition
+                      // thread that is the dietician's plan, so their name goes
+                      // on it — "Assistant" alone said nothing about whose
+                      // advice the doctor was reading.
+                      : (isNutrition
+                          ? '${dieticianName ?? 'Dietitian'} Assistant'
+                          : 'Assistant'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isPerson
                         ? AppColors.accentOn(context)
                         : scheme.onSurfaceVariant,
-              ),
-              if (!isUser) const SizedBox(width: 4),
-              Text(
-                isUser
-                    ? 'Patient'
-                    : isDietician
-                    ? (m.senderName == null
-                        ? 'Dietician'
-                        : '${m.senderName} · Dietician')
-                    : isClinician
-                    ? 'You / clinic'
-                    // Named for the thread it is answering in. In a nutrition
-                    // conversation a bare "Assistant" gave no clue whose
-                    // protocols it was quoting — the dietician's plan, not the
-                    // clinic's clinical guidance.
-                    : (isNutrition ? 'Dietitian assistant' : 'Assistant'),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color:
-                      isPerson
-                          ? AppColors.accentOn(context)
-                          : scheme.onSurfaceVariant,
+                  ),
                 ),
               ),
-              if (m.pinned) ...[
-                const SizedBox(width: 6),
-                Icon(
-                  Icons.push_pin_rounded,
-                  size: 13,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ],
               if (m.flaggedByPatient) ...[
                 const SizedBox(width: 6),
                 Icon(
