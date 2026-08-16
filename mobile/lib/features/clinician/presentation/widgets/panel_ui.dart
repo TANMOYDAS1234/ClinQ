@@ -283,7 +283,10 @@ class PanelNotificationBell extends ConsumerWidget {
                 padding: EdgeInsets.symmetric(horizontal: count > 9 ? 5 : 0),
                 constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
                 decoration: BoxDecoration(
-                  color: AppColors.dangerOn(context),
+                  // Brand blue, not red: this is a count of things to
+                  // look at, not a warning in its own right, and red here
+                  // competed with the genuinely red critical tiles below.
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.circular(9),
                   // A ring in the header's own colour, so the badge reads as
                   // sitting on top of the bell rather than merging into it.

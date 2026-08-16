@@ -773,9 +773,8 @@ class _ProfileHeader extends StatelessWidget {
                       meta,
                       style: TextStyle(
                         fontSize: 13.5,
-                        color: AppColors.accentOn(
-                          context,
-                        ).withValues(alpha: 0.75),
+                        color: AppColors.accentOn(context),
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     if ((p.address ?? '').trim().isNotEmpty) ...[
@@ -786,9 +785,7 @@ class _ProfileHeader extends StatelessWidget {
                           Icon(
                             Icons.home_outlined,
                             size: 14,
-                            color: AppColors.accentOn(
-                              context,
-                            ).withValues(alpha: 0.7),
+                            color: AppColors.accentOn(context),
                           ),
                           const SizedBox(width: 4),
                           Expanded(
@@ -799,9 +796,7 @@ class _ProfileHeader extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 12.5,
                                 height: 1.3,
-                                color: AppColors.accentOn(
-                                  context,
-                                ).withValues(alpha: 0.7),
+                                color: AppColors.accentOn(context),
                               ),
                             ),
                           ),
@@ -1010,7 +1005,9 @@ class _QuietAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Material(
-        color: Colors.white.withValues(alpha: 0.14),
+        // White plate, brand-blue content. The header behind this is a pale
+        // blue wash, so the white-on-white treatment these had was invisible.
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -1020,7 +1017,7 @@ class _QuietAction extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 20, color: Colors.white),
+                Icon(icon, size: 20, color: AppColors.primary),
                 const SizedBox(height: 5),
                 Text(
                   label,
@@ -1029,7 +1026,7 @@ class _QuietAction extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: AppColors.primary,
                   ),
                 ),
               ],
