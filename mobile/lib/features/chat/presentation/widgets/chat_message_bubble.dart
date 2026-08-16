@@ -569,17 +569,21 @@ class _SenderRow extends StatelessWidget {
       _ => (Icons.auto_awesome_rounded, 'Dr. Dey\'s Clinic · assistant'),
     };
 
-    // A real person gets their own face; the assistant gets the clinic's mark.
+    // The doctor gets their own face; the assistant gets the clinic's mark.
     // A role icon standing in for a doctor who has a photo on file is a worse
     // likeness than the photo, and the generic sparkle read as decoration.
-    final isPerson = isClinician || isDietician;
 
     return Padding(
       padding: const EdgeInsets.only(left: 2, bottom: 5),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (isPerson)
+          // The doctor keeps a face — the care thread's header carries the
+          // clinic, not a person, so the avatar is the only thing saying who
+          // replied. The dietician does not: their photo and name are already
+          // in this screen's header, so a second copy beside every message
+          // only repeats it.
+          if (isClinician)
             UserAvatar(name: name ?? '', avatarUrl: avatarUrl, accent: AppColors.accentOn(context), size: 24)
           // The patient's own turns carry no avatar. This row is only ever
           // shown to a clinician, whose screen already has the patient's photo

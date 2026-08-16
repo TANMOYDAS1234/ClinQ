@@ -248,6 +248,10 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
         // person is the reason they answer honestly about what they ate.
         title: Row(
           children: [
+            // titleSpacing is 0 so the row can start at the avatar; the inset
+            // has to come back here, or the photo sits clipped against the
+            // screen edge.
+            const SizedBox(width: AppSpacing.sm),
             UserAvatar(
               name: dieticianName ?? '',
               avatarUrl: dieticianAvatar,
