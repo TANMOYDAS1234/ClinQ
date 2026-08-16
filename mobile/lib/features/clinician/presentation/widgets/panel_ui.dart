@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../clinician_providers.dart';
 
 /// The shared surfaces of the clinician panel.
 ///
@@ -240,6 +242,70 @@ class PanelPill extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The header bell, with a live count of what is waiting behind it.
+///
+/// A bell with no number says "there might be something"; the doctor taps it,
+/// finds nothing, and learns to stop tapping. The count is what makes it worth
+/// looking at — and it is read from the same overview the dashboard shows, so
+/// the badge and the alerts screen can never disagree.
+///
+/// Counts OPEN alerts, not every alert ever raised: the badge should empty as
+/// the doctor works through them, otherwise it only ever grows.
+class PanelNotificationBell extends ConsumerWidget {
+  const PanelNotificationBell({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final count = ref.watch(overviewProvider).valueOrNull?.openAlertsTotal ?? 0;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          tooltip: count == 0 ? 'Alerts' : '$count open alerts',
+          onPressed: onTap,
+          icon: Icon(Icons.notifications_none_rounded, size: 24, color: scheme.onSurfaceVariant),
+          visualDensity: VisualDensity.compact,
+        ),
+        if (count > 0)
+          Positioned(
+            right: 2,
+            top: 2,
+            child: IgnorePointer(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: count > 9 ? 5 : 0),
+                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                decoration: BoxDecoration(
+                  color: AppColors.dangerOn(context),
+                  borderRadius: BorderRadius.circular(9),
+                  // A ring in the header's own colour, so the badge reads as
+                  // sitting on top of the bell rather than merging into it.
+                  border: Border.all(color: scheme.surface, width: 2),
+                ),
+                child: Center(
+                  child: Text(
+                    // Anything past 99 is "a lot" — the exact figure stops
+                    // being actionable and starts breaking the circle.
+                    count > 99 ? '99+' : '$count',
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

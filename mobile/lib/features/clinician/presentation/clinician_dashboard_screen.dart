@@ -193,12 +193,7 @@ class _DashboardHeader extends ConsumerWidget {
             ),
           ),
           const Spacer(),
-          IconButton(
-            onPressed: () => context.push('/clinician/alerts'),
-            icon: Icon(Icons.notifications_none_rounded, size: 24, color: scheme.onSurfaceVariant),
-            tooltip: 'Alerts',
-            visualDensity: VisualDensity.compact,
-          ),
+          PanelNotificationBell(onTap: () => context.push('/clinician/alerts')),
           const SizedBox(width: 4),
           GestureDetector(
             // `go`, not `push`: Profile is one of this shell's own tabs, so

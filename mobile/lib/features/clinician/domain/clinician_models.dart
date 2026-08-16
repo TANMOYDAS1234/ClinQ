@@ -64,6 +64,11 @@ class ClinicOverview {
   /// Open alerts that need immediate eyes — the "High Priority" alert count.
   int get highPriorityAlerts => emergencyAlerts + urgentAlerts;
 
+  /// Every open alert, whatever its severity — what the header bell counts.
+  /// The bell leads to a screen that lists all three, so counting only the
+  /// urgent ones would leave a badge that says 0 above a screen with rows in it.
+  int get openAlertsTotal => emergencyAlerts + urgentAlerts + warningAlerts;
+
   factory ClinicOverview.fromJson(Map<String, dynamic> j) {
     final alerts = j['openAlerts'] as Map<String, dynamic>? ?? const {};
     final risk = j['riskDistribution'] as Map<String, dynamic>? ?? const {};
