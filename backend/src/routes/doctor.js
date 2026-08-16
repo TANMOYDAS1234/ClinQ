@@ -1066,7 +1066,7 @@ router.get(
     // no way to judge whether that reply was right about the meal.
     const messages = await ChatMessage.find({ session: session._id })
       .sort({ seq: 1 })
-      .populate('sender', 'name role')
+      .populate('sender', 'name role avatarAssetId')
       .populate('attachments', 'kind mimeType transcript originalName sizeBytes')
       .populate('replyTo', 'content role')
       .lean();
