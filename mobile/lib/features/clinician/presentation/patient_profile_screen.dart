@@ -1021,6 +1021,10 @@ class _PatientDetailsCard extends StatelessWidget {
       rows.add(_DetailRow(icon: icon, label: label, value: value, tone: tone));
     }
 
+    add(Icons.call_outlined, 'Phone', p.phone);
+    if ((p.address ?? '').trim().isNotEmpty) {
+      add(Icons.home_outlined, 'Address', p.address!.trim());
+    }
     if (d.allergies.isNotEmpty) {
       add(Icons.warning_amber_rounded, 'Allergies', d.allergies.join(', '),
           tone: AppColors.dangerOn(context));
@@ -1031,20 +1035,16 @@ class _PatientDetailsCard extends StatelessWidget {
     if (d.diagnosedOn != null) {
       add(Icons.event_outlined, 'Diagnosed', DateFormat('MMM yyyy').format(d.diagnosedOn!));
     }
-    if (d.heightCm != null) {
-      add(Icons.straighten_rounded, 'Height', '${d.heightCm} cm');
-    }
     if (d.footRiskCategory != null && d.footRiskCategory != 'low') {
       add(Icons.directions_walk_rounded, 'Foot risk', d.footRiskCategory!,
           tone: AppColors.warningOn(context));
     }
     if ((p.email ?? '').isNotEmpty) add(Icons.mail_outline_rounded, 'Email', p.email!);
-    if ((p.language ?? '').isNotEmpty) {
-      add(Icons.translate_rounded, 'Speaks', switch (p.language) {
-        'bn' => 'Bengali',
-        'hi' => 'Hindi',
-        _ => 'English',
-      });
+    // Language only when it is NOT English: knowing a patient speaks Bengali
+    // changes how the doctor writes to them; knowing they speak the default
+    // does not.
+    if (p.language == 'bn' || p.language == 'hi') {
+      add(Icons.translate_rounded, 'Speaks', p.language == 'bn' ? 'Bengali' : 'Hindi');
     }
     if (d.emergencyPhone != null) {
       final who = [d.emergencyName, d.emergencyRelation]
@@ -1057,7 +1057,7 @@ class _PatientDetailsCard extends StatelessWidget {
       add(Icons.sticky_note_2_outlined, 'Clinic notes', d.notes!.trim());
     }
 
-    if (rows.isEmpty) return const SizedBox.shrink();
+    if (rows.length <= 1) return const SizedBox.shrink();
 
     return PanelCard(
       child: Column(
