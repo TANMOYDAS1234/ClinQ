@@ -155,6 +155,34 @@ class _OverviewHeading extends StatelessWidget {
           "Your clinic's high-level status for today.",
           style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
         ),
+        const SizedBox(height: AppSpacing.md),
+        // A quiet "nothing is broken" line. It is the one thing on the screen
+        // that is reassuring by default, which is why it is set flat and grey
+        // rather than green — a green badge every single morning trains the eye
+        // to skip the row, and the row below it is the triage queue.
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle_outline_rounded, size: 16, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 7),
+              Text(
+                'All systems up to date',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -183,8 +211,13 @@ class _DashboardHeader extends ConsumerWidget {
           ),
           const SizedBox(width: 10),
           Text(
-            'MedPin Panel',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
+            'MedPin',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontSize: 23,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+              color: AppColors.accentOn(context),
+            ),
           ),
           const Spacer(),
           IconButton(
@@ -340,6 +373,12 @@ class _HeadlineCard extends StatelessWidget {
 
 // ---- Alert strip ----------------------------------------------------------
 
+/// The four counters, as a 2x2 grid of tiles.
+///
+/// Stacked full-width rows before this: four of them pushed the triage queue —
+/// the part of the screen with a patient's name on it — below the fold. A grid
+/// says the same in half the height, and the pairing reads as "what is wrong"
+/// on the left, "what is waiting" on the right.
 class _AlertStrip extends StatelessWidget {
   const _AlertStrip({required this.overview});
 
@@ -348,55 +387,130 @@ class _AlertStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final careUnread = overview.unreadMessages - overview.unreadNutrition;
+
+    final tiles = <Widget>[
+      _StatTile(
+        icon: Icons.monitor_heart_outlined,
+        value: '${overview.riskCritical}',
+        label: overview.riskCritical == 1 ? 'Critical Vital' : 'Critical Vitals',
+        // The only tile that carries colour. A red panel among neutral ones is
+        // read before anything else on the screen, which is the point — every
+        // tile tinted would mean none of them stands out.
+        tone: AppColors.dangerOn(context),
+        background: AppColors.dangerBgOn(context),
+        onTap: () => context.go('/clinician/patients'),
+      ),
+      _StatTile(
+        icon: Icons.error_outline_rounded,
+        value: '${overview.highPriorityAlerts}',
+        label: overview.highPriorityAlerts == 1 ? 'Action Item' : 'Action Items',
+        tone: scheme.onSurface,
+        background: scheme.surfaceContainerLow,
+        onTap: () => context.push('/clinician/alerts'),
+      ),
+      _StatTile(
+        icon: Icons.forum_outlined,
+        value: '$careUnread',
+        label: 'Unread Msgs',
+        tone: AppColors.accentOn(context),
+        background: AppColors.infoBgOn(context),
+        onTap: () => context.go('/clinician/patients'),
+      ),
+      _StatTile(
+        icon: Icons.restaurant_outlined,
+        value: '${overview.unreadNutrition}',
+        label: 'Nutrition Msgs',
+        tone: scheme.onSurface,
+        background: scheme.surfaceContainerLow,
+        onTap: () => context.go('/clinician/nutrition'),
+      ),
+    ];
+
     return Column(
       children: [
-        _AlertRow(
-          icon: Icons.warning_amber_rounded,
-          iconBg: AppColors.danger,
-          bg: AppColors.dangerBgOn(context),
-          label: 'VITALS WARNING',
-          labelColor: AppColors.danger,
-          detail: '${overview.riskCritical} Critical ${overview.riskCritical == 1 ? 'Patient' : 'Patients'}',
-          onTap: () => context.go('/clinician/patients'),
-        ),
+        Row(children: [
+          Expanded(child: tiles[0]),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(child: tiles[1]),
+        ]),
         const SizedBox(height: AppSpacing.sm),
-        _AlertRow(
-          icon: Icons.priority_high_rounded,
-          iconBg: AppColors.primary,
-          bg: scheme.surfaceContainerLowest,
-          border: scheme.outlineVariant.withValues(alpha: 0.7),
-          accentBar: AppColors.accentOn(context),
-          label: 'HIGH PRIORITY',
-          detail:
-              '${overview.highPriorityAlerts} Action ${overview.highPriorityAlerts == 1 ? 'Item' : 'Items'}',
-          onTap: () => context.push('/clinician/alerts'),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        // Care messages only. The total used to include nutrition threads and
-        // then send the doctor to the Patients tab, which does not show them.
-        if (overview.unreadMessages - overview.unreadNutrition > 0)
-          _AlertRow(
-            icon: Icons.mail_outline_rounded,
-            iconBg: AppColors.primary,
-            bg: AppColors.infoBgOn(context),
-            label: 'NEW MESSAGES',
-            detail: '${overview.unreadMessages - overview.unreadNutrition} Unread',
-            onTap: () => context.go('/clinician/patients'),
-          ),
-        // Its own row, going where these actually live: Chat review, opened on
-        // the Nutrition filter.
-        if (overview.unreadNutrition > 0) ...[
-          const SizedBox(height: AppSpacing.sm),
-          _AlertRow(
-            icon: Icons.restaurant_rounded,
-            iconBg: AppColors.accent,
-            bg: AppColors.successBgOn(context),
-            label: 'NUTRITION MESSAGES',
-            detail: '${overview.unreadNutrition} Unread',
-            onTap: () => context.go('/clinician/nutrition'),
-          ),
-        ],
+        Row(children: [
+          Expanded(child: tiles[2]),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(child: tiles[3]),
+        ]),
       ],
+    );
+  }
+}
+
+/// One counter: an icon, the figure, and what it counts.
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.tone,
+    required this.background,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  /// Colours the icon, the figure and the caption together, so a tile reads as
+  /// one object rather than three.
+  final Color tone;
+  final Color background;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: background,
+      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20, color: tone),
+              const SizedBox(height: 10),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: tone,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -410,8 +524,6 @@ class _AlertRow extends StatelessWidget {
     required this.detail,
     required this.onTap,
     this.labelColor,
-    this.accentBar,
-    this.border,
   });
 
   final IconData icon;
@@ -422,13 +534,6 @@ class _AlertRow extends StatelessWidget {
   final Color? labelColor;
   final VoidCallback onTap;
 
-  /// A vertical accent stripe down the leading edge (e.g. the green rail on the
-  /// white "high priority" card) — clipped to the card's rounded corners.
-  final Color? accentBar;
-
-  /// A hairline border, for the white-backed rows that would otherwise float.
-  final Color? border;
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -436,7 +541,6 @@ class _AlertRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: border != null ? Border.all(color: border!) : null,
       ),
       clipBehavior: Clip.antiAlias,
       child: Material(
@@ -446,7 +550,6 @@ class _AlertRow extends StatelessWidget {
           child: IntrinsicHeight(
             child: Row(
               children: [
-                if (accentBar != null) Container(width: 4, color: accentBar),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(AppSpacing.md),

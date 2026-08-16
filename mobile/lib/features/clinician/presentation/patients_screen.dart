@@ -11,6 +11,7 @@ import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
+import 'widgets/panel_ui.dart';
 import 'widgets/sparkline.dart';
 
 /// The clinician's inbox.
@@ -180,10 +181,24 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
                           );
                         }
 
+                        // Counted from the rows on screen, so the figures and
+                        // the list can never disagree. "Urgent" is the doctor's
+                        // own definition here — an open alert or a risk band of
+                        // high/critical — not a separate server metric that
+                        // would drift away from what is listed underneath it.
+                        final urgent = items
+                            .where((p) =>
+                                p.openAlertCount > 0 ||
+                                p.riskBand == 'critical' ||
+                                p.riskBand == 'high')
+                            .length;
+
                         // A separate card per conversation (per the redesign),
                         // with a red rail on anything flagged urgent/emergency.
                         return Column(
                           children: [
+                            _DailySummary(active: items.length, urgent: urgent),
+                            const SizedBox(height: AppSpacing.lg),
                             for (final it in items)
                               Container(
                                 margin: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -263,7 +278,7 @@ class _InboxHeader extends ConsumerWidget {
           ),
           const SizedBox(width: 10),
           Text(
-            'MedPin Panel',
+            'MedPin',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
@@ -579,6 +594,115 @@ class _ConversationRow extends StatelessWidget {
 /// The continuous-monitoring mark on an inbox row: a glucose sparkline, when the
 /// patient last checked in, which way control is heading, and an amber flag when
 /// they are overdue. A glance-able mark, not a reorganisation of the list.
+/// The day in one line: how many people are on the list, and how many of them
+/// need the doctor before the end of it.
+///
+/// The panel's one filled surface. Everything else on this screen is a white
+/// card, so the eye lands here first and then works down into the individual
+/// conversations — which is the order a doctor actually wants: the shape of the
+/// day, then the names in it.
+class _DailySummary extends StatelessWidget {
+  const _DailySummary({required this.active, required this.urgent});
+
+  final int active;
+  final int urgent;
+
+  @override
+  Widget build(BuildContext context) {
+    return PanelFeatureCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Daily Summary',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.insights_rounded,
+                      size: 20,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _SummaryFigure(value: '$active', label: 'Active Patients'),
+                    const Spacer(),
+                    _SummaryFigure(
+                      value: '$urgent',
+                      label: 'Urgent',
+                      // The only tint on the card. On a solid blue ground a red
+                      // would go muddy, so urgency is carried by a warm light
+                      // tone instead.
+                      valueColor: urgent > 0 ? const Color(0xFFFFB4A8) : Colors.white,
+                      alignEnd: true,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryFigure extends StatelessWidget {
+  const _SummaryFigure({
+    required this.value,
+    required this.label,
+    this.valueColor = Colors.white,
+    this.alignEnd = false,
+  });
+
+  final String value;
+  final String label;
+  final Color valueColor;
+  final bool alignEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+            color: valueColor,
+            fontSize: 38,
+            fontWeight: FontWeight.w800,
+            height: 1,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.82),
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MonitorStrip extends StatelessWidget {
   const _MonitorStrip({required this.patient});
 

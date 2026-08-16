@@ -264,7 +264,7 @@ class _InboxHeader extends ConsumerWidget {
           ),
           const SizedBox(width: 10),
           Text(
-            'MedPin Panel',
+            'MedPin',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),

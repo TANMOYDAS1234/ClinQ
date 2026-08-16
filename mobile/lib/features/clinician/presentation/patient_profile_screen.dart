@@ -17,6 +17,7 @@ import '../../medications/domain/medication.dart';
 import '../data/clinician_repository.dart';
 import '../domain/patient_summary.dart';
 import 'clinician_providers.dart';
+import 'widgets/panel_ui.dart';
 import 'patient_detail_screen.dart' show PatientRecordSections;
 
 /// The doctor's working screen for one patient: who they are at the top, and
@@ -217,12 +218,62 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                 PatientRecordSections(summary: p, patientId: widget.patientId),
                 const SizedBox(height: AppSpacing.lg),
 
-                const Text(
-                  'Clinical Actions',
-                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                // The one filled surface on the record. Everything above it is
+                // read-only — who this patient is and how they are doing — and
+                // everything below it is the doctor writing. The colour marks
+                // that boundary, so the eye lands on the point of the visit
+                // rather than on another grey heading among grey headings.
+                PanelFeatureCard(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.md,
+                    AppSpacing.md,
+                    AppSpacing.md,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: const Icon(
+                          Icons.edit_document,
+                          size: 21,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Clinical Actions',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Draft and send a new prescription.',
+                              style: TextStyle(
+                                color: Color(0xCCFFFFFF),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                const Divider(height: 1),
                 const SizedBox(height: AppSpacing.md),
 
                 _ActionCard(

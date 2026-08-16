@@ -252,8 +252,8 @@ class AttentionListCard extends StatelessWidget {
 
     return _Card(
       icon: Icons.priority_high_rounded,
-      title: 'Needs attention',
-      subtitle: top.isEmpty ? null : 'Highest-priority patients first',
+      title: 'Needs Attention',
+      subtitle: top.isEmpty ? null : 'Patients ranked by real-time risk score.',
       child: top.isEmpty
           ? _emptyHint(context, 'No patients flagged right now.')
           : Column(

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
-
 /// The MedPin mark, in a square box — login, splash, the app lock.
 ///
 /// Draws the *emblem*, not the full lockup. The lockup is nearly three times as
@@ -24,15 +22,18 @@ class AppLogo extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        // A soft brand-coloured lift under the mark. No clip and no fill: the
-        // artwork is transparent line-work, and boxing it in a rounded tile
-        // would read as an app icon pasted onto the screen.
+        // A faint neutral lift, not a coloured glow. The artwork is
+        // transparent line-work, so a blue shadow spreads out around every
+        // stroke and reads as though the logo has been rendered out of focus.
+        // Kept low and offset downward so it behaves like a shadow rather than
+        // a halo — and no clip or fill, since boxing transparent art in a
+        // rounded tile makes it look like an app icon pasted on the screen.
         boxShadow: showShadow
             ? [
                 BoxShadow(
-                  color: AppColors.accentOn(context).withValues(alpha: 0.22),
-                  blurRadius: size * 0.28,
-                  offset: Offset(0, size * 0.10),
+                  color: Colors.black.withValues(alpha: 0.10),
+                  blurRadius: size * 0.16,
+                  offset: Offset(0, size * 0.07),
                 ),
               ]
             : null,
