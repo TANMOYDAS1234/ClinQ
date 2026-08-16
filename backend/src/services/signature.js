@@ -1,139 +1,160 @@
 import sharp from 'sharp';
 
 /**
- * Turning a photographed signature into something a prescription can carry.
+ * Turning a photographed signature into ink on transparency.
  *
- * A doctor signs a sheet of paper and photographs it. Dropped straight onto a
- * prescription that is a grey rectangle sitting over the layout, with the
- * paper's own shade and shadows visible — it reads as a photo pasted on a
- * document rather than a signature on it.
+ * A doctor signs paper and photographs it with a phone. That photo is never
+ * evenly lit: the sheet is brighter under the lamp and grey in the hand's
+ * shadow, and the whole thing may sit well below "white" — a mid-grey page is
+ * completely normal.
  *
- * So the paper is removed: ink is kept, everything lighter becomes
- * transparent, and the result composites onto the page like real ink.
+ * The first version keyed on absolute luminance, which is why it failed on a
+ * real photo. Anything darker than the fixed "paper" threshold stayed opaque,
+ * so a shaded sheet came through as a grey rectangle with the signature on it —
+ * exactly what a black-and-white filter would produce, and the opposite of what
+ * is wanted.
+ *
+ * This works on LOCAL contrast instead. The page's own illumination is
+ * estimated with a heavy blur, and each pixel is compared against its own
+ * neighbourhood rather than against a constant. Ink is dark *relative to the
+ * paper around it*, which stays true whether the photo is bright, dim or
+ * unevenly lit — the same trick a document scanner uses.
  */
 
-/// Luminance at or above which a pixel counts as paper rather than ink.
-/// Deliberately generous: phone photos of white paper often sit around 200-230
-/// under indoor light, and a stricter cut left grey haze around every stroke.
-const PAPER_LUMA = 168;
+/// Below this fraction of the local page brightness a pixel is certainly ink.
+const INK_RATIO = 0.62;
 
-/// Below this a pixel is unambiguously ink and stays fully opaque. Between the
-/// two it fades, which is what keeps the antialiased edge of a pen stroke from
-/// turning into a jagged cut-out.
-const INK_LUMA = 96;
+/// At or above this fraction it is certainly paper. Between the two the alpha
+/// ramps, which is what keeps the soft edge of a pen stroke from turning into a
+/// jagged cut-out.
+const PAPER_RATIO = 0.86;
+
+/// Plausibility bounds. These separate ink-on-paper from a blank page or a
+/// photograph. They are NOT an identity check: no measurement here can tell
+/// whose hand held the pen, and a check that implied otherwise would be a
+/// guarantee with nothing behind it.
+const MIN_INK_RATIO = 0.0015;
+const MAX_INK_RATIO = 0.45;
+
+/// Longest edge the mask is computed at. Big enough to keep a thin pen stroke,
+/// small enough that the blur below stays cheap.
+const WORK_EDGE = 1400;
 
 /**
- * What a signature is allowed to look like.
- *
- * These bound a plausibility check, NOT an identity check. They can tell ink on
- * paper from a blank page or a selfie; they cannot tell whose hand held the pen.
- * Anything stricter would be a claim the code cannot back.
+ * Greyscale pixels plus a blurred copy of the same, which stands in for "how
+ * bright the page is around here".
  */
-const MIN_INK_RATIO = 0.002; // ~blank page
-const MAX_INK_RATIO = 0.45; // a photo of a face/scene, or a scribbled-out page
+async function planes(buffer) {
+  const base = sharp(buffer, { failOn: 'none' })
+    .rotate()
+    .greyscale()
+    .resize({ width: WORK_EDGE, height: WORK_EDGE, fit: 'inside', withoutEnlargement: true });
+
+  const { data, info } = await base.clone().raw().toBuffer({ resolveWithObject: true });
+
+  // Sigma scaled to the image: the blur has to be wide enough to erase the
+  // signature itself and leave only the lighting behind it. Too small and the
+  // strokes appear in the background estimate, which cancels them out and the
+  // signature disappears.
+  const sigma = Math.max(8, Math.round(Math.max(info.width, info.height) / 22));
+  const { data: bg } = await base
+    .clone()
+    .blur(sigma)
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  return { data, bg, width: info.width, height: info.height, channels: info.channels };
+}
+
+/**
+ * Alpha per pixel, from local contrast. 255 = ink, 0 = paper.
+ */
+function buildAlpha({ data, bg, width, height, channels }) {
+  const alpha = Buffer.alloc(width * height);
+  for (let i = 0, p = 0; p < alpha.length; i += channels, p += 1) {
+    const local = bg[i] || 1;
+    const ratio = data[i] / local;
+
+    if (ratio <= INK_RATIO) {
+      alpha[p] = 255;
+    } else if (ratio >= PAPER_RATIO) {
+      alpha[p] = 0;
+    } else {
+      alpha[p] = Math.round(255 * ((PAPER_RATIO - ratio) / (PAPER_RATIO - INK_RATIO)));
+    }
+  }
+  return alpha;
+}
+
+function inkFraction(alpha) {
+  let ink = 0;
+  for (let i = 0; i < alpha.length; i += 1) if (alpha[i] > 128) ink += 1;
+  return alpha.length === 0 ? 0 : ink / alpha.length;
+}
 
 /**
  * Assesses whether [buffer] plausibly holds a signature.
  *
- * Returns `{ ok, reason, inkRatio }`. `ok: false` is advisory — the caller
- * decides whether to refuse the upload or simply warn — because a real
- * signature written very lightly can fall under the floor, and refusing a
- * doctor's genuine signature is worse than accepting a doubtful one.
+ * Measured on the same local-contrast mask the cut-out uses, so the check and
+ * the result agree: if this says there is ink, the cut-out will find it.
  */
 export async function assessSignature(buffer) {
-  const { data, info } = await sharp(buffer)
-    .greyscale()
-    .resize({ width: 600, withoutEnlargement: true })
-    .raw()
-    .toBuffer({ resolveWithObject: true });
+  const p = await planes(buffer);
+  const ratio = inkFraction(buildAlpha(p));
 
-  let ink = 0;
-  for (let i = 0; i < data.length; i += info.channels) {
-    if (data[i] < INK_LUMA) ink += 1;
-  }
-  const total = data.length / info.channels;
-  const inkRatio = total === 0 ? 0 : ink / total;
-
-  if (inkRatio < MIN_INK_RATIO) {
+  if (ratio < MIN_INK_RATIO) {
     return {
       ok: false,
-      inkRatio,
-      reason: 'This looks blank. Photograph the signature on plain paper, filling most of the frame.',
+      inkRatio: ratio,
+      reason:
+        'No signature found. Photograph it on plain paper, filling most of the frame, with the whole signature in shot.',
     };
   }
-  if (inkRatio > MAX_INK_RATIO) {
+  if (ratio > MAX_INK_RATIO) {
     return {
       ok: false,
-      inkRatio,
-      reason: 'This looks like a photograph rather than a signature. Use a clear shot of the signature on plain paper.',
+      inkRatio: ratio,
+      reason:
+        'This looks like a photograph rather than a signature on paper. Use a flat, well-lit shot of the signature alone.',
     };
   }
-  return { ok: true, inkRatio, reason: null };
+  return { ok: true, inkRatio: ratio, reason: null };
 }
 
 /**
  * Removes the paper, leaving the ink on transparency.
  *
- * The alpha channel is built from luminance rather than by keying a single
- * colour: paper is never one flat value in a phone photo — it shades off toward
- * the corners and under the hand — so a colour key leaves a bright patch in the
- * middle and a dark ring around the edge. A luminance ramp handles the whole
- * gradient at once, and keeps the soft edge of each stroke.
- *
- * The ink is also flattened to near-black. A signature photographed under warm
- * light comes out brown, and a brown signature on a printed prescription looks
- * scanned rather than signed.
+ * The ink is flattened to near-black rather than kept at its photographed
+ * colour: a signature shot under warm light comes out brown, and brown ink on
+ * a printed prescription reads as a scan of a document rather than a signature
+ * on one.
  */
 export async function makeSignatureTransparent(buffer) {
-  const src = sharp(buffer, { failOn: 'none' }).rotate();
-  const meta = await src.metadata();
+  const p = await planes(buffer);
+  const alpha = buildAlpha(p);
+  const { width, height } = p;
 
-  // Trimmed to the ink before anything else, so the stored asset is the
-  // signature and not the sheet of paper it happens to sit on.
-  const grey = await src
-    .clone()
-    .greyscale()
-    .resize({ width: 1200, withoutEnlargement: true })
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-
-  const { data, info } = grey;
-  const { width, height } = info;
-  const alpha = Buffer.alloc(width * height);
-
-  for (let i = 0, p = 0; i < data.length; i += info.channels, p += 1) {
-    const luma = data[i];
-    if (luma <= INK_LUMA) {
-      alpha[p] = 255;
-    } else if (luma >= PAPER_LUMA) {
-      alpha[p] = 0;
-    } else {
-      // Linear fade across the band, so stroke edges stay soft.
-      alpha[p] = Math.round(255 * ((PAPER_LUMA - luma) / (PAPER_LUMA - INK_LUMA)));
-    }
-  }
-
-  // Near-black ink at the mask's shape. PNG, not WebP: the prescription PDF
-  // composites this, and PNG alpha is the format every PDF writer handles
-  // without surprises.
   const ink = await sharp({
-    create: {
-      width,
-      height,
-      channels: 3,
-      background: { r: 12, g: 18, b: 38 },
-    },
+    create: { width, height, channels: 3, background: { r: 12, g: 18, b: 38 } },
   })
     .raw()
     .toBuffer();
 
-  const out = await sharp(ink, { raw: { width, height, channels: 3 } })
+  // PNG, not WebP: the prescription PDF composites this, and PNG alpha is what
+  // every PDF writer handles without surprises.
+  const composed = await sharp(ink, { raw: { width, height, channels: 3 } })
     .joinChannel(alpha, { raw: { width, height, channels: 1 } })
     .png()
     .toBuffer();
 
-  // Trim the transparent margin so the signature fills its box on the page.
-  const trimmed = await sharp(out).trim({ threshold: 1 }).png().toBuffer().catch(() => out);
+  // Trim the transparent margin so the stored asset is the signature and not
+  // the sheet it happened to sit on — it then fills its box on the page.
+  const trimmed = await sharp(composed)
+    .trim({ threshold: 1 })
+    .png()
+    .toBuffer()
+    .catch(() => composed);
 
+  const meta = await sharp(trimmed).metadata();
   return { buffer: trimmed, width: meta.width ?? width, height: meta.height ?? height };
 }
