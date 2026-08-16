@@ -80,7 +80,7 @@ router.get(
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate('patient', 'name phone')
+        .populate('patient', 'name phone avatarAssetId')
         .lean(),
       Feedback.countDocuments(),
     ]);
@@ -90,6 +90,10 @@ router.get(
         items.map((f) => ({
           ...serialise(f),
           patientName: f.patient?.name ?? null,
+          // So the doctor sees who wrote it, not just their name in grey.
+          patientAvatarUrl: f.patient?.avatarAssetId
+            ? `/api/v1/uploads/${f.patient.avatarAssetId}/raw`
+            : null,
           patientPhone: f.patient?.phone ?? null,
         })),
         { page, limit, total },

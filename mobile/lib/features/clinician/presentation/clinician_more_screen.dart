@@ -18,6 +18,7 @@ import '../../appointments/domain/clinic.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../profile/presentation/widgets/profile_section.dart';
 import '../../profile/presentation/widgets/theme_selector.dart';
+import '../../../shared/widgets/authed_image.dart';
 import 'widgets/panel_ui.dart';
 
 /// Full profile for doctor and staff — the clinician counterpart of the patient
@@ -391,9 +392,68 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
                   title: 'Digital signature',
                   subtitle: 'Printed on every prescription',
                   value: _uploadingSignature ? 'Uploading…' : (user?.signatureUrl != null ? 'Set' : 'Not set'),
-                  showDivider: false,
+                  showDivider: user?.signatureUrl != null,
                   onTap: _uploadingSignature ? null : _changeSignature,
                 ),
+                // The signature as it will actually print. "Set" told the
+                // doctor a file existed, not whether it was the right one, the
+                // right way up, or legible — and the first place they would
+                // otherwise find out is a prescription already sent.
+                if (user?.signatureUrl != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      AppSpacing.sm,
+                      AppSpacing.md,
+                      AppSpacing.md,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PREVIEW',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.6,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            // White, always — the signature is cut out on
+                            // transparency and prints onto white paper, so
+                            // previewing it on a themed surface would show the
+                            // doctor something the prescription never looks
+                            // like. In dark mode especially, near-black ink on
+                            // a dark card would look like nothing at all.
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: scheme.outlineVariant.withValues(alpha: 0.7),
+                            ),
+                          ),
+                          child: Center(
+                            child: AuthedImage(
+                              path: user!.signatureUrl!,
+                              width: 220,
+                              height: 56,
+                              radius: 0,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'The paper background is removed automatically, so this prints as ink on the prescription.',
+                          style: TextStyle(fontSize: 12, height: 1.35, color: scheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
 

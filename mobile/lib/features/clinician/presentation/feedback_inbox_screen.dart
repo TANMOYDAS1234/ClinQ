@@ -257,8 +257,6 @@ class _FeedbackCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             entry.heading,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 19,
                               fontWeight: FontWeight.w700,
@@ -298,18 +296,38 @@ class _FeedbackCard extends StatelessWidget {
                     const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: [
-                        Icon(Icons.person_outline_rounded, size: 18, color: scheme.onSurfaceVariant),
-                        const SizedBox(width: 6),
+                        UserAvatar(
+                          name: entry.patientName ?? '',
+                          avatarUrl: entry.patientAvatarUrl,
+                          accent: AppColors.accentOn(context),
+                          size: 34,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
                         Expanded(
-                          child: Text(
-                            // The subject is named here rather than on its own
-                            // row: under "All" the doctor otherwise cannot tell
-                            // a complaint about care from one about the app.
-                            '${entry.patientName ?? 'Patient'} · ${entry.aboutLabel}'
-                            '${entry.createdAt != null ? ' · ${DateFormat('d MMM').format(entry.createdAt!.toLocal())}' : ''}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                          // Name, subject and the full timestamp on two lines
+                          // rather than one ellipsised one. Under "All" the
+                          // doctor cannot otherwise tell a complaint about care
+                          // from one about the app — and a date cut off by an
+                          // ellipsis is a date the doctor has to open the row
+                          // to read.
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                entry.patientName ?? 'Patient',
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                entry.aboutLabel +
+                                    (entry.createdAt != null
+                                        ? '  ·  ${DateFormat('d MMM yyyy, h:mm a').format(entry.createdAt!.toLocal())}'
+                                        : ''),
+                                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
@@ -386,6 +404,7 @@ class _Entry {
     required this.reviewed,
     required this.createdAt,
     required this.patientName,
+    this.patientAvatarUrl,
   });
 
   final String id;
@@ -395,6 +414,7 @@ class _Entry {
   final bool reviewed;
   final DateTime? createdAt;
   final String? patientName;
+  final String? patientAvatarUrl;
 
   String get aboutLabel => about == 'app' ? 'The app' : 'The clinic';
 
@@ -420,5 +440,6 @@ class _Entry {
     reviewed: json['reviewed'] as bool? ?? false,
     createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
     patientName: json['patientName'] as String?,
+    patientAvatarUrl: json['patientAvatarUrl'] as String?,
   );
 }

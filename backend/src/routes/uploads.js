@@ -15,6 +15,7 @@ import { ChatMessage } from '../models/ChatMessage.js';
 import { User, ROLES } from '../models/User.js';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
+import { assessSignature, makeSignatureTransparent } from '../services/signature.js';
 
 const router = Router();
 
@@ -152,7 +153,18 @@ router.post(
     let buffer = req.file.buffer;
     let mimeType = req.file.mimetype;
 
-    if (!isDocument && !isAudio) {
+    // A signature is not a clinical photo: the paper it was written on has to
+    // go, or it lands on the prescription as a grey rectangle.
+    if (req.body.kind === 'signature' && !isDocument && !isAudio) {
+      const verdict = await assessSignature(req.file.buffer);
+      if (!verdict.ok) throw badRequest(verdict.reason);
+
+      const cut = await makeSignatureTransparent(req.file.buffer);
+      buffer = cut.buffer;
+      mimeType = 'image/png';
+      width = cut.width;
+      height = cut.height;
+    } else if (!isDocument && !isAudio) {
       // Normalise to WebP: strips EXIF (which can carry GPS location of a
       // patient's home) and keeps clinical photos to a sane size.
       const image = sharp(req.file.buffer, { failOn: 'none' }).rotate();
@@ -181,7 +193,13 @@ router.post(
 
     // Extension follows the FINAL mime, so an MP3 note serves as MP3 (and plays)
     // while a rare fallback still serves in its own container.
-    const ext = isDocument ? documentExtension(mimeType) : isAudio ? audioExtension(mimeType) : 'webp';
+    const ext = isDocument
+      ? documentExtension(mimeType)
+      : isAudio
+        ? audioExtension(mimeType)
+        : mimeType === 'image/png'
+          ? 'png'
+          : 'webp';
     const key = `${new Date().toISOString().slice(0, 7)}/${crypto.randomUUID()}.${ext}`;
     const fullPath = path.join(root, key);
     await fs.mkdir(path.dirname(fullPath), { recursive: true });

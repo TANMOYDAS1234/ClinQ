@@ -723,6 +723,7 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = patient;
+    final scheme = Theme.of(context).colorScheme;
     final band = p.riskBand ?? 'low';
     final atRisk = band == 'high' || band == 'critical';
     // No patient ID here. The design showed one, but the only id available is a
@@ -740,10 +741,20 @@ class _ProfileHeader extends StatelessWidget {
     final diabetes = _diabetesLabel(p.diabetesType);
 
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.accentSoftOn(context),
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+        boxShadow: Theme.of(context).brightness == Brightness.dark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF0B1B33).withValues(alpha: 0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 5),
+                ),
+              ],
       ),
       child: Column(
         children: [
@@ -774,7 +785,7 @@ class _ProfileHeader extends StatelessWidget {
                       meta,
                       style: TextStyle(
                         fontSize: 13.5,
-                        color: AppColors.accentOn(context),
+                        color: scheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -785,7 +796,7 @@ class _ProfileHeader extends StatelessWidget {
                           Icon(
                             Icons.mail_outline_rounded,
                             size: 14,
-                            color: AppColors.accentOn(context),
+                            color: scheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
@@ -795,7 +806,7 @@ class _ProfileHeader extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 12.5,
-                                color: AppColors.accentOn(context),
+                                color: scheme.onSurfaceVariant,
                               ),
                             ),
                           ),
@@ -810,7 +821,7 @@ class _ProfileHeader extends StatelessWidget {
                           Icon(
                             Icons.home_outlined,
                             size: 14,
-                            color: AppColors.accentOn(context),
+                            color: scheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
@@ -821,7 +832,7 @@ class _ProfileHeader extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 12.5,
                                 height: 1.3,
-                                color: AppColors.accentOn(context),
+                                color: scheme.onSurfaceVariant,
                               ),
                             ),
                           ),
@@ -848,7 +859,7 @@ class _ProfileHeader extends StatelessWidget {
                           _HeaderPill(
                             label: diabetes,
                             fg: AppColors.primary,
-                            bg: Colors.white,
+                            bg: AppColors.accentSoftOn(context),
                           ),
                         if (p.details.allergies.isNotEmpty)
                           _HeaderPill(
@@ -904,8 +915,8 @@ class _ProfileHeader extends StatelessWidget {
                 extra: p.name,
               ),
               style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: AppColors.primary,
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1027,9 +1038,9 @@ class _QuietAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Material(
-        // White plate, brand-blue content. The header behind this is a pale
-        // blue wash, so the white-on-white treatment these had was invisible.
-        color: Colors.white,
+        // A tinted plate on the card's white, so each action reads as a
+        // target without needing a border round it.
+        color: AppColors.accentSoftOn(context),
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
