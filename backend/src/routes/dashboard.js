@@ -86,7 +86,7 @@ router.get(
       })),
       recommendations: buildRecommendations({ healthScore, trends, adherence, reminders, latest }),
       reminders,
-      ...(await careSummary(patientId, profile, latestHba1c)),
+      ...(await careSummary(patientId, profile, latestHba1c, req.user?.email ?? null)),
     });
   }),
 );
@@ -99,7 +99,7 @@ router.get(
  * screen renders as one thing, and a patient on a patchy connection should not
  * watch half of it arrive.
  */
-async function careSummary(patientId, profile, latestHba1c) {
+async function careSummary(patientId, profile, latestHba1c, email) {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
@@ -149,7 +149,7 @@ async function careSummary(patientId, profile, latestHba1c) {
       // Contact details, so the patient can see what the clinic will use to
       // reach them — and notice when it is wrong before a report is posted to
       // an old address.
-      email: req.user.email ?? null,
+      email: email ?? null,
       address: profile?.address ?? null,
       heightCm,
       weightKg,
