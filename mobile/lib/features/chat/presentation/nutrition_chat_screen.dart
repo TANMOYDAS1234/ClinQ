@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -40,7 +41,8 @@ class NutritionChatScreen extends ConsumerStatefulWidget {
       _NutritionChatScreenState();
 }
 
-class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
+class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
+    with WidgetsBindingObserver {
   final _controller = TextEditingController();
   final _scroll = ScrollController();
   bool _sending = false;
@@ -87,10 +89,31 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
     accountLanguage: ref.read(authControllerProvider).user?.language,
   );
 
+
+  /// The other side of this conversation is a person, not a form. Without a
+  /// poll their reply sat on the server until the screen happened to be rebuilt
+  /// — which for a thread the reader is staring at means never. The care thread
+  /// has always done this; the nutrition one was the half that did not.
+  Timer? _poll;
+  static const _pollInterval = Duration(seconds: 8);
+
   @override
   void initState() {
     super.initState();
     _scroll.addListener(_onScroll);
+    WidgetsBinding.instance.addObserver(this);
+    _poll = Timer.periodic(_pollInterval, (_) {
+      if (mounted) ref.invalidate(nutritionThreadProvider);
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Coming back is when the thread is most likely to have moved on, so check
+    // at once rather than waiting out the timer.
+    if (state == AppLifecycleState.resumed && mounted) {
+      ref.invalidate(nutritionThreadProvider);
+    }
   }
 
   void _onScroll() {
@@ -107,6 +130,8 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen> {
 
   @override
   void dispose() {
+    _poll?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _scroll.removeListener(_onScroll);
     _controller.dispose();
     _scroll.dispose();

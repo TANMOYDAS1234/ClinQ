@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,7 +39,8 @@ class DieticianChatScreen extends ConsumerStatefulWidget {
       _DieticianChatScreenState();
 }
 
-class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
+class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen>
+    with WidgetsBindingObserver {
   final _controller = TextEditingController();
   final _scroll = ScrollController();
   bool _sending = false;
@@ -49,10 +51,29 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
   /// The list is reversed, so "at the latest" is offset 0.
   bool _showJump = false;
 
+
+  /// The other side of this conversation is a person, not a form. Without a
+  /// poll their reply sat on the server until the screen happened to be rebuilt
+  /// — which for a thread the reader is staring at means never. The care thread
+  /// has always done this; the nutrition one was the half that did not.
+  Timer? _poll;
+  static const _pollInterval = Duration(seconds: 8);
+
   @override
   void initState() {
     super.initState();
     _scroll.addListener(_onScroll);
+    WidgetsBinding.instance.addObserver(this);
+    _poll = Timer.periodic(_pollInterval, (_) {
+      if (mounted) ref.invalidate(dietThreadProvider(widget.patientId));
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      ref.invalidate(dietThreadProvider(widget.patientId));
+    }
   }
 
   void _onScroll() {
@@ -69,6 +90,8 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen> {
 
   @override
   void dispose() {
+    _poll?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _scroll.removeListener(_onScroll);
     _controller.dispose();
     _scroll.dispose();

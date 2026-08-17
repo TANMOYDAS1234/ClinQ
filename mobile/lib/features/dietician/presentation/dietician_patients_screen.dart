@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/auto_refresh.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/diet_models.dart';
@@ -176,7 +177,14 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
           ),
         ),
       ),
-      body: RefreshIndicator(
+      // The worklist is made of other people's actions — a doctor assigning a
+      // patient, a review date passing, a plan going out. Waiting for a pull
+      // showed a caseload that had already moved on, and the dashboard's counts
+      // and this list would disagree until the dietician thought to refresh.
+      body: AutoRefresh(
+        onTick: (ref) => ref.invalidate(dietPatientsProvider),
+        interval: const Duration(seconds: 30),
+        child: RefreshIndicator(
         onRefresh: () async => ref.invalidate(dietPatientsProvider),
         child: async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -220,6 +228,7 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
             );
           },
         ),
+      ),
       ),
     );
   }

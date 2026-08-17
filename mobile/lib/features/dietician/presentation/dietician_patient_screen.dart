@@ -12,6 +12,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/widgets/auto_refresh.dart';
 import '../../../shared/widgets/authed_image.dart';
 import '../../../shared/widgets/fullscreen_photo.dart';
 import '../../clinician/domain/patient_summary.dart';
@@ -37,7 +38,18 @@ class DieticianPatientScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(patientName ?? 'Patient')),
-      body: async.when(
+      // Everything on this screen belongs to somebody else's actions: the
+      // patient photographs a meal, the doctor changes a prescription, the
+      // server finishes reading a report. A dietician who leaves the record
+      // open while writing a plan should be looking at what is true now.
+      body: AutoRefresh(
+        onTick: (ref) {
+          ref.invalidate(dietOverviewProvider(patientId));
+          ref.invalidate(dietPlanProvider(patientId));
+          ref.invalidate(dietFoodLogProvider(patientId));
+        },
+        interval: const Duration(seconds: 30),
+        child: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
           child: Column(
@@ -112,6 +124,7 @@ class DieticianPatientScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.all(AppSpacing.md),
