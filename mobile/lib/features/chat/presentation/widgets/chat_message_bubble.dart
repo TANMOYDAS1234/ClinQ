@@ -287,7 +287,10 @@ class ChatMessageBubble extends StatelessWidget {
             // for a person.
             _SenderRow(
               isMine: isMine,
-              isClinician: isClinician,
+              // The real role, not the merged clinician-or-dietician flag used
+              // for bubble styling above. The row draws a face for the doctor
+              // and not for the dietician, so it needs the two kept apart.
+              isClinician: message.isClinician,
               isDietician: message.isDietician,
               isUser: isUser,
               name: message.senderName,

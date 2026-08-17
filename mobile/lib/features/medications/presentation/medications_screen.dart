@@ -205,56 +205,29 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen>
                           ),
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        InkWell(
-                          onTap: () => context.push('/medications/history'),
-                          borderRadius: BorderRadius.circular(14),
-                          child: Container(
-                            padding: const EdgeInsets.all(AppSpacing.md),
-                            decoration: BoxDecoration(
-                              color: scheme.surfaceContainerLow,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                        // Side by side, as the design draws them. Stacked
+                        // full-width they read as two more rows in a list of
+                        // rows; as a pair they read as the two places to go.
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _HubCard(
+                                icon: Icons.history_rounded,
+                                title: 'Dose history',
+                                subtitle: 'Taken & missed',
+                                onTap: () => context.push('/medications/history'),
+                              ),
                             ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.history_rounded, color: AppColors.primary),
-                                const SizedBox(width: 12),
-                                const Expanded(
-                                  child: Text('Dose history',
-                                      style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
-                                ),
-                                Text('taken & missed', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
-                                const SizedBox(width: 4),
-                                Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
-                              ],
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: _HubCard(
+                                icon: Icons.description_rounded,
+                                title: 'Prescriptions',
+                                subtitle: 'View & share',
+                                onTap: () => context.push('/medications/prescriptions'),
+                              ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        InkWell(
-                          onTap: () => context.push('/medications/prescriptions'),
-                          borderRadius: BorderRadius.circular(14),
-                          child: Container(
-                            padding: const EdgeInsets.all(AppSpacing.md),
-                            decoration: BoxDecoration(
-                              color: scheme.surfaceContainerLow,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.description_rounded, color: AppColors.primary),
-                                const SizedBox(width: 12),
-                                const Expanded(
-                                  child: Text('Prescriptions',
-                                      style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
-                                ),
-                                Text('view · share', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
-                                const SizedBox(width: 4),
-                                Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
-                              ],
-                            ),
-                          ),
+                          ],
                         ),
                         const SizedBox(height: AppSpacing.lg),
 
@@ -347,6 +320,75 @@ class _BrandHeader extends StatelessWidget {
             icon: Icon(Icons.notifications_none_rounded, size: 26, color: scheme.onSurface),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One of the two destinations above the schedule: an icon, what it is, and
+/// what you will find there.
+///
+/// Stacked in a column and given the full width, these read as two more rows
+/// in a screen already made of rows. Paired, they read as a choice — which is
+/// what they are.
+class _HubCard extends StatelessWidget {
+  const _HubCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.accentSoftOn(context),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(icon, size: 20, color: AppColors.accentOn(context)),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
