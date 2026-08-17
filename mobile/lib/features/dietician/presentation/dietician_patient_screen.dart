@@ -61,7 +61,7 @@ class DieticianPatientScreen extends ConsumerWidget {
               _DietPlanSection(patientId: patientId, patientName: patientName ?? o.name),
               if (o.vitals?.hasAny ?? false) ...[
                 const SizedBox(height: AppSpacing.lg),
-                _SectionTitle('Vitals & measurements'),
+
                 const SizedBox(height: AppSpacing.sm),
                 _VitalsSection(vitals: o.vitals!),
               ],
@@ -511,6 +511,30 @@ class _FoodLogSection extends ConsumerWidget {
 
   static String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
+  /// Entries under a heading per day, newest day first, order preserved within
+  /// each day.
+  static Map<String, List<FoodLogEntry>> _byDay(List<FoodLogEntry> entries) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final out = <String, List<FoodLogEntry>>{};
+    for (final e in entries) {
+      final at = e.createdAt;
+      final String key;
+      if (at == null) {
+        key = 'UNDATED';
+      } else {
+        final diff = today.difference(DateTime(at.year, at.month, at.day)).inDays;
+        key = switch (diff) {
+          0 => 'TODAY',
+          1 => 'YESTERDAY',
+          _ => DateFormat('EEEE, d MMMM').format(at).toUpperCase(),
+        };
+      }
+      out.putIfAbsent(key, () => []).add(e);
+    }
+    return out;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
@@ -586,14 +610,61 @@ class _FoodLogSection extends ConsumerWidget {
               ),
             ),
             if (earlier.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.lg),
-              _SectionTitle('Earlier meals'),
-              const SizedBox(height: AppSpacing.sm),
-              for (final e in earlier.take(30))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: _FoodEntry(entry: e),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
                 ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.history_rounded, size: 19, color: AppColors.accentOn(context)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Earlier Meals',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.accentOn(context),
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${earlier.length} logged',
+                          style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                    // Grouped by the day they were eaten. A flat run of thirty
+                    // meals gives no sense of whether the patient logged three
+                    // days solidly or one day nine times.
+                    for (final day in _byDay(earlier.take(30).toList()).entries) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        day.key,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.7,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      for (var i = 0; i < day.value.length; i++) ...[
+                        if (i > 0) const SizedBox(height: AppSpacing.sm),
+                        _FoodEntry(entry: day.value[i]),
+                      ],
+                    ],
+                  ],
+                ),
+              ),
             ],
           ],
         );
@@ -778,12 +849,14 @@ class _FoodEntry extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final meal = entry.mealType.isEmpty ? 'Meal' : '${entry.mealType[0].toUpperCase()}${entry.mealType.substring(1)}';
+    // Sits inside the Earlier Meals card now, so it drops its own border and
+    // takes a soft fill instead — a bordered box inside a bordered box read as
+    // two frames around one meal.
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -791,7 +864,7 @@ class _FoodEntry extends StatelessWidget {
           if (entry.photoUrl != null)
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.sm),
-              child: AuthedImage(path: entry.photoUrl!, width: 56, height: 56, radius: 10),
+              child: AuthedImage(path: entry.photoUrl!, width: 52, height: 52, radius: 10),
             ),
           Expanded(
             child: Column(
@@ -802,7 +875,7 @@ class _FoodEntry extends StatelessWidget {
                     Text(meal, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.accentOn(context))),
                     const Spacer(),
                     if (entry.createdAt != null)
-                      Text(DateFormat('d MMM, h:mm a').format(entry.createdAt!), style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                      Text(DateFormat('h:mm a').format(entry.createdAt!), style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
                   ],
                 ),
                 if (entry.note.isNotEmpty) ...[
@@ -933,17 +1006,45 @@ class _VitalsSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B1B33).withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       // A single column with rules between, not a two-across grid. Each row
-      // now carries a trend arrow on its right edge, and paired into columns
-      // those arrows landed mid-card where they read as decoration rather than
-      // as the end of a line.
+      // carries a trend arrow on its right edge, and paired into columns those
+      // arrows landed mid-card where they read as decoration rather than as the
+      // end of a line.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Row(
+            children: [
+              Icon(Icons.monitor_heart_rounded, size: 19, color: AppColors.accentOn(context)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Recent Vitals',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.accentOn(context),
+                  ),
+                ),
+              ),
+              Text(
+                tiles.length == 1 ? '1 measure' : '${tiles.length} measures',
+                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
           for (var i = 0; i < tiles.length; i++) ...[
-            if (i > 0) Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+            Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
             tiles[i],
           ],
         ],

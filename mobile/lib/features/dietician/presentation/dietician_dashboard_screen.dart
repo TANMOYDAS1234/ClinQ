@@ -373,26 +373,14 @@ class _StatCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          value,
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            height: 1,
-                            color: on,
-                          ),
-                        ),
-                        const Spacer(),
-                        if (onTap != null)
-                          Icon(
-                            Icons.arrow_forward_rounded,
-                            size: 18,
-                            color: (accent ?? scheme.onSurfaceVariant).withValues(alpha: 0.7),
-                          ),
-                      ],
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                        color: on,
+                      ),
                     ),
                   ],
                 ),
@@ -602,15 +590,11 @@ class _PlanTile extends StatelessWidget {
             onTap: onOpen,
             child: Row(
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerLowest,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
-                  ),
-                  child: Icon(Icons.person_outline_rounded, size: 18, color: scheme.onSurfaceVariant),
+                UserAvatar(
+                  name: patient.name,
+                  avatarUrl: patient.avatarUrl,
+                  accent: AppColors.accentOn(context),
+                  size: 34,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -669,7 +653,6 @@ class _AgePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -688,7 +671,6 @@ class _AgePill extends StatelessWidget {
             ),
           ),
         ),
-        Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
       ],
     );
   }
