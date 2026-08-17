@@ -1082,7 +1082,11 @@ class _FoodLogs extends StatelessWidget {
             )
           else
             SizedBox(
-              height: 196,
+              // The photo is a fixed 112; the two lines under it are not. On a
+              // phone set to larger text they grew past a hard-coded 196 and
+              // clipped, so the text half is scaled by the same factor the
+              // system is scaling the text by.
+              height: 112 + MediaQuery.textScalerOf(context).scale(84),
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 // Negative-free bleed: the list starts at the card's text edge

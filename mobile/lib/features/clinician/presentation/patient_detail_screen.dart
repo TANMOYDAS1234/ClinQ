@@ -266,14 +266,31 @@ class _MetricsGrid extends StatelessWidget {
       ),
     ];
 
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: AppSpacing.sm,
-      crossAxisSpacing: AppSpacing.sm,
-      childAspectRatio: 2.1,
-      children: tiles,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      // Two columns that size to their content, not a grid with a fixed
+      // aspect ratio. childAspectRatio pinned every tile to width/2.1, which
+      // was a few pixels short of the text at anything above the default font
+      // scale — so the values were clipped and the tiles painted the overflow
+      // stripes. A ratio that fits one device's text settings is a ratio that
+      // breaks on another's.
+      children: [
+        for (var i = 0; i < tiles.length; i += 2) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.sm),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: tiles[i]),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: i + 1 < tiles.length ? tiles[i + 1] : const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -751,6 +768,7 @@ class _Metric extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
