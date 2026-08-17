@@ -48,6 +48,20 @@ class DieticianRepository {
     await _client.postJson('/dietician/patients/$patientId/diet/send');
   }
 
+  /// What is waiting for this dietician: unread messages, lapsed reviews and
+  /// patients with no plan.
+  Future<DietNotifications> notifications() async {
+    final json = await _client.getJson('/dietician/notifications');
+    return DietNotifications.fromJson(json);
+  }
+
+  /// Marks unread patient messages as seen — called when the list is opened, so
+  /// the badge clears because somebody looked rather than because something was
+  /// delivered.
+  Future<void> markNotificationsSeen() async {
+    await _client.postJson('/dietician/notifications/seen');
+  }
+
   Future<List<DietPatient>> patients() async {
     final json = await _client.getJson('/dietician/patients');
     final items = json['items'] as List? ?? const [];

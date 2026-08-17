@@ -102,6 +102,143 @@ async function unreadNutritionCount(patientIds) {
   });
 }
 
+/**
+ * What is waiting for this dietician, newest first.
+ *
+ * Three things, in the order they matter: a patient has written and nobody at
+ * the clinic has opened it; a review has lapsed; a patient has no plan yet. All
+ * three already drive numbers on the dashboard — this is the same work as a
+ * list, so tapping the bell shows what the count was counting rather than
+ * dropping the dietician on a screen to work it out for themselves.
+ *
+ * Scoped to their own caseload throughout. A notification about somebody else's
+ * patient is one the reader cannot act on.
+ */
+router.get(
+  '/notifications',
+  asyncHandler(async (req, res) => {
+    const [profiles, settings] = await Promise.all([
+      PatientProfile.find(await scopeFilter(req))
+        .populate('user', 'name avatarAssetId isActive')
+        .lean(),
+      getClinicSettings(),
+    ]);
+    const defaultDays = settings.dietReviewIntervalDays;
+    const assigned = profiles.filter((p) => p.user && p.user.isActive !== false);
+    const byId = new Map(assigned.map((p) => [String(p.user._id), p]));
+    const ids = assigned.map((p) => p.user._id);
+
+    const face = (p) => ({
+      patientId: String(p.user._id),
+      patientName: p.user.name,
+      avatarUrl: p.user.avatarAssetId ? `/api/v1/uploads/${p.user.avatarAssetId}/raw` : null,
+    });
+
+    let messages = [];
+    if (ids.length > 0) {
+      const sessions = await ChatSession.find({ kind: 'nutrition', patient: { $in: ids } })
+        .select('_id patient')
+        .lean();
+      if (sessions.length > 0) {
+        const unread = await ChatMessage.find({
+          role: 'user',
+          seenByClinicAt: null,
+          session: { $in: sessions.map((x) => x._id) },
+        })
+          .sort({ createdAt: -1 })
+          .limit(30)
+          .select('patient content createdAt attachments')
+          .lean();
+
+        messages = unread
+          .map((m) => {
+            const profile = byId.get(String(m.patient));
+            if (!profile) return null;
+            const text = (m.content ?? '').trim();
+            return {
+              id: String(m._id),
+              kind: 'message',
+              ...face(profile),
+              // A photo with no caption is still something to look at, so it
+              // gets a description rather than an empty line.
+              text: text.length > 0 ? text.slice(0, 200) : 'Sent a photo',
+              at: m.createdAt,
+              unread: true,
+            };
+          })
+          .filter(Boolean);
+      }
+    }
+
+    const reviews = assigned
+      .filter((p) => reviewDue(p, defaultDays))
+      .map((p) => ({
+        id: `review-${String(p.user._id)}`,
+        kind: 'review',
+        ...face(p),
+        text: 'Food-log review is due',
+        at: p.lastDietReviewAt ?? p.createdAt,
+        unread: false,
+      }));
+
+    const planBy = new Map(
+      (await DietPlan.find({ patient: { $in: ids } }).select('patient sharedAt').lean()).map((x) => [
+        String(x.patient),
+        x,
+      ]),
+    );
+    const plans = assigned
+      .filter((p) => {
+        const plan = planBy.get(String(p.user._id));
+        return !plan || !plan.sharedAt;
+      })
+      .map((p) => ({
+        id: `plan-${String(p.user._id)}`,
+        kind: 'plan',
+        ...face(p),
+        text: 'Waiting for a diet plan',
+        at: p.createdAt,
+        unread: false,
+      }));
+
+    // Newest first within each group, and the groups in the order above: an
+    // unread question is a person waiting for an answer, which outranks work
+    // that has been outstanding for days and will keep.
+    const byNewest = (a, b) => new Date(b.at ?? 0) - new Date(a.at ?? 0);
+
+    res.json({
+      unread: messages.length,
+      items: [...messages.sort(byNewest), ...reviews.sort(byNewest), ...plans.sort(byNewest)].slice(0, 50),
+    });
+  }),
+);
+
+/**
+ * Marks this dietician's unread patient messages as seen.
+ *
+ * Called when they open the list, not when a notification arrives: the badge
+ * should clear because somebody looked, never because something was delivered.
+ */
+router.post(
+  '/notifications/seen',
+  asyncHandler(async (req, res) => {
+    const profiles = await PatientProfile.find(await scopeFilter(req)).select('user').lean();
+    const ids = profiles.map((p) => p.user);
+    if (ids.length === 0) return res.json({ cleared: 0 });
+
+    const sessions = await ChatSession.find({ kind: 'nutrition', patient: { $in: ids } })
+      .select('_id')
+      .lean();
+    if (sessions.length === 0) return res.json({ cleared: 0 });
+
+    const result = await ChatMessage.updateMany(
+      { role: 'user', seenByClinicAt: null, session: { $in: sessions.map((x) => x._id) } },
+      { $set: { seenByClinicAt: new Date() } },
+    );
+    res.json({ cleared: result.modifiedCount ?? 0 });
+  }),
+);
+
 router.get(
   '/dashboard',
   asyncHandler(async (req, res) => {

@@ -43,3 +43,8 @@ final dietPlanHistoryProvider =
     FutureProvider.autoDispose.family<List<DietPlanRevision>, String>(
   (ref, id) => ref.watch(dieticianRepositoryProvider).dietPlanHistory(id),
 );
+
+/// What is waiting for the dietician right now.
+final dietNotificationsProvider = FutureProvider.autoDispose<DietNotifications>(
+  (ref) => ref.watch(dieticianRepositoryProvider).notifications(),
+);

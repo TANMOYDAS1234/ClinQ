@@ -712,3 +712,56 @@ class DietPlanRevision {
         startedAt: DateTime.tryParse(j['startedAt']?.toString() ?? '')?.toLocal(),
       );
 }
+
+
+/// One thing waiting for the dietician: a patient's unread message, a lapsed
+/// review, or a patient with no plan yet.
+class DietNotification {
+  const DietNotification({
+    required this.id,
+    required this.kind,
+    required this.patientId,
+    required this.patientName,
+    required this.text,
+    this.avatarUrl,
+    this.at,
+    this.unread = false,
+  });
+
+  final String id;
+
+  /// message | review | plan
+  final String kind;
+  final String patientId;
+  final String patientName;
+  final String text;
+  final String? avatarUrl;
+  final DateTime? at;
+  final bool unread;
+
+  factory DietNotification.fromJson(Map<String, dynamic> j) => DietNotification(
+        id: j['id']?.toString() ?? '',
+        kind: j['kind']?.toString() ?? 'message',
+        patientId: j['patientId']?.toString() ?? '',
+        patientName: j['patientName']?.toString() ?? '',
+        text: j['text']?.toString() ?? '',
+        avatarUrl: j['avatarUrl']?.toString(),
+        at: DateTime.tryParse(j['at']?.toString() ?? '')?.toLocal(),
+        unread: j['unread'] == true,
+      );
+}
+
+class DietNotifications {
+  const DietNotifications({required this.unread, required this.items});
+
+  final int unread;
+  final List<DietNotification> items;
+
+  factory DietNotifications.fromJson(Map<String, dynamic> j) => DietNotifications(
+        unread: (j['unread'] as num?)?.toInt() ?? 0,
+        items: (j['items'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(DietNotification.fromJson)
+            .toList(),
+      );
+}

@@ -10,6 +10,7 @@ import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/diet_models.dart';
 import 'dietician_providers.dart';
+import 'widgets/notification_sheet.dart';
 
 /// The dietician's day in one screen.
 ///
@@ -264,7 +265,7 @@ class _NotificationBell extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         IconButton(
-          onPressed: () => context.go('/dietician/patients'),
+          onPressed: () => showDieticianNotifications(context),
           icon: const Icon(Icons.notifications_none_rounded),
           color: Theme.of(context).colorScheme.onSurface,
           tooltip: count == 0 ? 'No new messages' : '$count unread',
