@@ -1523,7 +1523,14 @@ class _AnalyteChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('${analyte.label} ', style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+          Flexible(
+            child: Text(
+              '${analyte.label} ',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+            ),
+          ),
           Text(_fmt(analyte.value), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: abnormal ? color : scheme.onSurface)),
           if (analyte.unit != null && analyte.unit!.isNotEmpty)
             Text(' ${analyte.unit}', style: TextStyle(fontSize: 10.5, color: scheme.onSurfaceVariant)),

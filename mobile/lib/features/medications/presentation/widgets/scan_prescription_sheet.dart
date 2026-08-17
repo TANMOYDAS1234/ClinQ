@@ -180,9 +180,11 @@ class _ScanPrescriptionSheetState extends ConsumerState<_ScanPrescriptionSheet> 
             children: [
               Icon(Icons.check_circle_rounded, color: AppColors.successOn(context), size: 26),
               const SizedBox(width: AppSpacing.sm),
-              Text(
-                'Added ${res.created.length} medicine${res.created.length == 1 ? '' : 's'}',
-                style: Theme.of(context).textTheme.titleLarge,
+              Expanded(
+                child: Text(
+                  'Added ${res.created.length} medicine${res.created.length == 1 ? '' : 's'}',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
             ],
           ),

@@ -137,7 +137,12 @@ class _PrescriptionCard extends StatelessWidget {
                       style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
                   if (rx.doctorName != null) ...[
                     const SizedBox(height: 2),
-                    Text('by ${rx.doctorName}', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                    Text(
+                      'by ${rx.doctorName}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                    ),
                   ],
                 ],
               ),

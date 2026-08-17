@@ -873,9 +873,14 @@ class _ProfileHeader extends StatelessWidget {
                             fg: AppColors.primary,
                             bg: AppColors.accentSoftOn(context),
                           ),
-                        if (p.details.allergies.isNotEmpty)
+                        // One pill per allergy. Joined into a single label,
+                        // four of them made one pill wider than the phone —
+                        // and a Wrap cannot shrink a child that does not fit,
+                        // it only lets it overflow.
+                        for (final a in p.details.allergies)
                           _HeaderPill(
-                            label: 'Allergy: ${p.details.allergies.join(', ')}',
+                            icon: Icons.block_rounded,
+                            label: a,
                             fg: Colors.white,
                             bg: AppColors.danger,
                           ),
@@ -1098,28 +1103,38 @@ class _HeaderPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 14, color: fg),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: fg,
+    return ConstrainedBox(
+      // Never wider than the screen it sits on. A pill carrying a value nobody
+      // predicted — a long condition name, a hyphenated allergy — used to grow
+      // until it ran off the edge.
+      constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width - 64),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 14, color: fg),
+              const SizedBox(width: 4),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: fg,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
