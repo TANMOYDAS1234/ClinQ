@@ -29,22 +29,35 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
   final _search = TextEditingController();
   String _query = '';
 
+  /// all | critical | high | review — the worklist the dietician is looking at.
+  String _filterKey = 'all';
+
   @override
   void dispose() {
     _search.dispose();
     super.dispose();
   }
 
-  /// Name or phone. A dietician covering every patient in the clinic scrolls a
-  /// list of hundreds otherwise, and the one they want is the one who just
-  /// messaged them.
-  List<DietPatient> _filter(List<DietPatient> all) {
+  /// Name, phone or condition. A dietician covering every patient in the clinic
+  /// scrolls a list of hundreds otherwise, and the one they want is the one who
+  /// just messaged them.
+  List<DietPatient> _search_(List<DietPatient> all) {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return all;
     return all
-        .where((p) => p.name.toLowerCase().contains(q) || p.phone.toLowerCase().contains(q))
+        .where((p) =>
+            p.name.toLowerCase().contains(q) ||
+            p.phone.toLowerCase().contains(q) ||
+            (p.diabetesType ?? '').toLowerCase().contains(q))
         .toList();
   }
+
+  List<DietPatient> _byBand(List<DietPatient> all, String key) => switch (key) {
+    'critical' => all.where((p) => p.riskBand == 'critical').toList(),
+    'high' => all.where((p) => p.riskBand == 'high').toList(),
+    'review' => all.where((p) => p.reviewDue).toList(),
+    _ => all,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -58,8 +71,8 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('My patients', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.accentOn(context))),
-            Text('Dietician · ${user?.name ?? ''}', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+            Text('My Patients', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.accentOn(context))),
+            Text('Worklist sorted by review priority.', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
           ],
         ),
         actions: [
@@ -78,41 +91,77 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
           const SizedBox(width: AppSpacing.md),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(64),
+          preferredSize: const Size.fromHeight(116),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
-            child: TextField(
-              controller: _search,
-              onChanged: (v) => setState(() => _query = v),
-              style: const TextStyle(fontSize: 15.5),
-              decoration: InputDecoration(
-                hintText: 'Search patients by name or number…',
-                prefixIcon: Icon(Icons.search_rounded, color: scheme.onSurfaceVariant),
-                suffixIcon: _query.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: () => setState(() {
-                          _search.clear();
-                          _query = '';
-                        }),
-                      ),
-                filled: true,
-                fillColor: scheme.surfaceContainerHigh.withValues(alpha: 0.55),
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(28),
-                  borderSide: BorderSide.none,
+            child: Column(
+              children: [
+                TextField(
+                  controller: _search,
+                  onChanged: (v) => setState(() => _query = v),
+                  style: const TextStyle(fontSize: 15.5),
+                  decoration: InputDecoration(
+                    hintText: 'Search patients, number, or condition…',
+                    prefixIcon: Icon(Icons.search_rounded, color: scheme.onSurfaceVariant),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () => setState(() {
+                              _search.clear();
+                              _query = '';
+                            }),
+                          ),
+                    filled: true,
+                    fillColor: scheme.surfaceContainerHigh.withValues(alpha: 0.55),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(28),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(28),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(28),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(28),
-                  borderSide: BorderSide.none,
+                const SizedBox(height: AppSpacing.sm),
+                // Counted, and counted against what the search has already
+                // narrowed to — a chip reading "Critical (5)" over a list of
+                // two is a chip that lies.
+                SizedBox(
+                  height: 36,
+                  child: Builder(
+                    builder: (context) {
+                      final all = _search_(async.valueOrNull ?? const <DietPatient>[]);
+                      final chips = <(String, String, int)>[
+                        ('all', 'All Patients', all.length),
+                        ('critical', 'Critical', _byBand(all, 'critical').length),
+                        ('high', 'High Risk', _byBand(all, 'high').length),
+                        ('review', 'Review Due', _byBand(all, 'review').length),
+                      ];
+                      return ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: chips.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
+                        itemBuilder: (context, i) {
+                          final (key, label, count) = chips[i];
+                          final selected = _filterKey == key;
+                          return _FilterChip(
+                            label: '$label ($count)',
+                            selected: selected,
+                            onTap: () => setState(() => _filterKey = key),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(28),
-                  borderSide: BorderSide.none,
-                ),
-              ),
+              ],
             ),
           ),
         ),
@@ -138,7 +187,7 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
                 Center(child: Text('A doctor will assign patients to you.', style: TextStyle(color: scheme.onSurfaceVariant))),
               ]);
             }
-            final matched = _filter(patients);
+            final matched = _byBand(_search_(patients), _filterKey);
             if (matched.isEmpty) {
               return ListView(children: [
                 SizedBox(height: MediaQuery.of(context).size.height * 0.22),
@@ -172,64 +221,268 @@ class _PatientCard extends StatelessWidget {
 
   final DietPatient patient;
 
+  static String _condition(DietPatient p) => switch (p.diabetesType) {
+    'type1' => 'Type 1 Diabetes',
+    'type2' => 'Type 2 Diabetes',
+    'gestational' => 'Gestational DM',
+    'prediabetes' => 'Prediabetes',
+    _ => '',
+  };
+
+  /// When the next review falls, said the way a person would say it.
+  static (String, bool) _reviewText(DietPatient p) {
+    final days = p.daysUntilReview;
+    if (days == null) return (p.reviewDue ? 'REVIEW DUE' : '', p.reviewDue);
+    if (days < 0) {
+      final n = -days;
+      return ('OVERDUE $n ${n == 1 ? 'DAY' : 'DAYS'}', true);
+    }
+    if (days == 0) return ('TODAY', false);
+    return ('IN $days ${days == 1 ? 'DAY' : 'DAYS'}', false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final p = patient;
     final risk = AppColors.toneOn(context, dietRiskColor(p.riskBand));
+    final critical = p.riskBand == 'critical';
+    final (status, overdue) = _reviewText(p);
+    final condition = _condition(p);
 
     return Material(
       color: scheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         onTap: () => context.push('/dietician/patients/${p.id}', extra: p.name),
         child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0B1B33).withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          child: Row(
-            children: [
-              UserAvatar(name: p.name, avatarUrl: p.avatarUrl, accent: AppColors.accentOn(context), size: 46),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Row(
+          clipBehavior: Clip.antiAlias,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Risk as a rail down the edge. A whole card tinted by risk
+                // makes every card shout; a rail lets the eye run down the list
+                // and stop at the red one.
+                Container(width: 5, color: risk),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.md, 12, AppSpacing.md, 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _pill(p.riskBand.isEmpty ? 'low' : '${p.riskBand[0].toUpperCase()}${p.riskBand.substring(1)} risk', risk),
-                        if (p.diabetesType != null && p.diabetesType!.isNotEmpty) ...[
-                          const SizedBox(width: 6),
-                          Text(p.diabetesType!, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                UserAvatar(
+                                  name: p.name,
+                                  avatarUrl: p.avatarUrl,
+                                  accent: AppColors.accentOn(context),
+                                  size: 48,
+                                ),
+                                // The one risk band that should stop the eye
+                                // before it has read anything.
+                                if (critical)
+                                  Positioned(
+                                    right: -2,
+                                    bottom: -2,
+                                    child: Container(
+                                      width: 19,
+                                      height: 19,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.dangerOn(context),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: scheme.surfaceContainerLowest, width: 2),
+                                      ),
+                                      child: const Icon(Icons.priority_high_rounded, size: 11, color: Colors.white),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    p.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, height: 1.2),
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    [
+                                      if (p.phone.isNotEmpty) p.phone,
+                                      if (p.age != null) '${p.age} yrs',
+                                    ].join('  •  '),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    children: [
+                                      _pill(
+                                        '${p.riskBand[0].toUpperCase()}${p.riskBand.substring(1)} Risk',
+                                        risk,
+                                      ),
+                                      if (condition.isNotEmpty)
+                                        _pill(condition, scheme.onSurfaceVariant, neutral: true),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (status.isNotEmpty) ...[
+                          const SizedBox(height: 11),
+                          Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.55)),
+                          const SizedBox(height: 9),
+                          Row(
+                            children: [
+                              if (p.reviewDue)
+                                _statusPill(
+                                  context,
+                                  icon: Icons.schedule_rounded,
+                                  label: 'Review Due',
+                                  color: const Color(0xFFB45309),
+                                  bg: AppColors.warningOn(context).withValues(alpha: 0.13),
+                                  border: AppColors.warningOn(context).withValues(alpha: 0.4),
+                                )
+                              else
+                                _statusPill(
+                                  context,
+                                  icon: Icons.event_available_rounded,
+                                  label: 'Scheduled',
+                                  color: scheme.onSurfaceVariant,
+                                  bg: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
+                                  border: null,
+                                ),
+                              const Spacer(),
+                              Text(
+                                status,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.3,
+                                  color: overdue ? AppColors.dangerOn(context) : scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-              if (p.reviewDue)
-                Container(
-                  margin: const EdgeInsets.only(right: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                  decoration: BoxDecoration(color: AppColors.warningOn(context).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
-                  child: const Text('Review due', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFFB45309))),
-                ),
-              Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _pill(String text, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(20)),
-        child: Text(text, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: color)),
+  Widget _statusPill(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color bg,
+    required Color? border,
+  }) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+          border: border == null ? null : Border.all(color: border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: color),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color),
+            ),
+          ],
+        ),
       );
+
+  Widget _pill(String text, Color color, {bool neutral = false}) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: neutral ? 0.10 : 0.13),
+          borderRadius: BorderRadius.circular(7),
+          border: neutral ? null : Border.all(color: color.withValues(alpha: 0.35)),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
+        ),
+      );
+}
+
+/// One worklist filter. Filled navy when it is the list being shown, hairline
+/// when it is not — the same two states the design draws.
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final accent = AppColors.accentOn(context);
+
+    return Material(
+      color: selected ? accent : scheme.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? accent : scheme.outlineVariant.withValues(alpha: 0.8),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: selected ? Colors.white : scheme.onSurface,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

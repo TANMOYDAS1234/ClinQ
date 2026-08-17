@@ -80,6 +80,27 @@ async function requireAssigned(req) {
  * the counts must agree with each other, and three round-trips over a clinic's
  * mobile connection is three chances to show a half-loaded dashboard.
  */
+/**
+ * Unread patient messages across the nutrition threads of [patientIds].
+ *
+ * `seenByClinicAt` is the clinic's single read marker rather than a per-user
+ * one, so this is "nobody here has looked at it", not "this dietician has not".
+ * For a caseload with one dietician on it those are the same thing; a badge
+ * that quietly meant something narrower would be worse than this.
+ */
+async function unreadNutritionCount(patientIds) {
+  if (patientIds.length === 0) return 0;
+  const sessions = await ChatSession.find({ kind: 'nutrition', patient: { $in: patientIds } })
+    .select('_id')
+    .lean();
+  if (sessions.length === 0) return 0;
+  return ChatMessage.countDocuments({
+    role: 'user',
+    seenByClinicAt: null,
+    session: { $in: sessions.map((s) => s._id) },
+  });
+}
+
 router.get(
   '/dashboard',
   asyncHandler(async (req, res) => {
@@ -91,7 +112,7 @@ router.get(
     const assigned = profiles.filter((p) => p.user && p.user.isActive !== false);
     const ids = assigned.map((p) => p.user._id);
 
-    const [plans, recentLogs] = await Promise.all([
+    const [plans, recentLogs, unreadMessages] = await Promise.all([
       DietPlan.find({ patient: { $in: ids } }).select('patient updatedAt sharedAt').lean(),
       FoodLog.find({ patient: { $in: ids } })
         .sort({ createdAt: -1 })
@@ -99,6 +120,7 @@ router.get(
         .populate('patient', 'name')
         .populate('photo', 'mimeType')
         .lean(),
+      unreadNutritionCount(ids),
     ]);
     const planBy = new Map(plans.map((p) => [String(p.patient), p]));
 
@@ -133,6 +155,10 @@ router.get(
         newThisWeek: assigned.filter((p) => dayjs(p.createdAt).isAfter(weekAgo)).length,
         reviewsDue: due.length,
         plansMissing: noPlan.length,
+        // Patient messages in the nutrition threads nobody at the clinic has
+        // opened yet, scoped to this dietician's own caseload — a badge
+        // counting somebody else's patients is a badge they cannot clear.
+        unreadMessages,
       },
       reviewsDue: due.map(brief),
       plansMissing: noPlan.map(brief),
@@ -158,7 +184,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const [profiles, settings] = await Promise.all([
       PatientProfile.find(await scopeFilter(req))
-        .populate('user', 'name phone avatarAssetId isActive')
+        .populate('user', 'name phone avatarAssetId isActive dateOfBirth')
         .sort({ updatedAt: -1 })
         .lean(),
       getClinicSettings(),
@@ -177,6 +203,10 @@ router.get(
         reviewIntervalDays: p.dietReviewIntervalDays ?? defaultDays,
         lastReviewAt: p.lastDietReviewAt ?? null,
         reviewDue: reviewDue(p, defaultDays),
+        // Energy and protein targets are set by age as much as by weight, so
+        // the worklist carries it rather than making the dietician open each
+        // record to find out who they are planning for.
+        dateOfBirth: p.user.dateOfBirth ?? null,
       }));
 
     res.json({ items });

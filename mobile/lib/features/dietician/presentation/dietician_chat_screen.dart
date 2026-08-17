@@ -483,7 +483,11 @@ class _Bubble extends StatelessWidget {
         Icons.medical_information_rounded,
         message.senderName ?? 'Doctor',
       ),
-      'assistant' => (Icons.smart_toy_rounded, 'AI Assistant'),
+      // Named for what it is and whose it is. "AI Assistant" alone could be any
+      // of a dozen things a phone runs; this one answers from the clinic's own
+      // nutrition protocols, and a dietician reading the thread needs to know
+      // that a machine wrote it before they act on it.
+      'assistant' => (Icons.smart_toy_rounded, 'MedPin AI · nutrition assistant'),
       _ => (Icons.restaurant_rounded, message.senderName ?? 'Dietician'),
     };
 
@@ -522,15 +526,29 @@ class _Bubble extends StatelessWidget {
                     Container(
                       width: 24,
                       height: 24,
+                      padding: message.role == 'assistant' ? const EdgeInsets.all(3) : null,
                       decoration: BoxDecoration(
                         color: AppColors.accentSoftOn(context),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        icon,
-                        size: 14,
-                        color: AppColors.accentOn(context),
-                      ),
+                      // The assistant carries the app's own mark, the way it
+                      // does in the patient's threads. A generic robot icon read
+                      // as decoration; the emblem says which system is speaking,
+                      // which is the whole point of marking these turns at all.
+                      child: message.role == 'assistant'
+                          ? Image.asset(
+                              'assets/brand/medpin_emblem.png',
+                              errorBuilder: (_, _, _) => Icon(
+                                icon,
+                                size: 14,
+                                color: AppColors.accentOn(context),
+                              ),
+                            )
+                          : Icon(
+                              icon,
+                              size: 14,
+                              color: AppColors.accentOn(context),
+                            ),
                     ),
                     const SizedBox(width: 7),
                     Flexible(

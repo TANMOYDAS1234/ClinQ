@@ -13,6 +13,7 @@ class DietPatient {
     this.reviewIntervalDays,
     this.lastReviewAt,
     required this.reviewDue,
+    this.dateOfBirth,
   });
 
   final String id;
@@ -24,6 +25,29 @@ class DietPatient {
   final int? reviewIntervalDays;
   final DateTime? lastReviewAt;
   final bool reviewDue;
+  final DateTime? dateOfBirth;
+
+  int? get age {
+    final dob = dateOfBirth;
+    if (dob == null) return null;
+    final now = DateTime.now();
+    var years = now.year - dob.year;
+    if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) years -= 1;
+    return years < 0 || years > 130 ? null : years;
+  }
+
+  /// Days until the next review is due — negative once it has been missed.
+  ///
+  /// Worked out from the same two fields the server used to decide [reviewDue],
+  /// so the wording on the card and the flag beside it can never disagree.
+  int? get daysUntilReview {
+    final last = lastReviewAt;
+    final every = reviewIntervalDays;
+    if (last == null || every == null) return null;
+    final due = DateTime(last.year, last.month, last.day).add(Duration(days: every));
+    final now = DateTime.now();
+    return due.difference(DateTime(now.year, now.month, now.day)).inDays;
+  }
 
   factory DietPatient.fromJson(Map<String, dynamic> j) => DietPatient(
         id: j['id']?.toString() ?? '',
@@ -35,6 +59,7 @@ class DietPatient {
         reviewIntervalDays: (j['reviewIntervalDays'] as num?)?.toInt(),
         lastReviewAt: DateTime.tryParse(j['lastReviewAt']?.toString() ?? '')?.toLocal(),
         reviewDue: j['reviewDue'] == true,
+        dateOfBirth: DateTime.tryParse(j['dateOfBirth']?.toString() ?? '')?.toLocal(),
       );
 }
 
@@ -457,6 +482,7 @@ class DietDashboard {
     this.newThisWeek = 0,
     required this.reviewsDue,
     required this.plansMissing,
+    this.unreadMessages = 0,
     required this.reviewsDueList,
     required this.plansMissingList,
     required this.recentLogs,
@@ -469,6 +495,9 @@ class DietDashboard {
 
   final int reviewsDue;
   final int plansMissing;
+
+  /// Patient messages in this dietician's nutrition threads nobody has opened.
+  final int unreadMessages;
   final List<DietPatientBrief> reviewsDueList;
   final List<DietPatientBrief> plansMissingList;
   final List<DietRecentLog> recentLogs;
@@ -512,6 +541,7 @@ class DietDashboard {
       newThisWeek: (counts['newThisWeek'] as num?)?.toInt() ?? 0,
       reviewsDue: (counts['reviewsDue'] as num?)?.toInt() ?? 0,
       plansMissing: (counts['plansMissing'] as num?)?.toInt() ?? 0,
+      unreadMessages: (counts['unreadMessages'] as num?)?.toInt() ?? 0,
       reviewsDueList: briefs('reviewsDue'),
       plansMissingList: briefs('plansMissing'),
       recentLogs:

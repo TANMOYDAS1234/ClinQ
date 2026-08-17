@@ -35,6 +35,9 @@ class DieticianDashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: scheme.surface,
+      // The menu the design's hamburger opens. Without it the icon would be a
+      // control that does nothing, which is worse than not drawing it.
+      drawer: _DieticianDrawer(name: user?.name ?? '', avatarUrl: user?.avatarUrl),
       // The dietician's day is made of other people's actions — a patient
       // logging a meal, a doctor prescribing, a report the server has just
       // finished reading. Waiting for a pull-to-refresh showed them a morning
@@ -46,7 +49,11 @@ class DieticianDashboardScreen extends ConsumerWidget {
         bottom: false,
         child: Column(
           children: [
-            _BrandHeader(name: user?.name ?? '', avatarUrl: user?.avatarUrl),
+            _BrandHeader(
+              name: user?.name ?? '',
+              avatarUrl: user?.avatarUrl,
+              unread: async.valueOrNull?.unreadMessages ?? 0,
+            ),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async => ref.invalidate(dietDashboardProvider),
@@ -92,39 +99,28 @@ class DieticianDashboardScreen extends ConsumerWidget {
                       _StatCard(
                         label: 'My Patients',
                         value: '${d.patients}',
-                        // Only when someone actually joined — "+0 this week" is
-                        // noise dressed as news.
-                        note: d.newThisWeek > 0 ? '+${d.newThisWeek} this week' : null,
-                        noteColor: AppColors.primary,
                         icon: Icons.groups_outlined,
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       _StatCard(
                         label: 'Reviews Due',
                         value: '${d.reviewsDue}',
-                        note: d.reviewsDue > 0 ? 'require immediate action' : 'nothing overdue',
-                        // Tinted only when there is something to do. A
-                        // permanently red card stops meaning anything.
                         accent: d.reviewsDue > 0 ? AppColors.danger : null,
-                        icon: Icons.notifications_active_outlined,
+                        icon: Icons.error_outline_rounded,
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       _StatCard(
                         label: 'Plans to Send',
                         value: '${d.plansMissing}',
-                        note: d.plansMissing > 0 ? 'waiting on you' : 'all sent',
-                        accent: d.plansMissing > 0 ? AppColors.primary : null,
-                        tint: AppColors.infoBgOn(context),
-                        icon: Icons.assignment_outlined,
+                        accent: d.plansMissing > 0 ? AppColors.accentOn(context) : null,
+                        icon: Icons.send_rounded,
                       ),
 
                       if (d.reviewsSorted.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.lg),
                         _WorkCard(
-                          icon: Icons.warning_amber_rounded,
-                          iconColor: AppColors.danger,
                           title: 'Reviews Due',
-                          action: d.reviewsSorted.length > 3 ? 'View All' : null,
+                          action: 'View All',
                           onAction: () => context.go('/dietician/patients'),
                           children: [
                             for (final p in d.reviewsSorted.take(3))
@@ -144,24 +140,20 @@ class DieticianDashboardScreen extends ConsumerWidget {
                       if (d.plansSorted.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.md),
                         _WorkCard(
-                          icon: Icons.event_note_outlined,
-                          iconColor: AppColors.primary,
                           title: 'Waiting for Diet Plan',
+                          action: 'View All',
+                          onAction: () => context.go('/dietician/patients'),
+                          padded: true,
                           children: [
                             for (final p in d.plansSorted.take(3))
-                              _PatientRow(
+                              _PlanTile(
                                 patient: p,
-                                subtitle: p.sinceDays == 0
-                                    ? 'Joined today'
-                                    : 'Waiting ${p.sinceDays} ${p.sinceDays == 1 ? 'day' : 'days'}',
-                                trailing: _CreateButton(
-                                  onTap: () => context.push(
-                                    '/dietician/patients/${p.id}/diet',
-                                    extra: p.name,
-                                  ),
-                                ),
-                                onTap: () => context.push(
+                                onOpen: () => context.push(
                                   '/dietician/patients/${p.id}',
+                                  extra: p.name,
+                                ),
+                                onCreate: () => context.push(
+                                  '/dietician/patients/${p.id}/diet',
                                   extra: p.name,
                                 ),
                               ),
@@ -176,18 +168,7 @@ class DieticianDashboardScreen extends ConsumerWidget {
 
                       if (d.recentLogs.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.lg),
-                        Row(
-                          children: [
-                            Icon(Icons.restaurant_rounded, size: 21, color: scheme.onSurface),
-                            const SizedBox(width: AppSpacing.sm),
-                            const Text(
-                              'Latest Meals Logged',
-                              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        for (final log in d.recentLogs.take(6)) _MealCard(log: log),
+                        _MealsCard(logs: d.recentLogs.take(4).toList()),
                       ],
                     ],
                   ),
@@ -213,39 +194,99 @@ class DieticianDashboardScreen extends ConsumerWidget {
 // ---- Header ---------------------------------------------------------------
 
 class _BrandHeader extends StatelessWidget {
-  const _BrandHeader({required this.name, this.avatarUrl});
+  const _BrandHeader({required this.name, this.avatarUrl, this.unread = 0});
 
   final String name;
   final String? avatarUrl;
+
+  /// Patient messages nobody has read. Drives the dot on the bell.
+  final int unread;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
+      padding: const EdgeInsets.fromLTRB(4, AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
       ),
       child: Row(
         children: [
-          Image.asset(
-            'assets/brand/medpin_emblem.png',
-            height: 30,
-            errorBuilder: (_, _, _) =>
-                Icon(Icons.restaurant_rounded, size: 26, color: AppColors.accentOn(context)),
+          IconButton(
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            icon: const Icon(Icons.menu_rounded),
+            color: scheme.onSurface,
+            tooltip: 'Menu',
           ),
-          const SizedBox(width: 10),
           Text(
-            'MedPin',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
+            'MedPin Dietetics',
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              color: AppColors.accentOn(context),
+            ),
           ),
           const Spacer(),
+          _NotificationBell(count: unread),
+          const SizedBox(width: 2),
           GestureDetector(
             onTap: () => context.go('/dietician/profile'),
-            child: UserAvatar(name: name, avatarUrl: avatarUrl, accent: AppColors.accentOn(context), size: 38),
+            child: UserAvatar(name: name, avatarUrl: avatarUrl, accent: AppColors.accentOn(context), size: 36),
           ),
+          const SizedBox(width: 4),
         ],
       ),
+    );
+  }
+}
+
+/// Unread patient messages, on the bell.
+///
+/// Blue rather than red: these are questions waiting, not emergencies, and a
+/// red badge that appears every time somebody says thank you teaches the
+/// dietician to ignore red.
+class _NotificationBell extends StatelessWidget {
+  const _NotificationBell({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = AppColors.accentOn(context);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          onPressed: () => context.go('/dietician/patients'),
+          icon: const Icon(Icons.notifications_none_rounded),
+          color: Theme.of(context).colorScheme.onSurface,
+          tooltip: count == 0 ? 'No new messages' : '$count unread',
+        ),
+        if (count > 0)
+          Positioned(
+            right: 4,
+            top: 5,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+              constraints: const BoxConstraints(minWidth: 18),
+              decoration: BoxDecoration(
+                color: accent,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Theme.of(context).colorScheme.surface, width: 1.5),
+              ),
+              child: Text(
+                count > 99 ? '99+' : '$count',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -257,80 +298,83 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
-    this.note,
-    this.noteColor,
     this.accent,
-    this.tint,
   });
 
   final String label;
   final String value;
   final IconData icon;
-  final String? note;
-  final Color? noteColor;
+
+  /// Set only when the number means work outstanding. A card that is always
+  /// tinted stops saying anything by being tinted.
   final Color? accent;
-  final Color? tint;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final on = accent ?? scheme.onSurface;
 
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: accent == null
-            ? scheme.surfaceContainerLowest
-            : (tint ?? accent!.withValues(alpha: 0.06)),
+        color: scheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: (accent ?? scheme.outlineVariant).withValues(alpha: accent == null ? 0.7 : 0.35),
+          color: accent?.withValues(alpha: 0.45) ?? scheme.outlineVariant.withValues(alpha: 0.6),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
-                ),
-              ),
-              Icon(icon, size: 21, color: accent ?? scheme.onSurfaceVariant),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
-                  color: accent ?? scheme.onSurface,
-                ),
-              ),
-              if (note != null) ...[
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    note!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: noteColor ?? accent ?? scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ],
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B1B33).withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
           ),
         ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The rail carries the urgency, so the card itself stays white and
+            // the number stays readable.
+            if (accent != null) Container(width: 5, color: accent),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.md, 14, AppSpacing.md, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            label.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.9,
+                              color: accent ?? scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        Icon(icon, size: 21, color: accent ?? scheme.onSurfaceVariant),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                        color: on,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -340,20 +384,21 @@ class _StatCard extends StatelessWidget {
 
 class _WorkCard extends StatelessWidget {
   const _WorkCard({
-    required this.icon,
-    required this.iconColor,
     required this.title,
     required this.children,
     this.action,
     this.onAction,
+    this.padded = false,
   });
 
-  final IconData icon;
-  final Color iconColor;
   final String title;
   final List<Widget> children;
   final String? action;
   final VoidCallback? onAction;
+
+  /// Rows that bring their own inset block, rather than sitting edge to edge
+  /// and being separated by rules.
+  final bool padded;
 
   @override
   Widget build(BuildContext context) {
@@ -362,7 +407,14 @@ class _WorkCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B1B33).withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -371,8 +423,6 @@ class _WorkCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.sm, AppSpacing.sm),
             child: Row(
               children: [
-                Icon(icon, size: 21, color: iconColor),
-                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
                 ),
@@ -382,16 +432,34 @@ class _WorkCard extends StatelessWidget {
                     style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
                     child: Text(
                       action!,
-                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.accentOn(context)),
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.accentOn(context),
+                      ),
                     ),
                   ),
               ],
             ),
           ),
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0) Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
-            children[i],
-          ],
+          Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+          if (padded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.md),
+              child: Column(
+                children: [
+                  for (var i = 0; i < children.length; i++) ...[
+                    if (i > 0) const SizedBox(height: AppSpacing.sm),
+                    children[i],
+                  ],
+                ],
+              ),
+            )
+          else
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0) Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+              children[i],
+            ],
         ],
       ),
     );
@@ -464,8 +532,104 @@ class _PatientRow extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.sm),
             trailing,
+            const SizedBox(width: 2),
+            Icon(Icons.chevron_right_rounded, size: 20, color: scheme.onSurfaceVariant),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// A patient still waiting for their first plan.
+///
+/// Drawn as its own inset block with the action across the bottom, rather than
+/// a row with a small button at the end: this is the one list on the screen
+/// where every entry needs the same thing done to it, and a full-width button
+/// says that more plainly than a chip.
+class _PlanTile extends StatelessWidget {
+  const _PlanTile({required this.patient, required this.onOpen, required this.onCreate});
+
+  final DietPatientBrief patient;
+  final VoidCallback onOpen;
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final waiting = patient.sinceDays == 0
+        ? 'Joined today'
+        : 'Waiting ${patient.sinceDays} ${patient.sinceDays == 1 ? 'day' : 'days'}';
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm + 2),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: onOpen,
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerLowest,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+                  ),
+                  child: Icon(Icons.person_outline_rounded, size: 18, color: scheme.onSurfaceVariant),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        patient.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(Icons.schedule_rounded, size: 13, color: scheme.onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Text(
+                            waiting,
+                            style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 40,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+              ),
+              onPressed: onCreate,
+              child: const Text(
+                'Create Plan',
+                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -503,33 +667,6 @@ class _AgePill extends StatelessWidget {
   }
 }
 
-class _CreateButton extends StatelessWidget {
-  const _CreateButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.accentSoftOn(context),
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Text(
-            'Create Plan',
-            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.accentOn(context)),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Shown only when both worklists are genuinely empty — a green tick over
-/// outstanding work is worse than no tick.
 class _AllCaught extends StatelessWidget {
   const _AllCaught({required this.patients});
 
@@ -574,18 +711,86 @@ class _AllCaught extends StatelessWidget {
 
 // ---- Meals ----------------------------------------------------------------
 
-class _MealCard extends StatelessWidget {
-  const _MealCard({required this.log});
+
+/// What patients have been eating, across the whole caseload.
+///
+/// A grid of photographs rather than a list of cards: the dietician is
+/// scanning for anything that looks wrong, and four plates side by side answer
+/// that faster than four stacked rows of metadata. Tapping one opens the
+/// patient it belongs to.
+class _MealsCard extends StatelessWidget {
+  const _MealsCard({required this.logs});
+
+  final List<DietRecentLog> logs;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B1B33).withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Expanded(
+                child: Text(
+                  'Latest Meals Logged',
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, height: 1.2),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              SizedBox(
+                width: 110,
+                child: Text(
+                  'Across all active patients',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(fontSize: 12.5, height: 1.25, color: scheme.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          for (var row = 0; row < logs.length; row += 2) ...[
+            if (row > 0) const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(child: _MealThumb(log: logs[row])),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: row + 1 < logs.length
+                      ? _MealThumb(log: logs[row + 1])
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// One plate in the grid: the photograph, with whose it was and which meal
+/// written over the foot of it.
+class _MealThumb extends StatelessWidget {
+  const _MealThumb({required this.log});
 
   final DietRecentLog log;
-
-  static String _ago(DateTime? at) {
-    if (at == null) return '';
-    final d = DateTime.now().difference(at);
-    if (d.inMinutes < 60) return 'Logged ${d.inMinutes} minutes ago';
-    if (d.inHours < 24) return 'Logged ${d.inHours} ${d.inHours == 1 ? 'hour' : 'hours'} ago';
-    return 'Logged ${d.inDays} ${d.inDays == 1 ? 'day' : 'days'} ago';
-  }
 
   static String _label(String mealType) =>
       mealType.isEmpty ? '' : mealType[0].toUpperCase() + mealType.substring(1);
@@ -594,82 +799,161 @@ class _MealCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Material(
-        color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => context.push('/dietician/patients/${log.patientId}', extra: log.patientName),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Stack(
-                  children: [
-                    SizedBox(
-                      height: 180,
-                      width: double.infinity,
-                      child: log.photoUrl != null
-                          ? AuthedImage(path: log.photoUrl!, fit: BoxFit.cover)
-                          : Container(
-                              color: scheme.surfaceContainerHighest,
-                              child: Icon(
-                                Icons.restaurant_menu_rounded,
-                                size: 34,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
+    return Material(
+      color: scheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push('/dietician/patients/${log.patientId}', extra: log.patientName),
+        child: AspectRatio(
+          aspectRatio: 1.12,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (log.photoUrl != null)
+                AuthedImage(path: log.photoUrl!, fit: BoxFit.cover)
+              else
+                Icon(Icons.restaurant_menu_rounded, size: 28, color: scheme.onSurfaceVariant),
+              // A wash under the text, not over the whole photo: the dietician
+              // is looking at the food, and dimming all of it to caption it
+              // defeats the point of showing a photograph.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(8, 14, 8, 7),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        const Color(0xFF0B1B33).withValues(alpha: 0),
+                        const Color(0xFF0B1B33).withValues(alpha: 0.72),
+                      ],
                     ),
-                    if (log.mealType.isNotEmpty)
-                      Positioned(
-                        top: 10,
-                        right: 10,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            _label(log.mealType),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1F2937),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         log.patientName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _ago(log.createdAt),
-                        style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
-                      ),
+                      if (_label(log.mealType).isNotEmpty)
+                        Text(
+                          _label(log.mealType),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The navigation behind the header's menu button.
+///
+/// The bottom bar already reaches all three tabs, so this does not repeat them
+/// for their own sake — it carries the identity at the top, the same three
+/// destinations for anyone who reaches for a menu, and the way out.
+class _DieticianDrawer extends ConsumerWidget {
+  const _DieticianDrawer({required this.name, this.avatarUrl});
+
+  final String name;
+  final String? avatarUrl;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget item(IconData icon, String label, String route) => ListTile(
+      leading: Icon(icon, color: scheme.onSurfaceVariant),
+      title: Text(label, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
+      onTap: () {
+        Navigator.of(context).pop();
+        context.go(route);
+      },
+    );
+
+    return Drawer(
+      backgroundColor: scheme.surface,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.lg, AppSpacing.md, AppSpacing.md),
+              child: Row(
+                children: [
+                  UserAvatar(
+                    name: name,
+                    avatarUrl: avatarUrl,
+                    accent: AppColors.accentOn(context),
+                    size: 46,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                        ),
+                        Text(
+                          'Dietician',
+                          style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+            const SizedBox(height: AppSpacing.sm),
+            item(Icons.dashboard_outlined, 'Dashboard', '/dietician/dashboard'),
+            item(Icons.groups_outlined, 'My Patients', '/dietician/patients'),
+            item(Icons.person_outline_rounded, 'Profile', '/dietician/profile'),
+            const Spacer(),
+            Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+            ListTile(
+              leading: Icon(Icons.logout_rounded, color: AppColors.dangerOn(context)),
+              title: Text(
+                'Log out',
+                style: TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.dangerOn(context),
+                ),
+              ),
+              onTap: () {
+                Navigator.of(context).pop();
+                ref.read(authControllerProvider.notifier).logout();
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
         ),
       ),
     );
