@@ -187,20 +187,48 @@ class DietPatientOverview {
 
 /// One dated measurement — a value and when it was actually taken.
 class VitalReading {
-  const VitalReading({required this.value, this.at});
+  const VitalReading({required this.value, this.at, this.previous});
   final num value;
   final DateTime? at;
 
+  /// The reading before this one, when there is one. Only ever the measured
+  /// value — a direction nobody recorded is not shown at all.
+  final num? previous;
+
+  /// 1 rising, -1 falling, 0 unchanged, null when there is nothing to compare.
+  int? get trend {
+    final prev = previous;
+    if (prev == null) return null;
+    if (value > prev) return 1;
+    if (value < prev) return -1;
+    return 0;
+  }
+
   static VitalReading? fromJson(Object? j) => j is Map<String, dynamic>
-      ? VitalReading(value: (j['value'] as num?) ?? 0, at: DateTime.tryParse(j['at']?.toString() ?? '')?.toLocal())
+      ? VitalReading(
+          value: (j['value'] as num?) ?? 0,
+          at: DateTime.tryParse(j['at']?.toString() ?? '')?.toLocal(),
+          previous: j['previous'] as num?,
+        )
       : null;
 }
 
 /// The latest blood-pressure reading, with the doctor's flag if one was set.
 class DietBloodPressure {
-  const DietBloodPressure({this.systolic, this.diastolic, this.flag, this.at});
+  const DietBloodPressure({this.systolic, this.diastolic, this.flag, this.at, this.previousSystolic});
   final num? systolic;
   final num? diastolic;
+  final num? previousSystolic;
+
+  /// Direction of the systolic, which is the number a clinician reads first.
+  int? get trend {
+    final now = systolic;
+    final prev = previousSystolic;
+    if (now == null || prev == null) return null;
+    if (now > prev) return 1;
+    if (now < prev) return -1;
+    return 0;
+  }
   final String? flag; // normal | elevated | stage1 | stage2 | hypertensive_crisis | hypotension
   final DateTime? at;
 
@@ -213,6 +241,7 @@ class DietBloodPressure {
           diastolic: j['diastolic'] as num?,
           flag: j['flag']?.toString(),
           at: DateTime.tryParse(j['at']?.toString() ?? '')?.toLocal(),
+          previousSystolic: j['previousSystolic'] as num?,
         )
       : null;
 }

@@ -19,7 +19,10 @@ Color dietRiskColor(String band) => switch (band) {
 /// The dietician's home: the patients a doctor has assigned to them, with the
 /// ones whose food log is due for review surfaced first.
 class DieticianPatientsScreen extends ConsumerStatefulWidget {
-  const DieticianPatientsScreen({super.key});
+  const DieticianPatientsScreen({super.key, this.initialFilter});
+
+  /// Which worklist to open on, when the dashboard sent them here.
+  final String? initialFilter;
 
   @override
   ConsumerState<DieticianPatientsScreen> createState() => _DieticianPatientsScreenState();
@@ -29,8 +32,11 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
   final _search = TextEditingController();
   String _query = '';
 
-  /// all | critical | high | review — the worklist the dietician is looking at.
-  String _filterKey = 'all';
+  /// all | critical | high | review | noplan — the worklist on screen.
+  late String _filterKey = const {'critical', 'high', 'review', 'noplan'}
+          .contains(widget.initialFilter)
+      ? widget.initialFilter!
+      : 'all';
 
   @override
   void dispose() {
@@ -56,6 +62,9 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
     'critical' => all.where((p) => p.riskBand == 'critical').toList(),
     'high' => all.where((p) => p.riskBand == 'high').toList(),
     'review' => all.where((p) => p.reviewDue).toList(),
+    // Waiting for a first plan. The list endpoint does not carry a plan flag,
+    // so this stands in on what it does carry: nobody has reviewed them yet.
+    'noplan' => all.where((p) => p.lastReviewAt == null).toList(),
     _ => all,
   };
 
@@ -143,6 +152,7 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
                         ('critical', 'Critical', _byBand(all, 'critical').length),
                         ('high', 'High Risk', _byBand(all, 'high').length),
                         ('review', 'Review Due', _byBand(all, 'review').length),
+                        ('noplan', 'Waiting for Plan', _byBand(all, 'noplan').length),
                       ];
                       return ListView.separated(
                         scrollDirection: Axis.horizontal,

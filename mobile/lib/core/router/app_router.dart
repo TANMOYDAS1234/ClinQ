@@ -245,7 +245,11 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/dietician/patients',
-                builder: (context, state) => const DieticianPatientsScreen(),
+                // ?filter=review|noplan|critical|high — the dashboard counts
+                // link straight to the worklist they stand for, so tapping "3
+                // reviews due" lands on those three rather than on everyone.
+                builder: (context, state) =>
+                    DieticianPatientsScreen(initialFilter: state.uri.queryParameters['filter']),
               ),
             ],
           ),

@@ -476,9 +476,12 @@ class _Bubble extends StatelessWidget {
     // received turn, so a thread carrying an AI, a doctor and a dietician never
     // leaves the reader guessing which of them said something.
     final (icon, label) = switch (message.role) {
-      // No label on the patient's own turns: in a thread with one patient
-      // in it, naming them on every message is noise.
-      'user' => (Icons.person_rounded, ''),
+      // The patient gets a label but no picture. Their photo and name are
+      // already in this screen's header, so a second copy beside every message
+      // only repeats it — but with a doctor, a dietician and an assistant all
+      // writing into the same thread, an unlabelled turn is the one thing a
+      // reader has to work out for themselves.
+      'user' => (Icons.person_rounded, 'Patient'),
       'clinician' => (
         Icons.medical_information_rounded,
         message.senderName ?? 'Doctor',
@@ -514,15 +517,16 @@ class _Bubble extends StatelessWidget {
                   ),
                 ),
               )
-            // Nothing above the patient's own bubbles: in a thread with one
-            // patient in it, an avatar and a name on every message is furniture.
-            // The dietician knows who they are talking to.
-            else if (message.role != 'user')
+            else
               Padding(
                 padding: const EdgeInsets.only(left: 2, bottom: 5),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // The patient's turns carry the label alone — their photo is
+                    // already in the app bar, and repeating it down the thread
+                    // said nothing the header had not said, and said it worse.
+                    if (message.role != 'user')
                     Container(
                       width: 24,
                       height: 24,
@@ -550,7 +554,7 @@ class _Bubble extends StatelessWidget {
                               color: AppColors.accentOn(context),
                             ),
                     ),
-                    const SizedBox(width: 7),
+                    if (message.role != 'user') const SizedBox(width: 7),
                     Flexible(
                       child: Text(
                         label,

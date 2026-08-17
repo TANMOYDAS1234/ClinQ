@@ -35,9 +35,6 @@ class DieticianDashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      // The menu the design's hamburger opens. Without it the icon would be a
-      // control that does nothing, which is worse than not drawing it.
-      drawer: _DieticianDrawer(name: user?.name ?? '', avatarUrl: user?.avatarUrl),
       // The dietician's day is made of other people's actions — a patient
       // logging a meal, a doctor prescribing, a report the server has just
       // finished reading. Waiting for a pull-to-refresh showed them a morning
@@ -100,6 +97,7 @@ class DieticianDashboardScreen extends ConsumerWidget {
                         label: 'My Patients',
                         value: '${d.patients}',
                         icon: Icons.groups_outlined,
+                        onTap: () => context.go('/dietician/patients'),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       _StatCard(
@@ -107,6 +105,10 @@ class DieticianDashboardScreen extends ConsumerWidget {
                         value: '${d.reviewsDue}',
                         accent: d.reviewsDue > 0 ? AppColors.danger : null,
                         icon: Icons.error_outline_rounded,
+                        // Straight to that worklist, already filtered. A count
+                        // that sends you to an unfiltered list makes you find
+                        // the three patients it was talking about yourself.
+                        onTap: () => context.go('/dietician/patients?filter=review'),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       _StatCard(
@@ -114,6 +116,7 @@ class DieticianDashboardScreen extends ConsumerWidget {
                         value: '${d.plansMissing}',
                         accent: d.plansMissing > 0 ? AppColors.accentOn(context) : null,
                         icon: Icons.send_rounded,
+                        onTap: () => context.go('/dietician/patients?filter=noplan'),
                       ),
 
                       if (d.reviewsSorted.isNotEmpty) ...[
@@ -199,29 +202,33 @@ class _BrandHeader extends StatelessWidget {
   final String name;
   final String? avatarUrl;
 
-  /// Patient messages nobody has read. Drives the dot on the bell.
+  /// Patient messages nobody has read. Drives the badge on the bell.
   final int unread;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.fromLTRB(4, AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
       ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Scaffold.of(context).openDrawer(),
-            icon: const Icon(Icons.menu_rounded),
-            color: scheme.onSurface,
-            tooltip: 'Menu',
+          // The mark, not a menu button. Every destination this panel has is
+          // already on the bar at the bottom, so a drawer would have been a
+          // second way to reach the same three screens.
+          Image.asset(
+            'assets/brand/medpin_emblem.png',
+            height: 30,
+            errorBuilder: (_, _, _) =>
+                Icon(Icons.restaurant_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
+          const SizedBox(width: 9),
           Text(
-            'MedPin Dietetics',
+            'MedPin',
             style: TextStyle(
-              fontSize: 19,
+              fontSize: 22,
               fontWeight: FontWeight.w800,
               color: AppColors.accentOn(context),
             ),
@@ -299,11 +306,13 @@ class _StatCard extends StatelessWidget {
     required this.value,
     required this.icon,
     this.accent,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final IconData icon;
+  final VoidCallback? onTap;
 
   /// Set only when the number means work outstanding. A card that is always
   /// tinted stops saying anything by being tinted.
@@ -330,7 +339,11 @@ class _StatCard extends StatelessWidget {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: IntrinsicHeight(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -360,20 +373,34 @@ class _StatCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
-                        color: on,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          value,
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
+                            color: on,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (onTap != null)
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 18,
+                            color: (accent ?? scheme.onSurfaceVariant).withValues(alpha: 0.7),
+                          ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
           ],
+        ),
+          ),
         ),
       ),
     );
@@ -863,97 +890,6 @@ class _MealThumb extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The navigation behind the header's menu button.
-///
-/// The bottom bar already reaches all three tabs, so this does not repeat them
-/// for their own sake — it carries the identity at the top, the same three
-/// destinations for anyone who reaches for a menu, and the way out.
-class _DieticianDrawer extends ConsumerWidget {
-  const _DieticianDrawer({required this.name, this.avatarUrl});
-
-  final String name;
-  final String? avatarUrl;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-
-    Widget item(IconData icon, String label, String route) => ListTile(
-      leading: Icon(icon, color: scheme.onSurfaceVariant),
-      title: Text(label, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
-      onTap: () {
-        Navigator.of(context).pop();
-        context.go(route);
-      },
-    );
-
-    return Drawer(
-      backgroundColor: scheme.surface,
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.lg, AppSpacing.md, AppSpacing.md),
-              child: Row(
-                children: [
-                  UserAvatar(
-                    name: name,
-                    avatarUrl: avatarUrl,
-                    accent: AppColors.accentOn(context),
-                    size: 46,
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-                        ),
-                        Text(
-                          'Dietician',
-                          style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
-            const SizedBox(height: AppSpacing.sm),
-            item(Icons.dashboard_outlined, 'Dashboard', '/dietician/dashboard'),
-            item(Icons.groups_outlined, 'My Patients', '/dietician/patients'),
-            item(Icons.person_outline_rounded, 'Profile', '/dietician/profile'),
-            const Spacer(),
-            Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
-            ListTile(
-              leading: Icon(Icons.logout_rounded, color: AppColors.dangerOn(context)),
-              title: Text(
-                'Log out',
-                style: TextStyle(
-                  fontSize: 15.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.dangerOn(context),
-                ),
-              ),
-              onTap: () {
-                Navigator.of(context).pop();
-                ref.read(authControllerProvider.notifier).logout();
-              },
-            ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
         ),
       ),
     );

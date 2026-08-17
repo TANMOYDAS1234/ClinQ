@@ -155,77 +155,126 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
       body: ListView(
         padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xl),
         children: [
-          Row(
-            children: [
-              Semantics(
-                button: true,
-                label: l10n.profileChangePhoto,
-                child: GestureDetector(
-                  onTap: _uploadingAvatar ? null : _changeAvatar,
-                  onLongPress: user?.avatarUrl != null
-                      ? () => FullscreenPhoto.show(context, user!.avatarUrl)
-                      : null,
-                  child: Stack(
-                    children: [
-                      UserAvatar(
-                        name: user?.name ?? '',
-                        avatarUrl: user?.avatarUrl,
-                        accent: accent,
-                        size: 72,
-                      ),
-                      if (_uploadingAvatar)
-                        Positioned.fill(
-                          child: ClipOval(
-                            child: ColoredBox(
-                              color: Colors.black.withValues(alpha: 0.45),
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.4,
-                                    color: Colors.white,
+          // A centred identity card rather than a row: this screen opens on
+          // who the dietician is, and the credentials underneath are what a
+          // patient sees attached to every plan they send.
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.lg, AppSpacing.md, AppSpacing.md),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0B1B33).withValues(alpha: 0.04),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Semantics(
+                  button: true,
+                  label: l10n.profileChangePhoto,
+                  child: GestureDetector(
+                    onTap: _uploadingAvatar ? null : _changeAvatar,
+                    onLongPress: user?.avatarUrl != null
+                        ? () => FullscreenPhoto.show(context, user!.avatarUrl)
+                        : null,
+                    child: Stack(
+                      children: [
+                        UserAvatar(
+                          name: user?.name ?? '',
+                          avatarUrl: user?.avatarUrl,
+                          accent: accent,
+                          size: 96,
+                        ),
+                        if (_uploadingAvatar)
+                          Positioned.fill(
+                            child: ClipOval(
+                              child: Container(
+                                color: Colors.black.withValues(alpha: 0.45),
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.4,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            color: accent,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: scheme.surface, width: 2.5),
+                        Positioned(
+                          right: 0,
+                          bottom: 2,
+                          child: Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: accent,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: scheme.surfaceContainerLowest, width: 2.5),
+                            ),
+                            child: const Icon(Icons.edit_rounded, size: 14, color: Colors.white),
                           ),
-                          child: const Icon(Icons.photo_camera_rounded, size: 13, color: Colors.white),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  user?.name ?? '',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, height: 1.2),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      user?.name ?? '',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                    Flexible(
+                      child: Text(
+                        user?.specialty?.trim().isNotEmpty == true ? user!.specialty!.trim() : 'Dietician',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
+                      ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Dietician${user?.phone != null ? ' · ${user!.phone}' : ''}',
-                      style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
-                    ),
+                    if ((user?.phone ?? '').isNotEmpty) ...[
+                      Text('  •  ', style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant)),
+                      Icon(Icons.call_rounded, size: 13, color: scheme.onSurfaceVariant),
+                      const SizedBox(width: 4),
+                      Text(
+                        user!.phone,
+                        style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
+                      ),
+                    ],
                   ],
                 ),
-              ),
-            ],
+                // Only what the record actually holds. The design shows a row of
+                // credentials; inventing one for a dietician who has not entered
+                // theirs would put a qualification on every plan they send.
+                if ((user?.qualifications ?? '').trim().isNotEmpty ||
+                    (user?.registrationNo ?? '').trim().isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 7,
+                    runSpacing: 7,
+                    children: [
+                      if ((user?.qualifications ?? '').trim().isNotEmpty)
+                        _CredChip(label: user!.qualifications!.trim(), accent: accent),
+                      if ((user?.registrationNo ?? '').trim().isNotEmpty)
+                        _CredChip(label: 'ID: ${user!.registrationNo!.trim()}', accent: null),
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
           const SizedBox(height: AppSpacing.xl),
 
@@ -390,6 +439,33 @@ class _LangChip extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+/// A credential on the profile card — the accented one is what the dietician
+/// qualified in, the plain one is the number the clinic files them under.
+class _CredChip extends StatelessWidget {
+  const _CredChip({required this.label, required this.accent});
+
+  final String label;
+  final Color? accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final on = accent ?? scheme.onSurfaceVariant;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: on.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: on),
       ),
     );
   }

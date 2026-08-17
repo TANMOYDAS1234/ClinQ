@@ -106,8 +106,6 @@ class DieticianPatientScreen extends ConsumerWidget {
                 _LabReportsSection(reports: o.labReports),
               ],
               const SizedBox(height: AppSpacing.lg),
-              _SectionTitle('Food log'),
-              const SizedBox(height: AppSpacing.sm),
               _FoodLogSection(patientId: patientId),
             ],
           ),
@@ -142,81 +140,121 @@ class _MedicalCard extends StatelessWidget {
 
   final DietPatientOverview overview;
 
+  static String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final o = overview;
     final risk = AppColors.toneOn(context, dietRiskColor(o.riskBand));
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.accentOn(context).withValues(alpha: 0.18)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(child: Text(o.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(color: risk.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(20)),
-                child: Text('${o.riskBand[0].toUpperCase()}${o.riskBand.substring(1)} risk',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: risk)),
+    final danger = AppColors.dangerOn(context);
+
+    // No card around this one. It is the patient's identity, not a section of
+    // their record — boxing it made the screen open with a panel and then a
+    // stack of panels, with nothing saying which one was the person.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Text(
+                o.name,
+                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, height: 1.15),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 20,
-            runSpacing: 10,
-            children: [
-              _fact('Diabetes', o.diabetesType ?? '—', scheme),
-              if (o.age != null) _fact('Age', '${o.age} yrs', scheme),
-              if (o.gender != null && o.gender!.isNotEmpty) _fact('Gender', o.gender!, scheme),
-              if (o.heightCm != null) _fact('Height', '${o.heightCm} cm', scheme),
-              if (o.diagnosedOn != null) _fact('Diagnosed', DateFormat('MMM yyyy').format(o.diagnosedOn!), scheme),
-              if (o.reviewIntervalDays != null) _fact('Review every', '${o.reviewIntervalDays} days', scheme),
-            ],
-          ),
-          if (o.chiefComplaint != null) ...[
-            const SizedBox(height: 12),
-            Text('MAIN CONCERN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
-            const SizedBox(height: 4),
-            Text(o.chiefComplaint!, style: const TextStyle(fontSize: 14, height: 1.35)),
-          ],
-          if (o.allergies.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text('ALLERGIES', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final a in o.allergies)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                    decoration: BoxDecoration(color: AppColors.dangerOn(context).withValues(alpha: 0.10), borderRadius: BorderRadius.circular(8)),
-                    child: Text(a, style: TextStyle(fontSize: 12.5, color: AppColors.dangerOn(context), fontWeight: FontWeight.w600)),
-                  ),
-              ],
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+              decoration: BoxDecoration(
+                color: risk.withValues(alpha: 0.13),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${_cap(o.riskBand)} Risk',
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: risk),
+              ),
             ),
           ],
+        ),
+        const SizedBox(height: 10),
+
+        // Age, sex and height on one line with their marks. These three are
+        // read together — they are what a calorie target is built from — so
+        // they belong on one line rather than as three labelled cells.
+        Wrap(
+          spacing: 16,
+          runSpacing: 8,
+          children: [
+            if (o.age != null) _bit(context, Icons.calendar_today_rounded, '${o.age} yrs'),
+            if ((o.gender ?? '').isNotEmpty) _bit(context, Icons.person_outline_rounded, _cap(o.gender!)),
+            if (o.heightCm != null) _bit(context, Icons.height_rounded, '${o.heightCm} cm'),
+            if (o.diabetesType != null && o.diabetesType!.isNotEmpty)
+              _bit(context, Icons.monitor_heart_outlined, o.diabetesType!),
+          ],
+        ),
+
+        if (o.chiefComplaint != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          _label(context, 'MAIN CONCERN'),
+          const SizedBox(height: 4),
+          Text(o.chiefComplaint!, style: const TextStyle(fontSize: 14.5, height: 1.4)),
         ],
-      ),
+
+        if (o.allergies.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          _label(context, 'ALLERGIES'),
+          const SizedBox(height: 7),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              for (final a in o.allergies)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(7),
+                    // Outlined rather than filled: an allergy is a hard stop
+                    // when writing a meal plan, and an outline holds the eye
+                    // where a soft wash blends into the page.
+                    border: Border.all(color: danger.withValues(alpha: 0.55)),
+                  ),
+                  child: Text(
+                    a,
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: danger),
+                  ),
+                ),
+            ],
+          ),
+        ],
+
+        const SizedBox(height: AppSpacing.md),
+        Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      ],
     );
   }
 
-  Widget _fact(String label, String value, ColorScheme scheme) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label.toUpperCase(), style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.4, color: scheme.onSurfaceVariant)),
-          const SizedBox(height: 2),
-          Text(value, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
-        ],
+  Widget _bit(BuildContext context, IconData icon, String text) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: scheme.onSurfaceVariant),
+        const SizedBox(width: 6),
+        Text(text, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+
+  Widget _label(BuildContext context, String text) => Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.7,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
       );
 }
 
@@ -458,24 +496,105 @@ class _DietPlanSection extends ConsumerWidget {
   );
 }
 
+/// What the patient has eaten — the last day at a glance, then the history.
+///
+/// The day is drawn as the four meal slots rather than as a list of whatever
+/// happened to be logged, because the useful question is usually the negative
+/// one: which meal is missing. A list of three photographs cannot answer that;
+/// a grid with an empty dinner slot answers it without being read.
 class _FoodLogSection extends ConsumerWidget {
   const _FoodLogSection({required this.patientId});
 
   final String patientId;
 
+  static const _slots = <String>['breakfast', 'lunch', 'snack', 'dinner'];
+
+  static String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final async = ref.watch(dietFoodLogProvider(patientId));
+
     return async.when(
-      loading: () => const Padding(padding: EdgeInsets.all(AppSpacing.md), child: Center(child: CircularProgressIndicator())),
+      loading: () => const Padding(
+        padding: EdgeInsets.all(AppSpacing.md),
+        child: Center(child: CircularProgressIndicator()),
+      ),
       error: (_, _) => _note(scheme, 'Could not load the food log.'),
       data: (entries) {
-        if (entries.isEmpty) return _note(scheme, 'No meals logged yet.');
+        final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+        final recent = entries.where((e) => e.createdAt != null && e.createdAt!.isAfter(cutoff)).toList();
+        final earlier = entries.where((e) => e.createdAt == null || !e.createdAt!.isAfter(cutoff)).toList();
+
+        // The newest entry for each slot, so a patient who logged lunch twice
+        // shows the one they most recently sent.
+        final bySlot = <String, FoodLogEntry>{};
+        for (final e in recent) {
+          final key = _slots.contains(e.mealType) ? e.mealType : 'snack';
+          bySlot.putIfAbsent(key, () => e);
+        }
+
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final e in entries.take(30))
-              Padding(padding: const EdgeInsets.only(bottom: AppSpacing.sm), child: _FoodEntry(entry: e)),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.photo_camera_rounded, size: 19, color: AppColors.accentOn(context)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Food Log (Last 24h)',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.accentOn(context),
+                          ),
+                        ),
+                      ),
+                      if (entries.isNotEmpty)
+                        Text(
+                          '${recent.length} logged',
+                          style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  for (var row = 0; row < _slots.length; row += 2) ...[
+                    if (row > 0) const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: _SlotTile(slot: _slots[row], entry: bySlot[_slots[row]])),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(child: _SlotTile(slot: _slots[row + 1], entry: bySlot[_slots[row + 1]])),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (earlier.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.lg),
+              _SectionTitle('Earlier meals'),
+              const SizedBox(height: AppSpacing.sm),
+              for (final e in earlier.take(30))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: _FoodEntry(entry: e),
+                ),
+            ],
           ],
         );
       },
@@ -492,6 +611,162 @@ class _FoodLogSection extends ConsumerWidget {
         ),
         child: Text(text, style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
       );
+}
+
+/// One meal slot in the day: the photograph if it was logged, a dashed outline
+/// saying which meal is missing if it was not.
+class _SlotTile extends StatelessWidget {
+  const _SlotTile({required this.slot, required this.entry});
+
+  final String slot;
+  final FoodLogEntry? entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final label = _FoodLogSection._cap(slot);
+    final e = entry;
+
+    if (e == null) {
+      return AspectRatio(
+        aspectRatio: 1.05,
+        child: DottedBorderBox(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.help_outline_rounded, size: 19, color: scheme.onSurfaceVariant),
+              const SizedBox(height: 6),
+              Text(
+                'No $slot logged',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Material(
+      color: scheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: e.photoUrl == null ? null : () => FullscreenPhoto.show(context, e.photoUrl),
+        child: AspectRatio(
+          aspectRatio: 1.05,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (e.photoUrl != null)
+                AuthedImage(path: e.photoUrl!, fit: BoxFit.cover)
+              else
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Center(
+                    child: Text(
+                      e.note.isEmpty ? label : e.note,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12.5, color: scheme.onSurface),
+                    ),
+                  ),
+                ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(8, 14, 8, 7),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        const Color(0xFF0B1B33).withValues(alpha: 0),
+                        const Color(0xFF0B1B33).withValues(alpha: 0.72),
+                      ],
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      if (e.createdAt != null) ...[
+                        Text(
+                          DateFormat('h:mm a').format(e.createdAt!),
+                          style: const TextStyle(fontSize: 11, color: Colors.white),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      Expanded(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A dashed placeholder. Flutter has no dashed border, so this paints one.
+class DottedBorderBox extends StatelessWidget {
+  const DottedBorderBox({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DashPainter(Theme.of(context).colorScheme.outlineVariant),
+      child: Center(child: child),
+    );
+  }
+}
+
+class _DashPainter extends CustomPainter {
+  const _DashPainter(this.colour);
+
+  final Color colour;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = colour
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3;
+    final rect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0.65, 0.65, size.width - 1.3, size.height - 1.3),
+      const Radius.circular(10),
+    );
+
+    // Walk the rounded rectangle and draw every other short run of it.
+    for (final metric in (Path()..addRRect(rect)).computeMetrics()) {
+      var d = 0.0;
+      while (d < metric.length) {
+        final end = (d + 5).clamp(0.0, metric.length);
+        canvas.drawPath(metric.extractPath(d, end), paint);
+        d += 9;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashPainter old) => old.colour != colour;
 }
 
 class _FoodEntry extends StatelessWidget {
@@ -641,15 +916,15 @@ class _VitalsSection extends StatelessWidget {
     final v = vitals;
     final tiles = <Widget>[
       if (v.bloodPressure != null)
-        _MeasureTile(label: 'Blood pressure', value: v.bloodPressure!.label, unit: 'mmHg', at: v.bloodPressure!.at, danger: v.bloodPressure!.isHigh),
+        _MeasureTile(label: 'Blood pressure', value: v.bloodPressure!.label, unit: 'mmHg', at: v.bloodPressure!.at, danger: v.bloodPressure!.isHigh, trend: v.bloodPressure!.trend),
       if (v.glucose != null)
         _MeasureTile(label: _glucoseLabel(v.glucose!.context), value: _n(v.glucose!.valueMgDl), unit: 'mg/dL', at: v.glucose!.at, danger: v.glucose!.isAbnormal),
-      if (v.weightKg != null) _MeasureTile(label: 'Weight', value: _n(v.weightKg!.value), unit: 'kg', at: v.weightKg!.at),
+      if (v.weightKg != null) _MeasureTile(label: 'Weight', value: _n(v.weightKg!.value), unit: 'kg', at: v.weightKg!.at, trend: v.weightKg!.trend),
       if (v.bmi != null) _MeasureTile(label: 'BMI', value: _n(v.bmi!), unit: '', at: null),
-      if (v.waistCm != null) _MeasureTile(label: 'Waist', value: _n(v.waistCm!.value), unit: 'cm', at: v.waistCm!.at),
-      if (v.pulse != null) _MeasureTile(label: 'Pulse', value: _n(v.pulse!.value), unit: 'bpm', at: v.pulse!.at),
-      if (v.spo2 != null) _MeasureTile(label: 'SpO₂', value: _n(v.spo2!.value), unit: '%', at: v.spo2!.at),
-      if (v.temperatureC != null) _MeasureTile(label: 'Temp', value: _n(v.temperatureC!.value), unit: '°C', at: v.temperatureC!.at),
+      if (v.waistCm != null) _MeasureTile(label: 'Waist', value: _n(v.waistCm!.value), unit: 'cm', at: v.waistCm!.at, trend: v.waistCm!.trend),
+      if (v.pulse != null) _MeasureTile(label: 'Pulse', value: _n(v.pulse!.value), unit: 'bpm', at: v.pulse!.at, trend: v.pulse!.trend),
+      if (v.spo2 != null) _MeasureTile(label: 'SpO₂', value: _n(v.spo2!.value), unit: '%', at: v.spo2!.at, trend: v.spo2!.trend),
+      if (v.temperatureC != null) _MeasureTile(label: 'Temp', value: _n(v.temperatureC!.value), unit: '°C', at: v.temperatureC!.at, trend: v.temperatureC!.trend),
     ];
 
     return Container(
@@ -660,64 +935,110 @@ class _VitalsSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
       ),
-      child: LayoutBuilder(
-        builder: (context, c) {
-          final w = (c.maxWidth - AppSpacing.md) / 2;
-          return Wrap(
-            spacing: AppSpacing.md,
-            runSpacing: AppSpacing.md,
-            children: [for (final t in tiles) SizedBox(width: w, child: t)],
-          );
-        },
+      // A single column with rules between, not a two-across grid. Each row
+      // now carries a trend arrow on its right edge, and paired into columns
+      // those arrows landed mid-card where they read as decoration rather than
+      // as the end of a line.
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < tiles.length; i++) ...[
+            if (i > 0) Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+            tiles[i],
+          ],
+        ],
       ),
     );
   }
 }
 
+/// One measurement: what it is, what it read, and which way it is moving.
+///
+/// The arrow is drawn only when the record actually holds an earlier reading to
+/// compare against. It says direction, not judgement — whether a falling weight
+/// is good or bad depends on the patient, and that is the dietician's call.
 class _MeasureTile extends StatelessWidget {
-  const _MeasureTile({required this.label, required this.value, required this.unit, this.at, this.danger = false});
+  const _MeasureTile({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.at,
+    this.danger = false,
+    this.trend,
+  });
 
   final String label;
   final String value;
   final String unit;
   final DateTime? at;
   final bool danger;
+  final int? trend;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final valueColor = danger ? AppColors.dangerOn(context) : scheme.onSurface;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.4, color: scheme.onSurfaceVariant)),
-        const SizedBox(height: 3),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Flexible(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: valueColor))),
-            if (unit.isNotEmpty) ...[
-              const SizedBox(width: 3),
-              Text(unit, style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
-            ],
-          ],
-        ),
-        if (at != null) ...[
-          const SizedBox(height: 2),
-          Text(DateFormat('d MMM yyyy').format(at!), style: TextStyle(fontSize: 10.5, color: scheme.onSurfaceVariant)),
+    final fg = danger ? AppColors.dangerOn(context) : scheme.onSurface;
+
+    final (IconData icon, Color colour)? arrow = switch (trend) {
+      1 => (Icons.trending_up_rounded, AppColors.dangerOn(context)),
+      -1 => (Icons.trending_down_rounded, scheme.onSurfaceVariant),
+      0 => (Icons.trending_flat_rounded, AppColors.accentOn(context)),
+      _ => null,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 11),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.7,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      value,
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: fg),
+                    ),
+                    if (unit.isNotEmpty) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        unit,
+                        style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                    if (at != null) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        DateFormat('d MMM').format(at!),
+                        style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (arrow != null) Icon(arrow.$1, size: 20, color: arrow.$2),
         ],
-      ],
+      ),
     );
   }
 }
 
-/// The doctor's advice and diagnosis over time — one collapsible entry per
-/// prescription, so the dietician plans with the clinical reasoning in view.
 class _AdviceSection extends StatelessWidget {
   const _AdviceSection({required this.advice});
 

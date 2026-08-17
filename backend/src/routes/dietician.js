@@ -252,11 +252,21 @@ router.get(
     // Each measurement shown as its OWN most-recent real reading, with the date
     // it was actually taken — never blended, never invented. A field the patient
     // has never recorded is simply absent: honest emptiness over a fake zero.
+    // The newest reading, plus the one before it. The previous value is what
+    // lets the panel say which way a measure is moving; without it any arrow on
+    // the screen would be decoration pointing in a direction nobody measured.
     const latest = (field) => {
-      const rec = vitals.find((v) => v[field] != null);
-      return rec ? { value: rec[field], at: rec.recordedAt } : null;
+      const i = vitals.findIndex((v) => v[field] != null);
+      if (i === -1) return null;
+      const prev = vitals.slice(i + 1).find((v) => v[field] != null);
+      return { value: vitals[i][field], at: vitals[i].recordedAt, previous: prev ? prev[field] : null };
     };
-    const bpRec = vitals.find((v) => v.systolic != null || v.diastolic != null);
+    const bpIndex = vitals.findIndex((v) => v.systolic != null || v.diastolic != null);
+    const bpRec = bpIndex === -1 ? undefined : vitals[bpIndex];
+    const bpPrev =
+      bpIndex === -1
+        ? undefined
+        : vitals.slice(bpIndex + 1).find((v) => v.systolic != null || v.diastolic != null);
     const weight = latest('weightKg');
     const heightCm = profile.heightCm ?? null;
     const bmi = weight && heightCm ? Number((weight.value / (heightCm / 100) ** 2).toFixed(1)) : null;
@@ -283,7 +293,13 @@ router.get(
       // Latest real vitals/measurements, each dated. Absent = never recorded.
       vitals: {
         bloodPressure: bpRec
-          ? { systolic: bpRec.systolic ?? null, diastolic: bpRec.diastolic ?? null, flag: bpRec.flag ?? null, at: bpRec.recordedAt }
+          ? {
+              systolic: bpRec.systolic ?? null,
+              diastolic: bpRec.diastolic ?? null,
+              flag: bpRec.flag ?? null,
+              at: bpRec.recordedAt,
+              previousSystolic: bpPrev?.systolic ?? null,
+            }
           : null,
         pulse: latest('pulse'),
         spo2: latest('spo2'),
