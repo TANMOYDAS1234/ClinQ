@@ -593,7 +593,12 @@ class _SenderRow extends StatelessWidget {
           // and name in the app bar — a generic grey silhouette repeated down
           // the thread said nothing the header had not already said, and said
           // it worse.
-          else if (isUser)
+          //
+          // The dietician gets nothing either. Their photo and name are already
+          // in this screen's header, and the app emblem standing in for them was
+          // worse than no mark at all: it labelled a person's message with the
+          // product's logo. The label alone says who is speaking.
+          else if (isUser || isDietician)
             const SizedBox.shrink()
           else
             Container(
@@ -606,7 +611,7 @@ class _SenderRow extends StatelessWidget {
                 errorBuilder: (_, _, _) => Icon(icon, size: 14, color: AppColors.accentOn(context)),
               ),
             ),
-          if (!isUser) const SizedBox(width: 7),
+          if (!isUser && !isDietician) const SizedBox(width: 7),
           Flexible(
             child: Text(
               label,

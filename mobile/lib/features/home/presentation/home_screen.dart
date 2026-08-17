@@ -14,6 +14,8 @@ import '../../glucose/presentation/glucose_providers.dart';
 import '../../glucose/presentation/log_glucose_sheet.dart';
 import '../../glucose/presentation/widgets/glucose_stats_row.dart';
 import '../../glucose/presentation/widgets/glucose_trend_chart.dart';
+import '../../labtests/domain/lab_tests.dart';
+import '../../labtests/presentation/lab_tests_providers.dart';
 import '../../medications/presentation/medications_providers.dart';
 import '../domain/care_summary.dart';
 import 'home_providers.dart';
@@ -68,6 +70,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     // has just retimed should move on this screen *and* stop ringing at the old
     // hour, without waiting for the app to be backgrounded and reopened.
     ref.invalidate(medicationsListProvider);
+    // Today's doses too, so a dose ticked off in the Medicines tab moves this
+    // screen's progress bar the moment the patient comes back to it.
+    ref.invalidate(todayScheduleProvider);
+    // And the lab reports: a report uploaded from the Profile tab, or an
+    // analysis that finished on the server a minute after the upload, both have
+    // to land here without the patient knowing to come back and pull down.
+    ref.invalidate(labTestsProvider);
   }
 
   @override
@@ -151,6 +160,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                       const SizedBox(height: AppSpacing.md),
                       const _GlucoseCard(),
 
+                      // Directly under glucose: both answer "what do my numbers
+                      // say", and an ordered test sitting undone is the thing on
+                      // this screen most likely to be holding up the next
+                      // consultation.
+                      const SizedBox(height: AppSpacing.md),
+                      const _LabReports(),
+
                       if (care.profile.allergies.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.md),
                         _Allergies(items: care.profile.allergies),
@@ -170,21 +186,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         _DietPlanCard(plan: care.dietPlan!),
                       ],
 
+                      // Each section now carries its own heading inside its
+                      // card, so the spacing between them is uniform and the
+                      // page reads as one stack rather than headings and
+                      // content taking turns.
                       if (care.medications.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.lg),
-                        const _SectionTitle(icon: Icons.medication_outlined, text: 'Current Medicines'),
-                        const SizedBox(height: AppSpacing.sm),
+                        const SizedBox(height: AppSpacing.md),
                         _Medicines(items: care.medications),
                       ],
 
-                      const SizedBox(height: AppSpacing.lg),
-                      _SectionTitle(
-                        icon: Icons.photo_camera_outlined,
-                        text: 'Recent Food Logs',
-                        action: care.recentFoodLogs.isEmpty ? null : 'View All',
-                        onAction: () => context.go('/food-log'),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
+                      const SizedBox(height: AppSpacing.md),
                       _FoodLogs(items: care.recentFoodLogs),
                     ],
                   ),
@@ -265,32 +276,16 @@ class _GlucoseCard extends ConsumerWidget {
     final accent = AppColors.accentOn(context);
     final trends = ref.watch(glucoseTrendsProvider);
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-      ),
+    return _HomeCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-                child: Icon(Icons.monitor_heart_rounded, size: 18, color: accent),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(child: Text('Your glucose', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
-              TextButton.icon(
-                onPressed: () => showLogGlucoseSheet(context),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Add'),
-                style: TextButton.styleFrom(foregroundColor: accent, padding: const EdgeInsets.symmetric(horizontal: 8)),
-              ),
-            ],
+          _CardHeader(
+            icon: Icons.monitor_heart_rounded,
+            title: 'Your glucose',
+            actionLabel: 'Add',
+            actionIcon: Icons.add_rounded,
+            onAction: () => showLogGlucoseSheet(context),
           ),
           const SizedBox(height: AppSpacing.sm),
           trends.when(
@@ -523,40 +518,37 @@ class _DietPlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
+    // Keeps its accent wash rather than the plain card the others use — this is
+    // the one section on the screen written by a person for this patient, and it
+    // should not look like another read-out.
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.accentSoftOn(context).withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.accentOn(context).withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.restaurant_rounded, size: 20, color: AppColors.accentOn(context)),
-              const SizedBox(width: AppSpacing.sm),
-              const Expanded(
-                child: Text(
-                  'Current Diet Plan',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-                ),
-              ),
-              if (plan.sharedAt != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: scheme.outlineVariant),
+          _CardHeader(
+            icon: Icons.restaurant_rounded,
+            title: 'Current Diet Plan',
+            trailing: plan.sharedAt == null
+                ? null
+                : Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: scheme.outlineVariant),
+                    ),
+                    child: Text(
+                      'Sent ${DateFormat('d MMM').format(plan.sharedAt!)}',
+                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                    ),
                   ),
-                  child: Text(
-                    'Sent ${DateFormat('d MMM').format(plan.sharedAt!)}',
-                    style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-                  ),
-                ),
-            ],
           ),
           if (plan.goal.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
@@ -820,48 +812,194 @@ class _ContactLine extends StatelessWidget {
   }
 }
 
-class _Medicines extends StatelessWidget {
+class _Medicines extends ConsumerWidget {
   const _Medicines({required this.items});
 
   final List<CareMedication> items;
 
+  /// "20:00" as the patient reads a clock.
+  static String _clock(String hhmm) {
+    final parts = hhmm.split(':');
+    final h = int.tryParse(parts.first);
+    if (h == null || parts.length < 2) return hhmm;
+    final suffix = h < 12 ? 'AM' : 'PM';
+    final hour12 = h % 12 == 0 ? 12 : h % 12;
+    return '$hour12:${parts[1]} $suffix';
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
-      ),
-      clipBehavior: Clip.antiAlias,
+    final accent = AppColors.accentOn(context);
+    final today = ref.watch(todayScheduleProvider).valueOrNull;
+
+    final slots = today?.slots ?? const [];
+    final done = slots.where((s) => s.status == 'taken').length;
+    // The next thing to take: the earliest slot still waiting. Skipped and
+    // missed ones are behind the patient and are not what they came here for.
+    final next = slots.where((s) => s.status == 'pending').firstOrNull;
+
+    return _HomeCard(
       // stretch, not the default centre: without it each row shrinks to the
       // width of its own text and floats in the middle, so a list of medicines
       // has a different left edge on every line and nothing to read down.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (var i = 0; i < items.length; i++) ...[
-            if (i > 0) Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          _CardHeader(
+            icon: Icons.medication_rounded,
+            title: 'Medicines',
+            trailing: slots.isEmpty
+                ? _CountBadge(count: items.length)
+                : _CountBadge.text('$done of ${slots.length} taken'),
+          ),
+
+          // Today, before the prescription. A patient opening this screen wants
+          // "what do I take next", not "what am I on" — they already know what
+          // they are on. The list below answers the second question and stays,
+          // because the pharmacy and the family carer both need it.
+          if (slots.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm + 2),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: LinearProgressIndicator(
+                value: slots.isEmpty ? 0 : done / slots.length,
+                minHeight: 7,
+                backgroundColor: accent.withValues(alpha: 0.12),
+                valueColor: AlwaysStoppedAnimation<Color>(accent),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm + 2),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm + 2),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: accent.withValues(alpha: 0.18)),
+              ),
+              child: Row(
                 children: [
-                  Text(
-                    items[i].title,
-                    style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                  Icon(
+                    next == null ? Icons.task_alt_rounded : Icons.schedule_rounded,
+                    size: 17,
+                    color: accent,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    items[i].scheduleLabel,
-                    style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: next == null
+                        ? Text(
+                            'Every dose for today is marked.',
+                            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: accent),
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Next dose  ${_clock(next.time)}',
+                                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: accent),
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                [next.name, next.dose].where((s) => s.isNotEmpty).join(' · '),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 12.5, color: scheme.onSurface),
+                              ),
+                            ],
+                          ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.go('/medications'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: accent,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: const Text('Open'),
                   ),
                 ],
               ),
             ),
           ],
+
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'YOUR PRESCRIPTION',
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          for (var i = 0; i < items.length; i++) ...[
+            // Inset, not edge to edge: the rule separates the two names, and
+            // stopping it short of the card wall keeps the list feeling like one
+            // block rather than a stack of separate strips.
+            if (i > 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 46, top: 10, bottom: 10),
+                child: Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.medication_liquid_rounded, size: 17, color: accent),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        items[i].title,
+                        style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, height: 1.25),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        items[i].scheduleLabel,
+                        style: TextStyle(fontSize: 13.5, height: 1.3, color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// The small count on a section header — "how many of these are there" answered
+/// without making the reader count the rows.
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required int count}) : label = '$count';
+  const _CountBadge.text(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = AppColors.accentOn(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: accent),
       ),
     );
   }
@@ -892,124 +1030,516 @@ class _FoodLogs extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    if (items.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
-        ),
-        child: Column(
-          children: [
-            Icon(Icons.restaurant_menu_rounded, size: 34, color: scheme.outlineVariant),
-            const SizedBox(height: AppSpacing.sm),
-            const Text(
-              'No meals logged yet',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Photos of what you eat help your dietician give better advice.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return SizedBox(
-      height: 208,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: items.length,
-        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
-        itemBuilder: (context, i) {
-          final log = items[i];
-          return SizedBox(
-            width: 196,
-            child: Container(
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
-              ),
-              clipBehavior: Clip.antiAlias,
+    // Padding only at the top: the rail below runs to both card walls, so a
+    // half-visible card at the right edge shows there is more to swipe to.
+    return _HomeCard(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _CardHeader(
+            icon: Icons.photo_camera_rounded,
+            title: 'Recent Food Logs',
+            actionLabel: items.isEmpty ? null : 'View all',
+            onAction: items.isEmpty ? null : () => context.go('/food-log'),
+          ),
+          if (items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, AppSpacing.lg, 0, AppSpacing.lg),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    height: 124,
-                    width: double.infinity,
-                    child: log.photoUrl != null
-                        ? AuthedImage(path: log.photoUrl!, fit: BoxFit.cover)
-                        : Container(
-                            color: scheme.surfaceContainerHighest,
-                            child: Icon(
-                              Icons.restaurant_menu_rounded,
-                              size: 30,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
+                  Icon(Icons.restaurant_menu_rounded, size: 34, color: scheme.outlineVariant),
+                  const SizedBox(height: AppSpacing.sm),
+                  const Text(
+                    'No meals logged yet',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          [_when(log.createdAt), _meal(log.mealType)]
-                              .where((s) => s.isNotEmpty)
-                              .join(', '),
-                          style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          log.note.isNotEmpty ? log.note : _meal(log.mealType),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Photos of what you eat help your dietician give better advice.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, height: 1.35, color: scheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  FilledButton.tonalIcon(
+                    onPressed: () => context.go('/food-log'),
+                    icon: const Icon(Icons.add_a_photo_rounded, size: 18),
+                    label: const Text('Log a meal'),
                   ),
                 ],
               ),
+            )
+          else
+            SizedBox(
+              height: 196,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                // Negative-free bleed: the list starts at the card's text edge
+                // and ends past it, so the last card is not jammed against the
+                // wall.
+                padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.md, right: AppSpacing.md),
+                itemCount: items.length,
+                separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+                itemBuilder: (context, i) => _FoodLogTile(
+                  log: items[i],
+                  when: _when(items[i].createdAt),
+                  meal: _meal(items[i].mealType),
+                ),
+              ),
             ),
-          );
-        },
+        ],
       ),
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.icon, required this.text, this.action, this.onAction});
+/// One meal in the rail: the photo, when it was eaten, and the note.
+class _FoodLogTile extends StatelessWidget {
+  const _FoodLogTile({required this.log, required this.when, required this.meal});
 
-  final IconData icon;
-  final String text;
-  final String? action;
-  final VoidCallback? onAction;
+  final CareFoodLog log;
+  final String when;
+  final String meal;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      width: 168,
+      child: Container(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                SizedBox(
+                  height: 112,
+                  width: double.infinity,
+                  child: log.photoUrl != null
+                      ? AuthedImage(path: log.photoUrl!, fit: BoxFit.cover)
+                      : Container(
+                          color: scheme.surfaceContainerHighest,
+                          child: Icon(
+                            Icons.restaurant_menu_rounded,
+                            size: 30,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                ),
+                // On the photo rather than under it: the meal name is the one
+                // thing worth knowing at a glance, and putting it here buys the
+                // note a full line of its own below.
+                if (meal.isNotEmpty)
+                  Positioned(
+                    left: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0B1B33).withValues(alpha: 0.62),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        meal,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    log.note.isNotEmpty ? log.note : meal,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    when,
+                    style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Lab reports: what the doctor has asked for, and what came back.
+///
+/// The tests live under Profile, which is where a patient goes to *manage*
+/// them. But an ordered test the patient has not had done yet is one of the few
+/// things on this screen they are actually expected to act on, and a result that
+/// has come back is one of the few that changes what happens next. Both belong
+/// where they will be seen.
+class _LabReports extends ConsumerWidget {
+  const _LabReports();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final async = ref.watch(labTestsProvider);
+
+    // Read the last value through a refresh: this sits mid-page, and dropping it
+    // to a spinner every thirty seconds would make the screen twitch.
+    final view = async.valueOrNull;
+
+    return _HomeCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _CardHeader(
+            icon: Icons.biotech_rounded,
+            title: 'Lab Reports',
+            actionLabel: 'Upload',
+            actionIcon: Icons.file_upload_outlined,
+            onAction: () => context.push('/profile/tests'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
+          if (view == null && async.isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4))),
+            )
+          else if (view == null)
+            Text(
+              'Could not load your reports.',
+              style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+            )
+          else
+            ..._body(context, scheme, view),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _body(BuildContext context, ColorScheme scheme, LabTestsView view) {
+    // A test the doctor advised and the patient has not uploaded anything for.
+    // Matched on name because that is all the advice carries — the prescription
+    // records a test name, not an id.
+    final uploaded = view.results.map((r) => r.testName.trim().toLowerCase()).toSet();
+    final pending = view.advised.where((t) => !uploaded.contains(t.trim().toLowerCase())).toList();
+    final recent = view.results.take(3).toList();
+
+    if (pending.isEmpty && recent.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'No reports yet.',
+                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: scheme.onSurface),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Upload a photo or PDF of a lab report and your doctor sees the results here.',
+                style: TextStyle(fontSize: 13, height: 1.35, color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      ];
+    }
+
+    return [
+      if (pending.isNotEmpty) _AdvisedTests(tests: pending),
+      if (pending.isNotEmpty && recent.isNotEmpty) const SizedBox(height: AppSpacing.md),
+      for (var i = 0; i < recent.length; i++) ...[
+        if (i > 0)
+          Padding(
+            padding: const EdgeInsets.only(left: 46, top: 10, bottom: 10),
+            child: Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+          ),
+        _LabResultRow(result: recent[i]),
+      ],
+      if (view.results.length > recent.length) ...[
+        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: () => context.push('/profile/tests'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.accentOn(context),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              visualDensity: VisualDensity.compact,
+            ),
+            child: Text('View all ${view.results.length} reports'),
+          ),
+        ),
+      ],
+    ];
+  }
+}
+
+/// Tests the doctor ordered that have not come back yet.
+class _AdvisedTests extends StatelessWidget {
+  const _AdvisedTests({required this.tests});
+
+  final List<String> tests;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = AppColors.accentOn(context);
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.sm + 2),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accent.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.assignment_outlined, size: 16, color: accent),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  tests.length == 1
+                      ? 'Your doctor has asked for 1 test'
+                      : 'Your doctor has asked for ${tests.length} tests',
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: accent),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final t in tests.take(6))
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+                  ),
+                  child: Text(t, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                ),
+              if (tests.length > 6)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(
+                    '+${tests.length - 6} more',
+                    style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One uploaded report: what it was, when, and what came of it.
+class _LabResultRow extends StatelessWidget {
+  const _LabResultRow({required this.result});
+
+  final LabResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final accent = AppColors.accentOn(context);
+    final abnormal = result.abnormal.length;
+    final status = result.analysisStatus;
+
+    // Red only for a value actually outside its range. "Still being read" and
+    // "could not be read" are states of the app, not of the patient's health,
+    // and colouring them like a bad result would be a false alarm.
+    final (String label, Color fg, Color bg)? chip = switch (status) {
+      'done' when abnormal > 0 => (
+        abnormal == 1 ? '1 out of range' : '$abnormal out of range',
+        AppColors.dangerOn(context),
+        AppColors.dangerOn(context).withValues(alpha: 0.10),
+      ),
+      'done' => ('All in range', scheme.onSurfaceVariant, scheme.surfaceContainerHighest),
+      'pending' => ('Being read', scheme.onSurfaceVariant, scheme.surfaceContainerHighest),
+      'failed' || 'unsupported' => ('Not read', scheme.onSurfaceVariant, scheme.surfaceContainerHighest),
+      _ => null,
+    };
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(Icons.description_rounded, size: 17, color: accent),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                result.testName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, height: 1.25),
+              ),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  if (result.createdAt != null)
+                    Text(
+                      DateFormat('d MMM yyyy').format(result.createdAt!),
+                      style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                    ),
+                  if (result.createdAt != null && chip != null)
+                    Text('  ·  ', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                  if (chip != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: chip.$3,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        chip.$1,
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: chip.$2),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The card every section on this screen sits in.
+///
+/// The screen used to speak three visual languages at once: glucose and the
+/// diet plan were self-contained cards with their heading inside, while
+/// medicines and food logs were a bare heading floating above loose content.
+/// Scrolling it felt like scrolling two different screens. One shell, used by
+/// all of them, is what makes it read as one page.
+///
+/// Matches `PanelCard` in the doctor's panel — same radius, same hairline, same
+/// shadow — so a patient and their doctor are looking at the same product.
+class _HomeCard extends StatelessWidget {
+  const _HomeCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(AppSpacing.md),
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B1B33).withValues(alpha: 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(padding: padding, child: child),
+    );
+  }
+}
+
+/// A section heading inside a card: the icon on its tinted plate, the title, and
+/// an optional action on the right.
+class _CardHeader extends StatelessWidget {
+  const _CardHeader({
+    required this.icon,
+    required this.title,
+    this.actionLabel,
+    this.actionIcon,
+    this.onAction,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? actionLabel;
+  final IconData? actionIcon;
+  final VoidCallback? onAction;
+
+  /// A badge instead of a button — used where the right-hand slot carries a
+  /// fact rather than something to tap.
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = AppColors.accentOn(context);
     return Row(
       children: [
-        Icon(icon, size: 20, color: scheme.onSurface),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: accent),
         ),
-        if (action != null)
-          TextButton(
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+        ),
+        if (trailing != null)
+          trailing!
+        else if (actionLabel != null && onAction != null)
+          TextButton.icon(
             onPressed: onAction,
-            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-            child: Text(
-              action!,
-              style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.accentOn(context)),
+            icon: Icon(actionIcon ?? Icons.arrow_forward_rounded, size: 18),
+            label: Text(actionLabel!),
+            style: TextButton.styleFrom(
+              foregroundColor: accent,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              visualDensity: VisualDensity.compact,
             ),
           ),
       ],
