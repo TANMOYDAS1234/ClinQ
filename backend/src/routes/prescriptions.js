@@ -75,7 +75,11 @@ router.post(
             instructions: z.string().max(400).optional(),
           }),
         )
-        .min(1, 'A prescription needs at least one medicine'),
+        // No minimum. A visit can end in tests, diet advice or reassurance with
+        // nothing to dispense, and the doctor confirms that case in the consult
+        // form before it gets here. Requiring an item made the API reject a
+        // prescription the doctor had already deliberately confirmed.
+        .default([]),
       labTestsAdvised: z.array(z.string().max(200)).max(30).default([]),
       generalAdvice: z.string().max(4000).optional(),
       followUpOn: z.coerce.date().optional(),

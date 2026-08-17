@@ -134,10 +134,23 @@ export function buildPrescriptionPdf({ prescription: p, patient, doctor, profile
       { title: 'Frequency', w: contentW * 0.3 },
       { title: 'Duration', w: contentW * 0.2 },
     ];
-    y = tableHeader(doc, cols, M, y);
-    for (const item of p.items ?? []) {
-      y = ensureSpace(doc, y, 42, M, () => tableHeader(doc, cols, M, doc.page.margins.top));
-      y = medicineRow(doc, cols, item, M, y);
+    // A prescription can legitimately carry no medicines — a visit that ends in
+    // tests, diet advice or reassurance. Saying so in a sentence is honest;
+    // printing the column headings over nothing looks like the document failed
+    // to finish, and a patient handed that has no way to tell the difference.
+    if ((p.items ?? []).length === 0) {
+      doc
+        .font('Helvetica-Oblique')
+        .fontSize(11)
+        .fillColor(SLATE)
+        .text('No medicines prescribed at this visit.', M, y, { width: contentW });
+      y = doc.y;
+    } else {
+      y = tableHeader(doc, cols, M, y);
+      for (const item of p.items ?? []) {
+        y = ensureSpace(doc, y, 42, M, () => tableHeader(doc, cols, M, doc.page.margins.top));
+        y = medicineRow(doc, cols, item, M, y);
+      }
     }
 
     y += 10;
