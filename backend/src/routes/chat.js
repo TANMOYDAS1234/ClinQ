@@ -9,7 +9,10 @@ import { audit } from '../middleware/audit.js';
 import { handlePatientMessage, streamPatientMessage } from '../services/ai/assistant.js';
 import { ChatSession } from '../models/ChatSession.js';
 import { ChatMessage } from '../models/ChatMessage.js';
-import { notifyPatientOfClinicianReply } from '../services/notifications.js';
+import {
+  notifyPatientOfClinicianReply,
+  notifyDieticianOfPatientMessage,
+} from '../services/notifications.js';
 import { triageMessage } from '../services/triage/engine.js';
 import { buildPatientContext } from '../services/patientContext.js';
 import { raiseAlert } from '../services/alerts.js';
@@ -547,6 +550,10 @@ router.post(
         ruleDriven: triage.ruleDriven,
       },
     });
+
+    // Tell the dietician a question has arrived. Fire-and-forget: a push
+    // that fails must not fail the patient's message, which is already saved.
+    notifyDieticianOfPatientMessage(patientId, req.user.name, text).catch(() => {});
 
     if (triage.urgency === 'emergency' || triage.urgency === 'urgent') {
       const alert = await raiseAlert({

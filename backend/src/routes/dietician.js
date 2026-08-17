@@ -17,6 +17,7 @@ import { buildAnalytes } from '../services/analyteCatalog.js';
 import { ChatSession } from '../models/ChatSession.js';
 import { ChatMessage } from '../models/ChatMessage.js';
 import { DietPlan } from '../models/DietPlan.js';
+import { DietPlanRevision } from '../models/DietPlanRevision.js';
 import { notifyPatientOfClinicianReply } from '../services/notifications.js';
 import { dayjs } from '../utils/clinicTime.js';
 import { getClinicSettings } from '../models/ClinicSettings.js';
@@ -227,7 +228,8 @@ router.get(
     // advice, vitals, the uploaded reports. A dietician planning around metformin
     // needs to know it was stopped last week; a pending HbA1c is the difference
     // between "your control is fine" and a number nobody has yet.
-    const [meds, prescriptions, labResults, latestHba1c, vitals, latestGlucose] = await Promise.all([
+    const [meds, prescriptions, labResults, allResultNames, latestHba1c, vitals, latestGlucose] =
+      await Promise.all([
       Medication.find({ patient: req.params.id, isActive: true })
         .select('name strength dose schedule instructions')
         .lean(),
@@ -241,13 +243,19 @@ router.get(
         .limit(10)
         .populate('photo', 'mimeType originalName sizeBytes')
         .lean(),
+      // Every report's name, not just the ten most recent. The list above is
+      // capped because it is what gets rendered; using that same capped list to
+      // decide which advised tests have come back meant an eleventh upload
+      // pushed the oldest one out and its test went back to "awaiting result"
+      // even though the patient had sent it.
+      LabResult.find({ patient: req.params.id }).select('testName').lean(),
       Hba1cRecord.findOne({ patient: req.params.id }).sort({ testedOn: -1 }).lean(),
       VitalRecord.find({ patient: req.params.id }).sort({ recordedAt: -1 }).limit(40).lean(),
       GlucoseReading.findOne({ patient: req.params.id }).sort({ measuredAt: -1 }).lean(),
     ]);
 
     const advised = [...new Set(prescriptions.flatMap((p) => p.labTestsAdvised ?? []).filter(Boolean))];
-    const reported = new Set(labResults.map((r) => r.testName.toLowerCase()));
+    const reported = new Set(allResultNames.map((r) => normaliseTestName(r.testName)));
 
     // Each measurement shown as its OWN most-recent real reading, with the date
     // it was actually taken — never blended, never invented. A field the patient
@@ -334,7 +342,7 @@ router.get(
       labTests: {
         // Whether a result is back matters more than the list itself: an
         // advised-but-missing test is why a plan may be built on stale numbers.
-        advised: advised.map((name) => ({ name, reported: reported.has(name.toLowerCase()) })),
+        advised: advised.map((name) => ({ name, reported: reported.has(normaliseTestName(name)) })),
         // The uploaded reports themselves — summary, out-of-range analytes, the
         // file to open — the SAME flat shape the doctor's panel sends, so the
         // dietician reuses the doctor's LabReport model and "out of range" reads
@@ -391,6 +399,53 @@ router.get(
     });
   }),
 );
+
+/**
+ * A lab test name reduced to something two spellings of the same test agree on.
+ *
+ * The doctor picks the advised name from a catalogue; the patient uploads under
+ * whatever the lab printed, or types their own. Comparing those as raw strings
+ * meant "HbA1c" and "HBA1C (Glycated Haemoglobin)" were different tests, so a
+ * report the patient had definitely sent still showed as awaiting.
+ *
+ * Case, punctuation and spacing go. The aliases cover the handful of tests that
+ * are genuinely known by more than one name — this is not an attempt at fuzzy
+ * matching, which would eventually mark the wrong test as done.
+ */
+const TEST_ALIASES = new Map([
+  ['glycatedhaemoglobin', 'hba1c'],
+  ['glycatedhemoglobin', 'hba1c'],
+  ['glycosylatedhaemoglobin', 'hba1c'],
+  ['glycosylatedhemoglobin', 'hba1c'],
+  ['hba1cglycatedhaemoglobin', 'hba1c'],
+  ['a1c', 'hba1c'],
+  ['fastingbloodsugar', 'fbs'],
+  ['fastingplasmaglucose', 'fbs'],
+  ['bloodsugarfasting', 'fbs'],
+  ['postprandialbloodsugar', 'ppbs'],
+  ['bloodsugarpostprandial', 'ppbs'],
+  ['kidneyfunctiontest', 'kft'],
+  ['kidneyfunction', 'kft'],
+  ['renalfunctiontest', 'kft'],
+  ['liverfunctiontest', 'lft'],
+  ['liverfunction', 'lft'],
+  ['completebloodcount', 'cbc'],
+  ['thyroidprofile', 'thyroid'],
+  ['thyroidfunctiontest', 'thyroid'],
+  ['vitamind', 'vitd'],
+  ['vitamind25hydroxy', 'vitd'],
+  ['vitaminb12', 'vitb12'],
+  ['serumelectrolytes', 'electrolytes'],
+  ['lipidprofile', 'lipid'],
+]);
+
+function normaliseTestName(name) {
+  const bare = String(name ?? '')
+    .toLowerCase()
+    .replace(/\(.*?\)/g, '')
+    .replace(/[^a-z0-9]/g, '');
+  return TEST_ALIASES.get(bare) ?? bare;
+}
 
 /** The patient's current diet plan, or null if none has been written yet. */
 router.get(
@@ -453,6 +508,84 @@ router.put(
     );
 
     res.json({ plan: serialisePlan({ ...plan.toObject(), dietician: { name: req.user.name } }) });
+  }),
+);
+
+/**
+ * Plans this patient has been on before, newest first.
+ *
+ * Answers the question a dietician actually asks when a target has not been
+ * met: what were we doing, and for how long.
+ */
+router.get(
+  '/patients/:id/diet/history',
+  asyncHandler(async (req, res) => {
+    await requireAssigned(req);
+    const revisions = await DietPlanRevision.find({ patient: req.params.id })
+      .sort({ replacedAt: -1 })
+      .limit(20)
+      .populate('dietician', 'name')
+      .lean();
+
+    res.json({
+      revisions: revisions.map((r) => ({
+        id: String(r._id),
+        ...serialisePlan(r),
+        replacedAt: r.replacedAt ?? null,
+        startedAt: r.startedAt ?? null,
+      })),
+    });
+  }),
+);
+
+/**
+ * Start a fresh plan, keeping the outgoing one as history.
+ *
+ * Not a second live plan: `DietPlan` stays one document per patient, because
+ * the patient needs one current answer to "what do I eat" and two live plans
+ * would be two answers. The current plan is copied into the history and the
+ * working document is cleared, so the dietician writes the new one on a blank
+ * page with the old one still readable behind them.
+ *
+ * A plan that was never sent is not archived — it was a draft, and filing
+ * drafts as care given would make the history lie about what the patient was
+ * actually told.
+ */
+router.post(
+  '/patients/:id/diet/new',
+  audit('create', 'DietPlan'),
+  asyncHandler(async (req, res) => {
+    await requireAssigned(req);
+    const current = await DietPlan.findOne({ patient: req.params.id }).lean();
+    if (!current) throw notFound('There is no plan to replace yet');
+
+    let archived = false;
+    if (current.sharedAt) {
+      await DietPlanRevision.create({
+        patient: current.patient,
+        dietician: current.dietician,
+        goal: current.goal,
+        meals: current.meals,
+        avoid: current.avoid,
+        notes: current.notes,
+        sharedAt: current.sharedAt,
+        startedAt: current.createdAt ?? null,
+        replacedAt: new Date(),
+      });
+      archived = true;
+    }
+
+    // Cleared rather than deleted: the unique index means one document per
+    // patient, and dropping it would lose the row every other read expects.
+    await DietPlan.updateOne(
+      { _id: current._id },
+      {
+        $set: { dietician: req.user._id, goal: '', meals: [], avoid: [], notes: '' },
+        $unset: { sharedAt: 1 },
+      },
+    );
+
+    res.status(201).json({ archived });
   }),
 );
 

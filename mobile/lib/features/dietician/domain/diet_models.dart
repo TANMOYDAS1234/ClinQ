@@ -679,3 +679,36 @@ class DietMessage {
   static List<Map<String, dynamic>> _parts(Map<String, dynamic> j) =>
       (j['attachments'] as List?)?.whereType<Map<String, dynamic>>().toList() ?? const [];
 }
+
+
+/// A plan the patient has been taken off, kept so the dietician can see what
+/// they were on before and for how long.
+class DietPlanRevision {
+  const DietPlanRevision({
+    required this.id,
+    required this.plan,
+    this.replacedAt,
+    this.startedAt,
+  });
+
+  final String id;
+  final DietPlan plan;
+  final DateTime? replacedAt;
+  final DateTime? startedAt;
+
+  /// How long the patient was on it, when both ends are known.
+  int? get days {
+    final from = startedAt;
+    final to = replacedAt;
+    if (from == null || to == null) return null;
+    final d = to.difference(from).inDays;
+    return d < 0 ? null : d;
+  }
+
+  factory DietPlanRevision.fromJson(Map<String, dynamic> j) => DietPlanRevision(
+        id: j['id']?.toString() ?? '',
+        plan: DietPlan.fromJson(j),
+        replacedAt: DateTime.tryParse(j['replacedAt']?.toString() ?? '')?.toLocal(),
+        startedAt: DateTime.tryParse(j['startedAt']?.toString() ?? '')?.toLocal(),
+      );
+}

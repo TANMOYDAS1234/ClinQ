@@ -1,5 +1,5 @@
 import { ChatMessage } from '../../models/ChatMessage.js';
-import { DietPlan } from '../../models/DietPlan.js';
+import { lastGivenPlan } from '../dietPlanLookup.js';
 import { generate, AiUnavailableError } from './gemini.js';
 import { retrieve, formatContext } from './rag.js';
 import { buildPatientContext } from '../patientContext.js';
@@ -111,7 +111,7 @@ function formatPlan(plan) {
  * dietician should answer instead. */
 export async function nutritionReply({ patientId, sessionId, text, language = 'en' }) {
   const [plan, notes, history, chunks, context] = await Promise.all([
-    DietPlan.findOne({ patient: patientId, sharedAt: { $ne: null } }).lean(),
+    lastGivenPlan(patientId),
     ChatMessage.find({ patient: patientId, role: 'dietician', content: { $nin: [null, ''] } })
       .sort({ createdAt: -1 })
       .limit(6)

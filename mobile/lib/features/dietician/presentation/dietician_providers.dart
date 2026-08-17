@@ -37,3 +37,9 @@ final dietFoodLogProvider =
     FutureProvider.autoDispose.family<List<FoodLogEntry>, String>(
   (ref, id) => ref.watch(dieticianRepositoryProvider).foodLog(id),
 );
+
+/// Plans this patient has been taken off, newest first.
+final dietPlanHistoryProvider =
+    FutureProvider.autoDispose.family<List<DietPlanRevision>, String>(
+  (ref, id) => ref.watch(dieticianRepositoryProvider).dietPlanHistory(id),
+);

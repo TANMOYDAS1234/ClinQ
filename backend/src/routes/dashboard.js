@@ -13,7 +13,7 @@ import { MedicationLog } from '../models/MedicationLog.js';
 import { Medication } from '../models/Medication.js';
 import { VitalRecord } from '../models/VitalRecord.js';
 import { Prescription } from '../models/Prescription.js';
-import { DietPlan } from '../models/DietPlan.js';
+import { lastGivenPlan } from '../services/dietPlanLookup.js';
 import { FoodLog } from '../models/FoodLog.js';
 import { getClinicSettings } from '../models/ClinicSettings.js';
 
@@ -121,10 +121,10 @@ async function careSummary(patientId, profile, latestHba1c, email) {
       .select('followUpOn')
       .lean(),
     // Only a plan the dietician actually sent. A draft they are still editing
-    // is not something the patient should be following.
-    DietPlan.findOne({ patient: patientId, sharedAt: { $ne: null } })
-      .populate('dietician', 'name')
-      .lean(),
+    // is not something the patient should be following — and if the dietician
+    // has just started writing a replacement, this keeps showing the plan the
+    // patient is still on rather than emptying their screen mid-rewrite.
+    lastGivenPlan(patientId, { populate: 'name' }),
     Medication.find({ patient: patientId, isActive: true })
       .select('name strength dose schedule instructions')
       .lean(),

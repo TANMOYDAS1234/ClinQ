@@ -2,6 +2,7 @@ import { User, ROLES } from '../models/User.js';
 import { getMessaging } from '../config/firebase.js';
 import { ClinicalAlert } from '../models/ClinicalAlert.js';
 import { logger } from '../config/logger.js';
+import { PatientProfile } from '../models/PatientProfile.js';
 
 /**
  * Notification transport.
@@ -243,6 +244,57 @@ export async function notifyPatientOfClinicianReply(patientId, clinician, conten
     body: content.slice(0, 180),
     // `kind` lets the app route the tap straight to the conversation.
     data: { kind: 'clinician_reply', patientId: patientId.toString() },
+  });
+}
+
+/**
+ * A patient has written in their nutrition thread.
+ *
+ * The reverse of [notifyPatientOfClinicianReply], which was the only half of
+ * this conversation that existed: the patient was told when the clinic
+ * answered, but nobody told the clinic a question had been asked. A patient
+ * asking "can I eat this?" in the evening waited until the dietician next
+ * happened to open the app.
+ *
+ * Goes to the dietician the patient is assigned to, and to nobody else. A
+ * message about somebody else's patient is a message the reader cannot act on.
+ */
+export async function notifyDieticianOfPatientMessage(patientId, patientName, content) {
+  const profile = await PatientProfile.findOne({ user: patientId })
+    .select('assignedDietician')
+    .lean();
+  if (!profile?.assignedDietician) return;
+
+  const dietician = await User.findOne({ _id: profile.assignedDietician, isActive: true })
+    .select('deviceTokens')
+    .lean();
+  if (!dietician?.deviceTokens?.length) return;
+
+  await deliver({
+    tokens: dietician.deviceTokens,
+    title: `${patientName} sent a message`,
+    body: (content ?? '').slice(0, 180),
+    data: { kind: 'nutrition_message', patientId: patientId.toString() },
+  });
+}
+
+/**
+ * A doctor has put a patient on this dietician's list.
+ *
+ * Work arriving. Without this it showed up only if the dietician happened to
+ * open their dashboard and notice a count had gone up.
+ */
+export async function notifyDieticianOfAssignment(dieticianId, patientName) {
+  const dietician = await User.findOne({ _id: dieticianId, isActive: true })
+    .select('deviceTokens')
+    .lean();
+  if (!dietician?.deviceTokens?.length) return;
+
+  await deliver({
+    tokens: dietician.deviceTokens,
+    title: 'New patient assigned',
+    body: `${patientName} has been added to your list and needs a diet plan.`,
+    data: { kind: 'dietician_assignment' },
   });
 }
 

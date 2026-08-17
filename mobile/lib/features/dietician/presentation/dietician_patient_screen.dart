@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/network/api_exception.dart';
 import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
@@ -16,6 +17,7 @@ import '../../../shared/widgets/fullscreen_photo.dart';
 import '../../clinician/domain/patient_summary.dart';
 import '../../foodlog/domain/food_log.dart';
 import '../domain/diet_models.dart';
+import '../data/dietician_repository.dart';
 import 'dietician_patients_screen.dart' show dietRiskColor;
 import 'dietician_providers.dart';
 
@@ -323,6 +325,42 @@ class _SectionTitle extends StatelessWidget {
 /// the patient has actually been sent it. A finished-looking plan the patient
 /// has never seen is a draft, and the card says so rather than looking done.
 class _DietPlanSection extends ConsumerWidget {
+  /// Files the current plan as history and opens the editor on a blank page.
+  ///
+  /// Confirmed first: this is not undoable from the app, and a dietician who
+  /// meant to tweak a portion size should not lose the plan they were editing.
+  Future<void> _startNewPlan(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Start a new plan?'),
+        content: const Text(
+          'The current plan is filed in this patient\'s history and you write the '
+          'next one on a blank page. The patient keeps following the old plan '
+          'until you send the new one.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Start new plan')),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(dieticianRepositoryProvider).startNewDietPlan(patientId);
+      ref.invalidate(dietPlanProvider(patientId));
+      ref.invalidate(dietPlanHistoryProvider(patientId));
+      ref.invalidate(dietOverviewProvider(patientId));
+      if (context.mounted) {
+        context.push('/dietician/patients/$patientId/diet', extra: patientName);
+      }
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   const _DietPlanSection({required this.patientId, required this.patientName});
 
   final String patientId;
@@ -473,6 +511,45 @@ class _DietPlanSection extends ConsumerWidget {
                           style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: open,
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.accentOn(context),
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                        icon: const Icon(Icons.edit_outlined, size: 17),
+                        label: const Text(
+                          'Edit plan',
+                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      const Spacer(),
+                      // Only offered once the patient has actually been given
+                      // this plan. Replacing a draft is just editing it, and
+                      // filing drafts as history would make the record claim
+                      // the patient was told something they never saw.
+                      if (plan.sharedAt != null)
+                        TextButton.icon(
+                          onPressed: () => _startNewPlan(context, ref),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.accentOn(context),
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                          ),
+                          icon: const Icon(Icons.note_add_outlined, size: 17),
+                          label: const Text(
+                            'New plan',
+                            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                          ),
+                        ),
                     ],
                   ),
                 ],

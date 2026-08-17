@@ -27,6 +27,21 @@ class DieticianRepository {
     return DietPlan.fromJson(json['plan'] as Map<String, dynamic>? ?? const {});
   }
 
+  /// Plans this patient has been on before, newest first.
+  Future<List<DietPlanRevision>> dietPlanHistory(String patientId) async {
+    final json = await _client.getJson('/dietician/patients/$patientId/diet/history');
+    return (json['revisions'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(DietPlanRevision.fromJson)
+        .toList();
+  }
+
+  /// Files the current plan as history and clears the working one, so the next
+  /// plan is written on a blank page with the old one still readable.
+  Future<void> startNewDietPlan(String patientId) async {
+    await _client.postJson('/dietician/patients/$patientId/diet/new');
+  }
+
   /// Pushes the saved plan into the patient's care thread. Separate from saving
   /// on purpose: a dietician mid-edit should not be notifying the patient.
   Future<void> sendDietPlan(String patientId) async {

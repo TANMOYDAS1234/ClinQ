@@ -15,7 +15,10 @@ import { VitalRecord } from '../models/VitalRecord.js';
 import { Medication } from '../models/Medication.js';
 import { ChatSession } from '../models/ChatSession.js';
 import { ChatMessage } from '../models/ChatMessage.js';
-import { notifyPatientOfClinicianReply } from '../services/notifications.js';
+import {
+  notifyPatientOfClinicianReply,
+  notifyDieticianOfAssignment,
+} from '../services/notifications.js';
 import { MediaAsset } from '../models/MediaAsset.js';
 import { KnowledgeChunk } from '../models/KnowledgeChunk.js';
 import { Hba1cRecord } from '../models/Hba1cRecord.js';
@@ -1584,12 +1587,19 @@ router.patch(
   asyncHandler(async (req, res) => {
     const { dieticianId, reviewIntervalDays } = req.body;
     const update = {};
+    /// Set when this request puts the patient on a dietician's list, so the
+    /// push goes out only on a real assignment — not when the doctor is merely
+    /// changing the review interval on a patient they already look after.
+    let newlyAssignedTo = null;
 
     if (dieticianId !== undefined) {
       if (dieticianId) {
-        const d = await User.findOne({ _id: dieticianId, role: ROLES.DIETICIAN, isActive: true }).select('_id').lean();
+        const d = await User.findOne({ _id: dieticianId, role: ROLES.DIETICIAN, isActive: true })
+          .select('_id')
+          .lean();
         if (!d) throw notFound('Dietician not found');
         update.assignedDietician = d._id;
+        newlyAssignedTo = d._id;
       } else {
         update.assignedDietician = null;
       }
@@ -1600,6 +1610,13 @@ router.patch(
       .populate('assignedDietician', 'name phone')
       .lean();
     if (!profile) throw notFound('Patient not found');
+
+    if (newlyAssignedTo) {
+      const patient = await User.findById(req.params.id).select('name').lean();
+      // Fire-and-forget: the assignment is already saved, and a push that
+      // fails must not fail the doctor's request.
+      notifyDieticianOfAssignment(newlyAssignedTo, patient?.name ?? 'A patient').catch(() => {});
+    }
 
     res.json({
       assignedDietician: profile.assignedDietician
