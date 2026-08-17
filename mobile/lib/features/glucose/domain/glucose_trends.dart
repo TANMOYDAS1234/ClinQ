@@ -36,15 +36,30 @@ class GlucoseTrends {
 }
 
 class GlucoseTrendPoint {
-  const GlucoseTrendPoint({required this.at, required this.value});
+  const GlucoseTrendPoint({required this.at, required this.value, this.flag, this.context});
 
   final DateTime? at;
   final num value;
+
+  /// severe_low | low | in_range | high | very_high | critical_high.
+  ///
+  /// The server has always sent this; the client used to drop it and any screen
+  /// wanting to say whether a reading was high had to re-derive the thresholds
+  /// locally. Two copies of a clinical range is one too many.
+  final String? flag;
+
+  /// fasting | post_meal | random — the same reading means different things
+  /// before and after a meal.
+  final String? context;
+
+  bool get isOutOfRange => flag != null && flag != 'in_range';
 
   factory GlucoseTrendPoint.fromJson(Map<String, dynamic> json) {
     return GlucoseTrendPoint(
       at: json['at'] == null ? null : DateTime.tryParse(json['at'].toString()),
       value: json['value'] as num? ?? 0,
+      flag: json['flag']?.toString(),
+      context: json['context']?.toString(),
     );
   }
 }

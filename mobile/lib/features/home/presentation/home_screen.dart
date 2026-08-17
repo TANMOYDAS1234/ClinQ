@@ -77,6 +77,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     // analysis that finished on the server a minute after the upload, both have
     // to land here without the patient knowing to come back and pull down.
     ref.invalidate(labTestsProvider);
+    // The glucose chart and the "Current glucose" tile above it both read this,
+    // so a reading logged from anywhere in the app shows on both at once.
+    ref.invalidate(glucoseTrendsProvider);
   }
 
   @override
@@ -145,6 +148,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         ],
                       ),
                       const SizedBox(height: 4),
+                      // Age, gender, email and address are all one thing — who
+                      // this record belongs to — so they read as one block under
+                      // the name rather than as a card of their own further down.
+                      //
+                      // No date of birth: the age above is worked out from it,
+                      // and printing both says the same fact twice.
                       Text(
                         [
                           if (user?.dateOfBirth != null) '${_age(user!.dateOfBirth!)} y/o',
@@ -153,16 +162,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         ].join('  •  '),
                         style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
                       ),
-                      // Straight under the name, age and gender, because it is
-                      // the same thing: who this record belongs to. Lower down
-                      // it sat between clinical sections, where a patient
-                      // scanning for their care details had no reason to look
-                      // and so never noticed a stale address.
-                      if ((care.profile.email ?? '').isNotEmpty ||
-                          (care.profile.address ?? '').isNotEmpty ||
-                          user?.dateOfBirth != null) ...[
-                        const SizedBox(height: AppSpacing.md),
-                        _ContactCard(profile: care.profile, dateOfBirth: user?.dateOfBirth),
+                      if ((care.profile.email ?? '').trim().isNotEmpty) ...[
+                        const SizedBox(height: 7),
+                        _IdentityLine(
+                          icon: Icons.mail_outline_rounded,
+                          value: care.profile.email!.trim(),
+                        ),
+                      ],
+                      if ((care.profile.address ?? '').trim().isNotEmpty) ...[
+                        const SizedBox(height: 5),
+                        _IdentityLine(
+                          icon: Icons.home_outlined,
+                          value: care.profile.address!.trim(),
+                        ),
                       ],
 
                       const SizedBox(height: AppSpacing.lg),
@@ -349,69 +361,85 @@ class _CheckInPrompt extends StatelessWidget {
 
 // ---- Facts ----------------------------------------------------------------
 
-class _FactGrid extends StatelessWidget {
+class _FactGrid extends ConsumerWidget {
   const _FactGrid({required this.care});
 
   final CareSummary care;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = care.profile;
     final hba1c = care.latestHba1c;
+    // Oldest to newest, so the last point is the most recent reading.
+    final latestGlucose = ref.watch(glucoseTrendsProvider).valueOrNull?.series.lastOrNull;
 
-    final tiles = <Widget>[
-      if (p.conditionLabel != null) _FactCard(label: 'Condition', value: p.conditionLabel!),
+    // Facts, not widgets: the grid decides afterwards whether each one is drawn
+    // as a square tile or, when it is the odd one out at the end, as a wide bar.
+    final facts = <_Fact>[
+      if (p.conditionLabel != null) _Fact('Condition', p.conditionLabel!),
       // The doctor's next-visit instruction — arguably the most useful single
       // thing on this screen: "when do I come back?".
       if (care.followUpOn != null)
-        _FactCard(label: 'Next Visit', value: DateFormat('d MMM yyyy').format(care.followUpOn!)),
+        _Fact('Next Visit', DateFormat('d MMM yyyy').format(care.followUpOn!)),
       // One measurement per tile. Crammed into a single "BMI / Wt / Ht" cell the
       // value wrapped onto a second line, which made that row taller than the
       // one beside it and broke the grid — and three numbers separated by
       // slashes is a thing to decode rather than read.
-      if (p.bmi != null) _FactCard(label: 'BMI', value: '${p.bmi}'),
-      if (p.weightKg != null) _FactCard(label: 'Weight', value: '${p.weightKg} kg'),
-      if (p.heightCm != null) _FactCard(label: 'Height', value: '${p.heightCm} cm'),
+      if (p.bmi != null) _Fact('BMI', '${p.bmi}'),
+      if (p.weightKg != null) _Fact('Weight', '${p.weightKg} kg'),
+      if (p.heightCm != null) _Fact('Height', '${p.heightCm} cm'),
       if (p.bloodPressure != null)
-        _FactCard(
-          label: 'Blood Pressure',
-          value: '${p.bloodPressure!.label} mmHg',
+        _Fact(
+          'Blood Pressure',
+          '${p.bloodPressure!.label} mmHg',
           // Red only when above this patient's own target — plain otherwise, so a
           // number they cannot act on tonight is not an alarm.
-          valueColor: p.bloodPressure!.isHigh ? AppColors.danger : null,
+          color: p.bloodPressure!.isHigh ? AppColors.danger : null,
         ),
-      if (p.reviewLabel != null) _FactCard(label: 'Food-log review', value: p.reviewLabel!),
+      if (p.reviewLabel != null) _Fact('Food-log review', p.reviewLabel!),
+      // The newest reading, beside the numbers it belongs with. The chart below
+      // shows the shape of the last month; this answers the simpler question a
+      // patient asks first — where am I right now.
+      if (latestGlucose != null)
+        _Fact(
+          'Current glucose',
+          '${latestGlucose.value} mg/dL',
+          // Flagged by the server against the clinic's own range, not by a
+          // threshold copied into the app.
+          color: latestGlucose.isOutOfRange ? AppColors.danger : null,
+        ),
       if (hba1c != null)
-        _FactCard(
-          label: 'Last HbA1c',
-          value: '${hba1c.percentage}%${hba1c.isHigh ? ' (High)' : ''}',
+        _Fact(
+          'Last HbA1c',
+          '${hba1c.percentage}%${hba1c.isHigh ? ' (High)' : ''}',
           // Coloured only when it is above this patient's own target — a red
           // number they cannot act on tonight is alarm without information, so
           // it stays plain when the result is where the doctor wants it.
-          valueColor: hba1c.isHigh ? AppColors.danger : null,
+          color: hba1c.isHigh ? AppColors.danger : null,
         ),
     ];
 
-    if (tiles.isEmpty) return const SizedBox.shrink();
+    if (facts.isEmpty) return const SizedBox.shrink();
 
     return Column(
       children: [
-        for (var i = 0; i < tiles.length; i += 2) ...[
+        for (var i = 0; i < facts.length; i += 2) ...[
           if (i > 0) const SizedBox(height: AppSpacing.sm),
-          // An odd tile at the end takes the whole width rather than leaving a
-          // half-row of nothing beside it. Which fact happens to be last
-          // depends on what the record holds, so the grid has to close itself
-          // tidily whatever it is given.
-          if (i + 1 >= tiles.length)
-            SizedBox(width: double.infinity, child: tiles[i])
+          // Which facts the record holds decides how many there are, so the
+          // count is odd as often as it is even. A lone tile stretched across
+          // the full width reads as a mistake; the same fact laid along that
+          // width — label left, value right — reads as a summary line, which is
+          // what it is.
+          if (i + 1 >= facts.length)
+            _FactCard(fact: facts[i], wide: true)
           else
             IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(child: tiles[i]),
+                  Expanded(child: _FactCard(fact: facts[i])),
                   const SizedBox(width: AppSpacing.sm),
-                  Expanded(child: tiles[i + 1]),
+                  Expanded(child: _FactCard(fact: facts[i + 1])),
                 ],
               ),
             ),
@@ -421,39 +449,63 @@ class _FactGrid extends StatelessWidget {
   }
 }
 
-class _FactCard extends StatelessWidget {
-  const _FactCard({required this.label, required this.value, this.valueColor});
+/// One fact on the grid: what it is, what it says, and whether that value is
+/// outside the target the clinic set.
+class _Fact {
+  const _Fact(this.label, this.value, {this.color});
 
   final String label;
   final String value;
-  final Color? valueColor;
+  final Color? color;
+}
+
+class _FactCard extends StatelessWidget {
+  const _FactCard({required this.fact, this.wide = false});
+
+  final _Fact fact;
+
+  /// Label and value side by side across the full width, for the odd tile at
+  /// the end of the grid.
+  final bool wide;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+
+    final label = Text(
+      fact.label,
+      style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+    );
+    final value = Text(
+      fact.value,
+      style: TextStyle(
+        fontSize: 15.5,
+        fontWeight: FontWeight.w700,
+        height: 1.3,
+        color: fact.color ?? scheme.onSurface,
+      ),
+    );
+
     return Container(
+      width: wide ? double.infinity : null,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 15.5,
-              fontWeight: FontWeight.w700,
-              height: 1.3,
-              color: valueColor ?? scheme.onSurface,
+      child: wide
+          ? Row(
+              children: [
+                Expanded(child: label),
+                const SizedBox(width: AppSpacing.sm),
+                value,
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [label, const SizedBox(height: 6), value],
             ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -734,79 +786,13 @@ class _FullPlanSheet extends StatelessWidget {
 // ---- Medicines ------------------------------------------------------------
 
 /// Email and address as the clinic has them, with a way to correct them.
-class _ContactCard extends StatelessWidget {
-  const _ContactCard({required this.profile, this.dateOfBirth});
-
-  final CareProfile profile;
-
-  /// From the account rather than the care record — the line above shows an age
-  /// worked out from it, and an age is the one thing a patient cannot check for
-  /// mistakes. The date they can.
-  final DateTime? dateOfBirth;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final email = (profile.email ?? '').trim();
-    final address = (profile.address ?? '').trim();
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'YOUR DETAILS',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.6,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              TextButton(
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  foregroundColor: AppColors.accentOn(context),
-                ),
-                onPressed: () => context.push('/profile/edit'),
-                child: const Text(
-                  'Edit',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          for (final line in <(IconData, String)>[
-            if (dateOfBirth != null)
-              (Icons.cake_outlined, DateFormat('d MMMM yyyy').format(dateOfBirth!)),
-            if (email.isNotEmpty) (Icons.mail_outline_rounded, email),
-            if (address.isNotEmpty) (Icons.home_outlined, address),
-          ].indexed)
-            Padding(
-              padding: EdgeInsets.only(top: line.$1 == 0 ? 0 : 8),
-              child: _ContactLine(icon: line.$2.$1, value: line.$2.$2),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ContactLine extends StatelessWidget {
-  const _ContactLine({required this.icon, required this.value});
+/// One identity line under the patient's name — an icon and the value.
+///
+/// Deliberately not a card. These sit with the age and gender as part of the
+/// same block, and boxing them made the screen open with a panel of admin
+/// before any of the patient's care.
+class _IdentityLine extends StatelessWidget {
+  const _IdentityLine({required this.icon, required this.value});
 
   final IconData icon;
   final String value;
@@ -817,12 +803,15 @@ class _ContactLine extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 17, color: scheme.onSurfaceVariant),
-        const SizedBox(width: 9),
+        Padding(
+          padding: const EdgeInsets.only(top: 1.5),
+          child: Icon(icon, size: 15, color: scheme.onSurfaceVariant),
+        ),
+        const SizedBox(width: 7),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(fontSize: 14.5, height: 1.35, fontWeight: FontWeight.w500),
+            style: TextStyle(fontSize: 13.5, height: 1.35, color: scheme.onSurfaceVariant),
           ),
         ),
       ],
