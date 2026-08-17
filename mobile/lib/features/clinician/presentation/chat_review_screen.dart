@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/auto_refresh.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../shared/widgets/markdown_text.dart';
 import '../../../shared/widgets/user_avatar.dart';
@@ -69,7 +70,12 @@ class _ChatReviewScreenState extends ConsumerState<ChatReviewScreen> {
           ),
         ),
       ),
-      body: RefreshIndicator(
+      // Flagged conversations arrive while the doctor is looking at the list.
+      // The nutrition inbox beside it has always polled; this one waited for a
+      // pull, so the two tabs disagreed about how much was waiting.
+      body: AutoRefresh(
+        onTick: (ref) => ref.invalidate(chatReviewProvider(_query)),
+        child: RefreshIndicator(
         onRefresh: () async => ref.invalidate(chatReviewProvider(_query)),
         child: async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -134,6 +140,7 @@ class _ChatReviewScreenState extends ConsumerState<ChatReviewScreen> {
             );
           },
         ),
+      ),
       ),
     );
   }

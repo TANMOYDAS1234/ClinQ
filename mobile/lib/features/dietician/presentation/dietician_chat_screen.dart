@@ -10,6 +10,7 @@ import '../../../core/theme/app_spacing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../shared/widgets/chat_background.dart';
+import '../../../shared/widgets/pinned_banner.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../chat/data/chat_repository.dart';
 import '../../chat/presentation/widgets/care_composer.dart';
@@ -50,6 +51,10 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen>
 
   /// The list is reversed, so "at the latest" is offset 0.
   bool _showJump = false;
+
+  /// Which pinned message the banner is showing. Tapping cycles through them
+  /// when the dietician has pinned more than one.
+  int _pinnedIndex = 0;
 
 
   /// The other side of this conversation is a person, not a form. Without a
@@ -171,6 +176,28 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen>
     }
   }
 
+  /// The banner for whichever message is currently being shown, or null when
+  /// nothing is pinned.
+  List<Widget> _pinnedBanner(List<DietMessage> messages) {
+    final pinned = messages.where((m) => m.pinned && !m.deletedForEveryone).toList();
+    if (pinned.isEmpty) return const [];
+    final shown = pinned[_pinnedIndex.clamp(0, pinned.length - 1)];
+
+    return [
+      PinnedBanner(
+      preview: shown.content.trim().isEmpty ? 'Attachment' : shown.content.trim(),
+      count: pinned.length,
+      // No jump: this thread is a plain reversed list, so there is no reliable
+      // way to scroll to a message that has not been built. Cycling is what the
+      // tap does until the list is swapped for a positioned one.
+      onTap: pinned.length > 1
+          ? () => setState(() => _pinnedIndex = (_pinnedIndex + 1) % pinned.length)
+          : null,
+      onUnpin: () => _togglePin(shown),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -231,6 +258,9 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen>
       body: ChatBackground(
         child: Column(
           children: [
+            // Held at the top, the way the care thread holds it. A pin is worth
+            // nothing if you have to find the message again to read it.
+            ..._pinnedBanner(async.valueOrNull ?? const <DietMessage>[]),
             Expanded(
               // Floats over the thread rather than taking a row of its own — in
               // the column it covered the newest message instead of hovering

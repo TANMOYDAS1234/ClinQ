@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/auto_refresh.dart';
 import '../../../shared/widgets/chat_background.dart';
 import '../../../shared/widgets/markdown_text.dart';
 import '../../../shared/widgets/user_avatar.dart';
@@ -225,7 +226,11 @@ class _ChatReviewDetailScreenState
         ],
       ),
       resizeToAvoidBottomInset: true,
-      body: async.when(
+      // A live conversation. The doctor reading a flagged thread should see a
+      // message that arrives while they are reading it.
+      body: AutoRefresh(
+        onTick: (ref) => ref.invalidate(chatReviewDetailProvider(widget.sessionId)),
+        child: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error:
             (_, _) => Center(
@@ -324,6 +329,7 @@ class _ChatReviewDetailScreenState
             ],
           );
         },
+      ),
       ),
     );
   }

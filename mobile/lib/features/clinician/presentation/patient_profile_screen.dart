@@ -13,6 +13,7 @@ import '../domain/lab_catalog.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/auto_refresh.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/authed_image.dart';
 import '../../../shared/widgets/user_avatar.dart';
@@ -278,7 +279,17 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
       // belong. Dropping them entirely would leave the clinical record — HbA1c,
       // reports, alerts, dietician — with no route to it at all.
       appBar: AppBar(title: const Text('Patient Profile')),
-      body: async.when(
+      // The record is made of other people's actions: the patient logs a
+      // reading, the dietician sends a plan, the server finishes reading a
+      // report. A doctor with the record open should be looking at what is
+      // true now, not at what was true when they opened it.
+      body: AutoRefresh(
+        onTick: (ref) {
+          ref.invalidate(patientSummaryProvider(widget.patientId));
+          ref.invalidate(patientPrescriptionsProvider(widget.patientId));
+          ref.invalidate(patientMedicationsProvider(widget.patientId));
+        },
+        child: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error:
             (_, _) => Center(
@@ -695,6 +706,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                 ),
               ],
             ),
+      ),
       ),
     );
   }

@@ -9,6 +9,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/locale_provider.dart';
 import '../../../shared/widgets/chat_background.dart';
+import '../../../shared/widgets/pinned_banner.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/chat_message.dart';
@@ -49,6 +50,10 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
 
   /// The list is reversed, so "at the latest" is offset 0.
   bool _showJump = false;
+
+  /// Which pinned message the banner is showing. Tapping cycles through them
+  /// when more than one is pinned.
+  int _pinnedIndex = 0;
 
   /// The message being answered, shown above the composer until sent or
   /// dismissed. The care thread has always had this; the dietician thread
@@ -161,6 +166,25 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
   }
 
   /// Pins or unpins a message so it stays at the top of the thread.
+  /// The banner for whichever pinned message is showing, or nothing when none
+  /// is pinned.
+  List<Widget> _pinnedBanner(List<ChatMessage> messages) {
+    final pinned = messages.where((m) => m.pinned && !m.deletedForEveryone).toList();
+    if (pinned.isEmpty) return const [];
+    final shown = pinned[_pinnedIndex.clamp(0, pinned.length - 1)];
+
+    return [
+      PinnedBanner(
+        preview: shown.content.trim().isEmpty ? 'Attachment' : shown.content.trim(),
+        count: pinned.length,
+        onTap: pinned.length > 1
+            ? () => setState(() => _pinnedIndex = (_pinnedIndex + 1) % pinned.length)
+            : null,
+        onUnpin: () => _setPinned(shown, false),
+      ),
+    ];
+  }
+
   Future<void> _setPinned(ChatMessage m, bool pinned) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -321,6 +345,10 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
       body: ChatBackground(
         child: Column(
           children: [
+            // The same banner the care thread carries. A message the dietician
+            // pinned is one they meant the patient to keep in view, and it was
+            // scrolling away with everything else.
+            ..._pinnedBanner(async.valueOrNull ?? const <ChatMessage>[]),
             Expanded(
               // The button floats over the thread instead of sitting in the
               // column. Given a row of its own it both stole a strip of the
