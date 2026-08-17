@@ -5,7 +5,7 @@ import 'app_spacing.dart';
 
 /// Material 3 theme for MedPin.
 ///
-/// Manrope for headings, Inter for text, per the brand sheet. Both are
+/// Inter throughout. Both are
 /// bundled in assets/fonts rather than fetched at runtime.
 ///
 /// CAVEAT, and it is a real one: neither family ships Bengali or Devanagari
@@ -77,46 +77,42 @@ class AppTheme {
       scaffoldBackgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
     );
 
-    // Two families, as the brand sheet specifies: Manrope carries the
-    // headlines — it is geometric and a little wide, so a number set in it
-    // reads as a figure rather than as body copy — and Inter carries
-    // everything a clinician actually reads a sentence in.
-    //
-    // Applied as a whole-theme base first, then the per-role sizes below, so a
-    // widget that never names a style still lands in the right family.
-    final manrope = base.textTheme.apply(fontFamily: 'Manrope');
+    // One family, Inter, at every size. Two faces meant a heading and the
+    // sentence under it were drawn by different hands, which on a phone-sized
+    // card reads as inconsistency rather than as hierarchy — weight and size
+    // do that job here, and do it without a second font file in the bundle.
     final inter = base.textTheme.apply(fontFamily: 'Inter');
 
     // Minimum body text 16sp, headings 20-28sp, high contrast.
     final textTheme = inter
         .copyWith(
-          displayLarge: manrope.displayLarge,
-          displayMedium: manrope.displayMedium,
-          displaySmall: manrope.displaySmall,
-          headlineLarge: manrope.headlineLarge?.copyWith(
+          displayLarge: inter.displayLarge,
+          displayMedium: inter.displayMedium,
+          displaySmall: inter.displaySmall,
+          headlineLarge: inter.headlineLarge?.copyWith(
             fontSize: 28,
             fontWeight: FontWeight.w700,
             height: 1.25,
           ),
-          headlineMedium: manrope.headlineMedium?.copyWith(
+          headlineMedium: inter.headlineMedium?.copyWith(
             fontSize: 24,
             fontWeight: FontWeight.w700,
             height: 1.25,
           ),
-          headlineSmall: manrope.headlineSmall?.copyWith(
+          headlineSmall: inter.headlineSmall?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.w700,
             height: 1.3,
           ),
-          titleLarge: manrope.titleLarge?.copyWith(
+          titleLarge: inter.titleLarge?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
-          titleMedium: manrope.titleMedium?.copyWith(
+          titleMedium: inter.titleMedium?.copyWith(
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
-          titleSmall: manrope.titleSmall?.copyWith(
+          titleSmall: inter.titleSmall?.copyWith(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),

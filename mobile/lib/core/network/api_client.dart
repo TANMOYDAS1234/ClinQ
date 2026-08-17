@@ -184,7 +184,7 @@ class ApiClient {
 
   /// Fetches an owner-protected file's raw bytes.
   ///
-  /// Used for voice notes and documents rather than `just_audio` streaming or
+  /// Used for voice notes and documents rather than streaming or
   /// `Dio.download`: the player and any external viewer need the Authorization
   /// header, and on Android a header-bearing URL is served through a local proxy
   /// that is unreliable over HTTPS. This goes through the NORMAL request path, so

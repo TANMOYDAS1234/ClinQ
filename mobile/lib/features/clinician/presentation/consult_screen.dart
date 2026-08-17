@@ -112,12 +112,38 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
       });
       return;
     }
+    // A prescription without medicines is legitimate — a visit can end in tests,
+    // diet advice or reassurance and nothing to dispense. It is also the shape a
+    // half-finished form takes, so it is confirmed rather than blocked: the
+    // doctor is asked once, and an accidental empty prescription is caught
+    // without an intentional one being impossible.
     if (!_hasMedicine) {
-      setState(() {
-        _step = 2;
-        _error = 'Add at least one medicine before generating the prescription.';
-      });
-      return;
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('No medicines added'),
+          content: const Text(
+            'You are about to generate a prescription without any medicine. '
+            'Please confirm to continue.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Go back'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Confirm'),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) {
+        // Back to the medicines step, since that is what they came back for.
+        if (mounted) setState(() => _step = 2);
+        return;
+      }
+      if (!mounted) return;
     }
     setState(() {
       _submitting = true;
