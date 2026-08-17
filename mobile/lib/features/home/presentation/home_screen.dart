@@ -1132,11 +1132,14 @@ class _FoodLogTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
+            // Expanded, not a fixed 112. Both the photo and the caption were
+            // pinned, so nothing could absorb a shortfall and a few pixels of
+            // extra line height clipped the caption. Now the picture gives way
+            // instead — it is the part that can lose four pixels unnoticed.
+            Expanded(
+              child: Stack(
               children: [
-                SizedBox(
-                  height: 112,
-                  width: double.infinity,
+                SizedBox.expand(
                   child: log.photoUrl != null
                       ? AuthedImage(path: log.photoUrl!, fit: BoxFit.cover)
                       : Container(
@@ -1172,11 +1175,13 @@ class _FoodLogTile extends StatelessWidget {
                     ),
                   ),
               ],
+              ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     log.note.isNotEmpty ? log.note : meal,
