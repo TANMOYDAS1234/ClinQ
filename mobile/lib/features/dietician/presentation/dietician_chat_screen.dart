@@ -10,6 +10,8 @@ import '../../../core/theme/app_spacing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../shared/widgets/chat_background.dart';
+import '../../../shared/widgets/markdown_text.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../../../shared/widgets/pinned_banner.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../chat/data/chat_repository.dart';
@@ -43,7 +45,15 @@ class DieticianChatScreen extends ConsumerStatefulWidget {
 class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen>
     with WidgetsBindingObserver {
   final _controller = TextEditingController();
-  final _scroll = ScrollController();
+  /// A positioned list, not a plain one: scrolling to a message that has not
+  /// been built is something only this can do, and both the pinned banner and a
+  /// reply quote need exactly that.
+  final ItemScrollController _itemScroll = ItemScrollController();
+  final ItemPositionsListener _itemPositions = ItemPositionsListener.create();
+
+  /// Ids in the order the list draws them, so a message id can be turned into
+  /// an index without rebuilding the list to find out.
+  List<String> _order = const [];
   bool _sending = false;
 
   /// The message the dietician is quoting in their next reply.
@@ -67,7 +77,7 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen>
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(_onScroll);
+    _itemPositions.itemPositions.addListener(_onScroll);
     WidgetsBinding.instance.addObserver(this);
     _poll = Timer.periodic(_pollInterval, (_) {
       if (mounted) ref.invalidate(dietThreadProvider(widget.patientId));
@@ -82,24 +92,46 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen>
   }
 
   void _onScroll() {
-    if (!_scroll.hasClients) return;
-    final away = _scroll.offset > 220;
+    final positions = _itemPositions.itemPositions.value;
+    if (positions.isEmpty) return;
+    // Reversed list: index 0 is the newest message. Off screen means the reader
+    // has scrolled back through the thread.
+    final away = !positions.any((p) => p.index == 0);
     if (away != _showJump) setState(() => _showJump = away);
   }
 
-  void _toLatest() => _scroll.animateTo(
-    0,
-    duration: const Duration(milliseconds: 250),
-    curve: Curves.easeOut,
-  );
+  void _toLatest() {
+    if (!_itemScroll.isAttached) return;
+    _itemScroll.scrollTo(
+      index: 0,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  /// Scrolls to a message by id — from the pinned banner or a reply quote.
+  ///
+  /// Does nothing when the id is not in the loaded thread: a quote can outlive
+  /// the window of messages the screen holds, and jumping somewhere arbitrary
+  /// would be worse than not moving.
+  void _scrollToMessage(String? messageId) {
+    if (messageId == null || !_itemScroll.isAttached) return;
+    final index = _order.indexOf(messageId);
+    if (index < 0) return;
+    _itemScroll.scrollTo(
+      index: index,
+      alignment: 0.3,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   void dispose() {
     _poll?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    _scroll.removeListener(_onScroll);
+    _itemPositions.itemPositions.removeListener(_onScroll);
     _controller.dispose();
-    _scroll.dispose();
     super.dispose();
   }
 
@@ -187,12 +219,13 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen>
       PinnedBanner(
       preview: shown.content.trim().isEmpty ? 'Attachment' : shown.content.trim(),
       count: pinned.length,
-      // No jump: this thread is a plain reversed list, so there is no reliable
-      // way to scroll to a message that has not been built. Cycling is what the
-      // tap does until the list is swapped for a positioned one.
-      onTap: pinned.length > 1
-          ? () => setState(() => _pinnedIndex = (_pinnedIndex + 1) % pinned.length)
-          : null,
+      // Jump to it, and with several pinned move on to the next one.
+      onTap: () {
+        _scrollToMessage(shown.id);
+        if (pinned.length > 1) {
+          setState(() => _pinnedIndex = (_pinnedIndex + 1) % pinned.length);
+        }
+      },
       onUnpin: () => _togglePin(shown),
       ),
     ];
@@ -302,8 +335,15 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen>
                           ),
                         );
                       }
-                      return ListView.builder(
-                        controller: _scroll,
+                      // Ids in draw order, for _scrollToMessage. Set here
+                      // rather than in build so it always matches the list that
+                      // was actually rendered.
+                      _order = [
+                        for (var i = 0; i < shown.length; i++) shown[shown.length - 1 - i].id,
+                      ];
+                      return ScrollablePositionedList.builder(
+                        itemScrollController: _itemScroll,
+                        itemPositionsListener: _itemPositions,
                         reverse: true,
                         padding: const EdgeInsets.fromLTRB(
                           AppSpacing.md,
@@ -322,6 +362,9 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen>
                                     : shown
                                         .where((x) => x.id == m.replyToId)
                                         .firstOrNull,
+                            onQuoteTap: m.replyToId == null
+                                ? null
+                                : () => _scrollToMessage(m.replyToId),
                             onReply: () => setState(() => _replyingTo = m),
                             onTogglePin: () => _togglePin(m),
                             onHide: () => _hide(m),
@@ -367,6 +410,7 @@ class _Bubble extends StatelessWidget {
   const _Bubble({
     required this.message,
     this.repliedTo,
+    this.onQuoteTap,
     this.onReply,
     this.onTogglePin,
     this.onHide,
@@ -375,6 +419,9 @@ class _Bubble extends StatelessWidget {
 
   final DietMessage message;
   final DietMessage? repliedTo;
+
+  /// Goes to the message being quoted. Null when it is no longer loaded.
+  final VoidCallback? onQuoteTap;
   final VoidCallback? onReply;
   final VoidCallback? onTogglePin;
   final VoidCallback? onHide;
@@ -648,7 +695,9 @@ class _Bubble extends StatelessWidget {
                 ),
               ),
             if (repliedTo != null || message.replyPreviewContent != null)
-              Container(
+              GestureDetector(
+                onTap: onQuoteTap,
+                child: Container(
                 margin: const EdgeInsets.only(bottom: 4),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
@@ -675,6 +724,7 @@ class _Bubble extends StatelessWidget {
                     fontSize: 13,
                     color: scheme.onSurfaceVariant,
                   ),
+                ),
                 ),
               ),
             GestureDetector(
@@ -707,14 +757,18 @@ class _Bubble extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Rendered, not printed. The assistant answers in markdown
+                    // and the dietician writes lists of foods; as plain text
+                    // both arrived with their asterisks and dashes showing.
                     if (message.content.isNotEmpty)
-                      Text(
-                        message.content,
+                      MarkdownText(
+                        data: message.content,
                         style: TextStyle(
                           fontSize: 17,
                           height: 1.5,
                           color: mine ? Colors.white : scheme.onSurface,
                         ),
+                        bulletColor: mine ? Colors.white : AppColors.accentOn(context),
                       ),
                     // The meal itself, not a count of it. This is the thread the
                     // patient photographs their food into, so "1 attachment" was

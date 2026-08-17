@@ -21,6 +21,7 @@ import '../domain/diet_models.dart';
 import '../data/dietician_repository.dart';
 import 'dietician_patients_screen.dart' show dietRiskColor;
 import 'dietician_providers.dart';
+import 'widgets/plan_history_sheet.dart';
 
 /// What the dietician needs to recommend food safely: the patient's medical
 /// status and the doctor's current medicine list. Food advice is given in the
@@ -543,6 +544,29 @@ class _DietPlanSection extends ConsumerWidget {
                           'Edit plan',
                           style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
                         ),
+                      ),
+                      // History only when there is some. The endpoint returns
+                      // an empty list otherwise and a button opening an empty
+                      // sheet is a button that lies about there being something
+                      // to see.
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final past = ref.watch(dietPlanHistoryProvider(patientId)).valueOrNull;
+                          if (past == null || past.isEmpty) return const SizedBox.shrink();
+                          return TextButton.icon(
+                            onPressed: () => showPlanHistory(context, patientId),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                            icon: const Icon(Icons.history_rounded, size: 17),
+                            label: Text(
+                              past.length == 1 ? '1 previous' : '${past.length} previous',
+                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                            ),
+                          );
+                        },
                       ),
                       const Spacer(),
                       // Only offered once the patient has actually been given

@@ -9,6 +9,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/locale_provider.dart';
 import '../../../shared/widgets/chat_background.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../../../shared/widgets/pinned_banner.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/presentation/auth_controller.dart';
@@ -45,7 +46,15 @@ class NutritionChatScreen extends ConsumerStatefulWidget {
 class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
     with WidgetsBindingObserver {
   final _controller = TextEditingController();
-  final _scroll = ScrollController();
+  /// A positioned list, not a plain one: scrolling to a message that has not
+  /// been built is something only this can do, and both the pinned banner and a
+  /// reply quote need exactly that.
+  final ItemScrollController _itemScroll = ItemScrollController();
+  final ItemPositionsListener _itemPositions = ItemPositionsListener.create();
+
+  /// Ids in the order the list draws them, so a message id can be turned into
+  /// an index without rebuilding the list to find out.
+  List<String> _order = const [];
   bool _sending = false;
 
   /// The list is reversed, so "at the latest" is offset 0.
@@ -105,7 +114,7 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(_onScroll);
+    _itemPositions.itemPositions.addListener(_onScroll);
     WidgetsBinding.instance.addObserver(this);
     _poll = Timer.periodic(_pollInterval, (_) {
       if (mounted) ref.invalidate(nutritionThreadProvider);
@@ -122,24 +131,46 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
   }
 
   void _onScroll() {
-    if (!_scroll.hasClients) return;
-    final away = _scroll.offset > 220;
+    final positions = _itemPositions.itemPositions.value;
+    if (positions.isEmpty) return;
+    // Reversed list: index 0 is the newest message. Off screen means the reader
+    // has scrolled back through the thread.
+    final away = !positions.any((p) => p.index == 0);
     if (away != _showJump) setState(() => _showJump = away);
   }
 
-  void _toLatest() => _scroll.animateTo(
-    0,
-    duration: const Duration(milliseconds: 250),
-    curve: Curves.easeOut,
-  );
+  void _toLatest() {
+    if (!_itemScroll.isAttached) return;
+    _itemScroll.scrollTo(
+      index: 0,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  /// Scrolls to a message by id — from the pinned banner or a reply quote.
+  ///
+  /// Does nothing when the id is not in the loaded thread: a quote can outlive
+  /// the window of messages the screen holds, and jumping somewhere arbitrary
+  /// would be worse than not moving.
+  void _scrollToMessage(String? messageId) {
+    if (messageId == null || !_itemScroll.isAttached) return;
+    final index = _order.indexOf(messageId);
+    if (index < 0) return;
+    _itemScroll.scrollTo(
+      index: index,
+      alignment: 0.3,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   void dispose() {
     _poll?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    _scroll.removeListener(_onScroll);
+    _itemPositions.itemPositions.removeListener(_onScroll);
     _controller.dispose();
-    _scroll.dispose();
     super.dispose();
   }
 
@@ -177,9 +208,14 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
       PinnedBanner(
         preview: shown.content.trim().isEmpty ? 'Attachment' : shown.content.trim(),
         count: pinned.length,
-        onTap: pinned.length > 1
-            ? () => setState(() => _pinnedIndex = (_pinnedIndex + 1) % pinned.length)
-            : null,
+        // Jump to it, and with several pinned move on to the next one — the
+        // same two-in-one tap the care thread has.
+        onTap: () {
+          _scrollToMessage(shown.id);
+          if (pinned.length > 1) {
+            setState(() => _pinnedIndex = (_pinnedIndex + 1) % pinned.length);
+          }
+        },
         onUnpin: () => _setPinned(shown, false),
       ),
     ];
@@ -432,8 +468,15 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
                           ),
                         );
                       }
-                      return ListView.builder(
-                        controller: _scroll,
+                      // Ids in draw order, for _scrollToMessage. Set here
+                      // rather than in build so it always matches the list that
+                      // was actually rendered.
+                      _order = [
+                        for (var i = 0; i < shown.length; i++) shown[shown.length - 1 - i].id,
+                      ];
+                      return ScrollablePositionedList.builder(
+                        itemScrollController: _itemScroll,
+                        itemPositionsListener: _itemPositions,
                         reverse: true,
                         padding: const EdgeInsets.fromLTRB(
                           AppSpacing.md,
@@ -449,6 +492,10 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
                             onReply: () => setState(() => _replyingTo = m),
                             onTogglePin: () => _setPinned(m, !m.pinned),
                             onHide: () => _hide(m),
+                            // Tapping the quote goes to what was answered.
+                            onQuoteTap: m.replyToId == null
+                                ? null
+                                : () => _scrollToMessage(m.replyToId),
                             // Delete-for-everyone only on the patient's own turns.
                             onDeleteForEveryone:
                                 m.isUser ? () => _deleteForEveryone(m) : null,

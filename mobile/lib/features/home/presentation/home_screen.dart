@@ -1542,15 +1542,30 @@ class _CardHeader extends StatelessWidget {
         ),
         if (trailing != null)
           trailing!
+        // The icon is drawn only where it says something the word does not —
+        // "+" for Add, an upload mark for Upload. "View all" was getting a
+        // generic arrow purely because the slot existed, and a decoration
+        // nobody asked for is what makes a section look cheap.
         else if (actionLabel != null && onAction != null)
-          TextButton.icon(
+          TextButton(
             onPressed: onAction,
-            icon: Icon(actionIcon ?? Icons.arrow_forward_rounded, size: 18),
-            label: Text(actionLabel!),
             style: TextButton.styleFrom(
               foregroundColor: accent,
               padding: const EdgeInsets.symmetric(horizontal: 8),
               visualDensity: VisualDensity.compact,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (actionIcon != null) ...[
+                  Icon(actionIcon, size: 18),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  actionLabel!,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ],
             ),
           ),
       ],
