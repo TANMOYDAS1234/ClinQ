@@ -45,6 +45,23 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
 
+            // Almost the whole APK is the Flutter engine, shipped once per CPU
+            // architecture: 20.7 MB for arm64, 18.9 for 32-bit ARM and 22.2 for
+            // x86_64, against 3.5 MB for everything this app actually is.
+            //
+            // x86_64 is emulators only — no phone runs it — so a release build
+            // carrying it posts 22 MB to every patient for nobody's benefit.
+            // Both ARM slices stay: arm64 for anything current, armeabi-v7a
+            // because budget handsets in this clinic's market are still 32-bit,
+            // and locking them out to save space is not a trade worth making.
+            //
+            // Debug builds keep every architecture so an x86_64 emulator on a
+            // development machine still runs.
+            ndk {
+                abiFilters.clear()
+                abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+            }
+
             // R8 runs on release builds. Without these rules it strips the
             // generic signatures Gson needs and flutter_local_notifications
             // throws on every read of its scheduled-notification store — which
