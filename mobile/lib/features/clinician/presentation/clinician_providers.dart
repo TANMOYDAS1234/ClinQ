@@ -8,6 +8,7 @@ import '../domain/chat_review.dart';
 import '../domain/clinician_models.dart';
 import '../domain/knowledge_chunk.dart';
 import '../domain/patient_summary.dart';
+import '../../../shared/widgets/notification_list_sheet.dart';
 
 /// Dashboard headline numbers.
 final overviewProvider = FutureProvider.autoDispose<ClinicOverview>((ref) {
@@ -131,3 +132,9 @@ final knowledgeProvider = FutureProvider.autoDispose
             limit: 100,
           );
     });
+
+/// Everything waiting for the doctor, for the bell and its sheet.
+final clinicianNotificationsProvider =
+    FutureProvider.autoDispose<({int unread, List<PanelNotification> items})>(
+  (ref) => ref.watch(clinicianRepositoryProvider).notifications(),
+);

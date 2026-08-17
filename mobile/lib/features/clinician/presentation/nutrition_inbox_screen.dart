@@ -12,6 +12,7 @@ import '../../auth/presentation/auth_controller.dart';
 import '../domain/chat_review.dart';
 import 'clinician_providers.dart';
 import 'widgets/panel_ui.dart';
+import 'widgets/clinician_notification_sheet.dart';
 
 /// The doctor's Nutrition tab: every dietician↔patient conversation as an inbox,
 /// built to read exactly like the Patients tab — a brand header carrying the
@@ -273,7 +274,7 @@ class _InboxHeader extends ConsumerWidget {
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
-          PanelNotificationBell(onTap: () => context.push('/clinician/alerts')),
+          PanelNotificationBell(onTap: () => showClinicianNotifications(context)),
           const SizedBox(width: 4),
           GestureDetector(
             // `go`, not `push`: Profile is one of this shell's own tabs, so

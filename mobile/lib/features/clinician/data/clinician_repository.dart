@@ -10,10 +10,31 @@ import '../domain/chat_review.dart';
 import '../domain/clinician_models.dart';
 import '../domain/knowledge_chunk.dart';
 import '../domain/patient_summary.dart';
+import '../../../shared/widgets/notification_list_sheet.dart';
 
 /// Talks to `/doctor/*` — the clinician (doctor + staff) API: dashboard
 /// overview, the patient directory, and clinical-alert triage.
 class ClinicianRepository {
+
+  /// Everything waiting for the doctor: open alerts, unread patient messages
+  /// across both threads, and conversations flagged for review.
+  Future<({int unread, List<PanelNotification> items})> notifications() async {
+    final json = await _client.getJson('/doctor/notifications');
+    return (
+      unread: (json['unread'] as num?)?.toInt() ?? 0,
+      items: (json['items'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(PanelNotification.fromJson)
+          .toList(),
+    );
+  }
+
+  /// Marks patient messages as seen — on opening the list, so the badge clears
+  /// because somebody looked. Alerts are untouched: those close when the doctor
+  /// acts on them.
+  Future<void> markNotificationsSeen() async {
+    await _client.postJson('/doctor/notifications/seen');
+  }
   ClinicianRepository(this._client);
 
   final ApiClient _client;

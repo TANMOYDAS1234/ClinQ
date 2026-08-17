@@ -13,6 +13,7 @@ import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
 import 'widgets/panel_ui.dart';
 import 'widgets/clinic_analytics.dart';
+import 'widgets/clinician_notification_sheet.dart';
 
 /// The doctor's home: the clinic at a glance — headline counts, what is on
 /// today, the alerts that need attention, the live triage queue, and the
@@ -193,7 +194,7 @@ class _DashboardHeader extends ConsumerWidget {
             ),
           ),
           const Spacer(),
-          PanelNotificationBell(onTap: () => context.push('/clinician/alerts')),
+          PanelNotificationBell(onTap: () => showClinicianNotifications(context)),
           const SizedBox(width: 4),
           GestureDetector(
             // `go`, not `push`: Profile is one of this shell's own tabs, so

@@ -21,6 +21,7 @@ import '../../profile/presentation/widgets/theme_selector.dart';
 import '../../../shared/widgets/authed_image.dart';
 import 'widgets/panel_ui.dart';
 import '../../../shared/providers/theme_provider.dart';
+import 'widgets/clinician_notification_sheet.dart';
 
 /// Full profile for doctor and staff — the clinician counterpart of the patient
 /// [ProfileScreen]: avatar, edit details, appearance, language, app lock, a
@@ -279,7 +280,7 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
           // The same counted bell as the other three tabs. A bell that shows a
           // number on Home and no number here reads as "nothing waiting" on
           // whichever screen the doctor happens to be looking at.
-          PanelNotificationBell(onTap: () => context.push('/clinician/alerts')),
+          PanelNotificationBell(onTap: () => showClinicianNotifications(context)),
           const SizedBox(width: 4),
         ],
       ),

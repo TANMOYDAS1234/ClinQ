@@ -69,6 +69,15 @@ class ClinicOverview {
   /// urgent ones would leave a badge that says 0 above a screen with rows in it.
   int get openAlertsTotal => emergencyAlerts + urgentAlerts + warningAlerts;
 
+  /// Everything actually waiting for the doctor — what the bell should say.
+  ///
+  /// Alerts alone left the badge reading zero while patients waited for a
+  /// reply, because unread messages only ever showed as cards on Home. A bell
+  /// that means "alerts only" while looking like "everything" gets misread.
+  /// `unreadMessages` already includes the nutrition ones, so they are not
+  /// added twice.
+  int get waitingTotal => openAlertsTotal + unreadMessages + pendingReviews;
+
   factory ClinicOverview.fromJson(Map<String, dynamic> j) {
     final alerts = j['openAlerts'] as Map<String, dynamic>? ?? const {};
     final risk = j['riskDistribution'] as Map<String, dynamic>? ?? const {};

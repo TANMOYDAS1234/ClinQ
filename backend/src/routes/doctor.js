@@ -58,6 +58,106 @@ let analyticsCache = { key: null, at: 0, data: null };
 // Overview
 // ---------------------------------------------------------------------------
 
+/**
+ * Everything waiting for the doctor, newest first.
+ *
+ * The bell used to count clinical alerts alone, while the overview endpoint was
+ * already computing three other things a doctor is waiting on — unread care
+ * messages, unread nutrition messages, and conversations flagged for review.
+ * Those showed as cards on Home, so standing on any other tab the bell read
+ * zero while patients waited for a reply. A bell that means "alerts only" but
+ * looks like "everything" is a bell that gets misread.
+ *
+ * Ordered by what should be answered first: alerts, then the messages behind
+ * them, then flagged reviews, which keep.
+ */
+router.get(
+  '/notifications',
+  asyncHandler(async (req, res) => {
+    const face = (u) => ({
+      patientId: u ? String(u._id) : '',
+      patientName: u?.name ?? 'Unknown patient',
+      avatarUrl: u?.avatarAssetId ? `/api/v1/uploads/${u.avatarAssetId}/raw` : null,
+    });
+
+    const [alerts, sessions, flagged] = await Promise.all([
+      ClinicalAlert.find({ status: 'open' })
+        .sort({ createdAt: -1 })
+        .limit(30)
+        .populate('patient', 'name avatarAssetId')
+        .lean(),
+      ChatSession.find({ isArchived: false }).select('_id kind patient').lean(),
+      ChatSession.find({ flaggedForReview: true, isArchived: false })
+        .sort({ lastMessageAt: -1 })
+        .limit(20)
+        .populate('patient', 'name avatarAssetId')
+        .lean(),
+    ]);
+
+    const kindBySession = new Map(sessions.map((x) => [String(x._id), x.kind ?? 'care']));
+
+    const unread = await ChatMessage.find({ role: 'user', seenByClinicAt: null })
+      .sort({ createdAt: -1 })
+      .limit(40)
+      .populate('patient', 'name avatarAssetId')
+      .select('patient content createdAt session')
+      .lean();
+
+    const items = [
+      ...alerts.map((a) => ({
+        id: String(a._id),
+        // Severity rides in the kind so the row can colour itself without a
+        // second field the client has to interpret.
+        kind: a.severity === 'emergency' || a.severity === 'urgent' ? 'urgent' : 'alert',
+        ...face(a.patient),
+        text: a.title ?? 'Clinical alert',
+        at: a.createdAt,
+        unread: true,
+      })),
+      ...unread.map((m) => {
+        const text = (m.content ?? '').trim();
+        return {
+          id: String(m._id),
+          kind: kindBySession.get(String(m.session)) === 'nutrition' ? 'nutrition' : 'message',
+          ...face(m.patient),
+          text: text.length > 0 ? text.slice(0, 200) : 'Sent an attachment',
+          at: m.createdAt,
+          unread: true,
+        };
+      }),
+      ...flagged.map((f) => ({
+        id: `review-${String(f._id)}`,
+        kind: 'review',
+        ...face(f.patient),
+        text: 'Conversation flagged for review',
+        at: f.lastMessageAt ?? null,
+        unread: false,
+      })),
+    ];
+
+    res.json({ unread: items.filter((i) => i.unread).length, items: items.slice(0, 60) });
+  }),
+);
+
+/**
+ * Marks patient messages across every thread as seen.
+ *
+ * Called when the doctor opens the list, never when something arrives: a badge
+ * that clears on delivery is a badge that clears for nobody. Alerts are not
+ * touched — those close when the doctor acts on them, which is a clinical
+ * decision, not a side effect of glancing at a list.
+ */
+router.post(
+  '/notifications/seen',
+  asyncHandler(async (req, res) => {
+    const result = await ChatMessage.updateMany(
+      { role: 'user', seenByClinicAt: null },
+      { $set: { seenByClinicAt: new Date() } },
+    );
+    res.json({ cleared: result.modifiedCount ?? 0 });
+  }),
+);
+
 router.get(
   '/overview',
   asyncHandler(async (req, res) => {

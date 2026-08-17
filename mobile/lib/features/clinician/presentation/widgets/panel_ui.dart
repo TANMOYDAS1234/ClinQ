@@ -263,13 +263,13 @@ class PanelNotificationBell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final count = ref.watch(overviewProvider).valueOrNull?.openAlertsTotal ?? 0;
+    final count = ref.watch(overviewProvider).valueOrNull?.waitingTotal ?? 0;
 
     return Stack(
       clipBehavior: Clip.none,
       children: [
         IconButton(
-          tooltip: count == 0 ? 'Alerts' : '$count open alerts',
+          tooltip: count == 0 ? 'Notifications' : '$count waiting',
           onPressed: onTap,
           icon: Icon(Icons.notifications_none_rounded, size: 24, color: scheme.onSurfaceVariant),
           visualDensity: VisualDensity.compact,
