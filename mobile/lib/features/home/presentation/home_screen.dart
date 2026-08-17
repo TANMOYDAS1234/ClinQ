@@ -153,6 +153,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         ].join('  •  '),
                         style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
                       ),
+                      // Straight under the name, age and gender, because it is
+                      // the same thing: who this record belongs to. Lower down
+                      // it sat between clinical sections, where a patient
+                      // scanning for their care details had no reason to look
+                      // and so never noticed a stale address.
+                      if ((care.profile.email ?? '').isNotEmpty ||
+                          (care.profile.address ?? '').isNotEmpty ||
+                          user?.dateOfBirth != null) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        _ContactCard(profile: care.profile, dateOfBirth: user?.dateOfBirth),
+                      ],
+
                       const SizedBox(height: AppSpacing.lg),
 
                       _FactGrid(care: care),
@@ -170,15 +182,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                       if (care.profile.allergies.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.md),
                         _Allergies(items: care.profile.allergies),
-                      ],
-
-                      // Contact details the clinic holds. Shown so the patient
-                      // notices a stale address or a mistyped email here rather
-                      // than when a report fails to reach them.
-                      if ((care.profile.email ?? '').isNotEmpty ||
-                          (care.profile.address ?? '').isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.md),
-                        _ContactCard(profile: care.profile),
                       ],
 
                       if (care.dietPlan != null) ...[
@@ -362,15 +365,13 @@ class _FactGrid extends StatelessWidget {
       // thing on this screen: "when do I come back?".
       if (care.followUpOn != null)
         _FactCard(label: 'Next Visit', value: DateFormat('d MMM yyyy').format(care.followUpOn!)),
-      if (p.bmi != null || p.weightKg != null || p.heightCm != null)
-        _FactCard(
-          label: 'BMI / Wt / Ht',
-          value: [
-            if (p.bmi != null) '${p.bmi}',
-            if (p.weightKg != null) '${p.weightKg}kg',
-            if (p.heightCm != null) '${p.heightCm}cm',
-          ].join(' / '),
-        ),
+      // One measurement per tile. Crammed into a single "BMI / Wt / Ht" cell the
+      // value wrapped onto a second line, which made that row taller than the
+      // one beside it and broke the grid — and three numbers separated by
+      // slashes is a thing to decode rather than read.
+      if (p.bmi != null) _FactCard(label: 'BMI', value: '${p.bmi}'),
+      if (p.weightKg != null) _FactCard(label: 'Weight', value: '${p.weightKg} kg'),
+      if (p.heightCm != null) _FactCard(label: 'Height', value: '${p.heightCm} cm'),
       if (p.bloodPressure != null)
         _FactCard(
           label: 'Blood Pressure',
@@ -397,16 +398,23 @@ class _FactGrid extends StatelessWidget {
       children: [
         for (var i = 0; i < tiles.length; i += 2) ...[
           if (i > 0) const SizedBox(height: AppSpacing.sm),
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: tiles[i]),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(child: i + 1 < tiles.length ? tiles[i + 1] : const SizedBox.shrink()),
-              ],
+          // An odd tile at the end takes the whole width rather than leaving a
+          // half-row of nothing beside it. Which fact happens to be last
+          // depends on what the record holds, so the grid has to close itself
+          // tidily whatever it is given.
+          if (i + 1 >= tiles.length)
+            SizedBox(width: double.infinity, child: tiles[i])
+          else
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: tiles[i]),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(child: tiles[i + 1]),
+                ],
+              ),
             ),
-          ),
         ],
       ],
     );
@@ -727,9 +735,14 @@ class _FullPlanSheet extends StatelessWidget {
 
 /// Email and address as the clinic has them, with a way to correct them.
 class _ContactCard extends StatelessWidget {
-  const _ContactCard({required this.profile});
+  const _ContactCard({required this.profile, this.dateOfBirth});
 
   final CareProfile profile;
+
+  /// From the account rather than the care record — the line above shows an age
+  /// worked out from it, and an age is the one thing a patient cannot check for
+  /// mistakes. The date they can.
+  final DateTime? dateOfBirth;
 
   @override
   Widget build(BuildContext context) {
@@ -776,11 +789,16 @@ class _ContactCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          if (email.isNotEmpty)
-            _ContactLine(icon: Icons.mail_outline_rounded, value: email),
-          if (email.isNotEmpty && address.isNotEmpty) const SizedBox(height: 8),
-          if (address.isNotEmpty)
-            _ContactLine(icon: Icons.home_outlined, value: address),
+          for (final line in <(IconData, String)>[
+            if (dateOfBirth != null)
+              (Icons.cake_outlined, DateFormat('d MMMM yyyy').format(dateOfBirth!)),
+            if (email.isNotEmpty) (Icons.mail_outline_rounded, email),
+            if (address.isNotEmpty) (Icons.home_outlined, address),
+          ].indexed)
+            Padding(
+              padding: EdgeInsets.only(top: line.$1 == 0 ? 0 : 8),
+              child: _ContactLine(icon: line.$2.$1, value: line.$2.$2),
+            ),
         ],
       ),
     );
@@ -1041,7 +1059,11 @@ class _FoodLogs extends StatelessWidget {
             icon: Icons.photo_camera_rounded,
             title: 'Recent Food Logs',
             actionLabel: items.isEmpty ? null : 'View all',
-            onAction: items.isEmpty ? null : () => context.go('/food-log'),
+            // The meal history, not the dietician thread. Logging happens in
+            // the conversation, so "Log a meal" below rightly opens it — but
+            // "View all" next to a row of past meals means show me the rest of
+            // them, and dropping the patient into a chat is not that.
+            onAction: items.isEmpty ? null : () => context.push('/food-log/history'),
           ),
           if (items.isEmpty)
             Padding(
