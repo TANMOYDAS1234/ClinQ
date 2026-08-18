@@ -12,7 +12,6 @@ import '../../auth/presentation/auth_controller.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
 import 'widgets/panel_ui.dart';
-import 'widgets/sparkline.dart';
 import 'widgets/clinician_notification_sheet.dart';
 
 /// The clinician's inbox.
@@ -568,124 +567,39 @@ class _ConversationRow extends StatelessWidget {
                       ],
                     ],
                   ),
-                  if (emergency) ...[
+                  // Status tags only — "Needs attention" and "Check-in due" flow
+                  // onto one line (wrapping if a narrow phone needs it), and only
+                  // the ones that apply are shown.
+                  if (emergency || patient.checkInOverdue) ...[
                     const SizedBox(height: 8),
-                    _Chip(
-                      label: 'Needs attention',
-                      fg: AppColors.dangerOn(context),
-                      bg: AppColors.dangerBgOn(context),
-                      icon: Icons.priority_high_rounded,
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (emergency)
+                          _Chip(
+                            label: 'Needs attention',
+                            fg: AppColors.dangerOn(context),
+                            bg: AppColors.dangerBgOn(context),
+                            icon: Icons.priority_high_rounded,
+                          ),
+                        if (patient.checkInOverdue)
+                          _Chip(
+                            label: 'Check-in due',
+                            fg: AppColors.warningOn(context),
+                            bg: AppColors.warningBgOn(context),
+                            icon: Icons.schedule_rounded,
+                          ),
+                      ],
                     ),
                   ],
-                  _MonitorStrip(patient: patient),
                 ],
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-class _MonitorStrip extends StatelessWidget {
-  const _MonitorStrip({required this.patient});
-
-  final PatientListItem patient;
-
-  /// `today`, `1d ago`, `5d ago`, `3w ago`.
-  String _ago(DateTime at) {
-    final days = DateTime.now().difference(at).inDays;
-    if (days <= 0) return 'today';
-    if (days == 1) return '1d ago';
-    if (days < 21) return '${days}d ago';
-    return '${(days / 7).round()}w ago';
-  }
-
-  static Color _hba1cColor(num v, BuildContext c) =>
-      v >= 9 ? AppColors.dangerOn(c) : (v >= 7 ? AppColors.warningOn(c) : AppColors.successOn(c));
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final hba1c = patient.hba1c;
-    final overdue = patient.checkInOverdue;
-    final hasGlucoseSpark = patient.spark.length >= 2;
-    final lastGlucose = patient.lastReadingAt;
-
-    // Nothing to show yet — keep the row clean.
-    if (hba1c == null && !hasGlucoseSpark && lastGlucose == null && !overdue) {
-      return const SizedBox.shrink();
-    }
-
-    final children = <Widget>[];
-    if (hba1c != null) {
-      // The doctor's anchor: HbA1c, coloured by control, with a mini-trend.
-      final color = _hba1cColor(hba1c, context);
-      // The trend line is GLUCOSE, not HbA1c. HbA1c is measured every few months,
-      // so it can't form a line; and its 5-9% values fed into a glucose-scaled
-      // chart drew the 70-180 target band as a grey block above a crushed line.
-      // Glucose is exactly what that band is for, so it reads correctly here —
-      // while HbA1c stays the headline number beside it.
-      if (patient.spark.length >= 2) {
-        children.add(Sparkline(values: patient.spark, color: color, width: 56, height: 22));
-      }
-      children.add(Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.science_rounded, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text('HbA1c ', style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
-          Text('${hba1c.toStringAsFixed(1)}%', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
-          if (patient.hba1cAt != null)
-            Text('  ·  ${_ago(patient.hba1cAt!)}', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
-        ],
-      ));
-    } else {
-      // No HbA1c yet — fall back to the recent glucose signal so nothing is lost.
-      final trendColor = switch (patient.trend) {
-        'up' => AppColors.warningOn(context),
-        'down' => AppColors.successOn(context),
-        _ => scheme.onSurfaceVariant,
-      };
-      final trendIcon = switch (patient.trend) {
-        'up' => Icons.trending_up_rounded,
-        'down' => Icons.trending_down_rounded,
-        _ => Icons.trending_flat_rounded,
-      };
-      if (hasGlucoseSpark) {
-        children.add(Sparkline(values: patient.spark, color: AppColors.accentOn(context), width: 60, height: 22));
-      }
-      if (patient.lastReadingValue != null) {
-        children.add(Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(trendIcon, size: 15, color: trendColor),
-            const SizedBox(width: 3),
-            Text('${patient.lastReadingValue!.round()}',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: scheme.onSurface)),
-            Text(' mg/dL', style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
-            if (lastGlucose != null)
-              Text('  ·  ${_ago(lastGlucose)}', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
-          ],
-        ));
-      } else if (lastGlucose != null) {
-        children.add(Text(_ago(lastGlucose), style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)));
-      }
-    }
-    if (overdue) {
-      children.add(_Chip(
-        label: 'Check-in due',
-        fg: AppColors.warningOn(context),
-        bg: AppColors.warningBgOn(context),
-        icon: Icons.schedule_rounded,
-      ));
-    }
-
-    // A Wrap so the sparkline + value + "due" chip flow onto a second line on a
-    // narrow phone rather than clipping.
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Wrap(spacing: 10, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: children),
     );
   }
 }

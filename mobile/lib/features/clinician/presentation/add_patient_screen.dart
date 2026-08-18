@@ -38,8 +38,10 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   final _sugar = TextEditingController();
   final _spo2 = TextEditingController();
   final _complaints = TextEditingController();
+  final _password = TextEditingController();
 
   String? _gender;
+  bool _obscure = true;
   bool _submitting = false;
   String? _error;
 
@@ -58,6 +60,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
       _sugar,
       _spo2,
       _complaints,
+      _password,
     ]) {
       c.dispose();
     }
@@ -80,6 +83,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
       final id = await ref.read(clinicianRepositoryProvider).createPatient(
             name: _name.text.trim(),
             phone: AuthValidators.toE164(_phone.text),
+            password: _password.text.trim(),
             age: _int(_age),
             gender: _gender,
             address: _address.text.trim(),
@@ -200,6 +204,26 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                   prefixIcon: Icon(Icons.home_outlined),
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter the address' : null,
+              ),
+
+              const SizedBox(height: AppSpacing.lg),
+              const _SectionLabel('Patient app login'),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                controller: _password,
+                obscureText: _obscure,
+                decoration: InputDecoration(
+                  labelText: 'Set a password',
+                  helperText: 'The patient signs in with their phone number and this password — share it with them.',
+                  helperMaxLines: 2,
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                    tooltip: _obscure ? 'Show password' : 'Hide password',
+                    onPressed: () => setState(() => _obscure = !_obscure),
+                  ),
+                ),
+                validator: (v) => ((v ?? '').trim().length < 8) ? 'At least 8 characters' : null,
               ),
 
               const SizedBox(height: AppSpacing.lg),
