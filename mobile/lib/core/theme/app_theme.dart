@@ -116,10 +116,16 @@ class AppTheme {
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
-          bodyLarge: base.textTheme.bodyLarge?.copyWith(fontSize: 17, height: 1.4),
-          bodyMedium: base.textTheme.bodyMedium?.copyWith(fontSize: 16, height: 1.4),
-          bodySmall: base.textTheme.bodySmall?.copyWith(fontSize: 14, height: 1.35),
-          labelLarge: base.textTheme.labelLarge?.copyWith(
+          // These four resize from `inter`, not from `base`, or they arrive
+          // with no family at all and Android draws them in Roboto. It is a
+          // quiet way to lose: a bare Text() resolves to bodyMedium and a
+          // button label to labelLarge, so those two alone are most of the
+          // words on screen — the headings would be Inter and the sentences
+          // under them would not.
+          bodyLarge: inter.bodyLarge?.copyWith(fontSize: 17, height: 1.4),
+          bodyMedium: inter.bodyMedium?.copyWith(fontSize: 16, height: 1.4),
+          bodySmall: inter.bodySmall?.copyWith(fontSize: 14, height: 1.35),
+          labelLarge: inter.labelLarge?.copyWith(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
