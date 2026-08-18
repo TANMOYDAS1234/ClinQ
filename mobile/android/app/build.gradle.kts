@@ -6,6 +6,21 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// `flutter build apk --split-per-abi` reaches Gradle as this property. It makes
+// the Flutter plugin configure `splits.abi`, and AGP refuses to have that and
+// `ndk.abiFilters` set at the same time — so the two ways of keeping x86_64 out
+// of a release build have to be mutually exclusive. See the release block.
+//
+// A split build therefore has to name the architectures itself:
+//
+//   flutter build apk --release --split-per-abi \
+//     --target-platform android-arm,android-arm64 \
+//     --obfuscate --split-debug-info=build/symbols
+//
+// Without --target-platform the Flutter tool also expects an x86_64 APK and
+// exits non-zero when Gradle does not produce one.
+val splitPerAbi = (project.findProperty("split-per-abi") as String?).toBoolean()
+
 android {
     namespace = "com.akdcare.akd_care"
     compileSdk = flutter.compileSdkVersion
@@ -55,11 +70,13 @@ android {
             // because budget handsets in this clinic's market are still 32-bit,
             // and locking them out to save space is not a trade worth making.
             //
-            // Debug builds keep every architecture so an x86_64 emulator on a
-            // development machine still runs.
-            ndk {
-                abiFilters.clear()
-                abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+            // A split build drops x86_64 through `splits` above instead, and
+            // AGP will not accept both mechanisms at once.
+            if (!splitPerAbi) {
+                ndk {
+                    abiFilters.clear()
+                    abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+                }
             }
 
             // R8 runs on release builds. Without these rules it strips the

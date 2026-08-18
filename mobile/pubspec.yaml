@@ -2,7 +2,11 @@ name: akd_care
 description: "MedPin — care connected. Clinical app for Dr. Amit Kumar Dey, Consultant Physician & Diabetologist."
 publish_to: 'none'
 
-version: 1.0.0+1
+# Bump the build number on every release you hand to a phone. Android refuses
+# to install over a higher versionCode, and a split build adds an ABI offset on
+# top of this number (armeabi-v7a +1000, arm64-v8a +2000) — so a plain
+# universal build always ranks below a split one of the same version.
+version: 1.0.0+2005
 
 environment:
   sdk: ^3.7.2
@@ -98,6 +102,26 @@ flutter:
   #
   # A variable font: one file carries every weight, so there is nothing to add
   # per weight here.
+  #
+  # Subset to the scripts this app actually renders. Upstream Inter carries
+  # 2849 codepoints — Cyrillic, Greek, IPA, Vietnamese and ~744 private-use
+  # stylistic alternates — none of which any of the three locales reach. Both
+  # variable axes (opsz, wght) survive the cut, so every weight still resolves.
+  # Bengali and Hindi are unaffected: Inter never had those glyphs, and they
+  # fall back to the system font exactly as before.
+  #
+  # To regenerate after a font upgrade (fonttools, from the mobile/ directory):
+  #
+  #   python -m fontTools.subset <upstream-Inter.ttf> \
+  #     --unicodes="U+0020-007E,U+00A0-00FF,U+0100-017F,U+0300-036F,\
+  #                 U+2000-206F,U+2070-209F,U+20A0-20BF,U+2100-2138,\
+  #                 U+2190-21FF,U+2200-22FF,U+25A0-25FF,U+2713-2717,U+FEFF" \
+  #     --layout-features='*' --name-IDs='*' --recalc-bounds \
+  #     --output-file=assets/fonts/Inter.ttf
+  #
+  # The ranges are deliberately wider than today's strings: Latin-1 and
+  # Extended-A so an accented patient name renders, currency for the rupee,
+  # subscripts for SpO₂, and the maths block for the ≥ and × in dose text.
   fonts:
     - family: Inter
       fonts:

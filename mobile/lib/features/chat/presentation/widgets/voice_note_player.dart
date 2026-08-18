@@ -163,8 +163,11 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
       } catch (_) {}
       if (mounted) {
         setState(() => _loading = false);
+        // The exception type used to be printed here. It meant nothing to a
+        // patient even unobfuscated, and the release build now renames Dart
+        // symbols, so it would read as a mangled letter or two.
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not play (${e.runtimeType})')),
+          const SnackBar(content: Text('Could not play this voice note')),
         );
       }
     }

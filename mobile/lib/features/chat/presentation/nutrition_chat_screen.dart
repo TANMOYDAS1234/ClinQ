@@ -373,7 +373,7 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
           IconButton(
             tooltip: 'Meal history',
             onPressed: () => context.push('/food-log/history'),
-            icon: const Icon(Icons.photo_library_outlined),
+            icon: const _MealLogIcon(),
           ),
           const SizedBox(width: 4),
         ],
@@ -559,6 +559,50 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The Meal history button: a log book badged with a fork and knife — a record
+/// *of food*, which is what the screen behind it is.
+///
+/// It has to be a composition rather than one glyph. `restaurant_menu` is the
+/// obvious food icon, but the bottom bar already spends it on the Dietician tab
+/// itself, so reusing it here would read as "you are here" rather than as a way
+/// through to the log. A plain photo library, which this was, says pictures and
+/// says nothing about meals.
+class _MealLogIcon extends StatelessWidget {
+  const _MealLogIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    // The badge sits on a disc of the bar's own colour so the fork reads as a
+    // separate mark instead of merging into the book's edge.
+    final barColor = Theme.of(context).appBarTheme.backgroundColor ??
+        Theme.of(context).colorScheme.surface;
+
+    return SizedBox(
+      width: 24,
+      height: 24,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Positioned(
+            left: 0,
+            top: 1,
+            child: Icon(Icons.menu_book_rounded, size: 22),
+          ),
+          Positioned(
+            right: -2,
+            bottom: -2,
+            child: Container(
+              padding: const EdgeInsets.all(1.5),
+              decoration: BoxDecoration(color: barColor, shape: BoxShape.circle),
+              child: const Icon(Icons.restaurant_rounded, size: 11),
+            ),
+          ),
+        ],
       ),
     );
   }
