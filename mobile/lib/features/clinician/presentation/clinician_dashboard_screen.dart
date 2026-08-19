@@ -11,6 +11,7 @@ import '../../auth/presentation/auth_controller.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../domain/clinician_models.dart';
 import 'clinician_providers.dart';
+import '../../../shared/widgets/hero_band.dart';
 import 'widgets/panel_ui.dart';
 import 'widgets/clinic_analytics.dart';
 import 'widgets/clinician_notification_sheet.dart';
@@ -26,10 +27,12 @@ class ClinicianDashboardScreen extends ConsumerStatefulWidget {
   const ClinicianDashboardScreen({super.key});
 
   @override
-  ConsumerState<ClinicianDashboardScreen> createState() => _ClinicianDashboardScreenState();
+  ConsumerState<ClinicianDashboardScreen> createState() =>
+      _ClinicianDashboardScreenState();
 }
 
-class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScreen>
+class _ClinicianDashboardScreenState
+    extends ConsumerState<ClinicianDashboardScreen>
     with WidgetsBindingObserver {
   Timer? _poll;
 
@@ -71,8 +74,11 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
     // spinner every twenty seconds.
     final overview = ref.watch(overviewProvider).valueOrNull;
     final analytics = ref.watch(clinicAnalyticsProvider).valueOrNull;
-    final attention = ref.watch(attentionPatientsProvider).valueOrNull ?? const <PatientListItem>[];
-    final alerts = ref.watch(alertsProvider(_alertsQuery)).valueOrNull?.items ?? const [];
+    final attention =
+        ref.watch(attentionPatientsProvider).valueOrNull ??
+        const <PatientListItem>[];
+    final alerts =
+        ref.watch(alertsProvider(_alertsQuery)).valueOrNull?.items ?? const [];
     final loading = overview == null && ref.watch(overviewProvider).isLoading;
 
     return Scaffold(
@@ -83,81 +89,63 @@ class _ClinicianDashboardScreenState extends ConsumerState<ClinicianDashboardScr
           children: [
             const _DashboardHeader(),
             Expanded(
-              child: loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : RefreshIndicator(
-                      onRefresh: () async => _refresh(),
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.md,
-                          AppSpacing.sm,
-                          AppSpacing.md,
-                          AppSpacing.xl,
+              child:
+                  loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : RefreshIndicator(
+                        onRefresh: () async => _refresh(),
+                        // Zero padding so the band reaches both edges; the
+                        // rest is padded on its own, as on the other panels.
+                        child: ListView(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+                          children: [
+                            if (analytics != null)
+                              _ControlHero(analytics: analytics),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.md,
+                                AppSpacing.md,
+                                AppSpacing.md,
+                                0,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (overview != null) ...[
+                                    const SizedBox(height: AppSpacing.md),
+                                    _HeadlineRow(overview: overview),
+                                    const SizedBox(height: AppSpacing.md),
+                                    // "Active today" is gone. It counted appointments
+                                    // booked through the app, and this clinic does not
+                                    // book that way — so it read 0 every day and cost a
+                                    // card's worth of the screen saying nothing.
+                                    _AlertStrip(overview: overview),
+                                    if (analytics != null) ...[
+                                      const SizedBox(height: AppSpacing.sm),
+                                      _MonitoringStrip(analytics: analytics),
+                                    ],
+                                    const SizedBox(height: AppSpacing.lg),
+                                  ],
+                                  if (attention.isNotEmpty) ...[
+                                    AttentionListCard(patients: attention),
+                                    const SizedBox(height: AppSpacing.lg),
+                                  ],
+                                  _TriageQueue(alerts: alerts),
+                                  if (overview != null &&
+                                      overview.nutritionReviews.isNotEmpty) ...[
+                                    const SizedBox(height: AppSpacing.lg),
+                                    _NutritionReviews(overview: overview),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        children: [
-                          if (overview != null) ...[
-                            const _OverviewHeading(),
-                            const SizedBox(height: AppSpacing.md),
-                            _HeadlineRow(overview: overview),
-                            const SizedBox(height: AppSpacing.md),
-                            // "Active today" is gone. It counted appointments
-                            // booked through the app, and this clinic does not
-                            // book that way — so it read 0 every day and cost a
-                            // card's worth of the screen saying nothing.
-                            _AlertStrip(overview: overview),
-                            if (analytics != null) ...[
-                              const SizedBox(height: AppSpacing.sm),
-                              _MonitoringStrip(analytics: analytics),
-                            ],
-                            const SizedBox(height: AppSpacing.lg),
-                          ],
-                          if (attention.isNotEmpty) ...[
-                            AttentionListCard(patients: attention),
-                            const SizedBox(height: AppSpacing.lg),
-                          ],
-                          _TriageQueue(alerts: alerts),
-                          if (overview != null && overview.nutritionReviews.isNotEmpty) ...[
-                            const SizedBox(height: AppSpacing.lg),
-                            _NutritionReviews(overview: overview),
-                          ],
-                        ],
                       ),
-                    ),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Names what the screen is before the numbers start.
-///
-/// Four figures and three lists with no heading read as a pile of widgets; one
-/// line saying what they add up to is the difference between a dashboard and a
-/// dump of counters.
-class _OverviewHeading extends StatelessWidget {
-  const _OverviewHeading();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Operational Overview',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            color: scheme.onSurface,
-          ),
-        ),
-        const SizedBox(height: 0),
-        Text(
-          "Your clinic's high-level status for today.",
-          style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
-        ),
-      ],
     );
   }
 }
@@ -172,16 +160,30 @@ class _DashboardHeader extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final user = ref.watch(authControllerProvider).user;
     return Container(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
+        border: Border(
+          bottom: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
       ),
       child: Row(
         children: [
           Image.asset(
             'assets/brand/medpin_emblem.png',
             height: 30,
-            errorBuilder: (_, _, _) => Icon(Icons.forum_rounded, size: 26, color: AppColors.accentOn(context)),
+            errorBuilder:
+                (_, _, _) => Icon(
+                  Icons.forum_rounded,
+                  size: 26,
+                  color: AppColors.accentOn(context),
+                ),
           ),
           const SizedBox(width: 8),
           Text(
@@ -194,7 +196,9 @@ class _DashboardHeader extends ConsumerWidget {
             ),
           ),
           const Spacer(),
-          PanelNotificationBell(onTap: () => showClinicianNotifications(context)),
+          PanelNotificationBell(
+            onTap: () => showClinicianNotifications(context),
+          ),
           const SizedBox(width: 4),
           GestureDetector(
             // `go`, not `push`: Profile is one of this shell's own tabs, so
@@ -235,7 +239,10 @@ class _HeadlineRow extends StatelessWidget {
               value: '${overview.patientCount}',
               // Only shown when someone actually registered today; "+0 today"
               // is noise dressed up as news.
-              suffix: overview.newPatientsToday > 0 ? '+${overview.newPatientsToday} today' : null,
+              suffix:
+                  overview.newPatientsToday > 0
+                      ? '+${overview.newPatientsToday} today'
+                      : null,
               suffixColor: AppColors.accentOn(context),
               onTap: () => context.go('/clinician/patients'),
             ),
@@ -306,7 +313,11 @@ class _HeadlineCard extends StatelessWidget {
             children: [
               Text(
                 value,
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: scheme.onSurface),
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  color: scheme.onSurface,
+                ),
               ),
               if (suffix != null) ...[
                 const SizedBox(width: 4),
@@ -364,7 +375,8 @@ class _AlertStrip extends StatelessWidget {
       _StatTile(
         icon: Icons.monitor_heart_outlined,
         value: '${overview.riskCritical}',
-        label: overview.riskCritical == 1 ? 'Critical Vital' : 'Critical Vitals',
+        label:
+            overview.riskCritical == 1 ? 'Critical Vital' : 'Critical Vitals',
         // The only tile that carries colour. A red panel among neutral ones is
         // read before anything else on the screen, which is the point — every
         // tile tinted would mean none of them stands out.
@@ -375,7 +387,8 @@ class _AlertStrip extends StatelessWidget {
       _StatTile(
         icon: Icons.error_outline_rounded,
         value: '${overview.highPriorityAlerts}',
-        label: overview.highPriorityAlerts == 1 ? 'Action Item' : 'Action Items',
+        label:
+            overview.highPriorityAlerts == 1 ? 'Action Item' : 'Action Items',
         tone: scheme.onSurface,
         background: scheme.surfaceContainerLow,
         onTap: () => context.push('/clinician/alerts'),
@@ -400,17 +413,21 @@ class _AlertStrip extends StatelessWidget {
 
     return Column(
       children: [
-        Row(children: [
-          Expanded(child: tiles[0]),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(child: tiles[1]),
-        ]),
+        Row(
+          children: [
+            Expanded(child: tiles[0]),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(child: tiles[1]),
+          ],
+        ),
         const SizedBox(height: AppSpacing.sm),
-        Row(children: [
-          Expanded(child: tiles[2]),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(child: tiles[3]),
-        ]),
+        Row(
+          children: [
+            Expanded(child: tiles[2]),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(child: tiles[3]),
+          ],
+        ),
       ],
     );
   }
@@ -450,7 +467,9 @@ class _StatTile extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.55),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -529,7 +548,10 @@ class _AlertRow extends StatelessWidget {
                         Container(
                           width: 30,
                           height: 30,
-                          decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                            color: iconBg,
+                            shape: BoxShape.circle,
+                          ),
                           child: Icon(icon, size: 18, color: Colors.white),
                         ),
                         const SizedBox(width: AppSpacing.md),
@@ -549,7 +571,11 @@ class _AlertRow extends StatelessWidget {
                               const SizedBox(height: 0),
                               Text(
                                 detail,
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: scheme.onSurface),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.onSurface,
+                                ),
                               ),
                             ],
                           ),
@@ -647,19 +673,22 @@ class _TriageQueue extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     // Worst first, then newest within a severity — "sorted by urgency" has to
     // actually be true, since the doctor reads the top row and acts.
-    final sorted = [...alerts]
-      ..sort((a, b) {
-        final bySeverity =
-            _severityOrder.indexOf(a.severity).compareTo(_severityOrder.indexOf(b.severity));
-        if (bySeverity != 0) return bySeverity;
-        return (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0));
-      });
+    final sorted = [...alerts]..sort((a, b) {
+      final bySeverity = _severityOrder
+          .indexOf(a.severity)
+          .compareTo(_severityOrder.indexOf(b.severity));
+      if (bySeverity != 0) return bySeverity;
+      return (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0));
+    });
     final shown = sorted.take(3).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Live Triage Queue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+        const Text(
+          'Live Triage Queue',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: AppSpacing.sm),
         if (shown.isEmpty)
           Container(
@@ -668,16 +697,25 @@ class _TriageQueue extends StatelessWidget {
             decoration: BoxDecoration(
               color: scheme.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.7),
+              ),
             ),
             child: Row(
               children: [
-                Icon(Icons.check_circle_rounded, color: AppColors.accentOn(context), size: 26),
+                Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.accentOn(context),
+                  size: 26,
+                ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Text(
                     'No open alerts. Nothing is waiting on triage.',
-                    style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
@@ -699,7 +737,10 @@ class _TriageQueue extends StatelessWidget {
                   child: Center(
                     child: Text(
                       'View all triage (${alerts.length})',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -734,7 +775,10 @@ class _TriageCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final sev = AppColors.toneOn(context, _sevColor(alert.severity));
-    final quote = (alert.detail?.trim().isNotEmpty ?? false) ? alert.detail!.trim() : null;
+    final quote =
+        (alert.detail?.trim().isNotEmpty ?? false)
+            ? alert.detail!.trim()
+            : null;
     final canOpen = alert.patientId != null;
 
     return Container(
@@ -759,7 +803,12 @@ class _TriageCard extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        UserAvatar(name: alert.patientName ?? '?', avatarUrl: null, accent: sev, size: 40),
+                        UserAvatar(
+                          name: alert.patientName ?? '?',
+                          avatarUrl: null,
+                          accent: sev,
+                          size: 40,
+                        ),
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Column(
@@ -769,14 +818,21 @@ class _TriageCard extends StatelessWidget {
                                 alert.patientName ?? 'Unknown patient',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                               const SizedBox(height: 0),
                               Text(
                                 '${_sevLabel(alert.severity)} · ${alert.title}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sev),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: sev,
+                                ),
                               ),
                             ],
                           ),
@@ -785,7 +841,10 @@ class _TriageCard extends StatelessWidget {
                           const SizedBox(width: 8),
                           Text(
                             DateFormat('h:mm a').format(alert.createdAt!),
-                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
                         ],
                       ],
@@ -803,7 +862,12 @@ class _TriageCard extends StatelessWidget {
                           quote,
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 14, height: 1.35, fontStyle: FontStyle.italic, color: scheme.onSurface),
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.35,
+                            fontStyle: FontStyle.italic,
+                            color: scheme.onSurface,
+                          ),
                         ),
                       ),
                     ],
@@ -811,16 +875,28 @@ class _TriageCard extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed: canOpen
-                            ? () => context.push('/clinician/patients/${alert.patientId}/thread', extra: alert.patientName)
-                            : null,
+                        onPressed:
+                            canOpen
+                                ? () => context.push(
+                                  '/clinician/patients/${alert.patientId}/thread',
+                                  extra: alert.patientName,
+                                )
+                                : null,
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           minimumSize: const Size.fromHeight(46),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
                         ),
-                        child: const Text('Review Case', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                        child: const Text(
+                          'Review Case',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -854,12 +930,11 @@ class _NutritionReviews extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Due first, then most-overdue within — the top row is the one to do.
-    final reviews = [...overview.nutritionReviews]
-      ..sort((a, b) {
-        final byDue = (b.isDue ? 1 : 0).compareTo(a.isDue ? 1 : 0);
-        if (byDue != 0) return byDue;
-        return b.day.compareTo(a.day);
-      });
+    final reviews = [...overview.nutritionReviews]..sort((a, b) {
+      final byDue = (b.isDue ? 1 : 0).compareTo(a.isDue ? 1 : 0);
+      if (byDue != 0) return byDue;
+      return b.day.compareTo(a.day);
+    });
     final shown = reviews.take(4).toList();
     final due = reviews.where((r) => r.isDue).length;
 
@@ -868,9 +943,13 @@ class _NutritionReviews extends StatelessWidget {
       children: [
         PanelSectionHeader(
           title: 'Nutrition Reviews Due',
-          trailing: due == 0
-              ? null
-              : PanelPill(label: '$due Due', color: AppColors.warningOn(context)),
+          trailing:
+              due == 0
+                  ? null
+                  : PanelPill(
+                    label: '$due Due',
+                    color: AppColors.warningOn(context),
+                  ),
         ),
         for (final r in shown)
           Padding(
@@ -888,7 +967,10 @@ class _NutritionReviews extends StatelessWidget {
               onPressed: () => context.go('/clinician/nutrition'),
               child: Text(
                 'View all ${reviews.length}',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -921,11 +1003,12 @@ class _ReviewProgressCard extends StatelessWidget {
       // reading what was logged and replying to it. The record is still a tap
       // away from the thread header. Falls back to the record when the patient
       // has no nutrition thread yet.
-      onTap: () => context.push(
-        r.nutritionSessionId != null
-            ? '/clinician/chat-review/${r.nutritionSessionId}'
-            : '/clinician/patients/${r.patientId}',
-      ),
+      onTap:
+          () => context.push(
+            r.nutritionSessionId != null
+                ? '/clinician/chat-review/${r.nutritionSessionId}'
+                : '/clinician/patients/${r.patientId}',
+          ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -936,7 +1019,10 @@ class _ReviewProgressCard extends StatelessWidget {
                   r.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -976,3 +1062,71 @@ class _ReviewProgressCard extends StatelessWidget {
   }
 }
 
+/// The clinic in one figure: how much of everything logged landed in range.
+///
+/// The dashboard used to open on "Operational Overview" and a line explaining
+/// what a dashboard is, followed by four counters of equal weight — so the
+/// doctor had to read all four to work out which mattered. This is the number
+/// that answers "how is my clinic doing" before anything else is read, and it
+/// was already in the payload: controlTrend carries low/inRange/high per day
+/// and nothing was reading it.
+class _ControlHero extends StatelessWidget {
+  const _ControlHero({required this.analytics});
+
+  final ClinicAnalytics analytics;
+
+  static (int pct, int? delta) _control(List<ControlPoint> t) {
+    if (t.isEmpty) return (0, null);
+    var inRange = 0, total = 0;
+    for (final p in t) {
+      inRange += p.inRange;
+      total += p.total;
+    }
+    if (total == 0) return (0, null);
+    final pct = (inRange / total * 100).round();
+
+    // Back half against front half. Anything shorter than four days cannot
+    // show a trend worth printing.
+    if (t.length < 4) return (pct, null);
+    int share(Iterable<ControlPoint> xs) {
+      var i = 0, n = 0;
+      for (final p in xs) {
+        i += p.inRange;
+        n += p.total;
+      }
+      return n == 0 ? 0 : (i / n * 100).round();
+    }
+
+    final before = share(t.take(t.length ~/ 2));
+    if (before == 0) return (pct, null);
+    return (pct, share(t.skip(t.length ~/ 2)) - before);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (pct, delta) = _control(analytics.controlTrend);
+    if (pct == 0) return const SizedBox.shrink();
+
+    final rising = (delta ?? 0) >= 0;
+    final pts =
+        analytics.controlTrend
+            .where((p) => p.total > 0)
+            .map((p) => p.inRange / p.total * 100)
+            .toList();
+
+    return HeroBand(
+      eyebrow: DateFormat('EEEE, d MMMM').format(DateTime.now()),
+      title: 'Your clinic',
+      figure: HeroFigure(
+        value: '$pct%',
+        statusLabel:
+            delta == null || delta == 0
+                ? null
+                : '${rising ? '+' : ''}$delta% this fortnight',
+        statusColor: rising ? AppColors.success : AppColors.warning,
+        caption: 'Readings in range, clinic-wide',
+      ),
+      footer: pts.length > 2 ? HeroSpark(values: pts) : null,
+    );
+  }
+}

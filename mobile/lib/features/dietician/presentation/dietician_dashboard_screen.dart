@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/hero_band.dart';
 import '../../../shared/widgets/authed_image.dart';
 import '../../../shared/widgets/auto_refresh.dart';
 import '../../../shared/widgets/user_avatar.dart';
@@ -44,144 +45,188 @@ class DieticianDashboardScreen extends ConsumerWidget {
         onTick: (ref) => ref.invalidate(dietDashboardProvider),
         interval: const Duration(seconds: 30),
         child: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            _BrandHeader(
-              name: user?.name ?? '',
-              avatarUrl: user?.avatarUrl,
-              unread: async.valueOrNull?.unreadMessages ?? 0,
-            ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async => ref.invalidate(dietDashboardProvider),
-                child: async.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (_, _) => ListView(
-                    children: [
-                      const SizedBox(height: 140),
-                      const Center(child: Text('Could not load your dashboard')),
-                      const SizedBox(height: AppSpacing.md),
-                      Center(
-                        child: OutlinedButton(
-                          onPressed: () => ref.invalidate(dietDashboardProvider),
-                          child: const Text('Retry'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  data: (d) => ListView(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.md,
-                      AppSpacing.md,
-                      AppSpacing.md,
-                      AppSpacing.xl,
-                    ),
-                    children: [
-                      Text(
-                        '${_partOfDay()}, ${user?.name ?? ''}',
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
-                          height: 1.2,
-                          letterSpacing: -0.4,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Here is your daily clinical overview.',
-                        style: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-
-                      _StatCard(
-                        label: 'My Patients',
-                        value: '${d.patients}',
-                        icon: Icons.groups_outlined,
-                        onTap: () => context.go('/dietician/patients'),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      _StatCard(
-                        label: 'Reviews Due',
-                        value: '${d.reviewsDue}',
-                        accent: d.reviewsDue > 0 ? AppColors.danger : null,
-                        icon: Icons.error_outline_rounded,
-                        // Straight to that worklist, already filtered. A count
-                        // that sends you to an unfiltered list makes you find
-                        // the three patients it was talking about yourself.
-                        onTap: () => context.go('/dietician/patients?filter=review'),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      _StatCard(
-                        label: 'Plans to Send',
-                        value: '${d.plansMissing}',
-                        accent: d.plansMissing > 0 ? AppColors.accentOn(context) : null,
-                        icon: Icons.send_rounded,
-                        onTap: () => context.go('/dietician/patients?filter=noplan'),
-                      ),
-
-                      if (d.reviewsSorted.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.lg),
-                        _WorkCard(
-                          title: 'Reviews Due',
-                          action: 'View All',
-                          onAction: () => context.go('/dietician/patients'),
+          bottom: false,
+          child: Column(
+            children: [
+              _BrandHeader(
+                name: user?.name ?? '',
+                avatarUrl: user?.avatarUrl,
+                unread: async.valueOrNull?.unreadMessages ?? 0,
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async => ref.invalidate(dietDashboardProvider),
+                  child: async.when(
+                    loading:
+                        () => const Center(child: CircularProgressIndicator()),
+                    error:
+                        (_, _) => ListView(
                           children: [
-                            for (final p in d.reviewsSorted.take(3))
-                              _PatientRow(
-                                patient: p,
-                                subtitle: _condition(p),
-                                trailing: _AgePill(days: p.sinceDays),
-                                onTap: () => context.push(
-                                  '/dietician/patients/${p.id}',
-                                  extra: p.name,
-                                ),
+                            const SizedBox(height: 140),
+                            const Center(
+                              child: Text('Could not load your dashboard'),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Center(
+                              child: OutlinedButton(
+                                onPressed:
+                                    () => ref.invalidate(dietDashboardProvider),
+                                child: const Text('Retry'),
                               ),
+                            ),
                           ],
                         ),
-                      ],
-
-                      if (d.plansSorted.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.md),
-                        _WorkCard(
-                          title: 'Waiting for Diet Plan',
-                          action: 'View All',
-                          onAction: () => context.go('/dietician/patients'),
-                          padded: true,
+                    // Zero padding so the band reaches both edges; the rest is
+                    // padded on its own. Same shape as the patient tabs.
+                    data:
+                        (d) => ListView(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.xl),
                           children: [
-                            for (final p in d.plansSorted.take(3))
-                              _PlanTile(
-                                patient: p,
-                                onOpen: () => context.push(
-                                  '/dietician/patients/${p.id}',
-                                  extra: p.name,
-                                ),
-                                onCreate: () => context.push(
-                                  '/dietician/patients/${p.id}/diet',
-                                  extra: p.name,
-                                ),
+                            HeroBand(
+                              eyebrow: _partOfDay(),
+                              title: (user?.name ?? '').split(' ').first,
+                              figure: HeroFigure(
+                                value: '${d.reviewsDue}',
+                                unit: d.reviewsDue == 1 ? 'review' : 'reviews',
+                                statusLabel:
+                                    d.reviewsDue == 0
+                                        ? 'All caught up'
+                                        : d.plansMissing > 0
+                                        ? '${d.plansMissing} need a plan'
+                                        : 'Waiting on you',
+                                statusColor:
+                                    d.reviewsDue == 0
+                                        ? AppColors.success
+                                        : AppColors.warning,
+                                caption:
+                                    'Due today across ${d.patients} '
+                                    '${d.patients == 1 ? 'patient' : 'patients'}',
                               ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _StatCard(
+                                    label: 'My Patients',
+                                    value: '${d.patients}',
+                                    icon: Icons.groups_outlined,
+                                    onTap:
+                                        () => context.go('/dietician/patients'),
+                                  ),
+                                  const SizedBox(height: AppSpacing.sm),
+                                  _StatCard(
+                                    label: 'Reviews Due',
+                                    value: '${d.reviewsDue}',
+                                    accent:
+                                        d.reviewsDue > 0
+                                            ? AppColors.danger
+                                            : null,
+                                    icon: Icons.error_outline_rounded,
+                                    // Straight to that worklist, already filtered. A count
+                                    // that sends you to an unfiltered list makes you find
+                                    // the three patients it was talking about yourself.
+                                    onTap:
+                                        () => context.go(
+                                          '/dietician/patients?filter=review',
+                                        ),
+                                  ),
+                                  const SizedBox(height: AppSpacing.sm),
+                                  _StatCard(
+                                    label: 'Plans to Send',
+                                    value: '${d.plansMissing}',
+                                    accent:
+                                        d.plansMissing > 0
+                                            ? AppColors.accentOn(context)
+                                            : null,
+                                    icon: Icons.send_rounded,
+                                    onTap:
+                                        () => context.go(
+                                          '/dietician/patients?filter=noplan',
+                                        ),
+                                  ),
+
+                                  if (d.reviewsSorted.isNotEmpty) ...[
+                                    const SizedBox(height: AppSpacing.lg),
+                                    _WorkCard(
+                                      title: 'Reviews Due',
+                                      action: 'View All',
+                                      onAction:
+                                          () =>
+                                              context.go('/dietician/patients'),
+                                      children: [
+                                        for (final p in d.reviewsSorted.take(3))
+                                          _PatientRow(
+                                            patient: p,
+                                            subtitle: _condition(p),
+                                            trailing: _AgePill(
+                                              days: p.sinceDays,
+                                            ),
+                                            onTap:
+                                                () => context.push(
+                                                  '/dietician/patients/${p.id}',
+                                                  extra: p.name,
+                                                ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+
+                                  if (d.plansSorted.isNotEmpty) ...[
+                                    const SizedBox(height: AppSpacing.md),
+                                    _WorkCard(
+                                      title: 'Waiting for Diet Plan',
+                                      action: 'View All',
+                                      onAction:
+                                          () =>
+                                              context.go('/dietician/patients'),
+                                      padded: true,
+                                      children: [
+                                        for (final p in d.plansSorted.take(3))
+                                          _PlanTile(
+                                            patient: p,
+                                            onOpen:
+                                                () => context.push(
+                                                  '/dietician/patients/${p.id}',
+                                                  extra: p.name,
+                                                ),
+                                            onCreate:
+                                                () => context.push(
+                                                  '/dietician/patients/${p.id}/diet',
+                                                  extra: p.name,
+                                                ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+
+                                  if (d.reviewsSorted.isEmpty &&
+                                      d.plansSorted.isEmpty) ...[
+                                    const SizedBox(height: AppSpacing.lg),
+                                    _AllCaught(patients: d.patients),
+                                  ],
+
+                                  if (d.recentLogs.isNotEmpty) ...[
+                                    const SizedBox(height: AppSpacing.lg),
+                                    _MealsCard(
+                                      logs: d.recentLogs.take(4).toList(),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
                           ],
                         ),
-                      ],
-
-                      if (d.reviewsSorted.isEmpty && d.plansSorted.isEmpty) ...[
-                        const SizedBox(height: AppSpacing.lg),
-                        _AllCaught(patients: d.patients),
-                      ],
-
-                      if (d.recentLogs.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.lg),
-                        _MealsCard(logs: d.recentLogs.take(4).toList()),
-                      ],
-                    ],
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -210,9 +255,18 @@ class _BrandHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.sm,
+        AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
+        border: Border(
+          bottom: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -222,8 +276,12 @@ class _BrandHeader extends StatelessWidget {
           Image.asset(
             'assets/brand/medpin_emblem.png',
             height: 30,
-            errorBuilder: (_, _, _) =>
-                Icon(Icons.restaurant_rounded, size: 26, color: AppColors.accentOn(context)),
+            errorBuilder:
+                (_, _, _) => Icon(
+                  Icons.restaurant_rounded,
+                  size: 26,
+                  color: AppColors.accentOn(context),
+                ),
           ),
           const SizedBox(width: 8),
           Text(
@@ -239,7 +297,12 @@ class _BrandHeader extends StatelessWidget {
           const SizedBox(width: 0),
           GestureDetector(
             onTap: () => context.go('/dietician/profile'),
-            child: UserAvatar(name: name, avatarUrl: avatarUrl, accent: AppColors.accentOn(context), size: 36),
+            child: UserAvatar(
+              name: name,
+              avatarUrl: avatarUrl,
+              accent: AppColors.accentOn(context),
+              size: 36,
+            ),
           ),
           const SizedBox(width: 4),
         ],
@@ -280,7 +343,10 @@ class _NotificationBell extends StatelessWidget {
               decoration: BoxDecoration(
                 color: accent,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Theme.of(context).colorScheme.surface, width: 1.5),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.surface,
+                  width: 1.5,
+                ),
               ),
               child: Text(
                 count > 99 ? '99+' : '$count',
@@ -329,7 +395,9 @@ class _StatCard extends StatelessWidget {
         color: scheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: accent?.withValues(alpha: 0.45) ?? scheme.outlineVariant.withValues(alpha: 0.6),
+          color:
+              accent?.withValues(alpha: 0.45) ??
+              scheme.outlineVariant.withValues(alpha: 0.6),
         ),
         boxShadow: [
           BoxShadow(
@@ -345,50 +413,59 @@ class _StatCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // The rail carries the urgency, so the card itself stays white and
-            // the number stays readable.
-            if (accent != null) Container(width: 5, color: accent),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.md, 14, AppSpacing.md, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // The rail carries the urgency, so the card itself stays white and
+                // the number stays readable.
+                if (accent != null) Container(width: 5, color: accent),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      14,
+                      AppSpacing.md,
+                      16,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            label.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.9,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                label.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.9,
+                                  color: accent ?? scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              icon,
+                              size: 21,
                               color: accent ?? scheme.onSurfaceVariant,
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          value,
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
+                            color: on,
                           ),
                         ),
-                        Icon(icon, size: 21, color: accent ?? scheme.onSurfaceVariant),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
-                        color: on,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
           ),
         ),
       ),
@@ -436,16 +513,29 @@ class _WorkCard extends StatelessWidget {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.sm, AppSpacing.sm),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.sm,
+            ),
             child: Row(
               children: [
                 Expanded(
-                  child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
                 if (action != null)
                   TextButton(
                     onPressed: onAction,
-                    style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
                     child: Text(
                       action!,
                       style: TextStyle(
@@ -458,10 +548,18 @@ class _WorkCard extends StatelessWidget {
               ],
             ),
           ),
-          Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+          Divider(
+            height: 1,
+            color: scheme.outlineVariant.withValues(alpha: 0.5),
+          ),
           if (padded)
             Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.md),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+              ),
               child: Column(
                 children: [
                   for (var i = 0; i < children.length; i++) ...[
@@ -473,7 +571,11 @@ class _WorkCard extends StatelessWidget {
             )
           else
             for (var i = 0; i < children.length; i++) ...[
-              if (i > 0) Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+              if (i > 0)
+                Divider(
+                  height: 1,
+                  color: scheme.outlineVariant.withValues(alpha: 0.5),
+                ),
               children[i],
             ],
         ],
@@ -496,7 +598,8 @@ class _PatientRow extends StatelessWidget {
   final VoidCallback onTap;
 
   static String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final parts =
+        name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first[0].toUpperCase();
     return (parts.first[0] + parts.last[0]).toUpperCase();
@@ -508,14 +611,20 @@ class _PatientRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: 12,
+        ),
         child: Row(
           children: [
             Container(
               width: 42,
               height: 42,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: AppColors.accentSoftOn(context), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: AppColors.accentSoftOn(context),
+                shape: BoxShape.circle,
+              ),
               child: Text(
                 _initials(patient.name),
                 style: TextStyle(
@@ -534,14 +643,20 @@ class _PatientRow extends StatelessWidget {
                     patient.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 0),
                   Text(
                     subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -549,7 +664,11 @@ class _PatientRow extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             trailing,
             const SizedBox(width: 0),
-            Icon(Icons.chevron_right_rounded, size: 20, color: scheme.onSurfaceVariant),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: scheme.onSurfaceVariant,
+            ),
           ],
         ),
       ),
@@ -564,7 +683,11 @@ class _PatientRow extends StatelessWidget {
 /// where every entry needs the same thing done to it, and a full-width button
 /// says that more plainly than a chip.
 class _PlanTile extends StatelessWidget {
-  const _PlanTile({required this.patient, required this.onOpen, required this.onCreate});
+  const _PlanTile({
+    required this.patient,
+    required this.onOpen,
+    required this.onCreate,
+  });
 
   final DietPatientBrief patient;
   final VoidCallback onOpen;
@@ -573,9 +696,10 @@ class _PlanTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final waiting = patient.sinceDays == 0
-        ? 'Joined today'
-        : 'Waiting ${patient.sinceDays} ${patient.sinceDays == 1 ? 'day' : 'days'}';
+    final waiting =
+        patient.sinceDays == 0
+            ? 'Joined today'
+            : 'Waiting ${patient.sinceDays} ${patient.sinceDays == 1 ? 'day' : 'days'}';
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm + 2),
@@ -606,16 +730,26 @@ class _PlanTile extends StatelessWidget {
                         patient.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 0),
                       Row(
                         children: [
-                          Icon(Icons.schedule_rounded, size: 13, color: scheme.onSurfaceVariant),
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 13,
+                            color: scheme.onSurfaceVariant,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             waiting,
-                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
                         ],
                       ),
@@ -632,7 +766,9 @@ class _PlanTile extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: onCreate,
               child: const Text(
@@ -693,7 +829,11 @@ class _AllCaught extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.check_circle_rounded, color: AppColors.accentOn(context), size: 30),
+          Icon(
+            Icons.check_circle_rounded,
+            color: AppColors.accentOn(context),
+            size: 30,
+          ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -701,14 +841,21 @@ class _AllCaught extends StatelessWidget {
               children: [
                 Text(
                   'All caught up',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.accentOn(context),
+                  ),
                 ),
                 const SizedBox(height: 0),
                 Text(
                   patients == 0
                       ? 'No patients on the clinic list yet.'
                       : 'Every plan is sent and no review is due.',
-                  style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -720,7 +867,6 @@ class _AllCaught extends StatelessWidget {
 }
 
 // ---- Meals ----------------------------------------------------------------
-
 
 /// What patients have been eating, across the whole caseload.
 ///
@@ -760,7 +906,11 @@ class _MealsCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Latest Meals Logged',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1.2),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -769,7 +919,11 @@ class _MealsCard extends StatelessWidget {
                 child: Text(
                   'Across all active patients',
                   textAlign: TextAlign.right,
-                  style: TextStyle(fontSize: 12, height: 1.25, color: scheme.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.25,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
@@ -782,9 +936,10 @@ class _MealsCard extends StatelessWidget {
                 Expanded(child: _MealThumb(log: logs[row])),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: row + 1 < logs.length
-                      ? _MealThumb(log: logs[row + 1])
-                      : const SizedBox.shrink(),
+                  child:
+                      row + 1 < logs.length
+                          ? _MealThumb(log: logs[row + 1])
+                          : const SizedBox.shrink(),
                 ),
               ],
             ),
@@ -814,7 +969,11 @@ class _MealThumb extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push('/dietician/patients/${log.patientId}', extra: log.patientName),
+        onTap:
+            () => context.push(
+              '/dietician/patients/${log.patientId}',
+              extra: log.patientName,
+            ),
         child: AspectRatio(
           aspectRatio: 1.12,
           child: Stack(
@@ -823,7 +982,11 @@ class _MealThumb extends StatelessWidget {
               if (log.photoUrl != null)
                 AuthedImage(path: log.photoUrl!, fit: BoxFit.cover)
               else
-                Icon(Icons.restaurant_menu_rounded, size: 28, color: scheme.onSurfaceVariant),
+                Icon(
+                  Icons.restaurant_menu_rounded,
+                  size: 28,
+                  color: scheme.onSurfaceVariant,
+                ),
               // A wash under the text, not over the whole photo: the dietician
               // is looking at the food, and dimming all of it to caption it
               // defeats the point of showing a photograph.

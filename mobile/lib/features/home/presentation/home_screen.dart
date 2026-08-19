@@ -144,44 +144,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                // Age, gender, email and address are all one thing — who
-                                // this record belongs to — so they read as one block
-                                // rather than as a card of their own further down.
-                                //
-                                // No date of birth: the age above is worked out from it,
-                                // and printing both says the same fact twice.
-                                Text(
-                                  [
-                                    if (user?.dateOfBirth != null)
-                                      '${_age(user!.dateOfBirth!)} y/o',
-                                    if (user?.gender != null &&
-                                        user!.gender != 'undisclosed')
-                                      _cap(user.gender!),
-                                  ].join('  •  '),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                                if ((care.profile.email ?? '')
-                                    .trim()
-                                    .isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  _IdentityLine(
-                                    icon: Icons.mail_outline_rounded,
-                                    value: care.profile.email!.trim(),
-                                  ),
-                                ],
-                                if ((care.profile.address ?? '')
-                                    .trim()
-                                    .isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  _IdentityLine(
-                                    icon: Icons.home_outlined,
-                                    value: care.profile.address!.trim(),
-                                  ),
-                                ],
-
+                                // Age, gender, email and address used to sit
+                                // here. They are who the record belongs to,
+                                // not what the patient opened the app to find
+                                // out, and four lines of text that never
+                                // change pushed the actual care down the page.
+                                // They live in Profile, which is where someone
+                                // goes when they want to check them.
                                 const SizedBox(height: AppSpacing.lg),
 
                                 _FactGrid(care: care),
@@ -230,19 +199,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
     );
   }
-
-  static int _age(DateTime dob) {
-    final now = DateTime.now();
-    var years = now.year - dob.year;
-    if (now.month < dob.month ||
-        (now.month == dob.month && now.day < dob.day)) {
-      years--;
-    }
-    return years;
-  }
-
-  static String _cap(String s) =>
-      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 }
 
 class _BrandHeader extends ConsumerWidget {
@@ -893,44 +849,6 @@ class _FullPlanSheet extends StatelessWidget {
 }
 
 // ---- Medicines ------------------------------------------------------------
-
-/// Email and address as the clinic has them, with a way to correct them.
-/// One identity line under the patient's name — an icon and the value.
-///
-/// Deliberately not a card. These sit with the age and gender as part of the
-/// same block, and boxing them made the screen open with a panel of admin
-/// before any of the patient's care.
-class _IdentityLine extends StatelessWidget {
-  const _IdentityLine({required this.icon, required this.value});
-
-  final IconData icon;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 0),
-          child: Icon(icon, size: 15, color: scheme.onSurfaceVariant),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              height: 1.35,
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 class _Medicines extends ConsumerWidget {
   const _Medicines({required this.items});
