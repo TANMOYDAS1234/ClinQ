@@ -106,7 +106,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authPhoneLabel => 'Phone number';
 
   @override
-  String get authPhoneHint => '98300 12345';
+  String get authPhoneHint => 'Enter your 10-digit number';
+
+  @override
+  String get authPasswordHint => 'Enter your password';
 
   @override
   String get authPasswordLabel => 'Password';

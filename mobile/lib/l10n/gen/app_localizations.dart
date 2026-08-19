@@ -289,8 +289,14 @@ abstract class AppLocalizations {
   /// No description provided for @authPhoneHint.
   ///
   /// In en, this message translates to:
-  /// **'98300 12345'**
+  /// **'Enter your 10-digit number'**
   String get authPhoneHint;
+
+  /// No description provided for @authPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password'**
+  String get authPasswordHint;
 
   /// No description provided for @authPasswordLabel.
   ///

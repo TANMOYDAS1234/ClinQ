@@ -107,7 +107,10 @@ class AppLocalizationsHi extends AppLocalizations {
   String get authPhoneLabel => 'फ़ोन नंबर';
 
   @override
-  String get authPhoneHint => '98300 12345';
+  String get authPhoneHint => 'अपना 10 अंकों का नंबर दर्ज करें';
+
+  @override
+  String get authPasswordHint => 'अपना पासवर्ड दर्ज करें';
 
   @override
   String get authPasswordLabel => 'पासवर्ड';

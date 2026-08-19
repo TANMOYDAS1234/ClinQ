@@ -42,6 +42,10 @@ class AppTheme {
         surfaceContainerHigh: const Color(0xFFEDF1F5),
         surfaceContainerHighest: const Color(0xFFE8EDF2),
         outlineVariant: const Color(0xFFDDE3EA),
+        // Secondary text. fromSeed derives a blue-grey here, which reads
+        // as a faded version of the brand rather than as neutral prose.
+        onSurfaceVariant: const Color(0xFF6B7280),
+        onSurface: const Color(0xFF111827),
       );
     } else {
       // Dark mode used to be left entirely to fromSeed. From a seed this dark
@@ -90,12 +94,12 @@ class AppTheme {
           displayMedium: inter.displayMedium,
           displaySmall: inter.displaySmall,
           headlineLarge: inter.headlineLarge?.copyWith(
-            fontSize: 28,
+            fontSize: 32,
             fontWeight: FontWeight.w700,
             height: 1.25,
           ),
           headlineMedium: inter.headlineMedium?.copyWith(
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: FontWeight.w700,
             height: 1.25,
           ),
@@ -109,7 +113,7 @@ class AppTheme {
             fontWeight: FontWeight.w600,
           ),
           titleMedium: inter.titleMedium?.copyWith(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
           titleSmall: inter.titleSmall?.copyWith(
@@ -122,7 +126,7 @@ class AppTheme {
           // button label to labelLarge, so those two alone are most of the
           // words on screen — the headings would be Inter and the sentences
           // under them would not.
-          bodyLarge: inter.bodyLarge?.copyWith(fontSize: 17, height: 1.4),
+          bodyLarge: inter.bodyLarge?.copyWith(fontSize: 16, height: 1.4),
           bodyMedium: inter.bodyMedium?.copyWith(fontSize: 16, height: 1.4),
           bodySmall: inter.bodySmall?.copyWith(fontSize: 14, height: 1.35),
           labelLarge: inter.labelLarge?.copyWith(
@@ -164,7 +168,7 @@ class AppTheme {
           // grey wash on press that reads as a rendering fault.
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
           ),
         ),
       ),
@@ -173,7 +177,7 @@ class AppTheme {
           minimumSize: const Size.fromHeight(52),
           textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
           ),
         ),
       ),
@@ -183,7 +187,7 @@ class AppTheme {
           textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
           side: BorderSide(color: colorScheme.outlineVariant, width: 1.4),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
           ),
         ),
       ),
@@ -208,8 +212,8 @@ class AppTheme {
         // Roomier fields — the old height read as cramped/narrow on the auth
         // screens. Taller with a touch more side padding.
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 19,
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.md,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
@@ -221,7 +225,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+          borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
@@ -239,7 +243,9 @@ class AppTheme {
         indicatorColor: isDark
             ? AppColors.primaryDark.withValues(alpha: 0.24)
             : AppColors.primary,
-        indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+        ),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
@@ -271,7 +277,7 @@ class AppTheme {
         elevation: 0,
         showDragHandle: true,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
       ),
       dialogTheme: DialogThemeData(

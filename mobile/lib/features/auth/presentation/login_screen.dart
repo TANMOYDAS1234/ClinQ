@@ -5,13 +5,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/network/api_exception.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/tokens.dart';
 import '../../../core/utils/auth_validators.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../shared/providers/locale_provider.dart';
-import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_logo.dart';
+import '../../../shared/widgets/auth_kit.dart';
 import '../../../shared/widgets/error_view.dart';
 import 'auth_controller.dart';
 
@@ -53,7 +52,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   /// Best-effort: a failure here must never block a successful login.
   Future<void> _reconcileLanguage() async {
     final appLanguage = ref.read(localeControllerProvider)?.languageCode;
-    if (appLanguage == null || !supportedLanguageCodes.contains(appLanguage)) return;
+    if (appLanguage == null || !supportedLanguageCodes.contains(appLanguage)) {
+      return;
+    }
     if (ref.read(authControllerProvider).user?.language == appLanguage) return;
 
     ref.read(authControllerProvider.notifier).updateLocalUserLanguage(appLanguage);
@@ -97,155 +98,153 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+
     return Scaffold(
+      backgroundColor: T.surface,
       body: SafeArea(
-        child: SingleChildScrollView(
-          // Narrower side padding so the fields run wider across the screen.
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.lg),
-          child: Form(
-            key: _formKey,
-            autovalidateMode: _autovalidateMode,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: AppSpacing.xxl),
-                // Brand block centred above the form: on first launch this is
-                // the only thing on screen worth looking at, and centring it
-                // stops the eye starting at a form field.
-                const Center(child: AppLogo(size: 76, showShadow: true)),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  AppConfig.appName,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.accentOn(context),
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  l10n.authLoginSubtitle,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15.5,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                // The form sits on its own raised card. It separates "who this
-                // app is" from "what you have to do", which a single flat
-                // column runs together.
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.25),
-                    ),
-                  ),
+        child: Form(
+          key: _formKey,
+          autovalidateMode: _autovalidateMode,
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(T.s5, T.s8, T.s5, T.s6),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  autofillHints: const [AutofillHints.telephoneNumber],
-                  // +91 is fixed and the patient types only the 10 national
-                  // digits.
-                  //
-                  // Capped by a formatter rather than maxLength. maxLength
-                  // enforces AFTER the formatters and rewrites the whole value,
-                  // which resets the selection — so tapping into the middle of a
-                  // full number and typing threw the cursor to the end. The
-                  // formatter preserves the caret. Exactly one limiter, always:
-                  // two of them fight each other and reintroduce the jump.
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(10),
-                  ],
-                  decoration: InputDecoration(
-                    labelText: l10n.authPhoneLabel,
-                    hintText: l10n.authPhoneHint,
-                    prefixIcon: const Icon(Icons.phone_outlined),
-                    // The country code shows first, by default, always.
-                    prefixText: '${AuthValidators.countryCode} ',
-                    counterText: '',
-                  ),
-                  validator: (value) {
-                    if (value == null || !AuthValidators.isValidPhone(value)) {
-                      return l10n.authInvalidPhone;
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  autofillHints: const [AutofillHints.password],
-                  decoration: InputDecoration(
-                    labelText: l10n.authPasswordLabel,
-                    prefixIcon: const Icon(Icons.lock_outline_rounded),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
+                      const Center(child: AppLogo(size: 64)),
+                      const SizedBox(height: T.s6),
+                      ScreenHeading(
+                        title: AppConfig.appName,
+                        subtitle: l10n.authLoginSubtitle,
+                        center: true,
                       ),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                  ),
-                  onFieldSubmitted: (_) => _submit(),
-                  // Only checks that something was typed. Enforcing the 8-char
-                  // registration minimum here would be wrong twice over: the
-                  // server accepts any non-empty password on login, and telling
-                  // someone their *existing* password is "too short" reads as a
-                  // rule about the account rather than a typo in the box.
-                  validator: (value) =>
-                      (value == null || value.isEmpty) ? l10n.authPasswordRequired : null,
-                ),
-                if (_errorMessage != null) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    decoration: BoxDecoration(
-                      color: AppColors.dangerBgOn(context),
-                      borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-                    ),
-                    child: Text(
-                      _errorMessage!,
-                      style: TextStyle(color: AppColors.dangerOn(context), fontSize: 16),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.lg),
-                AppButton(label: l10n.authLoginButton, isLoading: _isSubmitting, onPressed: _submit),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Center(
-                  child: Wrap(
-                    alignment: WrapAlignment.center,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text(l10n.authNoAccount, style: Theme.of(context).textTheme.bodyMedium),
-                      TextButton(
-                        onPressed: () => context.go('/register'),
-                        child: Text(
-                          l10n.authGoToRegister,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                      const SizedBox(height: T.s8),
+
+                      AuthField(
+                        label: l10n.authPhoneLabel,
+                        child: TextFormField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          autofillHints: const [AutofillHints.telephoneNumber],
+                          style: T.body.copyWith(color: T.ink),
+                          // +91 is fixed and the patient types only the 10
+                          // national digits.
+                          //
+                          // Capped by a formatter rather than maxLength.
+                          // maxLength enforces AFTER the formatters and
+                          // rewrites the whole value, which resets the
+                          // selection — so tapping into the middle of a full
+                          // number and typing threw the cursor to the end. The
+                          // formatter preserves the caret. Exactly one limiter,
+                          // always: two of them fight and reintroduce the jump.
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(10),
+                          ],
+                          decoration: AuthField.decoration(
+                            hint: l10n.authPhoneHint,
+                            prefixText: '${AuthValidators.countryCode} ',
+                          ),
+                          validator: (value) {
+                            if (value == null ||
+                                !AuthValidators.isValidPhone(value)) {
+                              return l10n.authInvalidPhone;
+                            }
+                            return null;
+                          },
                         ),
                       ),
+                      const SizedBox(height: T.s5),
+
+                      AuthField(
+                        label: l10n.authPasswordLabel,
+                        child: TextFormField(
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          autofillHints: const [AutofillHints.password],
+                          style: T.body.copyWith(color: T.ink),
+                          decoration: AuthField.decoration(
+                            hint: l10n.authPasswordHint,
+                            suffix: IconButton(
+                              iconSize: 20,
+                              color: T.inkMuted,
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                              ),
+                              tooltip: _obscurePassword ? 'Show' : 'Hide',
+                              onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
+                            ),
+                          ),
+                          onFieldSubmitted: (_) => _submit(),
+                          // Only checks that something was typed. Enforcing the
+                          // 8-char registration minimum here would be wrong
+                          // twice over: the server accepts any non-empty
+                          // password on login, and telling someone their
+                          // *existing* password is "too short" reads as a rule
+                          // about the account rather than a typo in the box.
+                          validator: (value) => (value == null || value.isEmpty)
+                              ? l10n.authPasswordRequired
+                              : null,
+                        ),
+                      ),
+
+                      if (_errorMessage != null) ...[
+                        const SizedBox(height: T.s5),
+                        InlineError(message: _errorMessage!),
+                      ],
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
-              ],
-            ),
+              ),
+
+              // The action sits against the bottom of the screen rather than
+              // after the last field: it is always in the same place and
+              // always in reach, whatever the form above it is doing.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(T.s5, 0, T.s5, T.s4),
+                child: Column(
+                  children: [
+                    PillButton(
+                      label: l10n.authLoginButton,
+                      loading: _isSubmitting,
+                      onPressed: _submit,
+                    ),
+                    const SizedBox(height: T.s4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          l10n.authNoAccount,
+                          style: T.small.copyWith(color: T.inkMuted),
+                        ),
+                        const SizedBox(width: T.s1),
+                        GestureDetector(
+                          onTap: () => context.go('/register'),
+                          child: Padding(
+                            // Padding, not a bare tap: the words alone are a
+                            // 16px-tall target.
+                            padding: const EdgeInsets.symmetric(vertical: T.s2),
+                            child: Text(
+                              l10n.authGoToRegister,
+                              style: T.small.copyWith(
+                                color: T.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

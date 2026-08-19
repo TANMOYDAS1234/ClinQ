@@ -105,7 +105,10 @@ class AppLocalizationsBn extends AppLocalizations {
   String get authPhoneLabel => 'ফোন নম্বর';
 
   @override
-  String get authPhoneHint => '৯৮৩০০ ১২৩৪৫';
+  String get authPhoneHint => 'আপনার ১০ সংখ্যার নম্বর লিখুন';
+
+  @override
+  String get authPasswordHint => 'আপনার পাসওয়ার্ড লিখুন';
 
   @override
   String get authPasswordLabel => 'পাসওয়ার্ড';

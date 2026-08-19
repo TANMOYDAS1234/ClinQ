@@ -13,6 +13,12 @@ class AppSpacing {
   /// up slightly for older patients tapping with less precision.
   static const double minTapTarget = 48;
 
-  static const double cardRadius = 16;
-  static const double buttonRadius = 12;
+  /// The radius language, matching the reference kit: cards sit *inside*
+  /// controls, not the other way round. These were inverted — a 16px card
+  /// holding a 12px button reads as two unrelated shapes.
+  static const double cardRadius = 12;
+  static const double buttonRadius = 16;
+
+  /// Sheets, dialogs and the one leading card on a screen.
+  static const double sheetRadius = 20;
 }
