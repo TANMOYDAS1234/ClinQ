@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -10,6 +11,7 @@ import '../../../shared/providers/preferences_provider.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../shared/widgets/empty_view.dart';
 import '../../../shared/widgets/error_view.dart';
+import '../../../shared/widgets/hero_band.dart';
 import '../data/medications_repository.dart';
 import '../domain/medication.dart';
 import 'medications_providers.dart';
@@ -90,10 +92,12 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen>
     final result = await showMarkDoseSheet(context, slot.name);
     if (result == null) return;
 
-    final datePart = schedule.date.isNotEmpty
-        ? schedule.date
-        : DateTime.now().toIso8601String().substring(0, 10);
-    final scheduledFor = DateTime.tryParse('${datePart}T${slot.time}:00') ?? DateTime.now();
+    final datePart =
+        schedule.date.isNotEmpty
+            ? schedule.date
+            : DateTime.now().toIso8601String().substring(0, 10);
+    final scheduledFor =
+        DateTime.tryParse('${datePart}T${slot.time}:00') ?? DateTime.now();
 
     await ref
         .read(medicationsRepositoryProvider)
@@ -115,17 +119,26 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen>
     // Hold the last list while a background poll is in flight, or the screen
     // would drop to a spinner every thirty seconds.
     final medsLoaded = medsAsyncRaw.valueOrNull;
-    final medsAsync = medsLoaded != null ? AsyncData<List<Medication>>(medsLoaded) : medsAsyncRaw;
+    final medsAsync =
+        medsLoaded != null
+            ? AsyncData<List<Medication>>(medsLoaded)
+            : medsAsyncRaw;
     final scheduleAsync = ref.watch(todayScheduleProvider);
     final meals = ref.watch(mealTimesProvider).valueOrNull;
 
     // Keep on-device reminders in step with the live medication list: whenever
     // it (re)loads — after a scan, a manual add, or a doctor's prescription —
     // the daily reminders are rebuilt.
-    ref.listen<AsyncValue<List<Medication>>>(medicationsListProvider, (_, next) {
+    ref.listen<AsyncValue<List<Medication>>>(medicationsListProvider, (
+      _,
+      next,
+    ) {
       if (ref.read(appPreferencesProvider).medicationReminders) {
         next.whenData(
-          (meds) => syncMedicationReminders(meds, today: ref.read(todayScheduleProvider).valueOrNull),
+          (meds) => syncMedicationReminders(
+            meds,
+            today: ref.read(todayScheduleProvider).valueOrNull,
+          ),
         );
       }
     });
@@ -168,113 +181,140 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen>
                   ref.invalidate(mealTimesProvider);
                 },
                 child: medsAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (error, _) => ListView(
-                    children: [
-                      SizedBox(
-                        height: 400,
-                        child: ErrorView(
-                          error: error,
-                          onRetry: () => ref.invalidate(medicationsListProvider),
-                        ),
+                  loading:
+                      () => const Center(child: CircularProgressIndicator()),
+                  error:
+                      (error, _) => ListView(
+                        children: [
+                          SizedBox(
+                            height: 400,
+                            child: ErrorView(
+                              error: error,
+                              onRetry:
+                                  () => ref.invalidate(medicationsListProvider),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
                   data: (meds) {
                     final active = meds.where((m) => m.isActive).toList();
 
+                    // Zero padding so the band reaches both edges; the rest
+                    // is padded on its own. See HeroBand.
                     return ListView(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md,
-                        AppSpacing.md,
-                        AppSpacing.md,
-                        110,
-                      ),
+                      padding: const EdgeInsets.only(bottom: 110),
                       children: [
-                        const Text(
-                          'Medications',
-                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, height: 1.15),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          'Manage your current prescriptions and daily schedule.',
-                          style: TextStyle(
-                            fontSize: 16,
-                            height: 1.4,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
+                        _DoseHero(schedule: scheduleAsync.valueOrNull),
                         const SizedBox(height: AppSpacing.md),
-                        // Side by side, as the design draws them. Stacked
-                        // full-width they read as two more rows in a list of
-                        // rows; as a pair they read as the two places to go.
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _HubCard(
-                                icon: Icons.history_rounded,
-                                title: 'Dose history',
-                                subtitle: 'Taken & missed',
-                                onTap: () => context.push('/medications/history'),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Side by side, as the design draws them. Stacked
+                              // full-width they read as two more rows in a list of
+                              // rows; as a pair they read as the two places to go.
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _HubCard(
+                                      icon: Icons.history_rounded,
+                                      title: 'Dose history',
+                                      subtitle: 'Taken & missed',
+                                      onTap:
+                                          () => context.push(
+                                            '/medications/history',
+                                          ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Expanded(
+                                    child: _HubCard(
+                                      icon: Icons.description_rounded,
+                                      title: 'Prescriptions',
+                                      subtitle: 'View & share',
+                                      onTap:
+                                          () => context.push(
+                                            '/medications/prescriptions',
+                                          ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Expanded(
-                              child: _HubCard(
-                                icon: Icons.description_rounded,
-                                title: 'Prescriptions',
-                                subtitle: 'View & share',
-                                onTap: () => context.push('/medications/prescriptions'),
+                              const SizedBox(height: AppSpacing.lg),
+
+                              const _MicroLabel('Reminder windows'),
+                              const SizedBox(height: AppSpacing.sm),
+                              _ReminderWindows(
+                                meals: meals,
+                                onTap:
+                                    () =>
+                                        context.push('/medications/reminders'),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
+                              const SizedBox(height: AppSpacing.lg),
 
-                        const _MicroLabel('Reminder windows'),
-                        const SizedBox(height: AppSpacing.sm),
-                        _ReminderWindows(
-                          meals: meals,
-                          onTap: () => context.push('/medications/reminders'),
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
+                              const _MicroLabel('Active prescriptions'),
+                              const SizedBox(height: AppSpacing.sm),
+                              if (active.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: AppSpacing.lg,
+                                  ),
+                                  child: EmptyView(
+                                    icon: Icons.medication_outlined,
+                                    title: l10n.medsEmptyTitle,
+                                    body: l10n.medsEmptyBody,
+                                  ),
+                                )
+                              else
+                                for (final med in active)
+                                  _PrescriptionCard(
+                                    medication: med,
+                                    meals: meals,
+                                  ),
 
-                        const _MicroLabel('Active prescriptions'),
-                        const SizedBox(height: AppSpacing.sm),
-                        if (active.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: AppSpacing.lg),
-                            child: EmptyView(
-                              icon: Icons.medication_outlined,
-                              title: l10n.medsEmptyTitle,
-                              body: l10n.medsEmptyBody,
-                            ),
-                          )
-                        else
-                          for (final med in active)
-                            _PrescriptionCard(medication: med, meals: meals),
-
-                        // Kept below the design's content rather than dropped:
-                        // ticking a dose is what produces the adherence figure
-                        // the doctor sees, and there is nowhere else to do it.
-                        scheduleAsync.when(
-                          loading: () => const SizedBox.shrink(),
-                          error: (_, _) => const SizedBox.shrink(),
-                          data: (schedule) => schedule.slots.isEmpty
-                              ? const SizedBox.shrink()
-                              : Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    const SizedBox(height: AppSpacing.lg),
-                                    _MicroLabel(l10n.medsTodaySchedule),
-                                    const SizedBox(height: AppSpacing.sm),
-                                    for (final slot in schedule.slots)
-                                      MedicationSlotTile(
-                                        slot: slot,
-                                        onTap: () => _handleTap(context, ref, schedule, slot),
-                                      ),
-                                  ],
-                                ),
+                              // Kept below the design's content rather than dropped:
+                              // ticking a dose is what produces the adherence figure
+                              // the doctor sees, and there is nowhere else to do it.
+                              scheduleAsync.when(
+                                loading: () => const SizedBox.shrink(),
+                                error: (_, _) => const SizedBox.shrink(),
+                                data:
+                                    (schedule) =>
+                                        schedule.slots.isEmpty
+                                            ? const SizedBox.shrink()
+                                            : Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                const SizedBox(
+                                                  height: AppSpacing.lg,
+                                                ),
+                                                _MicroLabel(
+                                                  l10n.medsTodaySchedule,
+                                                ),
+                                                const SizedBox(
+                                                  height: AppSpacing.sm,
+                                                ),
+                                                for (final slot
+                                                    in schedule.slots)
+                                                  MedicationSlotTile(
+                                                    slot: slot,
+                                                    onTap:
+                                                        () => _handleTap(
+                                                          context,
+                                                          ref,
+                                                          schedule,
+                                                          slot,
+                                                        ),
+                                                  ),
+                                              ],
+                                            ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     );
@@ -296,28 +336,49 @@ class _BrandHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.sm, AppSpacing.md),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.sm,
+        AppSpacing.md,
+      ),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
+        border: Border(
+          bottom: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
       ),
       child: Row(
         children: [
           Image.asset(
             'assets/brand/medpin_emblem.png',
             height: 30,
-            errorBuilder: (_, _, _) =>
-                Icon(Icons.medication_rounded, size: 26, color: AppColors.accentOn(context)),
+            errorBuilder:
+                (_, _, _) => Icon(
+                  Icons.medication_rounded,
+                  size: 26,
+                  color: AppColors.accentOn(context),
+                ),
           ),
           const SizedBox(width: 8),
           Text(
             'MedPin',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.accentOn(context),
+            ),
           ),
           const Spacer(),
           IconButton(
             tooltip: 'Notifications',
             onPressed: () => context.push('/profile/notifications'),
-            icon: Icon(Icons.notifications_none_rounded, size: 26, color: scheme.onSurface),
+            icon: Icon(
+              Icons.notifications_none_rounded,
+              size: 26,
+              color: scheme.onSurface,
+            ),
           ),
         ],
       ),
@@ -357,7 +418,9 @@ class _HubCard extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.55),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,7 +440,10 @@ class _HubCard extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 0),
               Text(
@@ -425,9 +491,21 @@ class _ReminderWindows extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final windows = <({IconData icon, String label, String time})>[
-      (icon: Icons.wb_twilight_rounded, label: 'Breakfast', time: meals?.breakfast ?? '—'),
-      (icon: Icons.wb_sunny_outlined, label: 'Lunch', time: meals?.lunch ?? '—'),
-      (icon: Icons.nightlight_round, label: 'Dinner', time: meals?.dinner ?? '—'),
+      (
+        icon: Icons.wb_twilight_rounded,
+        label: 'Breakfast',
+        time: meals?.breakfast ?? '—',
+      ),
+      (
+        icon: Icons.wb_sunny_outlined,
+        label: 'Lunch',
+        time: meals?.lunch ?? '—',
+      ),
+      (
+        icon: Icons.nightlight_round,
+        label: 'Dinner',
+        time: meals?.dinner ?? '—',
+      ),
     ];
 
     return IntrinsicHeight(
@@ -460,10 +538,15 @@ class _WindowCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.md,
+            horizontal: AppSpacing.sm,
+          ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.7),
+            ),
           ),
           child: Column(
             children: [
@@ -471,10 +554,16 @@ class _WindowCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Text(
                 window.label,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 0),
-              Text(window.time, style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
+              Text(
+                window.time,
+                style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
+              ),
             ],
           ),
         ),
@@ -533,7 +622,11 @@ class _PrescriptionCard extends StatelessWidget {
     // The label is the shared plain-language dosing phrase ("Twice a day, after
     // food") — the same expansion the doctor's shorthand produces.
     final summary = medication.doseSummary;
-    final times = medication.schedule.map((s) => s.time).where((t) => t.isNotEmpty).toList();
+    final times =
+        medication.schedule
+            .map((s) => s.time)
+            .where((t) => t.isNotEmpty)
+            .toList();
     if (times.isEmpty) return (icon: Icons.schedule_rounded, label: summary);
 
     final windows = times.map(_windowFor).where((w) => w.isNotEmpty).toList();
@@ -578,7 +671,11 @@ class _PrescriptionCard extends StatelessWidget {
                   children: [
                     Text(
                       medication.name,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1.2),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
                     ),
                     // The doctor's own note about this medicine. No invented
                     // "what it's for" line: the record does not hold one, and a
@@ -587,7 +684,10 @@ class _PrescriptionCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         medication.instructions!,
-                        style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ],
@@ -595,7 +695,10 @@ class _PrescriptionCard extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.accentSoftOn(context),
                   borderRadius: BorderRadius.circular(20),
@@ -613,7 +716,10 @@ class _PrescriptionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.7)),
+          Divider(
+            height: 1,
+            color: scheme.outlineVariant.withValues(alpha: 0.7),
+          ),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
@@ -633,7 +739,13 @@ class _PrescriptionCard extends StatelessWidget {
                       ),
                       if (unit.isNotEmpty) ...[
                         const SizedBox(width: 4),
-                        Text(unit, style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
+                        Text(
+                          unit,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -641,7 +753,10 @@ class _PrescriptionCard extends StatelessWidget {
               else
                 const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHigh.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(12),
@@ -653,7 +768,10 @@ class _PrescriptionCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       schedule.label,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -662,6 +780,70 @@ class _PrescriptionCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The Medicines band: how much of today is already done.
+///
+/// The tab used to open with the words "Medications" and a sentence explaining
+/// what the tab was for — a heading that told a returning patient nothing they
+/// did not already know. What they actually come here to find out is whether
+/// they are behind, so that is the number.
+class _DoseHero extends StatelessWidget {
+  const _DoseHero({required this.schedule});
+
+  final TodaySchedule? schedule;
+
+  @override
+  Widget build(BuildContext context) {
+    final slots = schedule?.slots ?? const <MedicationScheduleSlot>[];
+    final total = slots.length;
+    final taken = slots.where((s) => s.status == 'taken').length;
+    final missed = slots.where((s) => s.status == 'missed').length;
+    final left = slots.where((s) => s.status == 'pending').length;
+
+    final (tone, label) = switch (0) {
+      _ when total == 0 => (AppColors.primary, 'Nothing scheduled'),
+      _ when missed > 0 => (AppColors.danger, '$missed missed'),
+      _ when left == 0 => (AppColors.success, 'All done'),
+      _ => (AppColors.warning, '$left to go'),
+    };
+
+    return HeroBand(
+      eyebrow: DateFormat('EEEE, d MMMM').format(DateTime.now()),
+      title: 'Today',
+      figure:
+          total == 0
+              ? null
+              : HeroFigure(
+                value: '$taken/$total',
+                unit: total == 1 ? 'dose' : 'doses',
+                statusLabel: label,
+                statusColor: tone,
+                caption: 'Taken so far today',
+              ),
+      footer:
+          total == 0
+              ? null
+              : HeroProgress(
+                fraction: taken / total,
+                label:
+                    left == 0
+                        ? 'Every dose accounted for'
+                        : 'Next dose ${slots.firstWhere((s) => s.status == 'pending', orElse: () => slots.first).time}',
+                tone: tone,
+              ),
+      child:
+          total == 0
+              ? Text(
+                'No doses scheduled for today.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              )
+              : null,
     );
   }
 }

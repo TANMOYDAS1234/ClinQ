@@ -20,6 +20,11 @@ const _exempt = <String>[
   'lib/core/theme/app_theme.dart',
   'lib/core/theme/app_spacing.dart',
   'lib/core/theme/app_depth.dart',
+  // The hero band. It holds the one figure in the app deliberately off the
+  // type scale — a screen's subject that is merely one step larger than a
+  // heading does not read as a subject. Exempt by name so the exception is a
+  // decision recorded here, not a value that slipped past.
+  'lib/shared/widgets/hero_band.dart',
 ];
 
 /// The 4px grid. 0 is always fine; 2 is allowed only as a border width, which
