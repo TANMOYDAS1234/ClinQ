@@ -147,7 +147,7 @@ class DieticianPatientScreen extends ConsumerWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
         ),
-        child: Text(text, style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
+        child: Text(text, style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
       );
 }
 
@@ -177,24 +177,24 @@ class _MedicalCard extends StatelessWidget {
             Expanded(
               child: Text(
                 o.name,
-                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, height: 1.15),
+                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, height: 1.15),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: risk.withValues(alpha: 0.13),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 '${_cap(o.riskBand)} Risk',
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: risk),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: risk),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
 
         // Age, sex and height on one line with their marks. These three are
         // read together — they are what a calorie target is built from — so
@@ -215,22 +215,22 @@ class _MedicalCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           _label(context, 'MAIN CONCERN'),
           const SizedBox(height: 4),
-          Text(o.chiefComplaint!, style: const TextStyle(fontSize: 14.5, height: 1.4)),
+          Text(o.chiefComplaint!, style: const TextStyle(fontSize: 14, height: 1.4)),
         ],
 
         if (o.allergies.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
           _label(context, 'ALLERGIES'),
-          const SizedBox(height: 7),
+          const SizedBox(height: 8),
           Wrap(
-            spacing: 7,
-            runSpacing: 7,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               for (final a in o.allergies)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(7),
+                    borderRadius: BorderRadius.circular(12),
                     // Outlined rather than filled: an allergy is a hard stop
                     // when writing a meal plan, and an outline holds the eye
                     // where a soft wash blends into the page.
@@ -238,7 +238,7 @@ class _MedicalCard extends StatelessWidget {
                   ),
                   child: Text(
                     a,
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: danger),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: danger),
                   ),
                 ),
             ],
@@ -257,8 +257,8 @@ class _MedicalCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 15, color: scheme.onSurfaceVariant),
-        const SizedBox(width: 6),
-        Text(text, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
+        const SizedBox(width: 4),
+        Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       ],
     );
   }
@@ -266,7 +266,7 @@ class _MedicalCard extends StatelessWidget {
   Widget _label(BuildContext context, String text) => Text(
         text,
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.7,
           color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -294,7 +294,7 @@ class _MedRow extends StatelessWidget {
           Container(
             width: 34,
             height: 34,
-            decoration: BoxDecoration(color: AppColors.accentOn(context).withValues(alpha: 0.10), borderRadius: BorderRadius.circular(9)),
+            decoration: BoxDecoration(color: AppColors.accentOn(context).withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
             child: Icon(Icons.medication_rounded, size: 18, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 12),
@@ -302,10 +302,10 @@ class _MedRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(med.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                Text(med.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                 if (sub.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(sub, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                  const SizedBox(height: 0),
+                  Text(sub, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                 ],
               ],
             ),
@@ -325,7 +325,7 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(text, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+        Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         if (trailing != null) ...[
           const SizedBox(width: 8),
           Text(trailing!, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurfaceVariant)),
@@ -416,11 +416,11 @@ class _DietPlanSection extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('No plan yet', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 2),
+                          const Text('No plan yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 0),
                           Text(
                             'Write one so the advice survives the conversation.',
-                            style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                            style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                           ),
                         ],
                       ),
@@ -459,7 +459,7 @@ class _DietPlanSection extends ConsumerWidget {
                           plan.goal.isNotEmpty ? plan.goal : '${plan.meals.length} meals planned',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, height: 1.35),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, height: 1.35),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
@@ -469,11 +469,11 @@ class _DietPlanSection extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.sm),
                   Wrap(
                     spacing: AppSpacing.sm,
-                    runSpacing: 6,
+                    runSpacing: 4,
                     children: [
                       for (final meal in plan.meals.take(5))
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: AppColors.accentSoftOn(context),
                             borderRadius: BorderRadius.circular(20),
@@ -481,7 +481,7 @@ class _DietPlanSection extends ConsumerWidget {
                           child: Text(
                             meal.time.isNotEmpty ? '${meal.name} · ${meal.time}' : meal.name,
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: AppColors.accentOn(context),
                             ),
@@ -489,7 +489,7 @@ class _DietPlanSection extends ConsumerWidget {
                         ),
                       if (plan.avoid.isNotEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: AppColors.dangerOn(context).withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(20),
@@ -497,7 +497,7 @@ class _DietPlanSection extends ConsumerWidget {
                           child: Text(
                             '${plan.avoid.length} to avoid',
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: AppColors.dangerOn(context),
                             ),
@@ -513,7 +513,7 @@ class _DietPlanSection extends ConsumerWidget {
                         size: 16,
                         color: plan.hasUnsentChanges ? AppColors.warning : AppColors.primary,
                       ),
-                      const SizedBox(width: 5),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           plan.sharedAt == null
@@ -522,14 +522,14 @@ class _DietPlanSection extends ConsumerWidget {
                               ? 'Edited since it was last sent'
                               : 'Sent ${DateFormat('d MMM').format(plan.sharedAt!)}'
                                     '${plan.dieticianName != null ? ' · ${plan.dieticianName}' : ''}',
-                          style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
                       TextButton.icon(
@@ -542,7 +542,7 @@ class _DietPlanSection extends ConsumerWidget {
                         icon: const Icon(Icons.edit_outlined, size: 17),
                         label: const Text(
                           'Edit plan',
-                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                         ),
                       ),
                       // History only when there is some. The endpoint returns
@@ -563,7 +563,7 @@ class _DietPlanSection extends ConsumerWidget {
                             icon: const Icon(Icons.history_rounded, size: 17),
                             label: Text(
                               past.length == 1 ? '1 previous' : '${past.length} previous',
-                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                             ),
                           );
                         },
@@ -584,7 +584,7 @@ class _DietPlanSection extends ConsumerWidget {
                           icon: const Icon(Icons.note_add_outlined, size: 17),
                           label: const Text(
                             'New plan',
-                            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                           ),
                         ),
                     ],
@@ -695,7 +695,7 @@ class _FoodLogSection extends ConsumerWidget {
                         child: Text(
                           'Food Log (Last 24h)',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: AppColors.accentOn(context),
                           ),
@@ -704,7 +704,7 @@ class _FoodLogSection extends ConsumerWidget {
                       if (entries.isNotEmpty)
                         Text(
                           '${recent.length} logged',
-                          style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                         ),
                     ],
                   ),
@@ -744,7 +744,7 @@ class _FoodLogSection extends ConsumerWidget {
                           child: Text(
                             'Earlier Meals',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.w800,
                               color: AppColors.accentOn(context),
                             ),
@@ -752,7 +752,7 @@ class _FoodLogSection extends ConsumerWidget {
                         ),
                         Text(
                           '${earlier.length} logged',
-                          style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                         ),
                       ],
                     ),
@@ -764,7 +764,7 @@ class _FoodLogSection extends ConsumerWidget {
                       Text(
                         day.key,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.7,
                           color: scheme.onSurfaceVariant,
@@ -794,7 +794,7 @@ class _FoodLogSection extends ConsumerWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
         ),
-        child: Text(text, style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
+        child: Text(text, style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
       );
 }
 
@@ -820,11 +820,11 @@ class _SlotTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.help_outline_rounded, size: 19, color: scheme.onSurfaceVariant),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Text(
                 'No $slot logged',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -834,7 +834,7 @@ class _SlotTile extends StatelessWidget {
 
     return Material(
       color: scheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: e.photoUrl == null ? null : () => FullscreenPhoto.show(context, e.photoUrl),
@@ -847,14 +847,14 @@ class _SlotTile extends StatelessWidget {
                 AuthedImage(path: e.photoUrl!, fit: BoxFit.cover)
               else
                 Padding(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   child: Center(
                     child: Text(
                       e.note.isEmpty ? label : e.note,
                       maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12.5, color: scheme.onSurface),
+                      style: TextStyle(fontSize: 12, color: scheme.onSurface),
                     ),
                   ),
                 ),
@@ -879,9 +879,9 @@ class _SlotTile extends StatelessWidget {
                       if (e.createdAt != null) ...[
                         Text(
                           DateFormat('h:mm a').format(e.createdAt!),
-                          style: const TextStyle(fontSize: 11, color: Colors.white),
+                          style: const TextStyle(fontSize: 12, color: Colors.white),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4),
                       ],
                       Expanded(
                         child: Text(
@@ -890,7 +890,7 @@ class _SlotTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.right,
                           style: const TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
                           ),
@@ -936,7 +936,7 @@ class _DashPainter extends CustomPainter {
       ..strokeWidth = 1.3;
     final rect = RRect.fromRectAndRadius(
       Rect.fromLTWH(0.65, 0.65, size.width - 1.3, size.height - 1.3),
-      const Radius.circular(10),
+      const Radius.circular(12),
     );
 
     // Walk the rounded rectangle and draw every other short run of it.
@@ -986,10 +986,10 @@ class _FoodEntry extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(meal, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.accentOn(context))),
+                    Text(meal, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.accentOn(context))),
                     const Spacer(),
                     if (entry.createdAt != null)
-                      Text(DateFormat('h:mm a').format(entry.createdAt!), style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                      Text(DateFormat('h:mm a').format(entry.createdAt!), style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                   ],
                 ),
                 if (entry.note.isNotEmpty) ...[
@@ -1037,13 +1037,13 @@ class _LabTests extends StatelessWidget {
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   'Last HbA1c  $hba1c%',
-                  style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
                 const Spacer(),
                 if (overview.hba1cTestedOn != null)
                   Text(
                     DateFormat('MMM yyyy').format(overview.hba1cTestedOn!),
-                    style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                    style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                   ),
               ],
             ),
@@ -1051,7 +1051,7 @@ class _LabTests extends StatelessWidget {
           ],
           for (final test in overview.advisedTests)
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: 4),
               child: Row(
                 children: [
                   Icon(
@@ -1060,11 +1060,11 @@ class _LabTests extends StatelessWidget {
                     color: test.reported ? AppColors.success : AppColors.warning,
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  Expanded(child: Text(test.name, style: const TextStyle(fontSize: 14.5))),
+                  Expanded(child: Text(test.name, style: const TextStyle(fontSize: 14))),
                   Text(
                     test.reported ? 'Result in' : 'Awaiting result',
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: test.reported ? AppColors.success : AppColors.warning,
                     ),
@@ -1144,7 +1144,7 @@ class _VitalsSection extends StatelessWidget {
                 child: Text(
                   'Recent Vitals',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: AppColors.accentOn(context),
                   ),
@@ -1152,11 +1152,11 @@ class _VitalsSection extends StatelessWidget {
               ),
               Text(
                 tiles.length == 1 ? '1 measure' : '${tiles.length} measures',
-                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 0),
           for (var i = 0; i < tiles.length; i++) ...[
             Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
             tiles[i],
@@ -1202,7 +1202,7 @@ class _MeasureTile extends StatelessWidget {
     };
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 11),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -1213,7 +1213,7 @@ class _MeasureTile extends StatelessWidget {
                 Text(
                   label.toUpperCase(),
                   style: TextStyle(
-                    fontSize: 10.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.7,
                     color: scheme.onSurfaceVariant,
@@ -1226,13 +1226,13 @@ class _MeasureTile extends StatelessWidget {
                   children: [
                     Text(
                       value,
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: fg),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: fg),
                     ),
                     if (unit.isNotEmpty) ...[
                       const SizedBox(width: 4),
                       Text(
                         unit,
-                        style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                        style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                       ),
                     ],
                     if (at != null) ...[
@@ -1294,15 +1294,15 @@ class _AdviceTile extends StatelessWidget {
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
+        tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 0),
         childrenPadding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
-        title: Text(date, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+        title: Text(date, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
         subtitle: Text(
           dx.isNotEmpty ? dx : (entry.doctorName ?? 'Advice on record'),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
         ),
         children: [
           if (entry.diagnosis.isNotEmpty) _kv(scheme, 'Diagnosis', entry.diagnosis.join(', ')),
@@ -1319,8 +1319,8 @@ class _AdviceTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(k.toUpperCase(), style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.4, color: scheme.onSurfaceVariant)),
-            const SizedBox(height: 2),
+            Text(k.toUpperCase(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.4, color: scheme.onSurfaceVariant)),
+            const SizedBox(height: 0),
             Text(v, style: const TextStyle(fontSize: 14, height: 1.35)),
           ],
         ),
@@ -1408,7 +1408,7 @@ class _DietLabReportRowState extends ConsumerState<_DietLabReportRow> {
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: Row(
@@ -1422,9 +1422,9 @@ class _DietLabReportRowState extends ConsumerState<_DietLabReportRow> {
                     width: 52,
                     height: 52,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(12)),
                     child: _busy
-                        ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4))
+                        ? const SizedBox(width: 20, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4))
                         : Icon(_fileIcon(), color: scheme.onSurfaceVariant, size: 24),
                   ),
           ),
@@ -1434,17 +1434,17 @@ class _DietLabReportRowState extends ConsumerState<_DietLabReportRow> {
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(report.testName, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
+                    Expanded(child: Text(report.testName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
                     if (report.createdAt != null)
-                      Text(DateFormat('d MMM').format(report.createdAt!), style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                      Text(DateFormat('d MMM').format(report.createdAt!), style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                   ],
                 ),
                 if (report.analysisSummary != null && report.analysisSummary!.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(report.analysisSummary!, style: const TextStyle(fontSize: 13, height: 1.3)),
+                  const SizedBox(height: 4),
+                  Text(report.analysisSummary!, style: const TextStyle(fontSize: 14, height: 1.3)),
                 ] else if (report.note.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(report.note, style: const TextStyle(fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Text(report.note, style: const TextStyle(fontSize: 14)),
                 ],
                 if (report.hasFile) ...[
                   const SizedBox(height: 4),
@@ -1454,13 +1454,13 @@ class _DietLabReportRowState extends ConsumerState<_DietLabReportRow> {
                       const SizedBox(width: 4),
                       Text(
                         showThumb ? 'Tap to view' : (report.mimeType == 'application/pdf' ? 'Tap to open PDF' : 'Tap to open'),
-                        style: TextStyle(fontSize: 11.5, color: AppColors.accentOn(context), fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 12, color: AppColors.accentOn(context), fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
                 ],
                 if (abnormal.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1477,11 +1477,11 @@ class _DietLabReportRowState extends ConsumerState<_DietLabReportRow> {
                 ],
                 if (report.analytes.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Wrap(spacing: 6, runSpacing: 6, children: [for (final a in report.analytes) _AnalyteChip(analyte: a)]),
+                  Wrap(spacing: 4, runSpacing: 4, children: [for (final a in report.analytes) _AnalyteChip(analyte: a)]),
                 ] else if (report.analysisStatus == 'failed' || report.analysisStatus == 'unsupported') ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text('Could not read automatically — needs a look',
-                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.warningOn(context))),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.warningOn(context))),
                 ],
               ],
             ),
@@ -1491,7 +1491,7 @@ class _DietLabReportRowState extends ConsumerState<_DietLabReportRow> {
     );
 
     if (!report.hasFile) return tile;
-    return InkWell(borderRadius: BorderRadius.circular(14), onTap: _open, child: tile);
+    return InkWell(borderRadius: BorderRadius.circular(16), onTap: _open, child: tile);
   }
 }
 
@@ -1517,7 +1517,7 @@ class _AnalyteChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: abnormal ? color.withValues(alpha: 0.12) : scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: abnormal ? color.withValues(alpha: 0.4) : scheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Row(
@@ -1528,14 +1528,14 @@ class _AnalyteChip extends StatelessWidget {
               '${analyte.label} ',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
           ),
-          Text(_fmt(analyte.value), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: abnormal ? color : scheme.onSurface)),
+          Text(_fmt(analyte.value), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: abnormal ? color : scheme.onSurface)),
           if (analyte.unit != null && analyte.unit!.isNotEmpty)
-            Text(' ${analyte.unit}', style: TextStyle(fontSize: 10.5, color: scheme.onSurfaceVariant)),
+            Text(' ${analyte.unit}', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
           if (abnormal) ...[
-            const SizedBox(width: 3),
+            const SizedBox(width: 4),
             Icon(analyte.flag == 'low' ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: 12, color: color),
           ],
         ],

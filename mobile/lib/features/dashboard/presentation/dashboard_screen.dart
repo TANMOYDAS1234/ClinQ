@@ -209,7 +209,7 @@ class _QuickAction extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.2),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, height: 1.2),
             ),
           ],
         ),

@@ -361,7 +361,7 @@ class _ReplyBar extends StatelessWidget {
       child: Row(
         children: [
           Container(width: 3, height: 34, color: AppColors.accentOn(context)),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -370,7 +370,7 @@ class _ReplyBar extends StatelessWidget {
                 Text(
                   'Replying to $who',
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppColors.accentOn(context),
                   ),
@@ -380,7 +380,7 @@ class _ReplyBar extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
@@ -433,7 +433,7 @@ class _PinnedBanner extends StatelessWidget {
               messages.length > 1 ? '${messages.length} pinned · $text' : text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
             ),
           ),
         ],
@@ -482,7 +482,7 @@ class _ChatHeader extends ConsumerWidget {
                   session.patientName ?? 'Patient',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
                 Text(
                   session.kind == 'nutrition' ? 'Nutrition chat' : 'Care chat',
@@ -660,7 +660,7 @@ class _MessageBubble extends StatelessWidget {
         child: Align(
           alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(16),
@@ -676,7 +676,7 @@ class _MessageBubble extends StatelessWidget {
                   size: 15,
                   color: scheme.onSurfaceVariant,
                 ),
-                const SizedBox(width: 7),
+                const SizedBox(width: 8),
                 Text(
                   'This message was deleted',
                   style: TextStyle(
@@ -736,7 +736,7 @@ class _MessageBubble extends StatelessWidget {
                 Container(
                   width: 22,
                   height: 22,
-                  padding: const EdgeInsets.all(3),
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: AppColors.accentSoftOn(context),
                     shape: BoxShape.circle,
@@ -750,7 +750,7 @@ class _MessageBubble extends StatelessWidget {
                     ),
                   ),
                 ),
-              if (!isUser) const SizedBox(width: 6),
+              if (!isUser) const SizedBox(width: 4),
               Flexible(
                 child: Text(
                   isUser
@@ -778,7 +778,7 @@ class _MessageBubble extends StatelessWidget {
                 ),
               ),
               if (m.flaggedByPatient) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 Icon(
                   Icons.flag_rounded,
                   size: 14,
@@ -787,25 +787,25 @@ class _MessageBubble extends StatelessWidget {
                 Text(
                   ' reported',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     color: AppColors.warningOn(context),
                   ),
                 ),
               ],
             ],
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
           // The quoted turn this message answers.
           if (repliedTo != null || m.replyPreviewContent != null)
             Container(
               margin: const EdgeInsets.only(bottom: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               constraints: BoxConstraints(
                 maxWidth: MediaQuery.of(context).size.width * 0.82,
               ),
               decoration: BoxDecoration(
                 color: scheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 border: Border(
                   left: BorderSide(
                     color: AppColors.accentOn(context),
@@ -817,7 +817,7 @@ class _MessageBubble extends StatelessWidget {
                 repliedTo?.content ?? m.replyPreviewContent!,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
               ),
             ),
           GestureDetector(
@@ -829,7 +829,7 @@ class _MessageBubble extends StatelessWidget {
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
                 color: bubbleColor,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -844,20 +844,20 @@ class _MessageBubble extends StatelessWidget {
                     VoiceNotePlayer(note: note, onDark: false),
                   for (final doc in m.documents)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.only(bottom: 4),
                       child: ChatDocumentCard(doc: doc, onDark: false),
                     ),
                   if (m.content.trim().isNotEmpty)
                     isUser || isClinician
                         ? Text(
                           m.content,
-                          style: TextStyle(fontSize: 14.5, height: 1.4, color: onBubble),
+                          style: TextStyle(fontSize: 14, height: 1.4, color: onBubble),
                         )
                         : MarkdownText(
                           data: m.content,
                           selectable: true,
                           style: TextStyle(
-                            fontSize: 14.5,
+                            fontSize: 14,
                             height: 1.4,
                             color: onBubble,
                           ),
@@ -869,9 +869,9 @@ class _MessageBubble extends StatelessWidget {
           // Audit chips describe an assistant answer — a human reply has no
           // triage verdict, grounding or latency to account for.
           if (!isUser && !isClinician) ...[
-            const SizedBox(height: 5),
+            const SizedBox(height: 4),
             Wrap(
-              spacing: 6,
+              spacing: 4,
               runSpacing: 4,
               children: [
                 if (m.urgency != 'routine')
@@ -895,11 +895,11 @@ class _MessageBubble extends StatelessWidget {
             ),
             if (m.citations.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(top: 3),
+                padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   'Sources: ${m.citations.join(', ')}',
                   style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 12,
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
@@ -911,15 +911,15 @@ class _MessageBubble extends StatelessWidget {
   }
 
   Widget _chip(String label, Color color) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(12),
     ),
     child: Text(
       label,
       style: TextStyle(
-        fontSize: 10.5,
+        fontSize: 12,
         fontWeight: FontWeight.w700,
         color: color,
       ),

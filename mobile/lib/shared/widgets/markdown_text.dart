@@ -94,7 +94,7 @@ class MarkdownText extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 1, right: 8),
+                  padding: const EdgeInsets.only(top: 0, right: 8),
                   child: Text('•', style: style.copyWith(color: bulletColor ?? style.color)),
                 ),
                 Expanded(

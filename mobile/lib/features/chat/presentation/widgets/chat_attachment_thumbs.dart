@@ -35,10 +35,10 @@ class ChatAttachmentThumbs extends ConsumerWidget {
     final headers = ref.watch(_imageAuthHeaderProvider).valueOrNull;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
+        spacing: 4,
+        runSpacing: 4,
         children: [
           for (final path in paths)
             GestureDetector(

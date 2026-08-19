@@ -347,7 +347,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(11),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
                           Icons.edit_document,
@@ -364,17 +364,17 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                               'Clinical Actions',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -0.2,
                               ),
                             ),
-                            SizedBox(height: 2),
+                            SizedBox(height: 0),
                             Text(
                               'Draft and send a new prescription.',
                               style: TextStyle(
                                 color: Color(0xCCFFFFFF),
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -428,7 +428,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                               label: const Text(
                                 'Add another medication',
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -484,11 +484,11 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                           for (final entry
                               in labCatalogByCategory().entries) ...[
                             Padding(
-                              padding: const EdgeInsets.only(top: 2, bottom: 6),
+                              padding: const EdgeInsets.only(top: 0, bottom: 4),
                               child: Text(
                                 entry.key.toUpperCase(),
                                 style: TextStyle(
-                                  fontSize: 10.5,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 0.5,
                                   color:
@@ -542,7 +542,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                             if ((labPanelFor(t)?.analytes ?? const [])
                                 .isNotEmpty)
                               Padding(
-                                padding: const EdgeInsets.only(top: 6),
+                                padding: const EdgeInsets.only(top: 4),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -559,7 +559,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                                       child: Text(
                                         '$t: ${labPanelFor(t)!.analytes.join(' · ')}',
                                         style: TextStyle(
-                                          fontSize: 11.5,
+                                          fontSize: 12,
                                           height: 1.3,
                                           color:
                                               Theme.of(
@@ -595,7 +595,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                         onReuseAdvice: (t) => setState(() => _advice.text = t),
                       ),
                       const _FieldLabel('Diagnosis'),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       TextField(
                         controller: _diagnosis,
                         minLines: 1,
@@ -610,7 +610,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       const _FieldLabel('General advice'),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       TextField(
                         controller: _advice,
                         minLines: 3,
@@ -635,7 +635,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const _FieldLabel('Next Visit'),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       _DateField(
                         date: _followUp,
                         onTap: _pickFollowUp,
@@ -667,7 +667,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                           icon: const Icon(Icons.bookmark_outline_rounded, size: 20),
                           label: const Text(
                             'Save draft',
-                            style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                           ),
                         ),
                       ),
@@ -697,7 +697,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                                   : const Icon(Icons.send_rounded, size: 20),
                           label: const Text(
                             'Send',
-                            style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                           ),
                         ),
                       ),
@@ -756,7 +756,7 @@ class _ProfileHeader extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
         boxShadow: Theme.of(context).brightness == Brightness.dark
             ? null
@@ -787,16 +787,16 @@ class _ProfileHeader extends StatelessWidget {
                     Text(
                       p.name,
                       style: const TextStyle(
-                        fontSize: 21,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       meta,
                       style: TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 14,
                         color: scheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                       ),
@@ -817,7 +817,7 @@ class _ProfileHeader extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 12.5,
+                                fontSize: 12,
                                 color: scheme.onSurfaceVariant,
                               ),
                             ),
@@ -842,7 +842,7 @@ class _ProfileHeader extends StatelessWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 12.5,
+                                fontSize: 12,
                                 height: 1.3,
                                 color: scheme.onSurfaceVariant,
                               ),
@@ -854,7 +854,7 @@ class _ProfileHeader extends StatelessWidget {
                     const SizedBox(height: AppSpacing.sm),
                     Wrap(
                       spacing: AppSpacing.sm,
-                      runSpacing: 6,
+                      runSpacing: 4,
                       children: [
                         _HeaderPill(
                           // The warning triangle appears only when the band
@@ -950,16 +950,16 @@ class _ProfileHeader extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
             Material(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               child: InkWell(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 onTap:
                     () =>
                         _showComplaintSheet(context, p.chiefComplaint!.trim()),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 10,
+                    vertical: 8,
                   ),
                   child: Row(
                     children: [
@@ -983,7 +983,7 @@ class _ProfileHeader extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 13.5,
+                            fontSize: 14,
                             height: 1.35,
                             color: Colors.black87,
                           ),
@@ -1029,14 +1029,14 @@ void _showComplaintSheet(BuildContext context, String text) {
                     const Text(
                       'Presenting complaint',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Text(text, style: const TextStyle(fontSize: 15, height: 1.5)),
+                Text(text, style: const TextStyle(fontSize: 14, height: 1.5)),
               ],
             ),
           ),
@@ -1068,13 +1068,13 @@ class _QuietAction extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(icon, size: 20, color: AppColors.primary),
-                const SizedBox(height: 5),
+                const SizedBox(height: 4),
                 Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primary,
                   ),
@@ -1109,7 +1109,7 @@ class _HeaderPill extends StatelessWidget {
       // until it ran off the edge.
       constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width - 64),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(20),
@@ -1173,7 +1173,7 @@ class _Collapsible extends StatelessWidget {
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
-            vertical: 2,
+            vertical: 0,
           ),
           childrenPadding: const EdgeInsets.fromLTRB(
             AppSpacing.md,
@@ -1188,7 +1188,7 @@ class _Collapsible extends StatelessWidget {
                   : Icon(icon, size: 20, color: scheme.onSurfaceVariant),
           title: Text(
             title,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
           ),
           subtitle:
               subtitle == null
@@ -1196,7 +1196,7 @@ class _Collapsible extends StatelessWidget {
                   : Text(
                     subtitle!,
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 12,
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
@@ -1256,7 +1256,7 @@ class _PreviousAdvice extends ConsumerWidget {
                         ? DateFormat('d MMM yyyy').format(rx.issuedOn!)
                         : '—',
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.4,
                       color: scheme.onSurfaceVariant,
@@ -1301,23 +1301,23 @@ class _ReuseLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              margin: const EdgeInsets.only(top: 1, right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              margin: const EdgeInsets.only(top: 0, right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
               decoration: BoxDecoration(
                 color: AppColors.accentSoftOn(context),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: 10.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w800,
                   color: AppColors.accentOn(context),
                 ),
@@ -1326,10 +1326,10 @@ class _ReuseLine extends StatelessWidget {
             Expanded(
               child: Text(
                 text,
-                style: const TextStyle(fontSize: 13.5, height: 1.35),
+                style: const TextStyle(fontSize: 14, height: 1.35),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             Icon(
               Icons.add_circle_outline_rounded,
               size: 16,
@@ -1373,7 +1373,7 @@ class _ActionCard extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 17,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -1468,12 +1468,12 @@ class _CurrentMedicines extends ConsumerWidget {
                   size: 17,
                   color: AppColors.dangerOn(context),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     'Could not load current medicines.',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       color: AppColors.dangerOn(context),
                     ),
                   ),
@@ -1499,17 +1499,17 @@ class _CurrentMedicines extends ConsumerWidget {
                   Text(
                     'CURRENTLY ON',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.6,
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 4),
                   Text(
                     '${active.length}',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w800,
                       color: AppColors.accentOn(context),
                     ),
@@ -1521,14 +1521,14 @@ class _CurrentMedicines extends ConsumerWidget {
                 Text(
                   'Nothing prescribed yet.',
                   style: TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 14,
                     color: scheme.onSurfaceVariant,
                   ),
                 )
               else
                 for (final med in active)
                   Container(
-                    margin: const EdgeInsets.only(bottom: 6),
+                    margin: const EdgeInsets.only(bottom: 4),
                     padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
                     decoration: BoxDecoration(
                       color: scheme.surfaceContainerLow,
@@ -1549,11 +1549,11 @@ class _CurrentMedicines extends ConsumerWidget {
                                   med.strength,
                                 ].where((s) => s.isNotEmpty).join(' '),
                                 style: const TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 0),
                               Text(
                                 [
                                   if (med.dose.isNotEmpty) med.dose,
@@ -1562,7 +1562,7 @@ class _CurrentMedicines extends ConsumerWidget {
                                     med.schedule.map((s) => s.time).join(', '),
                                 ].join(' · '),
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 14,
                                   color: scheme.onSurfaceVariant,
                                 ),
                               ),
@@ -1637,7 +1637,7 @@ class _TestHistory extends StatelessWidget {
                     label: Text(
                       t,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1646,7 +1646,7 @@ class _TestHistory extends StatelessWidget {
                       color: scheme.outlineVariant.withValues(alpha: 0.7),
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
               ],
@@ -1658,7 +1658,7 @@ class _TestHistory extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             for (final r in reports.take(8))
               Padding(
-                padding: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
                   children: [
                     // Only a picture gets a thumbnail; a PDF drawn through the
@@ -1680,7 +1680,7 @@ class _TestHistory extends StatelessWidget {
                         margin: const EdgeInsets.only(right: AppSpacing.sm),
                         decoration: BoxDecoration(
                           color: scheme.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
                           Icons.description_outlined,
@@ -1695,7 +1695,7 @@ class _TestHistory extends StatelessWidget {
                           Text(
                             r.testName,
                             style: const TextStyle(
-                              fontSize: 14.5,
+                              fontSize: 14,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -1704,7 +1704,7 @@ class _TestHistory extends StatelessWidget {
                                 ? (r.originalName ?? '')
                                 : DateFormat('d MMM yyyy').format(r.createdAt!),
                             style: TextStyle(
-                              fontSize: 12.5,
+                              fontSize: 12,
                               color: scheme.onSurfaceVariant,
                             ),
                           ),
@@ -1740,18 +1740,18 @@ class _MicroHeading extends StatelessWidget {
         Text(
           text,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.6,
             color: scheme.onSurfaceVariant,
           ),
         ),
         if (count != null) ...[
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           Text(
             '$count',
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
               color: AppColors.accentOn(context),
             ),
@@ -1773,7 +1773,7 @@ class _FieldLabel extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: FontWeight.w600,
         color: scheme.onSurfaceVariant,
       ),
@@ -1816,7 +1816,7 @@ class _PlainField extends StatelessWidget {
                 ? null
                 : Icon(icon, size: 20, color: scheme.onSurfaceVariant),
         prefixIconConstraints: const BoxConstraints(minWidth: 42),
-        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12),
       ),
     );
   }
@@ -1883,7 +1883,7 @@ class _MedFields extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           _PlainField(controller: draft.name, hint: 'e.g. Metformin'),
           const SizedBox(height: AppSpacing.md),
           Row(
@@ -1893,7 +1893,7 @@ class _MedFields extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const _FieldLabel('Dosage'),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     TextField(
                       controller: draft.dosage,
                       decoration: const InputDecoration(
@@ -1910,7 +1910,7 @@ class _MedFields extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const _FieldLabel('Duration (days)'),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     TextField(
                       controller: draft.duration,
                       keyboardType: TextInputType.number,
@@ -1932,15 +1932,15 @@ class _MedFields extends StatelessWidget {
               const Spacer(),
               // Live composed medical shorthand, e.g. "BDPC" / "TDS AC" / "HS".
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.accentSoftOn(context),
-                  borderRadius: BorderRadius.circular(7),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   draft.shorthand,
                   style: TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: AppColors.accentOn(context),
                   ),
@@ -1950,8 +1950,8 @@ class _MedFields extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Wrap(
-            spacing: 6,
-            runSpacing: 6,
+            spacing: 4,
+            runSpacing: 4,
             children: [
               for (final f in DoseFrequency.values)
                 _ShChip(
@@ -1969,8 +1969,8 @@ class _MedFields extends StatelessWidget {
             const _FieldLabel('Timing'),
             const SizedBox(height: 8),
             Wrap(
-              spacing: 6,
-              runSpacing: 6,
+              spacing: 4,
+              runSpacing: 4,
               children: [
                 for (final r in MealRelation.values)
                   _ShChip(
@@ -1988,8 +1988,8 @@ class _MedFields extends StatelessWidget {
           const _FieldLabel('Route'),
           const SizedBox(height: 8),
           Wrap(
-            spacing: 6,
-            runSpacing: 6,
+            spacing: 4,
+            runSpacing: 4,
             children: [
               for (final rt in MedRoute.values)
                 _ShChip(
@@ -2044,14 +2044,14 @@ class _ShChip extends StatelessWidget {
           selected
               ? AppColors.accentSoftOn(context)
               : scheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color:
                   selected
@@ -2062,7 +2062,7 @@ class _ShChip extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 13.5,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               color: selected ? AppColors.primary : scheme.onSurface,
             ),
@@ -2099,7 +2099,7 @@ class _TestChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
@@ -2121,7 +2121,7 @@ class _TestChip extends StatelessWidget {
                 ),
               ),
               if (selected) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 Icon(
                   Icons.close_rounded,
                   size: 15,
@@ -2153,12 +2153,12 @@ class _DateField extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: scheme.outlineVariant),
         ),
         child: Row(
@@ -2169,7 +2169,7 @@ class _DateField extends StatelessWidget {
                     ? 'dd/mm/yyyy'
                     : DateFormat('EEE, d MMM yyyy').format(date!),
                 style: TextStyle(
-                  fontSize: 15.5,
+                  fontSize: 16,
                   color:
                       date == null ? scheme.onSurfaceVariant : scheme.onSurface,
                 ),

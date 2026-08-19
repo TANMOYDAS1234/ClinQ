@@ -85,7 +85,7 @@ class _ScanPrescriptionSheetState extends ConsumerState<_ScanPrescriptionSheet> 
         const SizedBox(height: AppSpacing.xs),
         Text(
           "Take a clear photo of Dr.'s prescription — we'll read the medicines and set your daily reminders automatically.",
-          style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+          style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14),
         ),
         const SizedBox(height: AppSpacing.lg),
         Row(
@@ -111,7 +111,7 @@ class _ScanPrescriptionSheetState extends ConsumerState<_ScanPrescriptionSheet> 
         Row(
           children: [
             Icon(Icons.lightbulb_outline, size: 16, color: scheme.onSurfaceVariant),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             Expanded(
               child: Text(
                 'Good light and a flat, in-focus photo help us read it accurately.',
@@ -130,7 +130,7 @@ class _ScanPrescriptionSheetState extends ConsumerState<_ScanPrescriptionSheet> 
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(width: 44, height: 44, child: CircularProgressIndicator(strokeWidth: 3)),
+          SizedBox(width: 40, height: 44, child: CircularProgressIndicator(strokeWidth: 3)),
           SizedBox(height: AppSpacing.lg),
           Text('Reading your prescription…', style: TextStyle(fontWeight: FontWeight.w600)),
           SizedBox(height: 4),
@@ -191,7 +191,7 @@ class _ScanPrescriptionSheetState extends ConsumerState<_ScanPrescriptionSheet> 
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Reminders are set. Please check they match your prescription — tap a medicine on the list to edit or stop it.',
-            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14),
           ),
           const SizedBox(height: AppSpacing.lg),
           for (final m in res.created) _MedRow(med: m),
@@ -274,9 +274,9 @@ class _MedRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(med.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                  Text(med.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                   if (subtitleBits.isNotEmpty)
-                    Text(subtitleBits.join(' · '), style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
+                    Text(subtitleBits.join(' · '), style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14)),
                 ],
               ),
             ),
@@ -285,7 +285,7 @@ class _MedRow extends StatelessWidget {
                 children: [
                   Icon(Icons.alarm, size: 15, color: AppColors.accentOn(context)),
                   const SizedBox(width: 4),
-                  Text(times, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  Text(times, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 ],
               ),
           ],

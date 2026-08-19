@@ -259,7 +259,7 @@ class _DieticianChatScreenState extends ConsumerState<DieticianChatScreen>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 17,
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -541,7 +541,7 @@ class _Bubble extends StatelessWidget {
         alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
           margin: const EdgeInsets.only(bottom: AppSpacing.md),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: scheme.surfaceContainerLow,
             borderRadius: BorderRadius.circular(16),
@@ -557,11 +557,11 @@ class _Bubble extends StatelessWidget {
                 size: 15,
                 color: scheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 7),
+              const SizedBox(width: 8),
               Text(
                 'This message was deleted',
                 style: TextStyle(
-                  fontSize: 14.5,
+                  fontSize: 14,
                   fontStyle: FontStyle.italic,
                   color: scheme.onSurfaceVariant,
                 ),
@@ -607,11 +607,11 @@ class _Bubble extends StatelessWidget {
           children: [
             if (mine)
               Padding(
-                padding: const EdgeInsets.only(right: 4, bottom: 5),
+                padding: const EdgeInsets.only(right: 4, bottom: 4),
                 child: Text(
                   'You',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: scheme.onSurfaceVariant,
                   ),
@@ -619,7 +619,7 @@ class _Bubble extends StatelessWidget {
               )
             else
               Padding(
-                padding: const EdgeInsets.only(left: 2, bottom: 5),
+                padding: const EdgeInsets.only(left: 0, bottom: 4),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -630,7 +630,7 @@ class _Bubble extends StatelessWidget {
                     Container(
                       width: 24,
                       height: 24,
-                      padding: message.role == 'assistant' ? const EdgeInsets.all(3) : null,
+                      padding: message.role == 'assistant' ? const EdgeInsets.all(4) : null,
                       decoration: BoxDecoration(
                         color: AppColors.accentSoftOn(context),
                         shape: BoxShape.circle,
@@ -654,13 +654,13 @@ class _Bubble extends StatelessWidget {
                               color: AppColors.accentOn(context),
                             ),
                     ),
-                    if (message.role != 'user') const SizedBox(width: 7),
+                    if (message.role != 'user') const SizedBox(width: 8),
                     Flexible(
                       child: Text(
                         label,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 13.5,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color:
                               message.role == 'clinician'
@@ -700,15 +700,15 @@ class _Bubble extends StatelessWidget {
                 child: Container(
                 margin: const EdgeInsets.only(bottom: 4),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
+                  horizontal: 8,
+                  vertical: 8,
                 ),
                 constraints: BoxConstraints(
                   maxWidth: MediaQuery.of(context).size.width * 0.82,
                 ),
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border(
                     left: BorderSide(
                       color: AppColors.accentOn(context),
@@ -721,7 +721,7 @@ class _Bubble extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
@@ -731,8 +731,8 @@ class _Bubble extends StatelessWidget {
               onLongPress: () => _showActions(context),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 14,
+                  horizontal: 16,
+                  vertical: 12,
                 ),
                 decoration: BoxDecoration(
                   color:
@@ -764,7 +764,7 @@ class _Bubble extends StatelessWidget {
                       MarkdownText(
                         data: message.content,
                         style: TextStyle(
-                          fontSize: 17,
+                          fontSize: 16,
                           height: 1.5,
                           color: mine ? Colors.white : scheme.onSurface,
                         ),
@@ -781,16 +781,16 @@ class _Bubble extends StatelessWidget {
                         VoiceNotePlayer(note: note, onDark: mine),
                       for (final doc in message.documents)
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
+                          padding: const EdgeInsets.only(bottom: 4),
                           child: ChatDocumentCard(doc: doc, onDark: mine),
                         ),
                     ],
                     if (message.createdAt != null) ...[
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 4),
                       Text(
                         DateFormat('h:mm a').format(message.createdAt!),
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color:
                               mine ? Colors.white70 : scheme.onSurfaceVariant,
                         ),
@@ -834,7 +834,7 @@ class _DietReplyBar extends StatelessWidget {
       child: Row(
         children: [
           Container(width: 3, height: 34, color: AppColors.accentOn(context)),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -843,7 +843,7 @@ class _DietReplyBar extends StatelessWidget {
                 Text(
                   'Replying to $who',
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppColors.accentOn(context),
                   ),
@@ -853,7 +853,7 @@ class _DietReplyBar extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: scheme.onSurfaceVariant,
                   ),
                 ),

@@ -91,7 +91,7 @@ class NotificationsScreen extends ConsumerWidget {
                 ListTile(
                   leading: Icon(Icons.alarm_on_rounded, color: accent),
                   title: const Text('Reminder reliability', style: TextStyle(fontSize: 16)),
-                  subtitle: const Text('Keep dose alarms firing when the phone sleeps', style: TextStyle(fontSize: 13)),
+                  subtitle: const Text('Keep dose alarms firing when the phone sleeps', style: TextStyle(fontSize: 14)),
                   trailing: Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
                   onTap: () => showReminderSetupSheet(context, ref),
                   contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
@@ -108,7 +108,7 @@ class NotificationsScreen extends ConsumerWidget {
               Expanded(
                 child: Text(
                   l10n.notifDeliveryNote,
-                  style: TextStyle(fontSize: 13, height: 1.45, color: scheme.onSurfaceVariant),
+                  style: TextStyle(fontSize: 14, height: 1.45, color: scheme.onSurfaceVariant),
                 ),
               ),
             ],
@@ -133,7 +133,7 @@ class NotificationsScreen extends ConsumerWidget {
       activeThumbColor: accent,
       secondary: Icon(icon, color: accent),
       title: Text(title, style: const TextStyle(fontSize: 16)),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 13)),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 14)),
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
     );
   }

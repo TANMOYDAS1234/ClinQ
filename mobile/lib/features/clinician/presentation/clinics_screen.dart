@@ -48,7 +48,7 @@ class ClinicsScreen extends ConsumerWidget {
                   SizedBox(height: MediaQuery.of(context).size.height * 0.16),
                   Icon(Icons.local_hospital_outlined, size: 56, color: scheme.outlineVariant),
                   const SizedBox(height: AppSpacing.md),
-                  const Center(child: Text('No clinics yet', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
+                  const Center(child: Text('No clinics yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
                   const SizedBox(height: AppSpacing.xs),
                   Center(child: Text('Add a clinic to start taking bookings', style: TextStyle(color: scheme.onSurfaceVariant))),
                 ],
@@ -112,21 +112,21 @@ class _ClinicRow extends StatelessWidget {
                       children: [
                         Flexible(child: Text(c.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
                         if (!c.isActive) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           const MiniPill(label: 'Inactive', color: Color(0xFF6B7280)),
                         ],
                       ],
                     ),
                     if (c.locationLine.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(c.locationLine, style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 0),
+                      Text(c.locationLine, style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis),
                     ],
                     const SizedBox(height: 4),
                     Row(
                       children: [
                         Icon(Icons.schedule_rounded, size: 13, color: scheme.onSurfaceVariant),
-                        const SizedBox(width: 3),
-                        Expanded(child: Text('$daysLabel · ${c.slotMinutes} min slots', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        const SizedBox(width: 4),
+                        Expanded(child: Text('$daysLabel · ${c.slotMinutes} min slots', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis)),
                       ],
                     ),
                   ],

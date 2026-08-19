@@ -26,7 +26,7 @@ class CitationChips extends StatelessWidget {
         runSpacing: AppSpacing.xs,
         children: citations.map((c) {
           final pill = Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: scheme.surface,
               borderRadius: BorderRadius.circular(20),
@@ -36,10 +36,10 @@ class CitationChips extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Flexible(
-                  child: Text(c.title, style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                  child: Text(c.title, style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
                 ),
                 if (onTap != null) ...[
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 4),
                   Icon(Icons.north_east_rounded, size: 14, color: scheme.onSurfaceVariant),
                 ],
               ],

@@ -182,7 +182,7 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                             'diet plan for any of them. Set how often a patient’s food log '
                             'should be reviewed on that patient’s record.',
                             style: TextStyle(
-                              fontSize: 13.5,
+                              fontSize: 14,
                               height: 1.45,
                               color: scheme.onSurfaceVariant,
                             ),
@@ -230,7 +230,7 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                                   height: 42,
                                   decoration: BoxDecoration(
                                     color: AppColors.accentSoftOn(context),
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Icon(
                                     Icons.event_repeat_outlined,
@@ -247,17 +247,17 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                                       const Text(
                                         'Food-log review',
                                         style: TextStyle(
-                                          fontSize: 15.5,
+                                          fontSize: 16,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
-                                      const SizedBox(height: 2),
+                                      const SizedBox(height: 0),
                                       Text(
                                         days == null
                                             ? 'Loading…'
                                             : '${intervalLabel(days)}, for every patient',
                                         style: TextStyle(
-                                          fontSize: 13,
+                                          fontSize: 14,
                                           color: scheme.onSurfaceVariant,
                                         ),
                                       ),
@@ -268,7 +268,7 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                                   Text(
                                     'Change',
                                     style: TextStyle(
-                                      fontSize: 14.5,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                       color: AppColors.accentOn(context),
                                     ),
@@ -304,14 +304,14 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                                   Icon(Icons.mail_outline_rounded, size: 20, color: AppColors.accentOn(context)),
                                   const SizedBox(width: AppSpacing.sm),
                                   const Text('Invite a dietician',
-                                      style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                                 ],
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 4),
                               Text(
                                 'Share this code. They install the app, register, and enter it to '
                                 'join as a dietician — with their own password.',
-                                style: TextStyle(fontSize: 13, height: 1.4, color: scheme.onSurfaceVariant),
+                                style: TextStyle(fontSize: 14, height: 1.4, color: scheme.onSurfaceVariant),
                               ),
                               const SizedBox(height: AppSpacing.md),
                               // Full width and a single line — it used to share a
@@ -319,10 +319,10 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                               // it collapsed and the code stacked one letter per row.
                               Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                 decoration: BoxDecoration(
                                   color: AppColors.accentSoftOn(context),
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
                                   code,
@@ -331,7 +331,7 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                                   softWrap: false,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 16,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 2,
                                   ),
@@ -399,7 +399,7 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                           Text(
                             'Add one and they can start guiding your patients.',
                             style: TextStyle(
-                              fontSize: 13.5,
+                              fontSize: 14,
                               color: scheme.onSurfaceVariant,
                             ),
                           ),
@@ -431,7 +431,7 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                             ListTile(
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: AppSpacing.md,
-                                vertical: 6,
+                                vertical: 4,
                               ),
                               leading: GestureDetector(
                                 onTap:
@@ -458,7 +458,7 @@ class _DieticiansScreenState extends ConsumerState<DieticiansScreen> {
                               subtitle: Text(
                                 items[i].phone,
                                 style: TextStyle(
-                                  fontSize: 13.5,
+                                  fontSize: 14,
                                   color: scheme.onSurfaceVariant,
                                 ),
                               ),
@@ -544,7 +544,7 @@ class _IntervalSheetState extends State<_IntervalSheet> {
             'A patient becomes due once this many days have passed since the '
             'dietician last wrote to them.',
             style: TextStyle(
-              fontSize: 13.5,
+              fontSize: 14,
               height: 1.45,
               color: scheme.onSurfaceVariant,
             ),
@@ -566,7 +566,7 @@ class _IntervalSheetState extends State<_IntervalSheet> {
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
                 color: AppColors.warningBgOn(context),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -584,7 +584,7 @@ class _IntervalSheetState extends State<_IntervalSheet> {
                               'list; heavy going for a large one.'
                           : 'Every patient will be due every 3 days.',
                       style: const TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 12,
                         height: 1.4,
                         color: Color(0xFFB45309),
                       ),
@@ -601,7 +601,7 @@ class _IntervalSheetState extends State<_IntervalSheet> {
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
               onPressed: () => Navigator.pop(context, _selected),
@@ -640,14 +640,14 @@ class _IntervalRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Material(
       color: selected ? AppColors.accentSoftOn(context) : Colors.transparent,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.sm,
-            vertical: 11,
+            vertical: 12,
           ),
           child: Row(
             children: [
@@ -666,16 +666,16 @@ class _IntervalRow extends StatelessWidget {
                     Text(
                       label,
                       style: TextStyle(
-                        fontSize: 15.5,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: selected ? AppColors.primary : scheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 1),
+                    const SizedBox(height: 0),
                     Text(
                       fits,
                       style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 12,
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
@@ -798,7 +798,7 @@ class _AddDieticianSheetState extends ConsumerState<_AddDieticianSheet> {
             const SizedBox(height: 4),
             Text(
               'They can sign in with this number and password.',
-              style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: AppSpacing.lg),
             TextFormField(
@@ -882,7 +882,7 @@ class _AddDieticianSheetState extends ConsumerState<_AddDieticianSheet> {
               const SizedBox(height: AppSpacing.sm),
               Text(
                 _serverError!,
-                style: TextStyle(fontSize: 13.5, color: AppColors.dangerOn(context)),
+                style: TextStyle(fontSize: 14, color: AppColors.dangerOn(context)),
               ),
             ],
             const SizedBox(height: AppSpacing.lg),
@@ -892,7 +892,7 @@ class _AddDieticianSheetState extends ConsumerState<_AddDieticianSheet> {
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 onPressed: _saving ? null : _save,

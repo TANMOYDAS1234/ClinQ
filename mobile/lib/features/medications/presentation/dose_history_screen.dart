@@ -115,7 +115,7 @@ class _HistoryList extends StatelessWidget {
                 children: [
                   Text(_dayLabel(at), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
                   const Spacer(),
-                  Text('$taken/${list.length} taken', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                  Text('$taken/${list.length} taken', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                 ],
               ),
             );
@@ -164,16 +164,16 @@ class _DoseRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(dose.name, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 2),
-                Text(sub, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                Text(dose.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 0),
+                Text(sub, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
               ],
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(color: s.color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(20)),
-            child: Text(s.label, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: s.color)),
+            child: Text(s.label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: s.color)),
           ),
         ],
       ),
@@ -194,7 +194,7 @@ class _PeriodChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? AppColors.primary : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(20),
@@ -202,7 +202,7 @@ class _PeriodChip extends StatelessWidget {
         ),
         child: Text(label,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color: selected ? Colors.white : scheme.onSurface,
             )),

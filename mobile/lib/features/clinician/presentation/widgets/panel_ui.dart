@@ -120,17 +120,17 @@ class PanelSectionHeader extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontSize: 19,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.3,
                     color: scheme.onSurface,
                   ),
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 0),
                   Text(
                     subtitle!,
-                    style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                    style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                   ),
                 ],
               ],
@@ -148,7 +148,7 @@ class PanelSectionHeader extends StatelessWidget {
               onPressed: onAction,
               child: Text(
                 actionLabel!,
-                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ),
         ],
@@ -234,7 +234,7 @@ class PanelPill extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 11.5,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.2,
               color: fg,
@@ -276,8 +276,8 @@ class PanelNotificationBell extends ConsumerWidget {
         ),
         if (count > 0)
           Positioned(
-            right: 2,
-            top: 2,
+            right: 0,
+            top: 0,
             child: IgnorePointer(
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: count > 9 ? 5 : 0),
@@ -287,7 +287,7 @@ class PanelNotificationBell extends ConsumerWidget {
                   // look at, not a warning in its own right, and red here
                   // competed with the genuinely red critical tiles below.
                   color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(9),
+                  borderRadius: BorderRadius.circular(12),
                   // A ring in the header's own colour, so the badge reads as
                   // sitting on top of the bell rather than merging into it.
                   border: Border.all(color: scheme.surface, width: 2),
@@ -298,7 +298,7 @@ class PanelNotificationBell extends ConsumerWidget {
                     // being actionable and starts breaking the circle.
                     count > 99 ? '99+' : '$count',
                     style: const TextStyle(
-                      fontSize: 10.5,
+                      fontSize: 12,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
                       height: 1.1,

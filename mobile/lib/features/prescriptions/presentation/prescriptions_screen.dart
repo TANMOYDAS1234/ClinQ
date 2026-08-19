@@ -56,7 +56,7 @@ class PrescriptionsScreen extends ConsumerWidget {
                   const SizedBox(height: 4),
                   Center(
                     child: Text('They appear here once your doctor writes one.',
-                        style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
+                        style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
                   ),
                 ],
               );
@@ -100,19 +100,19 @@ class _PrescriptionCard extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           color: scheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(9),
-              decoration: BoxDecoration(color: AppColors.accentSoftOn(context), borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: AppColors.accentSoftOn(context), borderRadius: BorderRadius.circular(12)),
               child: Icon(Icons.description_rounded, size: 20, color: AppColors.accentOn(context)),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -123,25 +123,25 @@ class _PrescriptionCard extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(date, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
+                        child: Text(date, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                       ),
                       if (rx.items.isNotEmpty)
                         Text('${rx.items.length} medicine${rx.items.length == 1 ? '' : 's'}',
-                            style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Text(dx,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
+                      style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
                   if (rx.doctorName != null) ...[
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 0),
                     Text(
                       'by ${rx.doctorName}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                     ),
                   ],
                 ],
@@ -229,10 +229,10 @@ class _PrescriptionDetailSheetState extends ConsumerState<_PrescriptionDetailShe
         padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.xl),
         children: [
           Text(date, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 2),
+          const SizedBox(height: 0),
           Text(
             [if (rx.doctorName != null) 'by ${rx.doctorName}', rx.referenceNo].where((s) => s.isNotEmpty).join('  ·  '),
-            style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+            style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: AppSpacing.md),
 
@@ -269,9 +269,9 @@ class _PrescriptionDetailSheetState extends ConsumerState<_PrescriptionDetailShe
           const SizedBox(height: AppSpacing.lg),
 
           if (rx.complaint != null && rx.complaint!.trim().isNotEmpty)
-            _Section(title: 'Complaint', child: Text(rx.complaint!, style: const TextStyle(fontSize: 14.5, height: 1.4))),
+            _Section(title: 'Complaint', child: Text(rx.complaint!, style: const TextStyle(fontSize: 14, height: 1.4))),
           if (rx.diagnosis.isNotEmpty)
-            _Section(title: 'Diagnosis', child: Text(rx.diagnosis.join('\n'), style: const TextStyle(fontSize: 14.5, height: 1.45))),
+            _Section(title: 'Diagnosis', child: Text(rx.diagnosis.join('\n'), style: const TextStyle(fontSize: 14, height: 1.45))),
           if (rx.items.isNotEmpty)
             _Section(
               title: 'Medicines',
@@ -280,14 +280,14 @@ class _PrescriptionDetailSheetState extends ConsumerState<_PrescriptionDetailShe
                 children: [
                   for (final m in rx.items)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.only(bottom: 8),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(m.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                          Text(m.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                           if (m.detail.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(m.detail, style: TextStyle(fontSize: 13.5, height: 1.35, color: scheme.onSurfaceVariant)),
+                            const SizedBox(height: 0),
+                            Text(m.detail, style: TextStyle(fontSize: 14, height: 1.35, color: scheme.onSurfaceVariant)),
                           ],
                         ],
                       ),
@@ -296,14 +296,14 @@ class _PrescriptionDetailSheetState extends ConsumerState<_PrescriptionDetailShe
               ),
             ),
           if (rx.labTestsAdvised.isNotEmpty)
-            _Section(title: 'Tests advised', child: Text(rx.labTestsAdvised.join(', '), style: const TextStyle(fontSize: 14.5, height: 1.4))),
+            _Section(title: 'Tests advised', child: Text(rx.labTestsAdvised.join(', '), style: const TextStyle(fontSize: 14, height: 1.4))),
           if (rx.generalAdvice != null && rx.generalAdvice!.trim().isNotEmpty)
-            _Section(title: 'Advice', child: Text(rx.generalAdvice!, style: const TextStyle(fontSize: 14.5, height: 1.45))),
+            _Section(title: 'Advice', child: Text(rx.generalAdvice!, style: const TextStyle(fontSize: 14, height: 1.45))),
           if (rx.followUpOn != null)
             _Section(
               title: 'Follow-up',
               child: Text(DateFormat('d MMMM yyyy').format(rx.followUpOn!),
-                  style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             ),
         ],
       ),
@@ -327,9 +327,9 @@ class _Section extends StatelessWidget {
         children: [
           Text(
             title.toUpperCase(),
-            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: scheme.onSurfaceVariant),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: scheme.onSurfaceVariant),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           child,
         ],
       ),

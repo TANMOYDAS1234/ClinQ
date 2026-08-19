@@ -304,7 +304,7 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
                           child: ClipOval(
                             child: ColoredBox(
                               color: Colors.black.withValues(alpha: 0.45),
-                              child: const Center(child: SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2.6, color: Colors.white))),
+                              child: const Center(child: SizedBox(width: 24, height: 26, child: CircularProgressIndicator(strokeWidth: 2.6, color: Colors.white))),
                             ),
                           ),
                         ),
@@ -312,7 +312,7 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
                         right: 0,
                         bottom: 0,
                         child: Container(
-                          padding: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(color: accent, shape: BoxShape.circle, border: Border.all(color: scheme.surface, width: 2.5)),
                           child: const Icon(Icons.photo_camera_rounded, size: 15, color: Colors.white),
                         ),
@@ -322,14 +322,14 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              Text(user?.name ?? roleLabel, textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 2),
-              Text(user?.phone ?? '', style: TextStyle(fontSize: 15, color: scheme.onSurfaceVariant)),
+              Text(user?.name ?? roleLabel, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 0),
+              Text(user?.phone ?? '', style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
               const SizedBox(height: AppSpacing.sm),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(color: accent.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(20)),
-                child: Text(roleLabel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: accent)),
+                child: Text(roleLabel, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: accent)),
               ),
             ],
           ),
@@ -419,13 +419,13 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
                         Text(
                           'PREVIEW',
                           style: TextStyle(
-                            fontSize: 10.5,
+                            fontSize: 12,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.6,
                             color: scheme.onSurfaceVariant,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
@@ -463,7 +463,7 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Text(
                           'The paper background is removed automatically, so this prints as ink on the prescription.',
                           style: TextStyle(fontSize: 12, height: 1.35, color: scheme.onSurfaceVariant),
@@ -489,7 +489,7 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
               activeThumbColor: accent,
               secondary: Icon(Icons.lock_outline_rounded, color: accent),
               title: Text(l10n.profileAppLock, style: const TextStyle(fontSize: 16)),
-              subtitle: Text(l10n.profileAppLockSub, style: const TextStyle(fontSize: 13)),
+              subtitle: Text(l10n.profileAppLockSub, style: const TextStyle(fontSize: 14)),
               contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
             ),
           ),
@@ -526,11 +526,11 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
               ),
               onPressed: _confirmLogout,
               icon: const Icon(Icons.logout_rounded, size: 22),
-              label: Text(l10n.profileLogout, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+              label: Text(l10n.profileLogout, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          Center(child: Text('MedPin v${AppConfig.appVersion}', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant))),
+          Center(child: Text('MedPin v${AppConfig.appVersion}', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant))),
         ],
       ),
     );
@@ -540,7 +540,7 @@ class _ClinicianMoreScreenState extends ConsumerState<ClinicianMoreScreen> {
     padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
     child: Text(
       text.toUpperCase(),
-      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.8, color: scheme.onSurfaceVariant),
+      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.8, color: scheme.onSurfaceVariant),
     ),
   );
 }
@@ -563,7 +563,7 @@ class _ClinicPhoneCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: accent.withValues(alpha: 0.22)),
         boxShadow: [
           BoxShadow(color: accent.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4)),
@@ -596,7 +596,7 @@ class _ClinicPhoneCard extends StatelessWidget {
                     Text(
                       'CLINIC PHONE NUMBER',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.7,
                         color: scheme.onSurfaceVariant,
@@ -607,12 +607,12 @@ class _ClinicPhoneCard extends StatelessWidget {
                       phone,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, height: 1.1, color: scheme.onSurface),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1.1, color: scheme.onSurface),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       'The number patients call',
-                      style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -620,17 +620,17 @@ class _ClinicPhoneCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               // Edit affordance.
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.edit_rounded, size: 15, color: accent),
-                    const SizedBox(width: 5),
-                    Text('Edit', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: accent)),
+                    const SizedBox(width: 4),
+                    Text('Edit', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: accent)),
                   ],
                 ),
               ),
@@ -658,13 +658,13 @@ class _LangChip extends StatelessWidget {
       selected: selected,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
           constraints: const BoxConstraints(minHeight: AppSpacing.minTapTarget),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           decoration: BoxDecoration(
             color: selected ? accent.withValues(alpha: 0.12) : scheme.surface,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: selected ? accent : scheme.outlineVariant, width: selected ? 1.5 : 1),
           ),
           child: Center(

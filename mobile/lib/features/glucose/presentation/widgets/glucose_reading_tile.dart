@@ -105,7 +105,7 @@ class GlucoseReadingTile extends ConsumerWidget {
                       Text(unit.label, style: Theme.of(context).textTheme.bodySmall),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 0),
                   Text(
                     _contextLabel(l10n, reading.context),
                     style: Theme.of(context).textTheme.bodyMedium,
@@ -121,14 +121,14 @@ class GlucoseReadingTile extends ConsumerWidget {
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
                 _flagLabel(l10n, reading.flag),
-                style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13),
+                style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 14),
               ),
             ),
           ],

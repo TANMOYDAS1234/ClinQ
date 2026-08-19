@@ -46,7 +46,7 @@ class UrgentCard extends ConsumerWidget {
                       style: TextStyle(
                         color: AppColors.warningOn(context),
                         fontWeight: FontWeight.w800,
-                        fontSize: 17,
+                        fontSize: 16,
                         height: 1.3,
                       ),
                     ),

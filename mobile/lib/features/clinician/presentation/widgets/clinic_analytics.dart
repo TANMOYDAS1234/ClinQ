@@ -43,19 +43,19 @@ class _Card extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
                 child: Icon(icon, size: 18, color: accent),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                     if (subtitle != null)
                       Padding(
-                        padding: const EdgeInsets.only(top: 1),
+                        padding: const EdgeInsets.only(top: 0),
                         child: Text(subtitle!, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                       ),
                   ],
@@ -78,8 +78,8 @@ Widget _emptyHint(BuildContext context, String text) {
     child: Row(
       children: [
         Icon(Icons.insights_rounded, size: 20, color: scheme.onSurfaceVariant),
-        const SizedBox(width: 10),
-        Expanded(child: Text(text, style: TextStyle(fontSize: 13, height: 1.35, color: scheme.onSurfaceVariant))),
+        const SizedBox(width: 8),
+        Expanded(child: Text(text, style: TextStyle(fontSize: 14, height: 1.35, color: scheme.onSurfaceVariant))),
       ],
     ),
   );
@@ -118,7 +118,7 @@ class ClinicControlTrendCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text('Patients checking in / day',
-                      style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                 ),
                 Sparkline(
                   values: [for (final e in analytics.engagement) e.patients.toDouble()],
@@ -192,8 +192,8 @@ class RiskDonutCard extends StatelessWidget {
                       Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('$total', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, height: 1)),
-                          Text('patients', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                          Text('$total', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1)),
+                          Text('patients', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                         ],
                       ),
                     ],
@@ -206,14 +206,14 @@ class RiskDonutCard extends StatelessWidget {
                     children: [
                       for (final s in segments)
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
                             children: [
                               _dot(s.$3),
                               const SizedBox(width: 8),
-                              Expanded(child: Text(s.$1, style: const TextStyle(fontSize: 13.5))),
+                              Expanded(child: Text(s.$1, style: const TextStyle(fontSize: 14))),
                               Text('${s.$2}',
-                                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                             ],
                           ),
                         ),
@@ -294,7 +294,7 @@ class _AttentionRow extends StatelessWidget {
     return InkWell(
       onTap: () => context.push('/clinician/patients/${patient.id}'),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
             UserAvatar(name: patient.name, avatarUrl: patient.avatarUrl, accent: riskColor, size: 38),
@@ -306,27 +306,27 @@ class _AttentionRow extends StatelessWidget {
                   Text(patient.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 3),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
                   // Wrap, not Row: the risk chip + alerts + recency must never
                   // clip on a narrow phone; they flow to a second line instead.
                   Wrap(
-                    spacing: 6,
+                    spacing: 4,
                     runSpacing: 4,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(color: riskColor.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(6)),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                        decoration: BoxDecoration(color: riskColor.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12)),
                         child: Text(patient.riskBand,
-                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: riskColor)),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: riskColor)),
                       ),
                       if (patient.openAlertCount > 0)
                         Text('${patient.openAlertCount} alert${patient.openAlertCount == 1 ? '' : 's'}',
-                            style: TextStyle(fontSize: 11.5, color: AppColors.dangerOn(context), fontWeight: FontWeight.w600)),
+                            style: TextStyle(fontSize: 12, color: AppColors.dangerOn(context), fontWeight: FontWeight.w600)),
                       if (patient.lastReadingAt != null)
                         Text('· ${_ago(patient.lastReadingAt!)}',
-                            style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                     ],
                   ),
                 ],
@@ -346,7 +346,7 @@ class _AttentionRow extends StatelessWidget {
                   if (patient.spark.length >= 2)
                     Sparkline(values: patient.spark, color: _hba1cTone(patient.hba1c!, context), width: 56, height: 20),
                   Text('${patient.hba1c!.toStringAsFixed(1)}%',
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: _hba1cTone(patient.hba1c!, context))),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _hba1cTone(patient.hba1c!, context))),
                 ],
               )
             else if (patient.spark.length >= 2)

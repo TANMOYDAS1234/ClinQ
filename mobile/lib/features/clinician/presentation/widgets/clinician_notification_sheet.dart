@@ -18,7 +18,7 @@ Future<void> showClinicianNotifications(BuildContext context) {
     showDragHandle: true,
     backgroundColor: Theme.of(context).colorScheme.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (_) => const _ClinicianNotificationSheet(),
   );

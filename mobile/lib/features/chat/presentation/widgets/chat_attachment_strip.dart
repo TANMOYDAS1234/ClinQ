@@ -61,7 +61,7 @@ class ChatAttachmentStrip extends StatelessWidget {
                   width: 72,
                   height: 72,
                   color: scheme.surfaceContainerHighest,
-                  padding: a.isDocument ? const EdgeInsets.all(6) : EdgeInsets.zero,
+                  padding: a.isDocument ? const EdgeInsets.all(4) : EdgeInsets.zero,
                   child: a.isDocument
                       // A document shows a file chip, not a photo thumbnail.
                       ? Column(
@@ -74,7 +74,7 @@ class ChatAttachmentStrip extends StatelessWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 9.5, height: 1.1, color: scheme.onSurfaceVariant),
+                              style: TextStyle(fontSize: 12, height: 1.1, color: scheme.onSurfaceVariant),
                             ),
                           ],
                         )
@@ -98,7 +98,7 @@ class ChatAttachmentStrip extends StatelessWidget {
                       color: Colors.black54,
                       child: const Center(
                         child: SizedBox(
-                          width: 22,
+                          width: 20,
                           height: 22,
                           child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                         ),

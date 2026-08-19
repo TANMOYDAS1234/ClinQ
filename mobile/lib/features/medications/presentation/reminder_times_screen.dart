@@ -138,9 +138,9 @@ class _ReminderTimesScreenState extends ConsumerState<ReminderTimesScreen> {
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
                 Text('YOUR MEAL TIMES', style: _label(scheme)),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text('Reminders like "before breakfast" fire around these times.',
-                    style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                    style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
                 const SizedBox(height: AppSpacing.sm),
                 _card(scheme, [
                   _mealRow('Breakfast', _breakfast, () => _pickMeal('breakfast'), scheme),
@@ -159,9 +159,9 @@ class _ReminderTimesScreenState extends ConsumerState<ReminderTimesScreen> {
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 Text('EXACT TIME PER MEDICINE', style: _label(scheme)),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text('Override a specific dose time. This stays fixed even if you change your meal times.',
-                    style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                    style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
                 const SizedBox(height: AppSpacing.sm),
                 if (_meds.isEmpty)
                   _card(scheme, [
@@ -181,7 +181,7 @@ class _ReminderTimesScreenState extends ConsumerState<ReminderTimesScreen> {
   }
 
   TextStyle _label(ColorScheme scheme) =>
-      TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant);
+      TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant);
 
   Widget _card(ColorScheme scheme, List<Widget> children) => Container(
         decoration: BoxDecoration(
@@ -196,7 +196,7 @@ class _ReminderTimesScreenState extends ConsumerState<ReminderTimesScreen> {
   Widget _divider(ColorScheme scheme) => Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.4));
 
   Widget _mealRow(String label, TimeOfDay time, VoidCallback onTap, ColorScheme scheme) => ListTile(
-        title: Text(label, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
+        title: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
         trailing: Text(time.format(context), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.accentOn(context))),
         onTap: onTap,
       );
@@ -221,7 +221,7 @@ class _MedTimes extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(med.name, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+          Text(med.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,

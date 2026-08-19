@@ -102,9 +102,9 @@ class _GeneratingBubbleState extends State<GeneratingBubble> with TickerProvider
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _ShimmerLine(controller: _shimmer, widthFactor: 0.92, delay: 0),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       _ShimmerLine(controller: _shimmer, widthFactor: 0.74, delay: 0.22),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       _ShimmerLine(controller: _shimmer, widthFactor: 0.42, delay: 0.44),
                     ],
                   ),
@@ -223,7 +223,7 @@ class _ShimmerLine extends StatelessWidget {
           return Container(
             height: 14,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(12),
               gradient: LinearGradient(
                 begin: Alignment(-1 + t * 3, 0),
                 end: Alignment(-0.4 + t * 3, 0),

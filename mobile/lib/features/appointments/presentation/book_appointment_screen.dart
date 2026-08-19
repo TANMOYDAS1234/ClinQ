@@ -200,11 +200,11 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(left: 2, bottom: AppSpacing.sm),
+    padding: const EdgeInsets.only(left: 0, bottom: AppSpacing.sm),
     child: Text(
       text.toUpperCase(),
       style: TextStyle(
-        fontSize: 12.5,
+        fontSize: 12,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.8,
         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -251,10 +251,10 @@ class _ClinicOption extends StatelessWidget {
                   children: [
                     Text(clinic.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                     if (clinic.locationLine.isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 0),
                       Text(
                         clinic.locationLine,
-                        style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                        style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                       ),
                     ],
                   ],
@@ -297,12 +297,12 @@ class _DateStrip extends StatelessWidget {
           final isSel = d.year == selected.year && d.month == selected.month && d.day == selected.day;
           return InkWell(
             onTap: () => onSelect(d),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
               width: 56,
               decoration: BoxDecoration(
                 color: isSel ? accent : scheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: isSel ? accent : scheme.outlineVariant.withValues(alpha: 0.6)),
               ),
               child: Column(
@@ -320,7 +320,7 @@ class _DateStrip extends StatelessWidget {
                   Text(
                     '${d.day}',
                     style: TextStyle(
-                      fontSize: 19,
+                      fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: isSel ? Colors.white : scheme.onSurface,
                     ),
@@ -420,12 +420,12 @@ class _SlotChip extends StatelessWidget {
     final disabled = onTap == null;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? accent : (disabled ? scheme.surfaceContainerHighest.withValues(alpha: 0.5) : scheme.surface),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? accent : scheme.outlineVariant.withValues(alpha: disabled ? 0.4 : 0.8),
           ),
@@ -433,7 +433,7 @@ class _SlotChip extends StatelessWidget {
         child: Text(
           slot.time,
           style: TextStyle(
-            fontSize: 14.5,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             decoration: disabled ? TextDecoration.lineThrough : null,
             color: selected
@@ -544,7 +544,7 @@ class _ConfirmBar extends StatelessWidget {
         child: FilledButton(
           onPressed: enabled ? onConfirm : null,
           child: busy
-              ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+              ? const SizedBox(width: 20, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
               : Text(
                   slot == null ? l10n.apptConfirmBooking : '${l10n.apptConfirmBooking} · ${slot!.time}',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),

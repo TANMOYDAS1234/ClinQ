@@ -352,7 +352,7 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
                     dieticianName ?? 'Your dietician',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                   Text(
                     dieticianName == null
@@ -537,7 +537,7 @@ class _NutritionChatScreenState extends ConsumerState<NutritionChatScreen>
                             : _replyingTo!.content,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                        style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                       ),
                     ),
                     IconButton(
@@ -590,14 +590,14 @@ class _MealLogIcon extends StatelessWidget {
         children: [
           const Positioned(
             left: 0,
-            top: 1,
+            top: 0,
             child: Icon(Icons.menu_book_rounded, size: 22),
           ),
           Positioned(
             right: -2,
             bottom: -2,
             child: Container(
-              padding: const EdgeInsets.all(1.5),
+              padding: const EdgeInsets.all(0),
               decoration: BoxDecoration(color: barColor, shape: BoxShape.circle),
               child: const Icon(Icons.restaurant_rounded, size: 11),
             ),

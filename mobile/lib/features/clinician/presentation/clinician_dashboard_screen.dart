@@ -152,10 +152,10 @@ class _OverviewHeading extends StatelessWidget {
             color: scheme.onSurface,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 0),
         Text(
           "Your clinic's high-level status for today.",
-          style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
+          style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
         ),
       ],
     );
@@ -183,11 +183,11 @@ class _DashboardHeader extends ConsumerWidget {
             height: 30,
             errorBuilder: (_, _, _) => Icon(Icons.forum_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Text(
             'MedPin',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontSize: 23,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
               color: AppColors.accentOn(context),
@@ -293,7 +293,7 @@ class _HeadlineCard extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.7,
               color: scheme.onSurfaceVariant,
@@ -306,17 +306,17 @@ class _HeadlineCard extends StatelessWidget {
             children: [
               Text(
                 value,
-                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: scheme.onSurface),
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: scheme.onSurface),
               ),
               if (suffix != null) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 Flexible(
                   child: Text(
                     suffix!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: suffixColor ?? scheme.onSurfaceVariant,
                     ),
@@ -457,23 +457,23 @@ class _StatTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: 20, color: tone),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
                 value,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontSize: 26,
+                  fontSize: 32,
                   fontWeight: FontWeight.w800,
                   color: tone,
                   height: 1,
                 ),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 4),
               Text(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: scheme.onSurfaceVariant,
                 ),
@@ -540,16 +540,16 @@ class _AlertRow extends StatelessWidget {
                               Text(
                                 label,
                                 style: TextStyle(
-                                  fontSize: 11.5,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0.5,
                                   color: labelColor ?? scheme.onSurface,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 0),
                               Text(
                                 detail,
-                                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: scheme.onSurface),
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: scheme.onSurface),
                               ),
                             ],
                           ),
@@ -677,7 +677,7 @@ class _TriageQueue extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'No open alerts. Nothing is waiting on triage.',
-                    style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
+                    style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                   ),
                 ),
               ],
@@ -695,11 +695,11 @@ class _TriageQueue extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
                 onTap: () => context.push('/clinician/alerts'),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Center(
                     child: Text(
                       'View all triage (${alerts.length})',
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -771,12 +771,12 @@ class _TriageCard extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 0),
                               Text(
                                 '${_sevLabel(alert.severity)} · ${alert.title}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: sev),
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sev),
                               ),
                             ],
                           ),
@@ -797,7 +797,7 @@ class _TriageCard extends StatelessWidget {
                         padding: const EdgeInsets.all(AppSpacing.md),
                         decoration: BoxDecoration(
                           color: scheme.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           quote,
@@ -818,9 +818,9 @@ class _TriageCard extends StatelessWidget {
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           minimumSize: const Size.fromHeight(46),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
-                        child: const Text('Review Case', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                        child: const Text('Review Case', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                       ),
                     ),
                   ],
@@ -888,7 +888,7 @@ class _NutritionReviews extends StatelessWidget {
               onPressed: () => context.go('/clinician/nutrition'),
               child: Text(
                 'View all ${reviews.length}',
-                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -936,21 +936,21 @@ class _ReviewProgressCard extends StatelessWidget {
                   r.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(
                 'Day ${r.day}/$total',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w800,
                   color: r.isDue ? tone : scheme.onSurfaceVariant,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
           Text(
             // What the doctor can actually act on: whether the patient has been
             // logging. An empty week is why a review matters, and it is the one
@@ -958,11 +958,11 @@ class _ReviewProgressCard extends StatelessWidget {
             r.mealsThisWeek == 0
                 ? 'No meals logged this week'
                 : '${r.mealsThisWeek} meals logged this week',
-            style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(12),
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 6,

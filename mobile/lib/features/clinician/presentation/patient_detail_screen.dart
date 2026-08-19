@@ -170,14 +170,14 @@ class _ConsultationTile extends StatelessWidget {
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
+          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 0),
           childrenPadding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
           expandedCrossAxisAlignment: CrossAxisAlignment.start,
-          title: Text(date, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+          title: Text(date, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
           subtitle: Text(dx,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
           children: [
             if (rx.diagnosis.isNotEmpty) _kv(context, 'Diagnosis', rx.diagnosis.join('\n')),
             if (rx.medicines.isNotEmpty)
@@ -202,9 +202,9 @@ class _ConsultationTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(k.toUpperCase(),
-              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
-          const SizedBox(height: 2),
-          Text(v, style: const TextStyle(fontSize: 13.5, height: 1.3)),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 0),
+          Text(v, style: const TextStyle(fontSize: 14, height: 1.3)),
         ],
       ),
     );
@@ -362,7 +362,7 @@ class _AdherenceSheetState extends ConsumerState<_AdherenceSheet> {
             children: [
               Icon(Icons.medication_rounded, color: AppColors.accentOn(context)),
               const SizedBox(width: 8),
-              const Text('Adherence', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+              const Text('Adherence', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
               const Spacer(),
               if (_loading) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
             ],
@@ -390,21 +390,21 @@ class _AdherenceSheetState extends ConsumerState<_AdherenceSheet> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text('${r.taken}/${r.expected}',
-                          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: AppColors.accentOn(context))),
-                      const SizedBox(width: 6),
+                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: AppColors.accentOn(context))),
+                      const SizedBox(width: 4),
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.only(bottom: 4),
                         child: Text('doses taken', style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
                       ),
                       const Spacer(),
                       if (r.percentage != null)
-                        Text('${r.percentage}%', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+                        Text('${r.percentage}%', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800)),
                     ],
                   ),
           ),
           if (r.perMed.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.lg),
-            Text('By medicine', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant)),
+            Text('By medicine', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant)),
             const SizedBox(height: AppSpacing.sm),
             for (final m in r.perMed) _AdherenceRow(med: m),
           ],
@@ -413,7 +413,7 @@ class _AdherenceSheetState extends ConsumerState<_AdherenceSheet> {
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,7 +423,7 @@ class _AdherenceSheetState extends ConsumerState<_AdherenceSheet> {
                 Expanded(
                   child: Text(
                     'Counts only doses whose time has already passed, and only those the patient marked as taken in the app. A low figure can mean doses were not logged, not necessarily missed.',
-                    style: TextStyle(fontSize: 12.5, height: 1.35, color: scheme.onSurfaceVariant),
+                    style: TextStyle(fontSize: 12, height: 1.35, color: scheme.onSurfaceVariant),
                   ),
                 ),
               ],
@@ -457,7 +457,7 @@ class _PeriodChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 13.5,
+            fontSize: 14,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             color: selected ? Colors.white : scheme.onSurface,
           ),
@@ -620,7 +620,7 @@ class _MeasureTile extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
       ),
       child: Column(
@@ -630,7 +630,7 @@ class _MeasureTile extends StatelessWidget {
           Row(
             children: [
               Icon(icon, size: 15, color: tone ?? scheme.onSurfaceVariant),
-              const SizedBox(width: 5),
+              const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   label,
@@ -652,7 +652,7 @@ class _MeasureTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
                     height: 1,
                     color: accent,
@@ -660,7 +660,7 @@ class _MeasureTile extends StatelessWidget {
                 ),
               ),
               if (unit != null) ...[
-                const SizedBox(width: 3),
+                const SizedBox(width: 4),
                 Text(
                   unit!,
                   style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
@@ -669,9 +669,9 @@ class _MeasureTile extends StatelessWidget {
             ],
           ),
           if (note != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
               decoration: BoxDecoration(
                 color: (tone ?? scheme.onSurfaceVariant).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
@@ -679,7 +679,7 @@ class _MeasureTile extends StatelessWidget {
               child: Text(
                 note!,
                 style: TextStyle(
-                  fontSize: 10.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w800,
                   color: tone ?? scheme.onSurfaceVariant,
                 ),
@@ -713,15 +713,15 @@ class _AdherenceRow extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(med.name,
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               ),
               Text('${med.taken}/${med.expected}${pct != null ? '  ·  $pct%' : ''}',
-                  style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                  style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(12),
             child: LinearProgressIndicator(
               value: frac,
               minHeight: 6,
@@ -774,18 +774,18 @@ class _Metric extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: color),
               const SizedBox(width: 4),
-              Expanded(child: Text(label, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Expanded(child: Text(label, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis)),
               if (onTap != null) Icon(Icons.chevron_right_rounded, size: 18, color: scheme.onSurfaceVariant),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: color)),
+              Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color)),
               if (unit != null) ...[
-                const SizedBox(width: 3),
+                const SizedBox(width: 4),
                 Text(unit!, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
               ],
             ],
@@ -867,7 +867,7 @@ class _DieticianSection extends ConsumerWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: AppColors.accentOn(context).withValues(alpha: 0.10), borderRadius: BorderRadius.circular(11)),
+            decoration: BoxDecoration(color: AppColors.accentOn(context).withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
             child: Icon(Icons.restaurant_menu_rounded, size: 20, color: AppColors.accentOn(context)),
           ),
           const SizedBox(width: 12),
@@ -875,13 +875,13 @@ class _DieticianSection extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('DIETICIAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
-                const SizedBox(height: 2),
+                Text('DIETICIAN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
+                const SizedBox(height: 0),
                 Text(restricted ? name : 'Covered by clinic dietician',
-                    style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 Text(
                   restricted ? 'Restricted to this dietician only' : 'The clinic dietician covers this patient',
-                  style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -919,11 +919,11 @@ class _DieticianSection extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Nutrition care', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const Text('Nutrition care', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
               Text(
                 'By default the clinic dietician covers this patient. Restrict to a specific dietician only if this patient should be handled by that person alone.',
-                style: TextStyle(fontSize: 12.5, height: 1.35, color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+                style: TextStyle(fontSize: 12, height: 1.35, color: Theme.of(ctx).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: AppSpacing.md),
               if (options.isEmpty)
@@ -960,7 +960,7 @@ class _DieticianSection extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.sm),
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(color: AppColors.warningBgOn(ctx), borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(color: AppColors.warningBgOn(ctx), borderRadius: BorderRadius.circular(12)),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1078,7 +1078,7 @@ class _DieticianSection extends ConsumerWidget {
                 if (error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text(error!, style: TextStyle(color: AppColors.dangerOn(dctx), fontSize: 13)),
+                    child: Text(error!, style: TextStyle(color: AppColors.dangerOn(dctx), fontSize: 14)),
                   ),
               ],
             ),
@@ -1126,7 +1126,7 @@ class _DieticianSection extends ConsumerWidget {
                         }
                       },
                 child: saving
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(width: 16, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Text('Create'),
               ),
             ],
@@ -1215,10 +1215,10 @@ class _LabReportRowState extends ConsumerState<_LabReportRow> {
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: scheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: _busy
-                        ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4))
+                        ? const SizedBox(width: 20, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4))
                         : Icon(_fileIcon(), color: scheme.onSurfaceVariant, size: 24),
                   ),
           ),
@@ -1228,14 +1228,14 @@ class _LabReportRowState extends ConsumerState<_LabReportRow> {
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(report.testName, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
+                    Expanded(child: Text(report.testName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
                     if (report.createdAt != null)
-                      Text(DateFormat('d MMM').format(report.createdAt!), style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                      Text(DateFormat('d MMM').format(report.createdAt!), style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                   ],
                 ),
                 if (report.note.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(report.note, style: const TextStyle(fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Text(report.note, style: const TextStyle(fontSize: 14)),
                 ],
                 if (report.hasFile) ...[
                   const SizedBox(height: 4),
@@ -1245,14 +1245,14 @@ class _LabReportRowState extends ConsumerState<_LabReportRow> {
                       const SizedBox(width: 4),
                       Text(
                         showThumb ? 'Tap to view' : (report.mimeType == 'application/pdf' ? 'Tap to open PDF' : 'Tap to open'),
-                        style: TextStyle(fontSize: 11.5, color: AppColors.accentOn(context), fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 12, color: AppColors.accentOn(context), fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
                 ],
                 // Red at-a-glance summary of what's out of range.
                 if (abnormal.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1272,14 +1272,14 @@ class _LabReportRowState extends ConsumerState<_LabReportRow> {
                 if (report.analytes.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                    spacing: 4,
+                    runSpacing: 4,
                     children: [for (final a in report.analytes) _AnalyteChip(analyte: a)],
                   ),
                 ] else if (report.analysisStatus == 'failed' || report.analysisStatus == 'unsupported') ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text('Could not read automatically — needs a look',
-                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.warningOn(context))),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.warningOn(context))),
                 ],
               ],
             ),
@@ -1321,19 +1321,19 @@ class _AnalyteChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: abnormal ? color.withValues(alpha: 0.12) : scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: abnormal ? color.withValues(alpha: 0.4) : scheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('${analyte.label} ', style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+          Text('${analyte.label} ', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
           Text(_fmt(analyte.value),
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: abnormal ? color : scheme.onSurface)),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: abnormal ? color : scheme.onSurface)),
           if (analyte.unit != null && analyte.unit!.isNotEmpty)
-            Text(' ${analyte.unit}', style: TextStyle(fontSize: 10.5, color: scheme.onSurfaceVariant)),
+            Text(' ${analyte.unit}', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
           if (abnormal) ...[
-            const SizedBox(width: 3),
+            const SizedBox(width: 4),
             Icon(analyte.flag == 'low' ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: 12, color: color),
           ],
         ],
@@ -1369,7 +1369,7 @@ class _AnalyteTrends extends StatelessWidget {
       children: [
         const SizedBox(height: AppSpacing.md),
         Text('LAB TRENDS',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
         const SizedBox(height: AppSpacing.sm),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
@@ -1417,10 +1417,10 @@ class _AnalyteTrendRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                 if (latest.rangeText.isNotEmpty)
                   Text('target ${latest.rangeText}${latest.unit != null ? ' ${latest.unit}' : ''}',
-                      style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
               ],
             ),
           ),
@@ -1431,9 +1431,9 @@ class _AnalyteTrendRow extends StatelessWidget {
             height: 24,
             showBand: false,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Text(fmt(latest.value),
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: abnormal ? color : scheme.onSurface)),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: abnormal ? color : scheme.onSurface)),
         ],
       ),
     );
@@ -1496,14 +1496,14 @@ class _AiContextCard extends StatelessWidget {
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
+          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 0),
           childrenPadding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
           expandedCrossAxisAlignment: CrossAxisAlignment.start,
           leading: Icon(Icons.smart_toy_outlined, size: 20, color: scheme.onSurfaceVariant),
-          title: const Text('Assistant context', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-          subtitle: Text('What the AI assistant sees', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+          title: const Text('Assistant context', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+          subtitle: Text('What the AI assistant sees', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
           children: [
-            Text(text, style: TextStyle(fontSize: 13.5, height: 1.5, color: scheme.onSurface)),
+            Text(text, style: TextStyle(fontSize: 14, height: 1.5, color: scheme.onSurface)),
           ],
         ),
       ),

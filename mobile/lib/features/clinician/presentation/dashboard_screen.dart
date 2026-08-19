@@ -40,8 +40,8 @@ class ClinicianDashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('$greeting,', style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            Text(user?.name ?? roleLabel, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+            Text('$greeting,', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            Text(user?.name ?? roleLabel, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
           ],
         ),
         actions: [
@@ -206,8 +206,8 @@ class _StatTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                Text(label, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                Text(label, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
               ],
             ),
           ),
@@ -243,10 +243,10 @@ class _RiskDistribution extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Risk distribution', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant)),
+          Text('Risk distribution', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant)),
           const SizedBox(height: AppSpacing.sm),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(12),
             child: Row(
               children: [
                 for (final s in segments)
@@ -269,12 +269,12 @@ class _RiskDistribution extends StatelessWidget {
                   children: [
                     Container(width: 10, height: 10, decoration: BoxDecoration(color: s.$3, shape: BoxShape.circle)),
                     const SizedBox(width: 4),
-                    Text('${s.$1} ${s.$2}', style: const TextStyle(fontSize: 12.5)),
+                    Text('${s.$1} ${s.$2}', style: const TextStyle(fontSize: 12)),
                   ],
                 ),
             ],
           ),
-          Text('of $total patients', style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+          Text('of $total patients', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
         ],
       ),
     );
@@ -312,7 +312,7 @@ class _AlertRow extends StatelessWidget {
                   children: [
                     Text(alert.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                     if (alert.patientName != null)
-                      Text(alert.patientName!, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                      Text(alert.patientName!, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                   ],
                 ),
               ),
@@ -335,7 +335,7 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         const Spacer(),
         if (actionLabel != null) TextButton(onPressed: onAction, child: Text(actionLabel!)),
       ],

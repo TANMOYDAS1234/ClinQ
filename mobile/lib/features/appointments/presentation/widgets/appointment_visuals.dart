@@ -50,14 +50,14 @@ class StatusPill extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final color = appointmentStatusColor(status);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         appointmentStatusLabel(l10n, status),
-        style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12.5),
+        style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12),
       ),
     );
   }
@@ -130,7 +130,7 @@ class AppointmentCard extends StatelessWidget {
                           ),
                           Text(
                             DateFormat('a').format(a.scheduledFor),
-                            style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+                            style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
@@ -147,15 +147,15 @@ class AppointmentCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           if (subtitle.isNotEmpty) ...[
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 0),
                             Text(
                               subtitle,
-                              style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                              style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ],
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 4),
                           Row(
                             children: [
                               Icon(
@@ -163,15 +163,15 @@ class AppointmentCard extends StatelessWidget {
                                 size: 14,
                                 color: scheme.onSurfaceVariant,
                               ),
-                              const SizedBox(width: 3),
+                              const SizedBox(width: 4),
                               Text(
                                 appointmentModeLabel(l10n, a.mode),
-                                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 8),
                               Text(
                                 DateFormat('EEE, d MMM').format(a.scheduledFor),
-                                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                               ),
                             ],
                           ),
@@ -183,7 +183,7 @@ class AppointmentCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         StatusPill(status: a.status),
-                        if (trailing != null) ...[const SizedBox(height: 6), trailing!],
+                        if (trailing != null) ...[const SizedBox(height: 4), trailing!],
                       ],
                     ),
                   ],
@@ -192,7 +192,7 @@ class AppointmentCard extends StatelessWidget {
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     a.reason!,
-                    style: TextStyle(fontSize: 13.5, color: scheme.onSurface, height: 1.3),
+                    style: TextStyle(fontSize: 14, color: scheme.onSurface, height: 1.3),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),

@@ -62,7 +62,7 @@ class FoodLogScreen extends ConsumerWidget {
                 Icon(Icons.restaurant_outlined, size: 54, color: scheme.outlineVariant),
                 const SizedBox(height: AppSpacing.md),
                 const Center(child: Text('No meals logged yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Center(child: Text('Tap "Log a meal" to add what you ate.', style: TextStyle(color: scheme.onSurfaceVariant))),
               ]);
             }
@@ -155,9 +155,9 @@ class _FoodCard extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(color: AppColors.accentOn(context).withValues(alpha: 0.11), borderRadius: BorderRadius.circular(20)),
-                        child: Text(_mealLabel(entry.mealType), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.accentOn(context))),
+                        child: Text(_mealLabel(entry.mealType), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.accentOn(context))),
                       ),
                       const Spacer(),
                       if (entry.createdAt != null)
@@ -165,8 +165,8 @@ class _FoodCard extends StatelessWidget {
                     ],
                   ),
                   if (entry.note.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(entry.note, style: const TextStyle(fontSize: 14.5, height: 1.35)),
+                    const SizedBox(height: 4),
+                    Text(entry.note, style: const TextStyle(fontSize: 14, height: 1.35)),
                   ],
                 ],
               ),
@@ -253,7 +253,7 @@ class _LogMealSheetState extends ConsumerState<_LogMealSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Log a meal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const Text('Log a meal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
           const SizedBox(height: AppSpacing.md),
           Wrap(
             spacing: 8,

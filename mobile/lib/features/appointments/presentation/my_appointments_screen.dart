@@ -106,7 +106,7 @@ class _AppointmentList extends ConsumerWidget {
             SizedBox(height: MediaQuery.of(context).size.height * 0.18),
             Icon(emptyIcon, size: 56, color: Theme.of(context).colorScheme.outlineVariant),
             const SizedBox(height: AppSpacing.md),
-            Center(child: Text(emptyTitle, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
+            Center(child: Text(emptyTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
             if (emptyBody.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.xs),
               Padding(
@@ -246,7 +246,7 @@ class _RescheduleSheetState extends ConsumerState<_RescheduleSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('${l10n.apptReschedule} · ${widget.clinicName}',
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: AppSpacing.md),
           SizedBox(
             height: 68,
@@ -274,10 +274,10 @@ class _RescheduleSheetState extends ConsumerState<_RescheduleSheet> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(DateFormat('EEE').format(d),
-                            style: TextStyle(fontSize: 11, color: sel ? Colors.white : scheme.onSurfaceVariant)),
+                            style: TextStyle(fontSize: 12, color: sel ? Colors.white : scheme.onSurfaceVariant)),
                         Text('${d.day}',
                             style: TextStyle(
-                                fontSize: 17, fontWeight: FontWeight.w800, color: sel ? Colors.white : scheme.onSurface)),
+                                fontSize: 16, fontWeight: FontWeight.w800, color: sel ? Colors.white : scheme.onSurface)),
                       ],
                     ),
                   ),

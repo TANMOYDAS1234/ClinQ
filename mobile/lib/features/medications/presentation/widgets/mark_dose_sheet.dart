@@ -67,15 +67,15 @@ class _MarkDoseSheet extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 19,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 0),
                     Text(
                       'Did you take this dose?',
-                      style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                      style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -94,14 +94,14 @@ class _MarkDoseSheet extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               onPressed: () =>
                   Navigator.of(context).pop(const MarkDoseResult(status: 'taken')),
               icon: const Icon(Icons.check_circle_rounded, size: 22),
               label: Text(
                 l10n.medsMarkTaken,
-                style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
               ),
             ),
           ),
@@ -112,7 +112,7 @@ class _MarkDoseSheet extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.dangerOn(context),
                 side: BorderSide(color: AppColors.dangerOn(context).withValues(alpha: 0.4)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               onPressed: () async {
                 final reason = await _pickSkipReason(context);
@@ -133,7 +133,7 @@ class _MarkDoseSheet extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.lock_outline_rounded, size: 14, color: scheme.onSurfaceVariant),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   // Said plainly, because a patient who thinks a skip gets them

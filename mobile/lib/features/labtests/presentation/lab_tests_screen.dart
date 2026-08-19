@@ -232,7 +232,7 @@ class _LabTestsScreenState extends ConsumerState<LabTestsScreen> {
     );
   }
 
-  TextStyle _label(ColorScheme scheme) => TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant);
+  TextStyle _label(ColorScheme scheme) => TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant);
 
   BoxDecoration _cardBox(ColorScheme scheme) => BoxDecoration(
         color: scheme.surfaceContainerLowest,
@@ -244,7 +244,7 @@ class _LabTestsScreenState extends ConsumerState<LabTestsScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: _cardBox(scheme),
-        child: Text(text, style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
+        child: Text(text, style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
       );
 }
 
@@ -260,14 +260,14 @@ class _AdvisedRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
       child: Row(
         children: [
           Icon(done ? Icons.check_circle_rounded : Icons.biotech_outlined, size: 20, color: done ? AppColors.success : scheme.onSurfaceVariant),
-          const SizedBox(width: 10),
-          Expanded(child: Text(test, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600))),
+          const SizedBox(width: 8),
+          Expanded(child: Text(test, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
           if (uploading)
-            const Padding(padding: EdgeInsets.all(8), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
+            const Padding(padding: EdgeInsets.all(8), child: SizedBox(width: 16, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
           else
             TextButton(onPressed: onUpload, child: Text(done ? 'Re-upload' : 'Upload')),
         ],
@@ -289,7 +289,7 @@ class _ResultCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: Row(
@@ -309,9 +309,9 @@ class _ResultCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(result.testName, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
+                    Expanded(child: Text(result.testName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
                     if (result.createdAt != null)
-                      Text(DateFormat('d MMM').format(result.createdAt!), style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                      Text(DateFormat('d MMM').format(result.createdAt!), style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                     // Uploading the wrong page is easy and, once read, it moves
                     // the patient's own record — so removing it has to be as
                     // easy as adding it was.
@@ -331,13 +331,13 @@ class _ResultCard extends StatelessWidget {
                 ),
                 if (result.note.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(result.note, style: const TextStyle(fontSize: 13.5)),
+                  Text(result.note, style: const TextStyle(fontSize: 14)),
                 ],
                 // What the clinic read off the report. Shown to the patient in
                 // the report's own words, never as advice — the numbers go to
                 // their record, the meaning comes from their doctor.
                 if (result.isReading) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
                       SizedBox(
@@ -351,27 +351,27 @@ class _ResultCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         'Reading your report…',
-                        style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                        style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                       ),
                     ],
                   ),
                 ] else if (result.analysisSummary?.isNotEmpty == true) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     decoration: BoxDecoration(
                       color: result.couldNotRead
                           ? AppColors.warningBgOn(context)
                           : AppColors.accentSoftOn(context),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       result.analysisSummary!,
-                      style: const TextStyle(fontSize: 12.5, height: 1.35),
+                      style: const TextStyle(fontSize: 12, height: 1.35),
                     ),
                   ),
                   if (result.abnormal.isNotEmpty) ...[
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
                     Text(
                       'Flagged on the report: ${result.abnormal.join(', ')}',
                       style: TextStyle(

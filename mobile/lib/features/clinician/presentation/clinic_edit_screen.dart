@@ -212,7 +212,7 @@ class _ClinicEditScreenState extends ConsumerState<ClinicEditScreen> {
             const SizedBox(height: AppSpacing.lg),
 
             // Slot length.
-            Text('Slot length', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant)),
+            Text('Slot length', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant)),
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: AppSpacing.sm,
@@ -236,10 +236,10 @@ class _ClinicEditScreenState extends ConsumerState<ClinicEditScreen> {
             const Divider(height: AppSpacing.xl),
 
             // Weekly availability.
-            const Text('Weekly availability', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+            const Text('Weekly availability', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
             const SizedBox(height: AppSpacing.xs),
             Text('Set the times the doctor is available each day. Slots are generated inside these windows.',
-                style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
             const SizedBox(height: AppSpacing.md),
             for (final day in _weekOrder) _DayEditor(
               dayName: _dayNames[day],
@@ -252,12 +252,12 @@ class _ClinicEditScreenState extends ConsumerState<ClinicEditScreen> {
             // Closures.
             Row(
               children: [
-                const Expanded(child: Text('Closures & holidays', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+                const Expanded(child: Text('Closures & holidays', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
                 TextButton.icon(onPressed: _addClosure, icon: const Icon(Icons.add_rounded, size: 18), label: const Text('Add')),
               ],
             ),
             if (_overrides.isEmpty)
-              Text('No closures set', style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant))
+              Text('No closures set', style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant))
             else
               Wrap(
                 spacing: AppSpacing.sm,
@@ -285,7 +285,7 @@ class _ClinicEditScreenState extends ConsumerState<ClinicEditScreen> {
           child: FilledButton(
             onPressed: _saving ? null : _save,
             child: _saving
-                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                ? const SizedBox(width: 20, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
                 : Text(_editing ? 'Save changes' : 'Create clinic', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           ),
         ),

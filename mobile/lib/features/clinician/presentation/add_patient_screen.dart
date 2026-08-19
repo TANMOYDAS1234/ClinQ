@@ -303,7 +303,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                 onPressed: _submitting ? null : _submit,
                 icon: _submitting
                     ? const SizedBox(
-                        width: 18,
+                        width: 16,
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
@@ -358,13 +358,13 @@ class _SectionLabel extends StatelessWidget {
       children: [
         Text(
           text,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: 0.2),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.2),
         ),
         if (trailing != null) ...[
           const SizedBox(width: 8),
           Text(
             trailing!,
-            style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant, fontStyle: FontStyle.italic),
+            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant, fontStyle: FontStyle.italic),
           ),
         ],
       ],

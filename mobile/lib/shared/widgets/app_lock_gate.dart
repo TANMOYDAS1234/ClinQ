@@ -89,7 +89,7 @@ class _AppLockGateState extends ConsumerState<AppLockGate> with WidgetsBindingOb
                         l10n.appLockLocked,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 22,
+                          fontSize: 20,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.3,
                         ),
@@ -99,7 +99,7 @@ class _AppLockGateState extends ConsumerState<AppLockGate> with WidgetsBindingOb
                         l10n.appLockSubtitle,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 15.5,
+                          fontSize: 16,
                           height: 1.45,
                           color: scheme.onSurfaceVariant,
                         ),

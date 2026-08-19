@@ -501,7 +501,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
               accent: AppColors.accentOn(context),
               size: 36,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 _patientName ?? 'Conversation',
@@ -510,7 +510,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
                 style: TextStyle(
                   color: AppColors.accentOn(context),
                   fontWeight: FontWeight.w700,
-                  fontSize: 18,
+                  fontSize: 16,
                 ),
               ),
             ),
@@ -564,7 +564,7 @@ class _PatientThreadScreenState extends ConsumerState<PatientThreadScreen> {
                             customBorder: const CircleBorder(),
                             onTap: _scrollToBottom,
                             child: const SizedBox(
-                              width: 46,
+                              width: 48,
                               height: 46,
                               child: Icon(
                                 Icons.keyboard_arrow_down_rounded,
@@ -728,7 +728,7 @@ class _ReplyPreviewBar extends StatelessWidget {
       child: Row(
         children: [
           Container(width: 3, height: 34, color: AppColors.accentOn(context)),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -737,7 +737,7 @@ class _ReplyPreviewBar extends StatelessWidget {
                 Text(
                   'Replying to $who',
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppColors.accentOn(context),
                   ),
@@ -747,7 +747,7 @@ class _ReplyPreviewBar extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
@@ -824,7 +824,7 @@ class _Composer extends StatelessWidget {
                       color: scheme.surfaceContainerHigh.withValues(
                         alpha: 0.55,
                       ),
-                      borderRadius: BorderRadius.circular(26),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.only(left: 4, right: 4),
@@ -857,7 +857,7 @@ class _Composer extends StatelessWidget {
                                 filled: false,
                                 isDense: true,
                                 contentPadding: EdgeInsets.symmetric(
-                                  vertical: 15,
+                                  vertical: 16,
                                 ),
                               ),
                               onSubmitted: (_) => onSend(),
@@ -892,7 +892,7 @@ class _Composer extends StatelessWidget {
                       child:
                           sending
                               ? const SizedBox(
-                                width: 22,
+                                width: 20,
                                 height: 22,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2.5,

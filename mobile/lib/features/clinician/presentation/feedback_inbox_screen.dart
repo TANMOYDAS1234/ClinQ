@@ -86,12 +86,12 @@ class _FeedbackInboxScreenState extends ConsumerState<FeedbackInboxScreen> {
                       children: [
                         const Text(
                           'Patient Feedback',
-                          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, height: 1.15),
+                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, height: 1.15),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
                           'Review and manage recent experiences reported by your patients.',
-                          style: TextStyle(fontSize: 15.5, height: 1.4, color: scheme.onSurfaceVariant),
+                          style: TextStyle(fontSize: 16, height: 1.4, color: scheme.onSurfaceVariant),
                         ),
                         const SizedBox(height: AppSpacing.lg),
                         Row(
@@ -126,7 +126,7 @@ class _FeedbackInboxScreenState extends ConsumerState<FeedbackInboxScreen> {
                                 Text(
                                   'Feedback patients send from their profile appears here.',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                                  style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                                 ),
                               ],
                             ),
@@ -176,7 +176,7 @@ class _BrandHeader extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             'MedPin',
-            style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
           UserAvatar(name: name, avatarUrl: avatarUrl, accent: AppColors.accentOn(context), size: 38),
@@ -197,16 +197,16 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: selected ? AppColors.primary : AppColors.infoBgOn(context),
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 14.5,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               color: selected ? Colors.white : AppColors.primary,
             ),
@@ -258,7 +258,7 @@ class _FeedbackCard extends StatelessWidget {
                           child: Text(
                             entry.heading,
                             style: TextStyle(
-                              fontSize: 19,
+                              fontSize: 20,
                               fontWeight: FontWeight.w700,
                               height: 1.25,
                               color: ink,
@@ -288,7 +288,7 @@ class _FeedbackCard extends StatelessWidget {
                       const SizedBox(height: AppSpacing.sm),
                       Text(
                         entry.message,
-                        style: TextStyle(fontSize: 15, height: 1.45, color: ink),
+                        style: TextStyle(fontSize: 14, height: 1.45, color: ink),
                       ),
                     ],
                     const SizedBox(height: AppSpacing.md),
@@ -316,7 +316,7 @@ class _FeedbackCard extends StatelessWidget {
                               Text(
                                 entry.patientName ?? 'Patient',
                                 style: const TextStyle(
-                                  fontSize: 14.5,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -325,7 +325,7 @@ class _FeedbackCard extends StatelessWidget {
                                     (entry.createdAt != null
                                         ? '  ·  ${DateFormat('d MMM yyyy, h:mm a').format(entry.createdAt!.toLocal())}'
                                         : ''),
-                                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                               ),
                             ],
                           ),
@@ -334,22 +334,22 @@ class _FeedbackCard extends StatelessWidget {
                         if (unread)
                           Material(
                             color: AppColors.infoBgOn(context),
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(20),
                             child: InkWell(
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(20),
                               onTap: onReviewed,
                               child: Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(Icons.check_circle_outline_rounded,
                                         size: 17, color: AppColors.accentOn(context)),
-                                    SizedBox(width: 6),
+                                    SizedBox(width: 4),
                                     Text(
                                       'Mark reviewed',
                                       style: TextStyle(
-                                        fontSize: 13.5,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.accentOn(context),
                                       ),
@@ -361,20 +361,20 @@ class _FeedbackCard extends StatelessWidget {
                           )
                         else
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
                               color: scheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.done_all_rounded, size: 17, color: scheme.onSurfaceVariant),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 4),
                                 Text(
                                   'Reviewed',
                                   style: TextStyle(
-                                    fontSize: 13.5,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: scheme.onSurfaceVariant,
                                   ),

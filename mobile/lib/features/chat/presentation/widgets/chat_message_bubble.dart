@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
 import '../../../../core/theme/app_colors.dart';
@@ -83,9 +83,9 @@ class ChatMessageBubble extends StatelessWidget {
       label: label,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(4),
           child: Icon(icon, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       ),
@@ -210,7 +210,7 @@ class ChatMessageBubble extends StatelessWidget {
         alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
           margin: const EdgeInsets.only(bottom: AppSpacing.md),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: scheme.surfaceContainerLow,
             borderRadius: BorderRadius.circular(16),
@@ -220,10 +220,10 @@ class ChatMessageBubble extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.block_rounded, size: 15, color: scheme.onSurfaceVariant),
-              const SizedBox(width: 7),
+              const SizedBox(width: 8),
               Text(
                 l10n.chatDeletedForEveryone,
-                style: TextStyle(fontSize: 14.5, fontStyle: FontStyle.italic, color: scheme.onSurfaceVariant),
+                style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -277,7 +277,7 @@ class ChatMessageBubble extends StatelessWidget {
             // Documents (PDF, Office, text…) as tappable file cards.
             for (final doc in message.documents)
               Padding(
-                padding: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.only(bottom: 4),
                 child: ChatDocumentCard(doc: doc, onDark: false),
               ),
             // Every turn is attributed, not just the clinicians'. A patient
@@ -321,17 +321,17 @@ class ChatMessageBubble extends StatelessWidget {
                 onTap: onQuoteTap,
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   decoration: BoxDecoration(
                     color: scheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border(left: BorderSide(color: AppColors.accentOn(context), width: 3)),
                   ),
                   child: Text(
                     repliedTo?.content ?? message.replyPreviewContent!,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                    style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                   ),
                 ),
               ),
@@ -342,7 +342,7 @@ class ChatMessageBubble extends StatelessWidget {
             GestureDetector(
               onLongPress: () => _showActions(context),
               child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: isMine
                     ? AppColors.bubbleMine(context)
@@ -383,7 +383,7 @@ class ChatMessageBubble extends StatelessWidget {
                   // The patient's own text is never Markdown â€” render it plain.
                   ? Text(
                       message.content,
-                      style: TextStyle(fontSize: 17, height: 1.5, color: isMine ? Colors.white : scheme.onSurface),
+                      style: TextStyle(fontSize: 16, height: 1.5, color: isMine ? Colors.white : scheme.onSurface),
                     )
                   // Assistant replies carry **bold** and `- ` bullets; render
                   // them rather than showing the raw marks.
@@ -396,7 +396,7 @@ class ChatMessageBubble extends StatelessWidget {
                       data: message.content,
                       selectable: false,
                       style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 16,
                         // 1.5 gives Bengali conjuncts and Devanagari matras room
                         // to breathe; 1.4 clips their upper marks at this size.
                         height: 1.5,
@@ -406,23 +406,23 @@ class ChatMessageBubble extends StatelessWidget {
             ),
             ),
             if (message.createdAt != null) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       _timestamp(message.createdAt!),
-                      style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                      style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                     ),
                     // Only on the patient's own turns, and only once a person
                     // from the clinic has opened the thread. Says their message
                     // was read without implying a reply is seconds away.
                     if (isMine && !isClinicianView && message.seenByClinicAt != null) ...[
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 4),
                       Icon(Icons.done_all_rounded, size: 15, color: AppColors.accentOn(context)),
-                      const SizedBox(width: 3),
+                      const SizedBox(width: 4),
                       Text(
                         l10n.chatSeenByClinic,
                         style: TextStyle(fontSize: 12, color: AppColors.accentOn(context)),
@@ -441,7 +441,7 @@ class ChatMessageBubble extends StatelessWidget {
               // A fallback reply is the scripted "service unavailable" text â€”
               // offer to resend the question rather than leaving a dead end.
               if (message.isFallback == true && onRetry != null) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: OutlinedButton.icon(
@@ -449,7 +449,7 @@ class ChatMessageBubble extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
                       side: BorderSide(color: scheme.outlineVariant),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       visualDensity: VisualDensity.compact,
                     ),
                     icon: const Icon(Icons.refresh_rounded, size: 18),
@@ -483,7 +483,7 @@ class ChatMessageBubble extends StatelessWidget {
                       label: l10n.chatFlagMessage,
                       onTap: onFlag!,
                     ),
-                  const SizedBox(width: 2),
+                  const SizedBox(width: 0),
                   // Under every reply, not once at the top: a patient scrolling
                   // back to a month-old answer sees it there too, and the line
                   // travels with the message when it is screenshotted or read
@@ -492,7 +492,7 @@ class ChatMessageBubble extends StatelessWidget {
                     child: Text(
                       l10n.chatDisclaimer,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontStyle: FontStyle.italic,
                         color: scheme.onSurfaceVariant,
                       ),
@@ -541,11 +541,11 @@ class _SenderRow extends StatelessWidget {
     // right-hand side and fill colour already say whose it is.
     if (isMine) {
       return Padding(
-        padding: const EdgeInsets.only(right: 4, bottom: 5),
+        padding: const EdgeInsets.only(right: 4, bottom: 4),
         child: Text(
           'You',
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: FontWeight.w700,
             color: scheme.onSurfaceVariant,
           ),
@@ -577,7 +577,7 @@ class _SenderRow extends StatelessWidget {
     // likeness than the photo, and the generic sparkle read as decoration.
 
     return Padding(
-      padding: const EdgeInsets.only(left: 2, bottom: 5),
+      padding: const EdgeInsets.only(left: 0, bottom: 4),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -604,20 +604,20 @@ class _SenderRow extends StatelessWidget {
             Container(
               width: 24,
               height: 24,
-              padding: const EdgeInsets.all(3),
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(color: AppColors.accentSoftOn(context), shape: BoxShape.circle),
               child: Image.asset(
                 'assets/brand/medpin_emblem.png',
                 errorBuilder: (_, _, _) => Icon(icon, size: 14, color: AppColors.accentOn(context)),
               ),
             ),
-          if (!isUser && !isDietician) const SizedBox(width: 7),
+          if (!isUser && !isDietician) const SizedBox(width: 8),
           Flexible(
             child: Text(
               label,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 13.5,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: isClinician || isDietician ? AppColors.primary : scheme.onSurfaceVariant,
               ),

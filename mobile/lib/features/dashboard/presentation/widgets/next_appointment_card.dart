@@ -42,7 +42,7 @@ class NextAppointmentCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 if (appt != null) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 0),
                   Text(
                     '${appt.mode} · ${appt.status}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(

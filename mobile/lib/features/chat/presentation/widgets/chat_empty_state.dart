@@ -49,7 +49,7 @@ class ChatEmptyState extends StatelessWidget {
         Text(
           l10n.chatEmptyTitle,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, height: 1.3),
+          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, height: 1.3),
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
@@ -90,7 +90,7 @@ class _SuggestionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         child: Container(
           constraints: const BoxConstraints(minHeight: 64),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
             border: Border.all(color: scheme.outlineVariant),

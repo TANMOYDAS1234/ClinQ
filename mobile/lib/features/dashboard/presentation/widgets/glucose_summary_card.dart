@@ -53,7 +53,7 @@ class GlucoseSummaryCard extends ConsumerWidget {
                     context,
                   ).textTheme.headlineLarge?.copyWith(color: color, fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 Text(unit.label, style: Theme.of(context).textTheme.bodyMedium),
               ],
             ),

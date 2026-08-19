@@ -190,7 +190,7 @@ class _AlertCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
-            Text(a.title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+            Text(a.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             // Who this is about, with a face. An alert is read in a hurry and
             // acted on immediately; a name in grey text is slower to place than
             // a photo, and tapping through to the record should not require
@@ -198,7 +198,7 @@ class _AlertCard extends StatelessWidget {
             if (a.patientName != null) ...[
               const SizedBox(height: AppSpacing.sm),
               InkWell(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 onTap: a.patientId == null
                     ? null
                     : () => context.push('/clinician/patients/${a.patientId}'),
@@ -226,14 +226,14 @@ class _AlertCard extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                      fontSize: 15,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ),
                                 if (a.patientRiskBand != null &&
                                     a.patientRiskBand != 'low') ...[
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 4),
                                   MiniPill(
                                     label: a.patientRiskBand!.toUpperCase(),
                                     color: riskBandColor(a.patientRiskBand!),
@@ -247,7 +247,7 @@ class _AlertCard extends StatelessWidget {
                                 if (a.patientGender != null) a.patientGender!,
                                 if (a.patientPhone != null) a.patientPhone!,
                               ].join('  •  '),
-                              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                             ),
                             if ((a.patientAddress ?? '').trim().isNotEmpty)
                               Text(
@@ -255,7 +255,7 @@ class _AlertCard extends StatelessWidget {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 12.5,
+                                  fontSize: 12,
                                   height: 1.3,
                                   color: scheme.onSurfaceVariant,
                                 ),
@@ -271,7 +271,7 @@ class _AlertCard extends StatelessWidget {
             ],
             if (a.detail != null && a.detail!.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.sm),
-              Text(a.detail!, style: TextStyle(fontSize: 13.5, height: 1.4, color: scheme.onSurface), maxLines: 4, overflow: TextOverflow.ellipsis),
+              Text(a.detail!, style: TextStyle(fontSize: 14, height: 1.4, color: scheme.onSurface), maxLines: 4, overflow: TextOverflow.ellipsis),
             ],
             if (!a.isResolved) ...[
               const SizedBox(height: AppSpacing.md),
@@ -308,7 +308,7 @@ class _AlertCard extends StatelessWidget {
             ],
             if (a.isResolved && a.resolutionNotes != null && a.resolutionNotes!.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.sm),
-              Text('Resolution: ${a.resolutionNotes}', style: TextStyle(fontSize: 12.5, fontStyle: FontStyle.italic, color: scheme.onSurfaceVariant)),
+              Text('Resolution: ${a.resolutionNotes}', style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: scheme.onSurfaceVariant)),
             ],
           ],
         ),

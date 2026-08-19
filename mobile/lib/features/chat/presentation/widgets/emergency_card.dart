@@ -59,11 +59,11 @@ class EmergencyCard extends ConsumerWidget {
                       style: TextStyle(
                         color: AppColors.dangerOn(context),
                         fontWeight: FontWeight.w800,
-                        fontSize: 19,
+                        fontSize: 20,
                         height: 1.3,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       content,
                       style: const TextStyle(fontSize: 16, height: 1.45, color: Color(0xFF1F2937)),
@@ -91,7 +91,7 @@ class EmergencyCard extends ConsumerWidget {
               icon: const Icon(Icons.call_rounded, size: 22),
               label: Text(
                 l10n.chatCallClinic,
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ),
           ),

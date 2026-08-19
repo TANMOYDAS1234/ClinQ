@@ -215,13 +215,13 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Plan Editor', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            const Text('Plan Editor', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
             if (widget.patientName != null)
               Text(
                 'for ${widget.patientName!}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
           ],
         ),
@@ -234,7 +234,7 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
               padding: EdgeInsets.only(right: AppSpacing.md),
               child: Center(
                 child: SizedBox(
-                  width: 18,
+                  width: 16,
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2.2),
                 ),
@@ -254,7 +254,7 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                   maxLines: 3,
                   textCapitalization: TextCapitalization.sentences,
                   onChanged: (_) => _dirty = true,
-                  style: const TextStyle(fontSize: 15.5, height: 1.45),
+                  style: const TextStyle(fontSize: 16, height: 1.45),
                   decoration: InputDecoration(
                     hintText: 'e.g. Bring fasting sugar under 130 without cutting rice completely',
                     filled: true,
@@ -263,7 +263,7 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                     border: _softBorder(scheme),
                     enabledBorder: _softBorder(scheme),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide(color: AppColors.accentOn(context), width: 1.4),
                     ),
                   ),
@@ -300,7 +300,7 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                       Text(
                         'ADD MEAL / SNACK',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.7,
                           color: AppColors.accentOn(context),
@@ -322,8 +322,8 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                             name.isEmpty ? 'Other' : name,
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                           ),
-                          labelPadding: const EdgeInsets.only(right: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          labelPadding: const EdgeInsets.only(right: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                           backgroundColor: scheme.surfaceContainerLowest,
                           side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.7)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -366,7 +366,7 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                           Text(
                             'Best Avoided',
                             style: TextStyle(
-                              fontSize: 17,
+                              fontSize: 16,
                               fontWeight: FontWeight.w800,
                               color: AppColors.dangerOn(context),
                             ),
@@ -383,11 +383,11 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                         Chip(
                           label: Text(
                             _avoidList[i],
-                            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                           ),
                           backgroundColor: AppColors.dangerBgOn(context),
                           side: BorderSide(color: AppColors.dangerOn(context).withValues(alpha: 0.28)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           deleteIconColor: AppColors.danger,
                           onDeleted: () => setState(() {
                             _avoidList = [..._avoidList]..removeAt(i);
@@ -410,11 +410,11 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                           hintText: 'e.g. Sweetened lassi',
                           filled: true,
                           fillColor: scheme.surfaceContainerLowest,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                           border: _softBorder(scheme),
                           enabledBorder: _softBorder(scheme),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide(color: AppColors.accentOn(context), width: 1.4),
                           ),
                         ),
@@ -431,7 +431,7 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                           backgroundColor: AppColors.primary,
                           disabledBackgroundColor: scheme.surfaceContainerHighest,
                           padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
                         onPressed: _canAddAvoid ? _addAvoid : null,
                         child: const Icon(Icons.add_rounded, size: 24),
@@ -452,7 +452,7 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                   maxLength: 2000,
                   textCapitalization: TextCapitalization.sentences,
                   onChanged: (_) => _dirty = true,
-                  style: const TextStyle(fontSize: 15.5, height: 1.45),
+                  style: const TextStyle(fontSize: 16, height: 1.45),
                   decoration: InputDecoration(
                     hintText: 'Water, cooking oil, eating out, fasting days…',
                     filled: true,
@@ -461,7 +461,7 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                     border: _softBorder(scheme),
                     enabledBorder: _softBorder(scheme),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide(color: AppColors.accentOn(context), width: 1.4),
                     ),
                   ),
@@ -484,12 +484,12 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(_statusIcon, size: 14, color: _statusColour(scheme)),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 4),
                         Flexible(
                           child: Text(
                             _statusText,
                             style: TextStyle(
-                              fontSize: 12.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: _statusColour(scheme),
                             ),
@@ -506,7 +506,7 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                       onPressed: (!canSend || _sending || _saving) ? null : _send,
                       icon: _sending
                           ? const SizedBox(
-                              width: 18,
+                              width: 16,
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
                             )
@@ -528,7 +528,7 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
 /// than Material's default underline: the form is long, and a dozen heavy
 /// underlines read as clutter where a card edge reads as structure.
 OutlineInputBorder _softBorder(ColorScheme scheme) => OutlineInputBorder(
-  borderRadius: BorderRadius.circular(14),
+  borderRadius: BorderRadius.circular(16),
   borderSide: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.7)),
 );
 
@@ -653,7 +653,7 @@ class _MealCardState extends State<_MealCard> {
                   controller: d.name,
                   textCapitalization: TextCapitalization.words,
                   onChanged: (_) => widget.onChanged(),
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   decoration: const InputDecoration(
                     hintText: 'Meal name',
                     isDense: true,
@@ -670,7 +670,7 @@ class _MealCardState extends State<_MealCard> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
           // A picker, not a text box. Typing the time by hand produced "8",
           // "8pm", "20:00" and "8 o'clock" in the same plan, and the patient's
@@ -684,7 +684,7 @@ class _MealCardState extends State<_MealCard> {
                 borderRadius: BorderRadius.circular(12),
                 onTap: _pickTime,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -697,7 +697,7 @@ class _MealCardState extends State<_MealCard> {
                       Text(
                         time.isEmpty ? 'Set a time' : time,
                         style: TextStyle(
-                          fontSize: 14.5,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: time.isEmpty ? scheme.onSurfaceVariant : AppColors.primary,
                         ),
@@ -716,7 +716,7 @@ class _MealCardState extends State<_MealCard> {
 
           for (var i = 0; i < d.items.length; i++)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(vertical: 0),
               child: Row(
                 children: [
                   Container(
@@ -734,12 +734,12 @@ class _MealCardState extends State<_MealCard> {
                       textCapitalization: TextCapitalization.sentences,
                       textInputAction: TextInputAction.next,
                       onChanged: (_) => widget.onChanged(),
-                      style: const TextStyle(fontSize: 15.5),
+                      style: const TextStyle(fontSize: 16),
                       decoration: const InputDecoration(
                         hintText: 'e.g. 2 rotis, no ghee',
                         isDense: true,
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 11),
+                        contentPadding: EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
@@ -766,7 +766,7 @@ class _MealCardState extends State<_MealCard> {
             child: TextButton.icon(
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               ),
               onPressed: () => setState(() {
                 d.items = [...d.items, TextEditingController()];
@@ -775,7 +775,7 @@ class _MealCardState extends State<_MealCard> {
               icon: const Icon(Icons.add_rounded, size: 19),
               label: const Text(
                 'Add item',
-                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -794,7 +794,7 @@ class _MealCardState extends State<_MealCard> {
                 hintText: 'Note for this meal (optional)',
                 filled: true,
                 fillColor: scheme.surfaceContainerHigh.withValues(alpha: 0.45),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -830,11 +830,11 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(left: 2, bottom: AppSpacing.sm),
+      padding: const EdgeInsets.only(left: 0, bottom: AppSpacing.sm),
       child: Text(
         text.toUpperCase(),
         style: TextStyle(
-          fontSize: 11.5,
+          fontSize: 12,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.6,
           color: scheme.onSurfaceVariant,

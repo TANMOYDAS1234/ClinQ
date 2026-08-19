@@ -73,7 +73,7 @@ class _ChatDocumentCardState extends ConsumerState<ChatDocumentCard> {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 260),
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: widget.onDark ? Colors.white.withValues(alpha: 0.15) : scheme.surface,
           borderRadius: BorderRadius.circular(12),
@@ -90,7 +90,7 @@ class _ChatDocumentCardState extends ConsumerState<ChatDocumentCard> {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: tint.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: _busy
                   ? SizedBox(
@@ -100,7 +100,7 @@ class _ChatDocumentCardState extends ConsumerState<ChatDocumentCard> {
                     )
                   : Icon(_icon(widget.doc.mimeType), color: tint, size: 23),
             ),
-            const SizedBox(width: 11),
+            const SizedBox(width: 12),
             Flexible(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,9 +110,9 @@ class _ChatDocumentCardState extends ConsumerState<ChatDocumentCard> {
                     widget.doc.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: fg),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: fg),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 0),
                   Text(_meta(widget.doc), style: TextStyle(fontSize: 12, color: sub)),
                 ],
               ),

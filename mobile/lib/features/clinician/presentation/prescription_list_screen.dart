@@ -36,7 +36,7 @@ class PrescriptionListScreen extends ConsumerWidget {
                 preferredSize: const Size.fromHeight(22),
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(patientName!, style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
+                  child: Text(patientName!, style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
                 ),
               ),
       ),
@@ -67,7 +67,7 @@ class PrescriptionListScreen extends ConsumerWidget {
                   Center(
                     child: Text(
                       'A consultation will add one here',
-                      style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                      style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                     ),
                   ),
                 ],
@@ -154,7 +154,7 @@ class _PrescriptionCardState extends ConsumerState<_PrescriptionCard> {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 22),
               ),
@@ -163,10 +163,10 @@ class _PrescriptionCardState extends ConsumerState<_PrescriptionCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(date, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
+                    Text(date, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                     if (rx.referenceNo != null) ...[
-                      const SizedBox(height: 2),
-                      Text(rx.referenceNo!, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                      const SizedBox(height: 0),
+                      Text(rx.referenceNo!, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                     ],
                   ],
                 ),
@@ -177,7 +177,7 @@ class _PrescriptionCardState extends ConsumerState<_PrescriptionCard> {
             const SizedBox(height: AppSpacing.sm),
             _line(context, Icons.local_hospital_outlined, rx.diagnosis.join(', ')),
           ],
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           _line(
             context,
             Icons.medication_outlined,
@@ -185,7 +185,7 @@ class _PrescriptionCardState extends ConsumerState<_PrescriptionCard> {
                 '${rx.labTestsAdvised.isNotEmpty ? '  ·  ${rx.labTestsAdvised.length} test${rx.labTestsAdvised.length == 1 ? '' : 's'} advised' : ''}',
           ),
           if (rx.followUpOn != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             _line(context, Icons.event_outlined, 'Follow-up ${DateFormat('d MMM yyyy').format(rx.followUpOn!)}'),
           ],
           const SizedBox(height: AppSpacing.md),
@@ -213,7 +213,7 @@ class _PrescriptionCardState extends ConsumerState<_PrescriptionCard> {
         Icon(icon, size: 16, color: scheme.onSurfaceVariant),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(text, style: TextStyle(fontSize: 13.5, height: 1.3, color: scheme.onSurface)),
+          child: Text(text, style: TextStyle(fontSize: 14, height: 1.3, color: scheme.onSurface)),
         ),
       ],
     );

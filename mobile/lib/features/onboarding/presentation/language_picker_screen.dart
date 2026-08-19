@@ -61,7 +61,7 @@ class _LanguagePickerScreenState extends ConsumerState<LanguagePickerScreen> {
               const SizedBox(height: AppSpacing.md),
               Text(
                 l10n.languagePickerTitle,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
@@ -137,7 +137,7 @@ class _LanguageTile extends StatelessWidget {
                       option.label,
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 0),
                     Text(option.subLabel, style: Theme.of(context).textTheme.bodyMedium),
                   ],
                 ),

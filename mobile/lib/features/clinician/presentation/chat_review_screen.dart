@@ -203,7 +203,7 @@ class _SessionRow extends ConsumerWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -226,7 +226,7 @@ class _SessionRow extends ConsumerWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 16.5,
+                            fontSize: 16,
                             fontWeight: unread ? FontWeight.w800 : FontWeight.w600,
                           ),
                         ),
@@ -236,14 +236,14 @@ class _SessionRow extends ConsumerWidget {
                         Text(
                           _stamp(msg.at),
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             color: unread ? AppColors.primary : scheme.onSurfaceVariant,
                             fontWeight: unread ? FontWeight.w700 : FontWeight.w400,
                           ),
                         ),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
                       Expanded(
@@ -273,7 +273,7 @@ class _SessionRow extends ConsumerWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 14.5,
+                            fontSize: 14,
                             height: 1.35,
                             color: msg == null
                                 ? scheme.outline
@@ -289,15 +289,15 @@ class _SessionRow extends ConsumerWidget {
                         Container(
                           constraints: const BoxConstraints(minWidth: 22),
                           height: 22,
-                          padding: const EdgeInsets.symmetric(horizontal: 7),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: AppColors.accentOn(context),
-                            borderRadius: const BorderRadius.all(Radius.circular(11)),
+                            borderRadius: const BorderRadius.all(Radius.circular(12)),
                           ),
                           child: Text(
                             s.unreadCount > 99 ? '99+' : '${s.unreadCount}',
-                            style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w800),
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
                           ),
                         ),
                       ],
@@ -311,7 +311,7 @@ class _SessionRow extends ConsumerWidget {
                       if (s.highestUrgency != 'routine')
                         MiniPill(label: s.highestUrgency.toUpperCase(), color: urgencyColor),
                       if (s.flaggedForReview) ...[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4),
                         Icon(Icons.flag_rounded, size: 16, color: AppColors.warningOn(context)),
                       ],
                       const Spacer(),
@@ -330,7 +330,7 @@ class _SessionRow extends ConsumerWidget {
                         Row(
                           children: [
                             Icon(Icons.check_circle_rounded, size: 13, color: AppColors.successOn(context)),
-                            const SizedBox(width: 3),
+                            const SizedBox(width: 4),
                             Text('Reviewed', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                           ],
                         ),

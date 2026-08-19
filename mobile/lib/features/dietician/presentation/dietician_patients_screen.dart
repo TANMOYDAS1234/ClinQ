@@ -82,7 +82,7 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('My Patients', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.accentOn(context))),
-            Text('Worklist sorted by review priority.', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+            Text('Worklist sorted by review priority.', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
           ],
         ),
         actions: [
@@ -109,7 +109,7 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
                 TextField(
                   controller: _search,
                   onChanged: (v) => setState(() => _query = v),
-                  style: const TextStyle(fontSize: 15.5),
+                  style: const TextStyle(fontSize: 16),
                   decoration: InputDecoration(
                     hintText: 'Search patients, number, or condition…',
                     prefixIcon: Icon(Icons.search_rounded, color: scheme.onSurfaceVariant),
@@ -124,17 +124,17 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
                           ),
                     filled: true,
                     fillColor: scheme.surfaceContainerHigh.withValues(alpha: 0.55),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(28),
+                      borderRadius: BorderRadius.circular(20),
                       borderSide: BorderSide.none,
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(28),
+                      borderRadius: BorderRadius.circular(20),
                       borderSide: BorderSide.none,
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(28),
+                      borderRadius: BorderRadius.circular(20),
                       borderSide: BorderSide.none,
                     ),
                   ),
@@ -144,7 +144,7 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
                 // narrowed to — a chip reading "Critical (5)" over a list of
                 // two is a chip that lies.
                 SizedBox(
-                  height: 36,
+                  height: 32,
                   child: Builder(
                     builder: (context) {
                       final all = _search_(async.valueOrNull ?? const <DietPatient>[]);
@@ -201,7 +201,7 @@ class _DieticianPatientsScreenState extends ConsumerState<DieticianPatientsScree
                 Icon(Icons.restaurant_menu_rounded, size: 54, color: scheme.outlineVariant),
                 const SizedBox(height: AppSpacing.md),
                 const Center(child: Text('No patients assigned yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Center(child: Text('A doctor will assign patients to you.', style: TextStyle(color: scheme.onSurfaceVariant))),
               ]);
             }
@@ -271,13 +271,13 @@ class _PatientCard extends StatelessWidget {
 
     return Material(
       color: scheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         onTap: () => context.push('/dietician/patients/${p.id}', extra: p.name),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
             boxShadow: [
               BoxShadow(
@@ -342,9 +342,9 @@ class _PatientCard extends StatelessWidget {
                                     p.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, height: 1.2),
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, height: 1.2),
                                   ),
-                                  const SizedBox(height: 1),
+                                  const SizedBox(height: 0),
                                   Text(
                                     [
                                       if (p.phone.isNotEmpty) p.phone,
@@ -352,12 +352,12 @@ class _PatientCard extends StatelessWidget {
                                     ].join('  •  '),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                                    style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                                   ),
-                                  const SizedBox(height: 7),
+                                  const SizedBox(height: 8),
                                   Wrap(
-                                    spacing: 6,
-                                    runSpacing: 6,
+                                    spacing: 4,
+                                    runSpacing: 4,
                                     children: [
                                       _pill(
                                         '${p.riskBand[0].toUpperCase()}${p.riskBand.substring(1)} Risk',
@@ -373,9 +373,9 @@ class _PatientCard extends StatelessWidget {
                           ],
                         ),
                         if (status.isNotEmpty) ...[
-                          const SizedBox(height: 11),
+                          const SizedBox(height: 12),
                           Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.55)),
-                          const SizedBox(height: 9),
+                          const SizedBox(height: 8),
                           Row(
                             children: [
                               if (p.reviewDue)
@@ -400,7 +400,7 @@ class _PatientCard extends StatelessWidget {
                               Text(
                                 status,
                                 style: TextStyle(
-                                  fontSize: 12.5,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0.3,
                                   color: overdue ? AppColors.dangerOn(context) : scheme.onSurfaceVariant,
@@ -430,7 +430,7 @@ class _PatientCard extends StatelessWidget {
     required Color? border,
   }) =>
       Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(20),
@@ -440,7 +440,7 @@ class _PatientCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 13, color: color),
-            const SizedBox(width: 5),
+            const SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color),
@@ -450,10 +450,10 @@ class _PatientCard extends StatelessWidget {
       );
 
   Widget _pill(String text, Color color, {bool neutral = false}) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: color.withValues(alpha: neutral ? 0.10 : 0.13),
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(12),
           border: neutral ? null : Border.all(color: color.withValues(alpha: 0.35)),
         ),
         child: Text(
@@ -484,7 +484,7 @@ class _FilterChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 15),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
@@ -495,7 +495,7 @@ class _FilterChip extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 13.5,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               color: selected ? Colors.white : scheme.onSurface,
             ),

@@ -107,7 +107,7 @@ class CareScreen extends StatelessWidget {
                           context,
                         ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 0),
                       Text(item.descBuilder(l10n), style: Theme.of(context).textTheme.bodyMedium),
                     ],
                   ),

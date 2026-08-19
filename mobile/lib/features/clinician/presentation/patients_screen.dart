@@ -196,7 +196,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen>
                                 margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                                 decoration: BoxDecoration(
                                   color: scheme.surfaceContainerLowest,
-                                  borderRadius: BorderRadius.circular(18),
+                                  borderRadius: BorderRadius.circular(16),
                                   border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.22)),
                                   boxShadow: [
                                     BoxShadow(
@@ -269,10 +269,10 @@ class _InboxHeader extends ConsumerWidget {
             errorBuilder: (_, _, _) =>
                 Icon(Icons.forum_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Text(
             'MedPin',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
           PanelNotificationBell(onTap: () => showClinicianNotifications(context)),
@@ -308,23 +308,23 @@ class _SearchField extends StatelessWidget {
       child: TextField(
         controller: controller,
         onChanged: onChanged,
-        style: const TextStyle(fontSize: 15.5),
+        style: const TextStyle(fontSize: 16),
         decoration: InputDecoration(
           hintText: 'Search by name or number…',
           prefixIcon: Icon(Icons.search_rounded, color: scheme.onSurfaceVariant),
           filled: true,
           fillColor: scheme.surfaceContainerHigh.withValues(alpha: 0.55),
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(20),
             borderSide: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.35)),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(20),
             borderSide: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.35)),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(20),
             borderSide: BorderSide(color: AppColors.accentOn(context), width: 1.6),
           ),
         ),
@@ -353,15 +353,15 @@ class _SectionBar extends StatelessWidget {
             const Expanded(
               child: Text(
                 'Care Inbox',
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4),
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: -0.4),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
             Container(
-              padding: const EdgeInsets.all(3),
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: scheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -395,7 +395,7 @@ class _Seg extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? scheme.surfaceContainerLowest : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
@@ -453,7 +453,7 @@ class _ConversationRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -476,7 +476,7 @@ class _ConversationRow extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 16.5,
+                            fontSize: 16,
                             // Unread rows carry the weight, so the queue is
                             // visible without reading a single word.
                             fontWeight: unread ? FontWeight.w800 : FontWeight.w600,
@@ -488,14 +488,14 @@ class _ConversationRow extends StatelessWidget {
                         Text(
                           _stamp(msg.at),
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             color: unread ? AppColors.primary : scheme.onSurfaceVariant,
                             fontWeight: unread ? FontWeight.w700 : FontWeight.w400,
                           ),
                         ),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -530,7 +530,7 @@ class _ConversationRow extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 14.5,
+                            fontSize: 14,
                             height: 1.35,
                             color: msg == null
                                 ? scheme.outline
@@ -549,17 +549,17 @@ class _ConversationRow extends StatelessWidget {
                         Container(
                           constraints: const BoxConstraints(minWidth: 22),
                           height: 22,
-                          padding: const EdgeInsets.symmetric(horizontal: 7),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: AppColors.accentOn(context),
-                            borderRadius: BorderRadius.all(Radius.circular(11)),
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
                           ),
                           child: Text(
                             patient.unreadCount > 99 ? '99+' : '${patient.unreadCount}',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 12.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -574,7 +574,7 @@ class _ConversationRow extends StatelessWidget {
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
-                      runSpacing: 6,
+                      runSpacing: 4,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         if (emergency)
@@ -632,16 +632,16 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 13, color: fg),
-          const SizedBox(width: 5),
+          const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: fg),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg),
           ),
         ],
       ),

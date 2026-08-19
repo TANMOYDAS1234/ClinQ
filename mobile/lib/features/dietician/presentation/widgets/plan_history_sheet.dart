@@ -20,7 +20,7 @@ Future<void> showPlanHistory(BuildContext context, String patientId) {
     showDragHandle: true,
     backgroundColor: Theme.of(context).colorScheme.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (_) => _PlanHistorySheet(patientId: patientId),
   );
@@ -52,7 +52,7 @@ class _PlanHistorySheet extends ConsumerWidget {
                 const Expanded(
                   child: Text(
                     'Previous plans',
-                    style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                   ),
                 ),
                 if (revisions != null)
@@ -118,7 +118,7 @@ class _RevisionCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
       ),
       clipBehavior: Clip.antiAlias,
@@ -138,7 +138,7 @@ class _RevisionCard extends StatelessWidget {
             plan.goal.trim().isNotEmpty ? plan.goal.trim() : 'Plan $index',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, height: 1.35),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, height: 1.35),
           ),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 4),
@@ -148,7 +148,7 @@ class _RevisionCard extends StatelessWidget {
                 if (days != null) 'on it ${days == 1 ? '1 day' : '$days days'}',
                 if (plan.dieticianName != null) plan.dieticianName!,
               ].join('  ·  '),
-              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
           ),
           children: [
@@ -158,7 +158,7 @@ class _RevisionCard extends StatelessWidget {
                 child: Text(
                   [meal.name, if (meal.time.isNotEmpty) meal.time].join('  ·  ').toUpperCase(),
                   style: TextStyle(
-                    fontSize: 10.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.7,
                     color: AppColors.accentOn(context),
@@ -168,7 +168,7 @@ class _RevisionCard extends StatelessWidget {
               const SizedBox(height: 4),
               for (final item in meal.items)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
+                  padding: const EdgeInsets.only(bottom: 0),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -181,11 +181,11 @@ class _RevisionCard extends StatelessWidget {
                 ),
               if (meal.notes.trim().isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 2),
+                  padding: const EdgeInsets.only(top: 0),
                   child: Text(
                     meal.notes.trim(),
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontStyle: FontStyle.italic,
                       color: scheme.onSurfaceVariant,
                     ),
@@ -199,23 +199,23 @@ class _RevisionCard extends StatelessWidget {
                 child: Text(
                   'BEST AVOIDED',
                   style: TextStyle(
-                    fontSize: 10.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.7,
                     color: AppColors.dangerOn(context),
                   ),
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Wrap(
-                spacing: 6,
-                runSpacing: 6,
+                spacing: 4,
+                runSpacing: 4,
                 children: [
                   for (final a in plan.avoid)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(7),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: AppColors.dangerOn(context).withValues(alpha: 0.45),
                         ),
@@ -234,7 +234,7 @@ class _RevisionCard extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   plan.notes.trim(),
-                  style: TextStyle(fontSize: 13.5, height: 1.45, color: scheme.onSurface),
+                  style: TextStyle(fontSize: 14, height: 1.45, color: scheme.onSurface),
                 ),
               ),
           ],

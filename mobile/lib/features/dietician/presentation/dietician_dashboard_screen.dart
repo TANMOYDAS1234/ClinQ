@@ -81,7 +81,7 @@ class DieticianDashboardScreen extends ConsumerWidget {
                       Text(
                         '${_partOfDay()}, ${user?.name ?? ''}',
                         style: const TextStyle(
-                          fontSize: 26,
+                          fontSize: 32,
                           fontWeight: FontWeight.w800,
                           height: 1.2,
                           letterSpacing: -0.4,
@@ -90,7 +90,7 @@ class DieticianDashboardScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         'Here is your daily clinical overview.',
-                        style: TextStyle(fontSize: 15.5, color: scheme.onSurfaceVariant),
+                        style: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant),
                       ),
                       const SizedBox(height: AppSpacing.lg),
 
@@ -225,18 +225,18 @@ class _BrandHeader extends StatelessWidget {
             errorBuilder: (_, _, _) =>
                 Icon(Icons.restaurant_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
-          const SizedBox(width: 9),
+          const SizedBox(width: 8),
           Text(
             'MedPin',
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
               color: AppColors.accentOn(context),
             ),
           ),
           const Spacer(),
           _NotificationBell(count: unread),
-          const SizedBox(width: 2),
+          const SizedBox(width: 0),
           GestureDetector(
             onTap: () => context.go('/dietician/profile'),
             child: UserAvatar(name: name, avatarUrl: avatarUrl, accent: AppColors.accentOn(context), size: 36),
@@ -273,9 +273,9 @@ class _NotificationBell extends StatelessWidget {
         if (count > 0)
           Positioned(
             right: 4,
-            top: 5,
+            top: 4,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
               constraints: const BoxConstraints(minWidth: 18),
               decoration: BoxDecoration(
                 color: accent,
@@ -286,7 +286,7 @@ class _NotificationBell extends StatelessWidget {
                 count > 99 ? '99+' : '$count',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 10.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
                   height: 1.25,
@@ -363,7 +363,7 @@ class _StatCard extends StatelessWidget {
                           child: Text(
                             label.toUpperCase(),
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.9,
                               color: accent ?? scheme.onSurfaceVariant,
@@ -373,7 +373,7 @@ class _StatCard extends StatelessWidget {
                         Icon(icon, size: 21, color: accent ?? scheme.onSurfaceVariant),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Text(
                       value,
                       style: TextStyle(
@@ -440,7 +440,7 @@ class _WorkCard extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+                  child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                 ),
                 if (action != null)
                   TextButton(
@@ -449,7 +449,7 @@ class _WorkCard extends StatelessWidget {
                     child: Text(
                       action!,
                       style: TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: AppColors.accentOn(context),
                       ),
@@ -536,19 +536,19 @@ class _PatientRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 0),
                   Text(
                     subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                    style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
             trailing,
-            const SizedBox(width: 2),
+            const SizedBox(width: 0),
             Icon(Icons.chevron_right_rounded, size: 20, color: scheme.onSurfaceVariant),
           ],
         ),
@@ -597,7 +597,7 @@ class _PlanTile extends StatelessWidget {
                   accent: AppColors.accentOn(context),
                   size: 34,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -606,16 +606,16 @@ class _PlanTile extends StatelessWidget {
                         patient.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 0),
                       Row(
                         children: [
                           Icon(Icons.schedule_rounded, size: 13, color: scheme.onSurfaceVariant),
                           const SizedBox(width: 4),
                           Text(
                             waiting,
-                            style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                           ),
                         ],
                       ),
@@ -625,19 +625,19 @@ class _PlanTile extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           SizedBox(
             height: 40,
             child: FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: onCreate,
               child: const Text(
                 'Create Plan',
-                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -658,7 +658,7 @@ class _AgePill extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: AppColors.dangerBgOn(context),
             borderRadius: BorderRadius.circular(20),
@@ -703,12 +703,12 @@ class _AllCaught extends StatelessWidget {
                   'All caught up',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 0),
                 Text(
                   patients == 0
                       ? 'No patients on the clinic list yet.'
                       : 'Every plan is sent and no review is due.',
-                  style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                  style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -760,7 +760,7 @@ class _MealsCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Latest Meals Logged',
-                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, height: 1.2),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1.2),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -769,7 +769,7 @@ class _MealsCard extends StatelessWidget {
                 child: Text(
                   'Across all active patients',
                   textAlign: TextAlign.right,
-                  style: TextStyle(fontSize: 12.5, height: 1.25, color: scheme.onSurfaceVariant),
+                  style: TextStyle(fontSize: 12, height: 1.25, color: scheme.onSurfaceVariant),
                 ),
               ),
             ],
@@ -811,7 +811,7 @@ class _MealThumb extends StatelessWidget {
 
     return Material(
       color: scheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => context.push('/dietician/patients/${log.patientId}', extra: log.patientName),
@@ -852,7 +852,7 @@ class _MealThumb extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
@@ -863,7 +863,7 @@ class _MealThumb extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 12,
                             color: Colors.white.withValues(alpha: 0.85),
                           ),
                         ),

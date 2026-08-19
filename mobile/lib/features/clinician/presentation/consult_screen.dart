@@ -228,7 +228,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
                     widget.patientName!,
-                    style: TextStyle(fontSize: 13.5, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ),
               ),
@@ -309,7 +309,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: EdgeInsets.zero,
             activeColor: AppColors.primary,
-            title: const Text('Show this complaint on the prescription', style: TextStyle(fontSize: 14.5)),
+            title: const Text('Show this complaint on the prescription', style: TextStyle(fontSize: 14)),
           ),
         ],
       ),
@@ -366,11 +366,11 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
         const SizedBox(height: AppSpacing.sm),
         for (final entry in groups.entries) ...[
           Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: 6),
+            padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: 4),
             child: Text(
               entry.key,
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -454,12 +454,12 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
+          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 0),
           childrenPadding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
           expandedCrossAxisAlignment: CrossAxisAlignment.start,
           leading: Icon(Icons.history_rounded, color: scheme.onSurfaceVariant),
-          title: const Text('Last prescription', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-          subtitle: Text(date, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+          title: const Text('Last prescription', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+          subtitle: Text(date, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
           children: [
             if (rx.diagnosis.isNotEmpty) _refRow('Diagnosis', rx.diagnosis.join(', ')),
             if (rx.medicines.isNotEmpty) _refRow('Medicines', rx.medicines.join('\n')),
@@ -479,9 +479,9 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(k.toUpperCase(),
-              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
-          const SizedBox(height: 2),
-          Text(v, style: const TextStyle(fontSize: 13.5, height: 1.3)),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 0),
+          Text(v, style: const TextStyle(fontSize: 14, height: 1.3)),
         ],
       ),
     );
@@ -526,7 +526,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
 
   /// A small "From last prescription" label above a reuse row.
   Widget _reuseLabel() => Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 6),
+        padding: const EdgeInsets.only(top: 4, bottom: 4),
         child: Row(
           children: [
             Icon(Icons.history_rounded, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
@@ -559,7 +559,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
             children: [
               for (final d in _diagnoses)
                 Chip(
-                  label: Text(d, style: const TextStyle(fontSize: 12.5)),
+                  label: Text(d, style: const TextStyle(fontSize: 12)),
                   visualDensity: VisualDensity.compact,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
@@ -579,7 +579,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
                   avatar: const Icon(Icons.add, size: 15),
                   label: Text(
                     (it.strength != null && it.strength!.isNotEmpty) ? '${it.name} · ${it.strength}' : it.name,
-                    style: const TextStyle(fontSize: 12.5),
+                    style: const TextStyle(fontSize: 12),
                   ),
                   visualDensity: VisualDensity.compact,
                   onPressed: () => _addPreviousMed(it),
@@ -610,11 +610,11 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
         const SizedBox(height: AppSpacing.sm),
         for (final entry in labGroups.entries) ...[
           Padding(
-            padding: const EdgeInsets.only(top: 6, bottom: 6),
+            padding: const EdgeInsets.only(top: 4, bottom: 4),
             child: Text(
               entry.key,
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -685,10 +685,10 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
         // Common advice the doctor writes repeatedly — tap to add to the text.
         for (final entry in adviceByCategory().entries) ...[
           Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 6),
+            padding: const EdgeInsets.only(top: 4, bottom: 4),
             child: Text(
               entry.key,
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ),
           Wrap(
@@ -703,7 +703,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
                 ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
         ],
         const SizedBox(height: AppSpacing.sm),
         TextField(
@@ -830,13 +830,13 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
               hasSig
                   ? 'Signature added — it signs this prescription'
                   : 'No signature yet — a signature line is printed instead',
-              style: TextStyle(fontSize: 13.5, height: 1.3, color: scheme.onSurface),
+              style: TextStyle(fontSize: 14, height: 1.3, color: scheme.onSurface),
             ),
           ),
           _uploadingSignature
               ? const Padding(
-                  padding: EdgeInsets.all(10),
-                  child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                  padding: EdgeInsets.all(8),
+                  child: SizedBox(width: 16, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
                 )
               : TextButton(onPressed: _changeSignature, child: Text(hasSig ? 'Change' : 'Upload')),
         ],
@@ -849,14 +849,14 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
             const SizedBox(height: AppSpacing.sm),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
               decoration: BoxDecoration(
                 // White, because that is what the prescription is. The
                 // signature is cut out on transparency, so a themed surface
                 // behind it would show the doctor something the printed page
                 // never looks like.
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
               ),
               child: AuthedImage(
@@ -947,7 +947,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
               OutlinedButton(
                 onPressed: _submitting ? null : () => setState(() => _step -= 1),
                 style: OutlinedButton.styleFrom(minimumSize: const Size(0, 52), padding: const EdgeInsets.symmetric(horizontal: 24)),
-                child: const Text('Back', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                child: const Text('Back', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               ),
               const SizedBox(width: 12),
             ],
@@ -967,7 +967,7 @@ class _ConsultScreenState extends ConsumerState<ConsultScreen> {
                     : const Icon(Icons.arrow_forward_rounded, size: 18),
                 label: Text(
                   last ? (_submitting ? 'Generating…' : 'Generate prescription') : 'Next',
-                  style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ),
             ),
@@ -1141,7 +1141,7 @@ class _MedCard extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               '$shorthand  ·  $plain',
-              style: TextStyle(fontSize: 12.5, color: AppColors.primary, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -1169,7 +1169,7 @@ class _StepBar extends StatelessWidget {
               Expanded(
                 child: Container(
                   height: 2,
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
                   color: i < step ? AppColors.primary : scheme.outlineVariant,
                 ),
               ),
@@ -1198,15 +1198,15 @@ class _StepBar extends StatelessWidget {
                   style: TextStyle(
                     color: active ? Colors.white : scheme.onSurfaceVariant,
                     fontWeight: FontWeight.w800,
-                    fontSize: 13,
+                    fontSize: 14,
                   ),
                 ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 4),
         Text(
           labels[i],
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: active ? FontWeight.w800 : FontWeight.w500,
             color: active ? scheme.onSurface : scheme.onSurfaceVariant,
           ),
@@ -1227,9 +1227,9 @@ class _StepTitle extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 2),
-        Text(subtitle, style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 0),
+        Text(subtitle, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ],
     );
   }
@@ -1250,7 +1250,7 @@ class _SelectChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? AppColors.primary : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(20),
@@ -1261,12 +1261,12 @@ class _SelectChip extends StatelessWidget {
           children: [
             if (selected) ...[
               const Icon(Icons.check, size: 15, color: Colors.white),
-              const SizedBox(width: 5),
+              const SizedBox(width: 4),
             ],
             Text(
               label,
               style: TextStyle(
-                fontSize: 13.5,
+                fontSize: 14,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 color: selected ? Colors.white : scheme.onSurface,
               ),

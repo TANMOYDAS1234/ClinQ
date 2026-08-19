@@ -232,7 +232,7 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
                   child: Center(
                     child: _loading
                         ? SizedBox(
-                            width: 17,
+                            width: 16,
                             height: 17,
                             child: CircularProgressIndicator(strokeWidth: 2.2, color: fg),
                           )
@@ -273,13 +273,13 @@ class _VoiceNotePlayerState extends ConsumerState<VoiceNotePlayer> {
           ],
         ),
         if (total != null) ...[
-          const SizedBox(height: 5),
+          const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.only(left: 52),
             child: Text(
               '${_clock(_position)} / ${_clock(total)}',
               style: TextStyle(
-                fontSize: 11.5,
+                fontSize: 12,
                 color: widget.onDark ? Colors.white70 : scheme.onSurfaceVariant,
               ),
             ),
@@ -309,15 +309,15 @@ class _SpeedChip extends StatelessWidget {
 
     return Material(
       color: onDark ? Colors.white24 : AppColors.accentSoftOn(context),
-      borderRadius: BorderRadius.circular(11),
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
-        borderRadius: BorderRadius.circular(11),
+        borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Text(
             label,
-            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: fg),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg),
           ),
         ),
       ),
@@ -346,7 +346,7 @@ class _Waveform extends StatelessWidget {
   Widget build(BuildContext context) {
     final filled = (_heights.length * progress).round();
     return SizedBox(
-      height: 36,
+      height: 32,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -356,10 +356,10 @@ class _Waveform extends StatelessWidget {
               height: _heights[i],
               decoration: BoxDecoration(
                 color: i < filled ? colour : track,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
-            if (i != _heights.length - 1) const SizedBox(width: 2.2),
+            if (i != _heights.length - 1) const SizedBox(width: 4),
           ],
         ],
       ),

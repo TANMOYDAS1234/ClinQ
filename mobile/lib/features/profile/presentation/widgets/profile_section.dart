@@ -25,7 +25,7 @@ class ProfileSection extends StatelessWidget {
           child: Text(
             label.toUpperCase(),
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.8,
               color: scheme.onSurfaceVariant,
@@ -35,7 +35,7 @@ class ProfileSection extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             color: scheme.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
             // A single soft shadow, not a stack of them: it lifts the group off
             // the background just enough to read as a card, without the drop
@@ -112,7 +112,7 @@ class ProfileRow extends StatelessWidget {
                   height: 36,
                   decoration: BoxDecoration(
                     color: accent.withValues(alpha: isDanger ? 0.10 : 0.11),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, size: 19, color: accent),
                 ),
@@ -131,10 +131,10 @@ class ProfileRow extends StatelessWidget {
                         ),
                       ),
                       if (subtitle != null) ...[
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 0),
                         Text(
                           subtitle!,
-                          style: TextStyle(fontSize: 13, height: 1.35, color: accent),
+                          style: TextStyle(fontSize: 14, height: 1.35, color: accent),
                         ),
                       ],
                     ],
@@ -144,7 +144,7 @@ class ProfileRow extends StatelessWidget {
                   const SizedBox(width: AppSpacing.sm),
                   Text(
                     value!,
-                    style: TextStyle(fontSize: 15, color: scheme.onSurfaceVariant),
+                    style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                   ),
                 ],
                 if (onTap != null) ...[

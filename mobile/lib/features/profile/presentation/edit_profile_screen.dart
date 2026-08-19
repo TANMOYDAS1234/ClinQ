@@ -119,18 +119,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 backgroundColor: accent,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: accent.withValues(alpha: 0.4),
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
               child: _isSaving
                   ? const SizedBox(
-                      width: 18,
+                      width: 16,
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
                     )
                   : Text(
                       l10n.profileSave,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                     ),
             ),
           ),
@@ -288,7 +288,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             const SizedBox(height: AppSpacing.md),
             Text(
               l10n.profilePhoneLocked,
-              style: TextStyle(fontSize: 13, height: 1.45, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 14, height: 1.45, color: scheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -308,7 +308,7 @@ class _Field extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

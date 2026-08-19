@@ -49,7 +49,7 @@ class RecommendationsList extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      margin: const EdgeInsets.only(top: 6),
+                      margin: const EdgeInsets.only(top: 4),
                       width: 10,
                       height: 10,
                       decoration: BoxDecoration(
@@ -68,7 +68,7 @@ class RecommendationsList extends StatelessWidget {
                               context,
                             ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 0),
                           Text(rec.body, style: Theme.of(context).textTheme.bodyMedium),
                         ],
                       ),

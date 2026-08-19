@@ -59,7 +59,7 @@ class GlucoseTrendChart extends StatelessWidget {
                 reservedSize: 36,
                 interval: 50,
                 getTitlesWidget: (value, meta) =>
-                    Text(value.toInt().toString(), style: const TextStyle(fontSize: 11)),
+                    Text(value.toInt().toString(), style: const TextStyle(fontSize: 12)),
               ),
             ),
             bottomTitles: AxisTitles(
@@ -73,8 +73,8 @@ class GlucoseTrendChart extends StatelessWidget {
                   final at = points[i].at;
                   if (at == null) return const SizedBox.shrink();
                   return Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(DateFormat('d/M').format(at.toLocal()), style: const TextStyle(fontSize: 10)),
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(DateFormat('d/M').format(at.toLocal()), style: const TextStyle(fontSize: 12)),
                   );
                 },
               ),

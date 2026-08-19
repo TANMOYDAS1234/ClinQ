@@ -198,7 +198,7 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
                                 color: Colors.black.withValues(alpha: 0.45),
                                 child: const Center(
                                   child: SizedBox(
-                                    width: 22,
+                                    width: 20,
                                     height: 22,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2.4,
@@ -211,9 +211,9 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
                           ),
                         Positioned(
                           right: 0,
-                          bottom: 2,
+                          bottom: 0,
                           child: Container(
-                            padding: const EdgeInsets.all(7),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: accent,
                               shape: BoxShape.circle,
@@ -230,9 +230,9 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
                 Text(
                   user?.name ?? '',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, height: 1.2),
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1.2),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -241,16 +241,16 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
                         user?.specialty?.trim().isNotEmpty == true ? user!.specialty!.trim() : 'Dietician',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
+                        style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                       ),
                     ),
                     if ((user?.phone ?? '').isNotEmpty) ...[
-                      Text('  •  ', style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant)),
+                      Text('  •  ', style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
                       Icon(Icons.call_rounded, size: 13, color: scheme.onSurfaceVariant),
                       const SizedBox(width: 4),
                       Text(
                         user!.phone,
-                        style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
+                        style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                       ),
                     ],
                   ],
@@ -263,8 +263,8 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
                   const SizedBox(height: AppSpacing.md),
                   Wrap(
                     alignment: WrapAlignment.center,
-                    spacing: 7,
-                    runSpacing: 7,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       if ((user?.qualifications ?? '').trim().isNotEmpty)
                         _CredChip(label: user!.qualifications!.trim(), accent: accent),
@@ -341,7 +341,7 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
               activeThumbColor: accent,
               secondary: Icon(Icons.lock_outline_rounded, color: accent),
               title: Text(l10n.profileAppLock, style: const TextStyle(fontSize: 16)),
-              subtitle: Text(l10n.profileAppLockSub, style: const TextStyle(fontSize: 13)),
+              subtitle: Text(l10n.profileAppLockSub, style: const TextStyle(fontSize: 14)),
               contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
             ),
           ),
@@ -379,7 +379,7 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
               icon: const Icon(Icons.logout_rounded, size: 22),
               label: Text(
                 l10n.profileLogout,
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -393,7 +393,7 @@ class _DieticianProfileScreenState extends ConsumerState<DieticianProfileScreen>
     child: Text(
       text.toUpperCase(),
       style: TextStyle(
-        fontSize: 11.5,
+        fontSize: 12,
         fontWeight: FontWeight.w800,
         letterSpacing: 0.6,
         color: scheme.onSurfaceVariant,
@@ -420,20 +420,20 @@ class _LangChip extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Material(
       color: selected ? accent.withValues(alpha: 0.12) : scheme.surface,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: selected ? accent : scheme.outlineVariant),
           ),
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 14.5,
+              fontSize: 14,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color: selected ? accent : scheme.onSurface,
             ),
@@ -458,14 +458,14 @@ class _CredChip extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final on = accent ?? scheme.onSurfaceVariant;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: on.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: on),
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: on),
       ),
     );
   }

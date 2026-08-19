@@ -59,14 +59,14 @@ class HealthTrendChart extends StatelessWidget {
           child: Row(
             children: [
               Icon(Icons.show_chart_rounded, color: scheme.onSurfaceVariant, size: 20),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   emptyHint ??
                       (daily.isEmpty
                           ? 'No glucose readings yet. The graph fills in as patients check in.'
                           : 'One reading so far — the trend appears after the next check-in.'),
-                  style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant, height: 1.35),
+                  style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant, height: 1.35),
                 ),
               ),
             ],
@@ -161,7 +161,7 @@ class HealthTrendChart extends StatelessWidget {
                       getTitlesWidget: (value, meta) => Text(
                         value.toInt().toString(),
                         style: TextStyle(
-                            fontSize: 10.5,
+                            fontSize: 12,
                             color: scheme.onSurfaceVariant,
                             fontFeatures: const [FontFeature.tabularFigures()]),
                       ),
@@ -176,9 +176,9 @@ class HealthTrendChart extends StatelessWidget {
                         final i = value.toInt();
                         if (i < 0 || i >= daily.length) return const SizedBox.shrink();
                         return Padding(
-                          padding: const EdgeInsets.only(top: 6),
+                          padding: const EdgeInsets.only(top: 4),
                           child: Text(DateFormat('d/M').format(daily[i].date),
-                              style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant)),
+                              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                         );
                       },
                     ),
@@ -193,7 +193,7 @@ class HealthTrendChart extends StatelessWidget {
                       final d = daily[s.x.toInt()];
                       return LineTooltipItem(
                         '${d.average} mg/dL\n',
-                        TextStyle(color: scheme.onInverseSurface, fontWeight: FontWeight.w700, fontSize: 13),
+                        TextStyle(color: scheme.onInverseSurface, fontWeight: FontWeight.w700, fontSize: 14),
                         children: [
                           TextSpan(
                             text: showSpreadBand
@@ -202,7 +202,7 @@ class HealthTrendChart extends StatelessWidget {
                             style: TextStyle(
                                 color: scheme.onInverseSurface.withValues(alpha: 0.75),
                                 fontWeight: FontWeight.w400,
-                                fontSize: 11),
+                                fontSize: 12),
                           ),
                         ],
                       );
@@ -226,8 +226,8 @@ class HealthTrendChart extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
-            spacing: 14,
-            runSpacing: 6,
+            spacing: 12,
+            runSpacing: 4,
             children: [
               _LegendDot(color: accent, label: showSpreadBand ? 'Daily average' : 'Average glucose'),
               if (showSpreadBand)
@@ -288,19 +288,19 @@ class _Frame extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
                 child: Icon(Icons.monitor_heart_rounded, size: 18, color: accent),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                     if (subtitle != null)
                       Padding(
-                        padding: const EdgeInsets.only(top: 1),
+                        padding: const EdgeInsets.only(top: 0),
                         child: Text(subtitle!, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                       ),
                   ],
@@ -334,11 +334,11 @@ class _LegendDot extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             shape: square ? BoxShape.rectangle : BoxShape.circle,
-            borderRadius: square ? BorderRadius.circular(2) : null,
+            borderRadius: square ? BorderRadius.circular(12) : null,
           ),
         ),
-        const SizedBox(width: 5),
-        Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ],
     );
   }

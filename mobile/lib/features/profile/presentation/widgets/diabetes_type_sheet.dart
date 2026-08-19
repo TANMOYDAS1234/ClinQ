@@ -70,7 +70,7 @@ class _DiabetesTypeSheetState extends State<DiabetesTypeSheet> {
     return Container(
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -91,19 +91,19 @@ class _DiabetesTypeSheetState extends State<DiabetesTypeSheet> {
                   height: 4,
                   decoration: BoxDecoration(
                     color: scheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
                 l10n.profileDiabetesSheetTitle,
-                style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700, height: 1.3),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, height: 1.3),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Text(
                 l10n.profileDiabetesSheetBody,
-                style: TextStyle(fontSize: 15, height: 1.45, color: scheme.onSurfaceVariant),
+                style: TextStyle(fontSize: 14, height: 1.45, color: scheme.onSurfaceVariant),
               ),
               const SizedBox(height: AppSpacing.lg),
               Container(
@@ -145,11 +145,11 @@ class _DiabetesTypeSheetState extends State<DiabetesTypeSheet> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: accent,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
                   child: Text(
                     l10n.profileSave,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -215,10 +215,10 @@ class _Option extends StatelessWidget {
                         color: scheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 0),
                     Text(
                       description,
-                      style: TextStyle(fontSize: 13, height: 1.35, color: scheme.onSurfaceVariant),
+                      style: TextStyle(fontSize: 14, height: 1.35, color: scheme.onSurfaceVariant),
                     ),
                   ],
                 ),

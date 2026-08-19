@@ -132,7 +132,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                             child: Text(
                               user?.name ?? '',
                               style: const TextStyle(
-                                fontSize: 26,
+                                fontSize: 32,
                                 fontWeight: FontWeight.w800,
                                 height: 1.15,
                               ),
@@ -160,17 +160,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                           if (user?.gender != null && user!.gender != 'undisclosed')
                             _cap(user.gender!),
                         ].join('  •  '),
-                        style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
+                        style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                       ),
                       if ((care.profile.email ?? '').trim().isNotEmpty) ...[
-                        const SizedBox(height: 7),
+                        const SizedBox(height: 8),
                         _IdentityLine(
                           icon: Icons.mail_outline_rounded,
                           value: care.profile.email!.trim(),
                         ),
                       ],
                       if ((care.profile.address ?? '').trim().isNotEmpty) ...[
-                        const SizedBox(height: 5),
+                        const SizedBox(height: 4),
                         _IdentityLine(
                           icon: Icons.home_outlined,
                           value: care.profile.address!.trim(),
@@ -253,10 +253,10 @@ class _BrandHeader extends ConsumerWidget {
             errorBuilder: (_, _, _) =>
                 Icon(Icons.favorite_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Text(
             'MedPin',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
           // Tapping it opens Profile, the same as the doctor's header — the
@@ -342,7 +342,7 @@ class _CheckInPrompt extends StatelessWidget {
       children: [
         Text(
           'Log a glucose reading every few days and your trend builds here — the same one your doctor sees.',
-          style: TextStyle(fontSize: 13.5, height: 1.4, color: scheme.onSurfaceVariant),
+          style: TextStyle(fontSize: 14, height: 1.4, color: scheme.onSurfaceVariant),
         ),
         const SizedBox(height: AppSpacing.md),
         SizedBox(
@@ -474,12 +474,12 @@ class _FactCard extends StatelessWidget {
 
     final label = Text(
       fact.label,
-      style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+      style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
     );
     final value = Text(
       fact.value,
       style: TextStyle(
-        fontSize: 15.5,
+        fontSize: 16,
         fontWeight: FontWeight.w700,
         height: 1.3,
         color: fact.color ?? scheme.onSurface,
@@ -504,7 +504,7 @@ class _FactCard extends StatelessWidget {
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [label, const SizedBox(height: 6), value],
+              children: [label, const SizedBox(height: 4), value],
             ),
     );
   }
@@ -534,7 +534,7 @@ class _Allergies extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Text(
                 'Allergies & Intolerances',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.dangerOn(context)),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.dangerOn(context)),
               ),
             ],
           ),
@@ -545,7 +545,7 @@ class _Allergies extends StatelessWidget {
             children: [
               for (final item in items)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.dangerOn(context),
                     borderRadius: BorderRadius.circular(20),
@@ -553,7 +553,7 @@ class _Allergies extends StatelessWidget {
                   child: Text(
                     item,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
@@ -598,7 +598,7 @@ class _DietPlanCard extends StatelessWidget {
             trailing: plan.sharedAt == null
                 ? null
                 : Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: scheme.surfaceContainerLowest,
                       borderRadius: BorderRadius.circular(20),
@@ -622,7 +622,7 @@ class _DietPlanCard extends StatelessWidget {
                   TextSpan(text: plan.goal),
                 ],
               ),
-              style: const TextStyle(fontSize: 14.5, height: 1.45),
+              style: const TextStyle(fontSize: 14, height: 1.45),
             ),
           ],
           if (plan.meals.isNotEmpty) ...[
@@ -680,7 +680,7 @@ class _MealCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
       ),
       child: Column(
@@ -726,17 +726,17 @@ class _FullPlanSheet extends StatelessWidget {
         controller: controller,
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
-          const Text('Your diet plan', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+          const Text('Your diet plan', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
           if (plan.dieticianName != null) ...[
             const SizedBox(height: 4),
             Text(
               'From ${plan.dieticianName}',
-              style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
             ),
           ],
           if (plan.goal.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.lg),
-            Text(plan.goal, style: const TextStyle(fontSize: 15, height: 1.5)),
+            Text(plan.goal, style: const TextStyle(fontSize: 14, height: 1.5)),
           ],
           for (final meal in plan.meals) ...[
             const SizedBox(height: AppSpacing.lg),
@@ -744,18 +744,18 @@ class _FullPlanSheet extends StatelessWidget {
               meal.time.isEmpty ? meal.name : '${meal.name} · ${meal.time}',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             for (final item in meal.items)
               Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: Text('•  $item', style: const TextStyle(fontSize: 15, height: 1.45)),
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text('•  $item', style: const TextStyle(fontSize: 14, height: 1.45)),
               ),
             if (meal.notes.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   meal.notes,
-                  style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+                  style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                 ),
               ),
           ],
@@ -774,7 +774,7 @@ class _FullPlanSheet extends StatelessWidget {
           ],
           if (plan.notes.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.lg),
-            Text(plan.notes, style: const TextStyle(fontSize: 15, height: 1.5)),
+            Text(plan.notes, style: const TextStyle(fontSize: 14, height: 1.5)),
           ],
           const SizedBox(height: AppSpacing.xl),
         ],
@@ -804,14 +804,14 @@ class _IdentityLine extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 1.5),
+          padding: const EdgeInsets.only(top: 0),
           child: Icon(icon, size: 15, color: scheme.onSurfaceVariant),
         ),
-        const SizedBox(width: 7),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             value,
-            style: TextStyle(fontSize: 13.5, height: 1.35, color: scheme.onSurfaceVariant),
+            style: TextStyle(fontSize: 14, height: 1.35, color: scheme.onSurfaceVariant),
           ),
         ),
       ],
@@ -891,26 +891,26 @@ class _Medicines extends ConsumerWidget {
                     size: 17,
                     color: accent,
                   ),
-                  const SizedBox(width: 9),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: next == null
                         ? Text(
                             'Every dose for today is marked.',
-                            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: accent),
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: accent),
                           )
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 'Next dose  ${_clock(next.time)}',
-                                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: accent),
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: accent),
                               ),
-                              const SizedBox(height: 1),
+                              const SizedBox(height: 0),
                               Text(
                                 [next.name, next.dose].where((s) => s.isNotEmpty).join(' · '),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 12.5, color: scheme.onSurface),
+                                style: TextStyle(fontSize: 12, color: scheme.onSurface),
                               ),
                             ],
                           ),
@@ -933,7 +933,7 @@ class _Medicines extends ConsumerWidget {
           Text(
             'YOUR PRESCRIPTION',
             style: TextStyle(
-              fontSize: 10.5,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.8,
               color: scheme.onSurfaceVariant,
@@ -946,7 +946,7 @@ class _Medicines extends ConsumerWidget {
             // block rather than a stack of separate strips.
             if (i > 0)
               Padding(
-                padding: const EdgeInsets.only(left: 46, top: 10, bottom: 10),
+                padding: const EdgeInsets.only(left: 48, top: 8, bottom: 8),
                 child: Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
               ),
             Row(
@@ -957,7 +957,7 @@ class _Medicines extends ConsumerWidget {
                   height: 34,
                   decoration: BoxDecoration(
                     color: accent.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(Icons.medication_liquid_rounded, size: 17, color: accent),
                 ),
@@ -968,12 +968,12 @@ class _Medicines extends ConsumerWidget {
                     children: [
                       Text(
                         items[i].title,
-                        style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, height: 1.25),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, height: 1.25),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 4),
                       Text(
                         items[i].scheduleLabel,
-                        style: TextStyle(fontSize: 13.5, height: 1.3, color: scheme.onSurfaceVariant),
+                        style: TextStyle(fontSize: 14, height: 1.3, color: scheme.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -999,14 +999,14 @@ class _CountBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = AppColors.accentOn(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: accent),
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: accent),
       ),
     );
   }
@@ -1063,13 +1063,13 @@ class _FoodLogs extends StatelessWidget {
                   const SizedBox(height: AppSpacing.sm),
                   const Text(
                     'No meals logged yet',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 0),
                   Text(
                     'Photos of what you eat help your dietician give better advice.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, height: 1.35, color: scheme.onSurfaceVariant),
+                    style: TextStyle(fontSize: 14, height: 1.35, color: scheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   FilledButton.tonalIcon(
@@ -1125,7 +1125,7 @@ class _FoodLogTile extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: scheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
         ),
         clipBehavior: Clip.antiAlias,
@@ -1159,7 +1159,7 @@ class _FoodLogTile extends StatelessWidget {
                     left: 8,
                     top: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFF0B1B33).withValues(alpha: 0.62),
                         borderRadius: BorderRadius.circular(20),
@@ -1167,7 +1167,7 @@ class _FoodLogTile extends StatelessWidget {
                       child: Text(
                         meal,
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
@@ -1178,7 +1178,7 @@ class _FoodLogTile extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              padding: const EdgeInsets.fromLTRB(8, 8, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -1189,7 +1189,7 @@ class _FoodLogTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 0),
                   Text(
                     when,
                     style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
@@ -1239,12 +1239,12 @@ class _LabReports extends ConsumerWidget {
           if (view == null && async.isLoading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-              child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4))),
+              child: Center(child: SizedBox(width: 20, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4))),
             )
           else if (view == null)
             Text(
               'Could not load your reports.',
-              style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
             )
           else
             ..._body(context, scheme, view),
@@ -1270,12 +1270,12 @@ class _LabReports extends ConsumerWidget {
             children: [
               Text(
                 'No reports yet.',
-                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: scheme.onSurface),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: scheme.onSurface),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 0),
               Text(
                 'Upload a photo or PDF of a lab report and your doctor sees the results here.',
-                style: TextStyle(fontSize: 13, height: 1.35, color: scheme.onSurfaceVariant),
+                style: TextStyle(fontSize: 14, height: 1.35, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -1289,7 +1289,7 @@ class _LabReports extends ConsumerWidget {
       for (var i = 0; i < recent.length; i++) ...[
         if (i > 0)
           Padding(
-            padding: const EdgeInsets.only(left: 46, top: 10, bottom: 10),
+            padding: const EdgeInsets.only(left: 48, top: 8, bottom: 8),
             child: Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
           ),
         _LabResultRow(result: recent[i]),
@@ -1338,25 +1338,25 @@ class _AdvisedTests extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.assignment_outlined, size: 16, color: accent),
-              const SizedBox(width: 7),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   tests.length == 1
                       ? 'Your doctor has asked for 1 test'
                       : 'Your doctor has asked for ${tests.length} tests',
-                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: accent),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: accent),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Wrap(
-            spacing: 6,
-            runSpacing: 6,
+            spacing: 4,
+            runSpacing: 4,
             children: [
               for (final t in tests.take(6))
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: scheme.surfaceContainerLowest,
                     borderRadius: BorderRadius.circular(20),
@@ -1416,7 +1416,7 @@ class _LabResultRow extends StatelessWidget {
           height: 34,
           decoration: BoxDecoration(
             color: accent.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(Icons.description_rounded, size: 17, color: accent),
         ),
@@ -1429,28 +1429,28 @@ class _LabResultRow extends StatelessWidget {
                 result.testName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, height: 1.25),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, height: 1.25),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 4),
               Row(
                 children: [
                   if (result.createdAt != null)
                     Text(
                       DateFormat('d MMM yyyy').format(result.createdAt!),
-                      style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                     ),
                   if (result.createdAt != null && chip != null)
-                    Text('  ·  ', style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                    Text('  ·  ', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                   if (chip != null)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: chip.$3,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         chip.$1,
-                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: chip.$2),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: chip.$2),
                       ),
                     ),
                 ],
@@ -1533,14 +1533,14 @@ class _CardHeader extends StatelessWidget {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(7),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: accent.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, size: 18, color: accent),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             title,
@@ -1568,7 +1568,7 @@ class _CardHeader extends StatelessWidget {
               children: [
                 if (actionIcon != null) ...[
                   Icon(actionIcon, size: 18),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 4),
                 ],
                 Text(
                   actionLabel!,
@@ -1600,13 +1600,13 @@ class _RiskBadge extends StatelessWidget {
     final bg = critical ? AppColors.dangerBgOn(context) : AppColors.warningBgOn(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.warning_amber_rounded, size: 14, color: fg),
-          const SizedBox(width: 5),
+          const SizedBox(width: 4),
           Text(
             profile.riskLabel,
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg),

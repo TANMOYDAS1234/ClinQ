@@ -480,7 +480,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 14,
                                 color:
                                     Theme.of(
                                       context,
@@ -602,7 +602,7 @@ class _JumpToLatestButton extends StatelessWidget {
         child: Tooltip(
           message: label,
           child: const SizedBox(
-            width: 44,
+            width: 40,
             height: 44,
             child: Icon(
               Icons.keyboard_arrow_down_rounded,
@@ -673,11 +673,11 @@ class _PinnedBanner extends StatelessWidget {
                           ),
                         ),
                         if (count > 1) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           Text(
                             '$count',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               color: scheme.onSurfaceVariant,
                             ),
                           ),
@@ -689,7 +689,7 @@ class _PinnedBanner extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
@@ -731,15 +731,15 @@ class _DateSeparator extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: AppSpacing.md),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
-          vertical: 6,
+          vertical: 4,
         ),
         decoration: BoxDecoration(
           color: scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
           label,
-          style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+          style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
         ),
       ),
     );

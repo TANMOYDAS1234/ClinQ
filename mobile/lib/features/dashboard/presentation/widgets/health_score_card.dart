@@ -50,14 +50,14 @@ class HealthScoreCard extends StatelessWidget {
                 Text(l10n.dashboardHealthScore, style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: AppSpacing.xs),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     healthScore.band,
-                    style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 15),
+                    style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 14),
                   ),
                 ),
               ],

@@ -1,4 +1,4 @@
-﻿import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -311,7 +311,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                           // reads as a form field on a wallpapered thread, and
                           // it lit up on focus every time the keyboard opened.
                           color: scheme.surfaceContainerHigh.withValues(alpha: 0.55),
-                          borderRadius: BorderRadius.circular(26),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
@@ -351,14 +351,14 @@ class _ChatComposerState extends ConsumerState<ChatComposer> {
                                   disabledBorder: InputBorder.none,
                                   filled: false,
                                   isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 15),
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
                                 ),
                                 onSubmitted: (_) => _submit(),
                               ),
                             ),
-                            const SizedBox(width: 2),
+                            const SizedBox(width: 0),
                             Padding(
-                              padding: const EdgeInsets.only(right: 6, bottom: 4),
+                              padding: const EdgeInsets.only(right: 4, bottom: 4),
                               // The mic now records a voice note rather than
                               // dictating into the field. Speaking is the
                               // point for patients who find typing Bengali on
@@ -427,7 +427,7 @@ class _SendButton extends StatelessWidget {
             child: Center(
               child: isSending
                   ? const SizedBox(
-                      width: 22,
+                      width: 20,
                       height: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                     )

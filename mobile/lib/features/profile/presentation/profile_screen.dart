@@ -120,7 +120,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   l10n.profileGlucoseUnit,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ),
             ),
@@ -327,7 +327,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               activeThumbColor: accent,
               secondary: Icon(Icons.lock_outline_rounded, color: accent),
               title: Text(l10n.profileAppLock, style: const TextStyle(fontSize: 16)),
-              subtitle: Text(l10n.profileAppLockSub, style: const TextStyle(fontSize: 13)),
+              subtitle: Text(l10n.profileAppLockSub, style: const TextStyle(fontSize: 14)),
               contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
             ),
           ),
@@ -373,7 +373,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               icon: const Icon(Icons.logout_rounded, size: 22),
               label: Text(
                 l10n.profileLogout,
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -381,7 +381,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Center(
             child: Text(
               l10n.profileFooter,
-              style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
             ),
           ),
         ],
@@ -404,7 +404,7 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         text.toUpperCase(),
         style: TextStyle(
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.8,
           color: scheme.onSurfaceVariant,
@@ -455,7 +455,7 @@ class _Header extends StatelessWidget {
                         color: Colors.black.withValues(alpha: 0.45),
                         child: const Center(
                           child: SizedBox(
-                            width: 26,
+                            width: 24,
                             height: 26,
                             child: CircularProgressIndicator(strokeWidth: 2.6, color: Colors.white),
                           ),
@@ -468,7 +468,7 @@ class _Header extends StatelessWidget {
                   right: 0,
                   bottom: 0,
                   child: Container(
-                    padding: const EdgeInsets.all(6),
+                    padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: accent,
                       shape: BoxShape.circle,
@@ -485,16 +485,16 @@ class _Header extends StatelessWidget {
         Text(
           name,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 0),
         Text(
           user?.phone ?? '',
-          style: TextStyle(fontSize: 15, color: scheme.onSurfaceVariant),
+          style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
         ),
         const SizedBox(height: AppSpacing.sm),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: scheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(20),
@@ -502,7 +502,7 @@ class _Header extends StatelessWidget {
           child: Text(
             l10n.profilePatient,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
               color: scheme.onSurfaceVariant,
             ),
@@ -535,7 +535,7 @@ class _LangChip extends StatelessWidget {
       selected: selected,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
           constraints: const BoxConstraints(minHeight: AppSpacing.minTapTarget),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
@@ -545,7 +545,7 @@ class _LangChip extends StatelessWidget {
           // side. The Center below does the same job without the growth.
           decoration: BoxDecoration(
             color: selected ? accent.withValues(alpha: 0.12) : scheme.surface,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: selected ? accent : scheme.outlineVariant,
               width: selected ? 1.5 : 1,

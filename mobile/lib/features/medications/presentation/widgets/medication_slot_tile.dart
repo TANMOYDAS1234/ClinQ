@@ -90,7 +90,7 @@ class MedicationSlotTile extends StatelessWidget {
                 ),
                 child: Text(
                   slot.time,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -105,7 +105,7 @@ class MedicationSlotTile extends StatelessWidget {
                         context,
                       ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 0),
                     Text(
                       '${slot.dose} · ${_relationLabel(l10n, slot.relationToMeal)}',
                       style: Theme.of(context).textTheme.bodyMedium,
@@ -116,7 +116,7 @@ class MedicationSlotTile extends StatelessWidget {
               Column(
                 children: [
                   Icon(_statusIcon(slot.status), color: color, size: 26),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 0),
                   Text(
                     _statusLabel(l10n, slot.status),
                     style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),

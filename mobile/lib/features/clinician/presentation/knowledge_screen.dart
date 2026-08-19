@@ -144,13 +144,13 @@ class _ChunkRow extends StatelessWidget {
           children: [
             Row(
               children: [
-                Expanded(child: Text(c.title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Expanded(child: Text(c.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
                 MiniPill(label: knowledgeStatusLabel(c.status), color: knowledgeStatusColor(c.status)),
               ],
             ),
             const SizedBox(height: 4),
-            Text(c.content, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant, height: 1.35)),
-            const SizedBox(height: 6),
+            Text(c.content, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant, height: 1.35)),
+            const SizedBox(height: 4),
             Wrap(
               spacing: AppSpacing.sm,
               runSpacing: 4,
@@ -168,8 +168,8 @@ class _ChunkRow extends StatelessWidget {
   }
 
   Widget _tag(String label, ColorScheme scheme) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-    decoration: BoxDecoration(color: scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(6)),
-    child: Text(label, style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+    decoration: BoxDecoration(color: scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
+    child: Text(label, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
   );
 }

@@ -150,7 +150,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                 child: Text(
                   'Your name is sent with this so the clinic can follow up. '
                   'It is not part of your medical record.',
-                  style: TextStyle(fontSize: 13, height: 1.45, color: scheme.onSurfaceVariant),
+                  style: TextStyle(fontSize: 14, height: 1.45, color: scheme.onSurfaceVariant),
                 ),
               ),
             ],
@@ -212,15 +212,15 @@ class _SubjectCard extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 15.5,
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: selected ? AppColors.primary : scheme.onSurface,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 0),
             Text(
               detail,
-              style: TextStyle(fontSize: 12.5, height: 1.35, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 12, height: 1.35, color: scheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -253,14 +253,14 @@ class _ThankYou extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             const Text(
               'Thank you',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'The clinic has received this. If it needs a reply, someone will '
               'message you in your care thread.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15.5, height: 1.45, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 16, height: 1.45, color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: AppSpacing.xl),
             SizedBox(

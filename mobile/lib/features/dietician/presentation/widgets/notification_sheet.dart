@@ -25,7 +25,7 @@ Future<void> showDieticianNotifications(BuildContext context) {
     showDragHandle: true,
     backgroundColor: Theme.of(context).colorScheme.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (_) => const _NotificationSheet(),
   );
@@ -77,12 +77,12 @@ class _NotificationSheetState extends ConsumerState<_NotificationSheet> {
               children: [
                 const Text(
                   'Notifications',
-                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(width: 9),
+                const SizedBox(width: 8),
                 if ((view?.unread ?? 0) > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.accentOn(context),
                       borderRadius: BorderRadius.circular(20),
@@ -90,7 +90,7 @@ class _NotificationSheetState extends ConsumerState<_NotificationSheet> {
                     child: Text(
                       '${view!.unread}',
                       style: const TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                       ),
@@ -129,7 +129,7 @@ class _NotificationSheetState extends ConsumerState<_NotificationSheet> {
                   AppSpacing.xl,
                 ),
                 itemCount: v!.items.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 6),
+                separatorBuilder: (_, _) => const SizedBox(height: 4),
                 itemBuilder: (context, i) => _NotificationRow(item: v.items[i]),
               ),
             },
@@ -184,14 +184,14 @@ class _NotificationRow extends StatelessWidget {
 
     return Material(
       color: item.unread ? accent.withValues(alpha: 0.06) : scheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         onTap: open,
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.sm + 2),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: item.unread
                   ? accent.withValues(alpha: 0.25)
@@ -239,7 +239,7 @@ class _NotificationRow extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 14,
                               fontWeight: item.unread ? FontWeight.w800 : FontWeight.w700,
                             ),
                           ),
@@ -251,13 +251,13 @@ class _NotificationRow extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 0),
                     Text(
                       item.text,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 14,
                         height: 1.35,
                         color: item.unread ? scheme.onSurface : scheme.onSurfaceVariant,
                       ),
@@ -291,12 +291,12 @@ class _Empty extends StatelessWidget {
           children: [
             Icon(icon, size: 42, color: scheme.outlineVariant),
             const SizedBox(height: AppSpacing.md),
-            Text(title, style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 5),
+            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
             Text(
               body,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13.5, height: 1.4, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 14, height: 1.4, color: scheme.onSurfaceVariant),
             ),
           ],
         ),

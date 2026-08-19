@@ -167,9 +167,9 @@ class _KnowledgeEditScreenState extends ConsumerState<KnowledgeEditScreen> {
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(color: knowledgeStatusColor(_status).withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
-                      child: Text(knowledgeStatusLabel(_status), style: TextStyle(color: knowledgeStatusColor(_status), fontWeight: FontWeight.w700, fontSize: 12.5)),
+                      child: Text(knowledgeStatusLabel(_status), style: TextStyle(color: knowledgeStatusColor(_status), fontWeight: FontWeight.w700, fontSize: 12)),
                     ),
                   ],
                 ),
@@ -203,7 +203,7 @@ class _KnowledgeEditScreenState extends ConsumerState<KnowledgeEditScreen> {
               validator: (v) => (v == null || v.trim().length < 20) ? 'At least 20 characters' : null,
             ),
             const SizedBox(height: AppSpacing.sm),
-            Text('Language', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant)),
+            Text('Language', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant)),
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: AppSpacing.sm,

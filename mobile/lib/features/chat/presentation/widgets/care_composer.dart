@@ -180,15 +180,15 @@ class _CareComposerState extends ConsumerState<CareComposer> {
                   filled: true,
                   fillColor: scheme.surfaceContainerHigh.withValues(alpha: 0.55),
                   border: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(26)),
+                    borderRadius: BorderRadius.all(Radius.circular(20)),
                     borderSide: BorderSide.none,
                   ),
                   enabledBorder: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(26)),
+                    borderRadius: BorderRadius.all(Radius.circular(20)),
                     borderSide: BorderSide.none,
                   ),
                   focusedBorder: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(26)),
+                    borderRadius: BorderRadius.all(Radius.circular(20)),
                     borderSide: BorderSide.none,
                   ),
                   // The clip lives inside the pill, as it does on the care
@@ -200,7 +200,7 @@ class _CareComposerState extends ConsumerState<CareComposer> {
                     onPressed: busy ? null : _attach,
                     icon: Icon(Icons.attach_file_rounded, size: 22, color: scheme.onSurfaceVariant),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 13),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
                   suffixIcon: IconButton(
                     tooltip: 'Record a voice message',
                     onPressed: busy ? null : () => setState(() => _recording = true),
@@ -209,7 +209,7 @@ class _CareComposerState extends ConsumerState<CareComposer> {
                 ),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             Material(
               color: AppColors.accentOn(context),
               shape: const CircleBorder(),
@@ -217,10 +217,10 @@ class _CareComposerState extends ConsumerState<CareComposer> {
                 customBorder: const CircleBorder(),
                 onTap: busy ? null : widget.onSend,
                 child: Padding(
-                  padding: const EdgeInsets.all(13),
+                  padding: const EdgeInsets.all(12),
                   child: busy
                       ? const SizedBox(
-                          width: 22,
+                          width: 20,
                           height: 22,
                           child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
                         )

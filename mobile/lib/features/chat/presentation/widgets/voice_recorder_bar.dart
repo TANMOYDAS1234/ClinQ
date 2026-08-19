@@ -173,17 +173,17 @@ class _VoiceRecorderBarState extends State<VoiceRecorderBar> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
                     color: AppColors.dangerBgOn(context),
-                    borderRadius: BorderRadius.circular(26),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     children: [
                       // Pulses with the voice, so it is unmistakably live.
                       _RecordingDot(level: _level),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Text(
                         _starting ? '…' : _clock,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                           fontFeatures: [FontFeature.tabularFigures()],
                           color: AppColors.dangerOn(context),
@@ -225,7 +225,7 @@ class _RecordingDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 14,
+      width: 12,
       height: 14,
       child: Stack(
         alignment: Alignment.center,
@@ -280,7 +280,7 @@ class _LiveBars extends StatelessWidget {
                   height: 4 + level * 18 * (0.45 + 0.55 * math.sin((i / count) * math.pi)),
                   decoration: BoxDecoration(
                     color: AppColors.dangerOn(context).withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
             ],

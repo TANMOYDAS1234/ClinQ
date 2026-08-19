@@ -144,17 +144,17 @@ class _HealthDetailsScreenState extends ConsumerState<HealthDetailsScreen> {
                 backgroundColor: accent,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: accent.withValues(alpha: 0.4),
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
               child: _saving
                   ? const SizedBox(
-                      width: 18,
+                      width: 16,
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
                     )
                   : Text(l10n.profileSave,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             ),
           ),
         ],
@@ -215,7 +215,7 @@ class _HealthDetailsScreenState extends ConsumerState<HealthDetailsScreen> {
                   Text(
                     l10n.healthEmergencyContact.toUpperCase(),
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.8,
                       color: scheme.onSurfaceVariant,

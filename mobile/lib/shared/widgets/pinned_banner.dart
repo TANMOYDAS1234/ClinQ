@@ -72,10 +72,10 @@ class PinnedBanner extends StatelessWidget {
                           ),
                         ),
                         if (count > 1) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           Text(
                             '$count',
-                            style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                           ),
                         ],
                       ],
@@ -84,7 +84,7 @@ class PinnedBanner extends StatelessWidget {
                       preview,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                      style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                     ),
                   ],
                 ),

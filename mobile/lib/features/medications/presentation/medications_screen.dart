@@ -153,7 +153,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen>
         icon: const Icon(Icons.document_scanner_outlined),
         label: const Text(
           'Scan Prescription',
-          style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
       body: SafeArea(
@@ -193,13 +193,13 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen>
                       children: [
                         const Text(
                           'Medications',
-                          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, height: 1.15),
+                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, height: 1.15),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
                           'Manage your current prescriptions and daily schedule.',
                           style: TextStyle(
-                            fontSize: 15.5,
+                            fontSize: 16,
                             height: 1.4,
                             color: scheme.onSurfaceVariant,
                           ),
@@ -308,10 +308,10 @@ class _BrandHeader extends StatelessWidget {
             errorBuilder: (_, _, _) =>
                 Icon(Icons.medication_rounded, size: 26, color: AppColors.accentOn(context)),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Text(
             'MedPin',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.accentOn(context)),
           ),
           const Spacer(),
           IconButton(
@@ -368,7 +368,7 @@ class _HubCard extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   color: AppColors.accentSoftOn(context),
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, size: 20, color: AppColors.accentOn(context)),
               ),
@@ -377,14 +377,14 @@ class _HubCard extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 0),
               Text(
                 subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -471,10 +471,10 @@ class _WindowCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Text(
                 window.label,
-                style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 2),
-              Text(window.time, style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
+              const SizedBox(height: 0),
+              Text(window.time, style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
             ],
           ),
         ),
@@ -578,16 +578,16 @@ class _PrescriptionCard extends StatelessWidget {
                   children: [
                     Text(
                       medication.name,
-                      style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, height: 1.2),
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1.2),
                     ),
                     // The doctor's own note about this medicine. No invented
                     // "what it's for" line: the record does not hold one, and a
                     // guessed indication is a clinical claim.
                     if (medication.instructions?.isNotEmpty == true) ...[
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 4),
                       Text(
                         medication.instructions!,
-                        style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant),
+                        style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
                       ),
                     ],
                   ],
@@ -595,7 +595,7 @@ class _PrescriptionCard extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.accentSoftOn(context),
                   borderRadius: BorderRadius.circular(20),
@@ -603,7 +603,7 @@ class _PrescriptionCard extends StatelessWidget {
                 child: Text(
                   'ACTIVE',
                   style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
                     color: AppColors.accentOn(context),
@@ -626,7 +626,7 @@ class _PrescriptionCard extends StatelessWidget {
                       Text(
                         amount,
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 32,
                           fontWeight: FontWeight.w800,
                           color: AppColors.accentOn(context),
                         ),
@@ -641,10 +641,10 @@ class _PrescriptionCard extends StatelessWidget {
               else
                 const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHigh.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -653,7 +653,7 @@ class _PrescriptionCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       schedule.label,
-                      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),

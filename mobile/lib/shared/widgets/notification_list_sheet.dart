@@ -96,12 +96,12 @@ class NotificationListSheet extends StatelessWidget {
               children: [
                 const Text(
                   'Notifications',
-                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(width: 9),
+                const SizedBox(width: 8),
                 if (unread > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.accentOn(context),
                       borderRadius: BorderRadius.circular(20),
@@ -109,7 +109,7 @@ class NotificationListSheet extends StatelessWidget {
                     child: Text(
                       unread > 99 ? '99+' : '$unread',
                       style: const TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                       ),
@@ -148,7 +148,7 @@ class NotificationListSheet extends StatelessWidget {
                   AppSpacing.xl,
                 ),
                 itemCount: items.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 6),
+                separatorBuilder: (_, _) => const SizedBox(height: 4),
                 itemBuilder: (context, i) => _Row(item: items[i], onOpen: onOpen),
               ),
             },
@@ -199,14 +199,14 @@ class _Row extends StatelessWidget {
           : item.unread
           ? accent.withValues(alpha: 0.06)
           : scheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         onTap: () => onOpen(item),
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.sm + 2),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: urgent
                   ? AppColors.dangerOn(context).withValues(alpha: 0.35)
@@ -256,7 +256,7 @@ class _Row extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 14,
                               fontWeight: item.unread ? FontWeight.w800 : FontWeight.w700,
                             ),
                           ),
@@ -268,13 +268,13 @@ class _Row extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 0),
                     Text(
                       item.text,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 14,
                         height: 1.35,
                         color: urgent
                             ? AppColors.dangerOn(context)
@@ -312,12 +312,12 @@ class _Empty extends StatelessWidget {
           children: [
             Icon(icon, size: 42, color: scheme.outlineVariant),
             const SizedBox(height: AppSpacing.md),
-            Text(title, style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 5),
+            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
             Text(
               body,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13.5, height: 1.4, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 14, height: 1.4, color: scheme.onSurfaceVariant),
             ),
           ],
         ),

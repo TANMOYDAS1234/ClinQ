@@ -33,14 +33,14 @@ class ThemeSelector extends ConsumerWidget {
 
     return Container(
       height: 60,
-      padding: const EdgeInsets.all(5),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         // `surface`, not `surfaceContainerHighest` — the latter is a heavy
         // mid-grey in Material 3's light scheme, which read as a muddy box
         // sitting on the near-white page and clashed with the white section
         // cards below it. This matches those cards exactly.
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: scheme.outlineVariant),
       ),
       // stretch, so each segment (and its selected pill) fills the full height
@@ -102,13 +102,13 @@ class _Segment extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected ? activeColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, size: 19, color: foreground),
-              const SizedBox(width: 7),
+              const SizedBox(width: 8),
               // Bengali "সিস্টেম" and Hindi "सिस्टम" are wider than "System",
               // so the label shrinks rather than overflowing the segment.
               Flexible(
@@ -117,7 +117,7 @@ class _Segment extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                     color: foreground,
                   ),

@@ -45,7 +45,7 @@ class MiniPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: filled ? color : color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),

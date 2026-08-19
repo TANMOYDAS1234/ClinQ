@@ -77,12 +77,12 @@ class _ReminderSetupSheetState extends ConsumerState<_ReminderSetupSheet> {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
+            decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(16)),
             child: Icon(Icons.alarm_on_rounded, color: accent, size: 26),
           ),
           const SizedBox(height: AppSpacing.md),
           const Text('Never miss a dose', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             'Some phones put apps to sleep and silence their alarms. One quick step keeps your medicine reminders firing on time, even when MedPin is closed.',
             style: TextStyle(fontSize: 14, height: 1.4, color: scheme.onSurfaceVariant),
@@ -98,8 +98,8 @@ class _ReminderSetupSheetState extends ConsumerState<_ReminderSetupSheet> {
               onPressed: _working ? null : _enable,
               style: FilledButton.styleFrom(backgroundColor: accent, minimumSize: const Size.fromHeight(50)),
               child: _working
-                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
-                  : const Text('Turn on reliable reminders', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                  ? const SizedBox(width: 20, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                  : const Text('Turn on reliable reminders', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             ),
           ),
           const SizedBox(height: 4),
@@ -117,12 +117,12 @@ class _ReminderSetupSheetState extends ConsumerState<_ReminderSetupSheet> {
   Widget _point(BuildContext context, IconData icon, String label) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           Icon(icon, size: 19, color: AppColors.accentOn(context)),
           const SizedBox(width: 12),
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500))),
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
           Icon(Icons.check_circle_rounded, size: 18, color: scheme.outlineVariant),
         ],
       ),

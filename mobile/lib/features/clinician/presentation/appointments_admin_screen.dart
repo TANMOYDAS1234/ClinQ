@@ -217,10 +217,10 @@ class _ManageSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(a.patientName ?? 'Patient', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            Text(a.patientName ?? 'Patient', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
             Text(
               '${DateFormat('EEE, d MMM · h:mm a').format(a.scheduledFor)}  ·  ${a.clinicName ?? ''}',
-              style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: AppSpacing.md),
             for (final act in actions)
