@@ -123,14 +123,20 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           HeroBand(
             eyebrow: 'Your records, your copy',
             title: 'Export',
-            figure: HeroFigure(
-              value: _format.label,
-              caption:
-                  _selected.isEmpty
-                      ? 'Choose at least one set below'
-                      : '${_selected.length} of ${ExportDataset.values.length} sets selected',
-              statusLabel: 'Shared, not stored',
-              statusColor: AppColors.success,
+            // No giant figure. The band's job is to say what the screen is,
+            // and this screen's subject is a choice rather than a quantity —
+            // "CSV" set at 64px was a label pretending to be a statistic.
+            child: Text(
+              _selected.isEmpty
+                  ? 'Choose what to include, then pick a format.'
+                  : 'Ready to export ${_selected.length} '
+                      '${_selected.length == 1 ? 'set' : 'sets'} '
+                      'as ${_format.label}.',
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.4,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),

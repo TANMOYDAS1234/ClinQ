@@ -172,39 +172,51 @@ class HeroFigure extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Flexible(
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  // Deliberately off the type scale, and the only place in the
-                  // app that is: this is the screen's subject, and a subject
-                  // one step larger than a heading does not read as one. The
-                  // token checker exempts it by name rather than by accident.
-                  fontSize: 64,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -3,
-                  color: AppColors.primary,
-                ),
+            // The figure and its unit take every pixel the status pill does
+            // not. This was a Flexible followed by a Spacer, and both of those
+            // take flex — so the Spacer claimed half the free width and a
+            // four-character figure ellipsised to "7…". Grouping the figure
+            // with its unit inside one Expanded, and letting the pill size
+            // itself, is what actually reserves the space correctly.
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Flexible(
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        // Deliberately off the type scale, and the only place in the
+                        // app that is: this is the screen's subject, and a subject
+                        // one step larger than a heading does not read as one. The
+                        // token checker exempts it by name rather than by accident.
+                        fontSize: 64,
+                        height: 1,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -3,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  if (unit != null) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        unit!,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            if (unit != null) ...[
-              const SizedBox(width: AppSpacing.sm),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  unit!,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
-            const Spacer(),
             if (statusLabel != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -222,6 +234,8 @@ class HeroFigure extends StatelessWidget {
                   ),
                   child: Text(
                     statusLabel!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,

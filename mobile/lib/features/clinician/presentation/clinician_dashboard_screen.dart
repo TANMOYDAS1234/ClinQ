@@ -1119,12 +1119,16 @@ class _ControlHero extends StatelessWidget {
       title: 'Your clinic',
       figure: HeroFigure(
         value: '$pct%',
+        // The delta alone. "this fortnight" reads better in the caption than
+        // in a pill sitting beside the figure, where its width comes straight
+        // out of the number's.
         statusLabel:
-            delta == null || delta == 0
-                ? null
-                : '${rising ? '+' : ''}$delta% this fortnight',
+            delta == null || delta == 0 ? null : '${rising ? '+' : ''}$delta%',
         statusColor: rising ? AppColors.success : AppColors.warning,
-        caption: 'Readings in range, clinic-wide',
+        caption:
+            delta == null || delta == 0
+                ? 'Readings in range, clinic-wide'
+                : 'Readings in range, clinic-wide  •  vs. the fortnight before',
       ),
       footer: pts.length > 2 ? HeroSpark(values: pts) : null,
     );
