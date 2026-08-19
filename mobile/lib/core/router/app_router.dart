@@ -27,6 +27,7 @@ import '../../features/clinician/presentation/clinician_more_screen.dart';
 import '../../features/clinician/presentation/clinician_shell.dart';
 import '../../features/clinician/presentation/knowledge_edit_screen.dart';
 import '../../features/clinician/presentation/dieticians_screen.dart';
+import '../../features/clinician/presentation/export_screen.dart';
 import '../../features/clinician/presentation/feedback_inbox_screen.dart';
 import '../../features/clinician/presentation/knowledge_screen.dart';
 import '../../features/clinician/presentation/patient_thread_screen.dart';
@@ -154,6 +155,7 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/clinician/dieticians', builder: (context, state) => const DieticiansScreen()),
       GoRoute(path: '/clinician/feedback', builder: (context, state) => const FeedbackInboxScreen()),
+      GoRoute(path: '/clinician/export', builder: (context, state) => const ExportScreen()),
       GoRoute(path: '/clinician/knowledge', builder: (context, state) => const KnowledgeScreen()),
       GoRoute(path: '/clinician/knowledge/new', builder: (context, state) => const KnowledgeEditScreen()),
       GoRoute(
